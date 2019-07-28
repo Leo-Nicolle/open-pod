@@ -1,11 +1,11 @@
-#ifndef _MP3_PLAYER_H
-#define _MP3_PLAYER_H
+#ifndef _STATE_PLAYER_H
+#define _STATE_PLAYER_H
 
 #include <Arduino.h>
-class Player {
+class State {
 
     public:
-        Player();
+        State();
         char audio_file[256];
         char data_file[256];
         int line=0;

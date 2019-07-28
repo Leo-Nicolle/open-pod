@@ -1,7 +1,7 @@
 
-#include "player.h"
+#include "state.h"
 
-Player::Player(){
+State::State(){
   Serial.print("init player ");
   Serial.println(this->battery);
 }
