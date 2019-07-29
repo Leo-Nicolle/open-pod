@@ -1,6 +1,8 @@
 -I/home/leo/Documents/PlatformIO/Projects/mp3-project/include
 -I/home/leo/Documents/PlatformIO/Projects/mp3-project/src
 -I/home/leo/Documents/PlatformIO/Projects/mp3-project/.pio/libdeps/adafruit_feather_m0/Adafruit PCD8544 Nokia 5110 LCD library_ID81
+-I/home/leo/Documents/PlatformIO/Projects/mp3-project/.pio/libdeps/adafruit_feather_m0/Adafruit VS1053 Library_ID327
+-I/home/leo/Documents/PlatformIO/Projects/mp3-project/.pio/libdeps/adafruit_feather_m0/SD_ID161
 -I/home/leo/Documents/PlatformIO/Projects/mp3-project/.pio/libdeps/adafruit_feather_m0/Adafruit GFX Library_ID13
 -I/home/leo/.platformio/packages/framework-arduinosam/libraries/__cores__/adafruit/SPI
 -I/home/leo/.platformio/packages/framework-arduinosam/libraries/__cores__/adafruit/Adafruit_ZeroDMA
@@ -11,9 +13,7 @@
 -I/home/leo/.platformio/packages/framework-arduinosam/cores/adafruit/Adafruit_TinyUSB_Core
 -I/home/leo/.platformio/packages/framework-arduinosam/cores/adafruit/Adafruit_TinyUSB_Core/tinyusb/src
 -I/home/leo/.platformio/packages/framework-arduinosam/variants/feather_m0
--I/home/leo/Documents/PlatformIO/Projects/mp3-project/.pio/libdeps/adafruit_feather_m0/Adafruit VS1053 Library_ID327
 -I/home/leo/Documents/PlatformIO/Projects/mp3-project/.pio/libdeps/adafruit_feather_m0/CapacitiveSensor_ID910
--I/home/leo/Documents/PlatformIO/Projects/mp3-project/.pio/libdeps/adafruit_feather_m0/SD_ID161
 -I/home/leo/.platformio/packages/framework-arduinosam/libraries/__cores__/adafruit/HID
 -I/home/leo/.platformio/packages/framework-arduinosam/libraries/__cores__/adafruit/I2S/src
 -I/home/leo/.platformio/packages/framework-arduinosam/libraries/__cores__/adafruit/SAMD_AnalogCorrection/src

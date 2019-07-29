@@ -2,6 +2,7 @@
 #include "state.h"
 
 State::State(){
-  Serial.print("init player ");
-  Serial.println(this->battery);
+  Serial.print("init state ");
+  Serial.println(battery);
+  // strcpy(this->line, "coucou");
 }
