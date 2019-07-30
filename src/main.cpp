@@ -12,35 +12,29 @@ void setup(){
   }
   Serial.println("IniT");
   State state = State();
-  // state.data_file="/mp3/";
   MP3Display display = MP3Display(&state);
   MP3MusicShield musicShield = MP3MusicShield(&state);
-
-  state.setDataFilePath("/mp3/data/files/00000000.txt");
-  strcpy(state.title , "artists");
+  state.init();
   display.drawLines();
 
-  delay(1000);
-  // Serial.println("inc");
-  state.incrementLine();
-  display.drawLines();
-  delay(1000);
-  // Serial.println("inc");
-  state.incrementLine();
+  delay(100);
+  // state.incrementLine();
   display.drawLines();
   delay(1000);
   // state.incrementLine();
   // display.drawLines();
+  state.forward();
+  display.drawLines();
+  delay(1000);
 
-  // strcpy(state.audio_file_path,"/mp3/audio/00000000/00000000/00000000.mp3");
+  state.forward();
+  display.drawLines();
+  delay(1000);
 
+  state.forward();
+  display.drawLines();
+  delay(1000);
   // musicShield.playFile();
-  // state.setDataFilePath("/mp3/data/files/00000000.txt");
-  // display.drawLines();
-  // delay(5000);
-  // strcpy(state.audio_file_path,"/mp3/audio/00000000/00000000/00000002.mp3");
-  // musicShield.playFile();
-  // state.setDataFilePath("/mp3/data/files/00000000.txt");
   Serial.println("end init");
 
 }

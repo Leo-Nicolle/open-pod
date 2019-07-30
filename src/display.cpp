@@ -21,7 +21,7 @@ void MP3Display::drawLines(){
   display.setTextSize(1);
   display.clearDisplay();
   display.setCursor(0,0);
-  display.println(state->title);
+  display.println(state->getMenuState().title);
 
   for(int i = 0; i < 6; i++){
     char * line = state->lines[i];
@@ -30,18 +30,3 @@ void MP3Display::drawLines(){
   display.display();
   delay(2000);
 }
-//
-// void displayTune(){
-//   this->display.setCursor(0,0);
-//   char*line = this->state->lines;
-//   int i =0;
-//   while(i <6){
-//     this->display.println(line);
-//     Serial.println(line);
-//     line+=strlen(line);
-//     i++;
-//   }
-//
-//   this->display.display();
-//
-// }
