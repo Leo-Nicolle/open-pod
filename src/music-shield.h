@@ -8,7 +8,7 @@
 #include <SD.h>
 
 // These are the pins used for the breakout example
-#define BREAKOUT_RESET  1000      // VS1053 reset pin (output)
+#define BREAKOUT_RESET  -1      // VS1053 reset pin (output)
 #define BREAKOUT_CS     6     // VS1053 chip select pin (output)
 #define BREAKOUT_DCS    10      // VS1053 Data/command select pin (output)
 // These are the pins used for the music maker shield

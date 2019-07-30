@@ -12,19 +12,22 @@ void setup(){
   }
   Serial.println("IniT");
   State state = State();
-  MP3Display display = MP3Display(state);
+  // state.data_file="/mp3/";
+  MP3Display display = MP3Display(&state);
   MP3MusicShield musicShield = MP3MusicShield(&state);
 
-  // delay(100);
+  strcpy(state.audio_file,"/mp3/audio/00000000/00000000/00000000.mp3");
+  musicShield.playFile();
+  state.setDataFilePath("/mp3/data/files/00000000.txt");
+  display.drawLines();
+  delay(5000);
   //
-  // memcpy(state.lines,"\0line1\0line2\0line3\0line4", 24);
+  strcpy(state.audio_file,"/mp3/audio/00000000/00000000/00000002.mp3");
+  musicShield.playFile();
+  state.setDataFilePath("/mp3/data/files/00000000.txt");
   //
   //
-  // // Serial.println(state.line);
-  // display.drawLines();
-  // delay(5000);
-
-
+  // Serial.println("end setup");
 }
 void loop(){
   delay(100);

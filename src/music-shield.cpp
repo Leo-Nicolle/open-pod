@@ -13,14 +13,27 @@ MP3MusicShield::MP3MusicShield(State* state){
   }
   Serial.println("VS1053 initialized");
 
+  if (! musicPlayer.useInterrupt(VS1053_FILEPLAYER_PIN_INT)){
+   Serial.println(F("DREQ pin is not an interrupt pin"));
+}
+  delay(400);
+
   Serial.print("Initializing SD card...");
    if (!SD.begin(CARDCS)) {
     Serial.println(F("SD failed, or not present"));
     while (1);  // don't do anything more
   }
 
-  musicPlayer.setVolume(20,20);
-  musicPlayer.useInterrupt(VS1053_FILEPLAYER_PIN_INT);  // DREQ int
 
-  musicPlayer.playFullFile("/mp3/audio/00000000/00000000.mp3");
+
+  musicPlayer.setVolume(20,20);
+  musicPlayer.useInterrupt(VS1053_FILEPLAYER_PIN_INT);
+}
+
+void MP3MusicShield::playFile(){
+  if(musicPlayer.playingMusic){
+    musicPlayer.stopPlaying();
+  }
+    musicPlayer.startPlayingFile(state->audio_file);
+
 }

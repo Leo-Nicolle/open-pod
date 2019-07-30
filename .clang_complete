@@ -1,6 +1,6 @@
 -I/home/leo/Documents/PlatformIO/Projects/mp3-project/include
 -I/home/leo/Documents/PlatformIO/Projects/mp3-project/src
--I/home/leo/Documents/PlatformIO/Projects/mp3-project/.pio/libdeps/adafruit_feather_m0/Adafruit PCD8544 Nokia 5110 LCD library_ID81
+-I/home/leo/Documents/dev/Adafruit-PCD8544-Nokia-5110-LCD-library
 -I/home/leo/Documents/PlatformIO/Projects/mp3-project/.pio/libdeps/adafruit_feather_m0/Adafruit VS1053 Library_ID327
 -I/home/leo/Documents/PlatformIO/Projects/mp3-project/.pio/libdeps/adafruit_feather_m0/SD_ID161
 -I/home/leo/Documents/PlatformIO/Projects/mp3-project/.pio/libdeps/adafruit_feather_m0/Adafruit GFX Library_ID13
