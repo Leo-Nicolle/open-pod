@@ -115,7 +115,12 @@ int State::forward(){
     setDataFilePath(menuStates[menuIndex].path);
     return 0;
   }
+}
 
+void State::backward(){
+  menuIndex--;
+  line_index_file = getMenuState().line;
+  setDataFilePath(getMenuState().path);
 }
 
 menuState State::getMenuState(){

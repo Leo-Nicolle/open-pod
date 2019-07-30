@@ -25,15 +25,20 @@ void setup(){
   // display.drawLines();
   state.forward();
   display.drawLines();
-  delay(1000);
+  delay(500);
 
   state.forward();
   display.drawLines();
-  delay(1000);
+  state.incrementLine();
+  delay(500);
 
   state.forward();
   display.drawLines();
-  delay(1000);
+  delay(500);
+
+  state.backward();
+  display.drawLines();
+  delay(500);
   // musicShield.playFile();
   Serial.println("end init");
 

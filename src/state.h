@@ -38,7 +38,7 @@ class State {
         void incrementLine();
         void decrementLine();
         int forward();
-
+        void backward();
         menuState getMenuState();
 
 };
