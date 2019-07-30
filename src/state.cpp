@@ -9,16 +9,24 @@ State::State(){
 
 
 void State::readDataLines(){
-  int i = line_in_file;
-  String buffer;
-  while (data_file.available() && i < NUM_LINES ) {
-    buffer = data_file.readStringUntil('\n');
-     strcpy(lines[i] , buffer.c_str());
-     Serial.println("read line");
-     Serial.println(buffer);
-     Serial.println(lines[i]);
-     i++;
-  }
+  Serial.print(data_file.position());
+  char lineBuffer[128];
+  data_file.seek(line_index_file*128);
+  int i = 0;
+  while(i < 6 && data_file.position() < data_file.size()){
+      data_file.read(lineBuffer, 128);
+      for(int j = 0; j< 128; j++){
+        if(lineBuffer[j] == (char)1){
+          lines[i][j]=0;
+          break;
+        }
+        strcpy(lines[i][j],lineBuffer[j]);
+      }
+
+      while(i < 6 ){
+        strcpy(lines[i][j],"");
+        i++;
+      }
 }
 // void State::readDataLine(int index){
 //   int i = 0;
@@ -37,14 +45,14 @@ void State::setDataFilePath(char * path){
   }
   strcpy(data_file_path, path);
   data_file = SD.open(data_file_path);
-  line_in_file = 0;
-  line_in_lines=0;
+  line_index_file = 0;
+  line_index=0;
   readDataLines();
 }
 
 void State::incrementLine(){
-  line_in_file++;
+  line_index++;
 }
 void State::decrementLine(){
-  line_in_file--;
+  line_index--;
 }

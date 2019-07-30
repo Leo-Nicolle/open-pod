@@ -34,6 +34,6 @@ void MP3MusicShield::playFile(){
   if(musicPlayer.playingMusic){
     musicPlayer.stopPlaying();
   }
-    musicPlayer.startPlayingFile(state->audio_file);
+    musicPlayer.startPlayingFile(state->audio_file_path);
 
 }

@@ -16,18 +16,18 @@ void setup(){
   MP3Display display = MP3Display(&state);
   MP3MusicShield musicShield = MP3MusicShield(&state);
 
-  strcpy(state.audio_file,"/mp3/audio/00000000/00000000/00000000.mp3");
-  musicShield.playFile();
   state.setDataFilePath("/mp3/data/files/00000000.txt");
+  strcpy(state.title , "artists");
+
   display.drawLines();
-  delay(5000);
-  //
-  strcpy(state.audio_file,"/mp3/audio/00000000/00000000/00000002.mp3");
-  musicShield.playFile();
-  state.setDataFilePath("/mp3/data/files/00000000.txt");
-  //
-  //
-  // Serial.println("end setup");
+  // strcpy(state.audio_file_path,"/mp3/audio/00000000/00000000/00000000.mp3");
+  // musicShield.playFile();
+  // state.setDataFilePath("/mp3/data/files/00000000.txt");
+  // display.drawLines();
+  // delay(5000);
+  // strcpy(state.audio_file_path,"/mp3/audio/00000000/00000000/00000002.mp3");
+  // musicShield.playFile();
+  // state.setDataFilePath("/mp3/data/files/00000000.txt");
 }
 void loop(){
   delay(100);
