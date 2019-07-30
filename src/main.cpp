@@ -18,9 +18,22 @@ void setup(){
 
   state.setDataFilePath("/mp3/data/files/00000000.txt");
   strcpy(state.title , "artists");
-
   display.drawLines();
+
+  delay(1000);
+  // Serial.println("inc");
+  state.incrementLine();
+  display.drawLines();
+  delay(1000);
+  // Serial.println("inc");
+  state.incrementLine();
+  display.drawLines();
+  delay(1000);
+  // state.incrementLine();
+  // display.drawLines();
+
   // strcpy(state.audio_file_path,"/mp3/audio/00000000/00000000/00000000.mp3");
+
   // musicShield.playFile();
   // state.setDataFilePath("/mp3/data/files/00000000.txt");
   // display.drawLines();
@@ -28,6 +41,8 @@ void setup(){
   // strcpy(state.audio_file_path,"/mp3/audio/00000000/00000000/00000002.mp3");
   // musicShield.playFile();
   // state.setDataFilePath("/mp3/data/files/00000000.txt");
+  Serial.println("end init");
+
 }
 void loop(){
   delay(100);

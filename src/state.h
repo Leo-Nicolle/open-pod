@@ -18,6 +18,7 @@ class State {
         int line_index_file=0;
         int position_first_line=0;
         int line_index=0;
+        int max_lines=0;
 
         int battery=100;
 
