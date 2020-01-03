@@ -24,6 +24,8 @@ class State {
         char audio_file_path[256];
         char lines[NUM_LINES][64];
         char root_data_path[64];
+        char root_music_path[64];
+
 
         int line_index_file = 0;
         int battery = 100;

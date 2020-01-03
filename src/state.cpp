@@ -14,6 +14,8 @@ State::State(){
         }
         menuIndex=1;
         strcpy(root_data_path, "/mp3/data/files/");
+        strcpy(root_music_path, "/mp3/audio/");
+
 }
 
 void State::init(){
@@ -62,10 +64,10 @@ void State::setDataFilePath(char * path){
   data_file = SD.open(menuStates[menuIndex].path);
   line_index_file = 0;
   max_lines = data_file.size()/128;
-  // Serial.print("max lines ");
-  // Serial.print(data_file.size());
-  // Serial.print(" ");
-  // Serial.println(max_lines);
+  Serial.print("max lines ");
+  Serial.print(data_file.size());
+  Serial.print(" ");
+  Serial.println(max_lines);
   readDataLines();
 }
 
@@ -100,7 +102,13 @@ int State::forward(){
   char* txt = strstr(path, ".txt");
   if(txt == NULL){
     Serial.println("audio file");
+    Serial.println(path);
+
     // audio file, play it
+    char completePath[128];
+    strcpy(completePath, root_music_path);
+    strcat(completePath, path);
+    strcpy(audio_file_path, completePath);
     return 1;
   }else{
     //data file, display it
@@ -111,6 +119,9 @@ int State::forward(){
     char completePath[128];
     strcpy(completePath, root_data_path);
     strcat(completePath, path);
+    Serial.print("complete path " );
+    Serial.println(completePath);
+
     strcpy(menuStates[menuIndex].path, completePath);
     setDataFilePath(menuStates[menuIndex].path);
     return 0;

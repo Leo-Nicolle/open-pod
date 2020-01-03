@@ -1,11 +1,7 @@
-
 #include "music-shield.h"
 
 MP3MusicShield::MP3MusicShield(State* state){
   this->state = state;
-  Serial.print("state value");
-  Serial.println(this->state->battery);
-
 
   if (! musicPlayer.begin()) { // initialise the music player
      Serial.println(F("Couldn't find VS1053, do you have the right pins defined?"));
@@ -34,6 +30,9 @@ void MP3MusicShield::playFile(){
   if(musicPlayer.playingMusic){
     musicPlayer.stopPlaying();
   }
-    musicPlayer.startPlayingFile(state->audio_file_path);
+  Serial.println("PLay audio file");
+  Serial.println(state->audio_file_path);
 
+    musicPlayer.startPlayingFile(state->audio_file_path);
+    delay(10);
 }
