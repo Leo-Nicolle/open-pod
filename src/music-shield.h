@@ -8,18 +8,18 @@
 #include <SD.h>
 
 // These are the pins used for the breakout example
-#define BREAKOUT_RESET  -1      // VS1053 reset pin (output)
+#define BREAKOUT_RESET  1      // VS1053 reset pin (output)
 #define BREAKOUT_CS     A3     // VS1053 chip select pin (output)
-#define BREAKOUT_DCS    A5      // VS1053 Data/command select pin (output)
+#define BREAKOUT_DCS    12      // VS1053 Data/command select pin (output)
 // These are the pins used for the music maker shield
-// #define SHIELD_RESET  -1      // VS1053 reset pin (unused!)
-// #define SHIELD_CS     6      // VS1053 chip select pin (output)
-// #define SHIELD_DCS    10      // VS1053 Data/command select pin (output)
+#define SHIELD_RESET  -1      // VS1053 reset pin (unused!)
+#define SHIELD_CS     6      // VS1053 chip select pin (output)
+#define SHIELD_DCS    10      // VS1053 Data/command select pin (output)
 
 // These are common pins between breakout and shield
 #define CARDCS A2     // Card chip select pin
 // DREQ should be an Int pin, see http://arduino.cc/en/Reference/attachInterrupt
-#define DREQ A4       // VS1053 Data request, ideally an Interrupt pin
+#define DREQ 9       // VS1053 Data request, ideally an Interrupt pin
 
 
 
