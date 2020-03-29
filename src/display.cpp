@@ -4,15 +4,20 @@
 MP3Display::MP3Display(State* state){
 
   this->state = state;
-  display.begin();
-  display.setRotation(2);
-  display.setContrast(50);
-  display.setTextColor(BLACK, WHITE);
-  display.setTextSize(1);
-  display.clearDisplay();
-  display.setCursor(0,0);
-  display.println("WAITING FOR SERIAL");
-  display.display();
+  // tft.fillScreen(ST77XX_BLACK);
+  // display.begin();
+  // display.setRotation(2);
+  // display.setContrast(50);
+  // display.setTextColor(BLACK, WHITE);
+  // display.setTextSize(1);
+  // display.clearDisplay();
+  // display.setCursor(0,0);
+  // display.println("WAITING FOR SERIAL");
+  // display.display();
+  display.setCursor(0, 0);
+  display.setTextColor(ST77XX_WHITE);
+  display.setTextWrap(true);
+  display.print("WAITING FOR SERIAL");
 }
 
 void MP3Display::drawLines(){
@@ -46,6 +51,6 @@ void MP3Display::update(){
   display.clearDisplay();
   drawLines();
   drawBattery();
-  display.display();
+  tft.fillScreen(ST77XX_BLACK);
 
 }
