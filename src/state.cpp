@@ -27,23 +27,20 @@ void State::readDataLines(){
     char lineBuffer[128];
     int i = 0;
     data_file.seek(line_index_file*128);
-    while(i < min(6, max_lines)) {
-      // Serial.println("ICICI");
-      // Serial.print(data_file.size());
-      // Serial.print(" -- ");
-      // Serial.println(data_file.position());
-
+    while(i < min(NUM_LINES, max_lines)) {
       if(data_file.position() >= data_file.size()){
           data_file.seek(0);
       }
       data_file.read(lineBuffer, 128);
-      for(int j = 0; j< 128; j++) {
-          if(lineBuffer[j] == (char)1) {
-              lines[i][j]=0;
-              break;
-          }
-          lines[i][j]=lineBuffer[j];
+      int index = strchr(lineBuffer, (char)1) - lineBuffer;
+      Serial.println("index ici ");
+      Serial.println(index);
+
+      strncpy(lines[i], lineBuffer, index);
+      for(int j=index; j< 128 ; j++){
+        lines[i][j]=0;
       }
+      lines[i][index]=0;
       i++;
     }
     while(i < 6) {
@@ -62,7 +59,6 @@ void State::setDataFilePath(char * path){
   }
   strcpy(menuStates[menuIndex].path, path);
   data_file = SD.open(menuStates[menuIndex].path);
-  line_index_file = 0;
   max_lines = data_file.size()/128;
   Serial.print("max lines ");
   Serial.print(data_file.size());
@@ -79,50 +75,51 @@ void State::decrementLine(){
     line_index_file = (line_index_file + max_lines - 1) % max_lines;
     readDataLines();
 }
+
+
 int State::forward(){
   data_file.seek(line_index_file*128);
   char buffer[128];
-  char path[128];
-
   data_file.read(buffer, 128);
+  char* endFirstPart=  strchr(buffer, (char)1);
+  char* endSecondPart= strchr(endFirstPart+1, (char)1);
+  int firstSeparatorIndex = (int) (endFirstPart - buffer );
+  int secondSeparatorIndex = (int) (endSecondPart - endFirstPart-1 );
 
-  int found = 0;
-  for(int i=0; i< 128; i++){
-    if(found){
-      path[i-found] = buffer[i];
-    }
-    if(buffer[i] == (char)1){
-      if(found){
-        path[i-found]=0;
-        break;
-      }
-      found = i+1;
-    }
+
+  Serial.println(buffer);
+  char description[128];
+  if(firstSeparatorIndex > 0 && firstSeparatorIndex < 128){
+    strncpy(description, buffer,firstSeparatorIndex);
+    description[firstSeparatorIndex] = 0;
+    Serial.println(description);
   }
+  char path[128];
+  if(secondSeparatorIndex > 0 && secondSeparatorIndex < 128 - firstSeparatorIndex){
+    strncpy(path, endFirstPart+1, secondSeparatorIndex );
+    path[secondSeparatorIndex] = 0;
+    Serial.println(path);
+  }
+
   char* txt = strstr(path, ".txt");
   if(txt == NULL){
     Serial.println("audio file");
     Serial.println(path);
 
     // audio file, play it
-    char completePath[128];
-    strcpy(completePath, root_music_path);
-    strcat(completePath, path);
-    strcpy(audio_file_path, completePath);
+    strcpy(audio_file_path, root_music_path);
+    strcat(audio_file_path, path);
     return 1;
   }else{
     //data file, display it
     Serial.print("data file " );
     Serial.println(path);
     menuStates[menuIndex].line = line_index_file;
-    menuIndex++;
-    char completePath[128];
-    strcpy(completePath, root_data_path);
-    strcat(completePath, path);
-    Serial.print("complete path " );
-    Serial.println(completePath);
+    line_index_file = 0;
+    // menuIndex++;
 
-    strcpy(menuStates[menuIndex].path, completePath);
+    strcpy(menuStates[menuIndex].path, root_data_path);
+    strcat(menuStates[menuIndex].path, path);
     setDataFilePath(menuStates[menuIndex].path);
     return 0;
   }

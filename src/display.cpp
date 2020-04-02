@@ -4,29 +4,23 @@
 MP3Display::MP3Display(State* state){
 
   this->state = state;
-  // tft.fillScreen(ST77XX_BLACK);
-  // display.begin();
-  // display.setRotation(2);
-  // display.setContrast(50);
-  // display.setTextColor(BLACK, WHITE);
-  // display.setTextSize(1);
-  // display.clearDisplay();
-  // display.setCursor(0,0);
-  // display.println("WAITING FOR SERIAL");
-  // display.display();
-  display.setCursor(0, 0);
-  display.setTextColor(ST77XX_WHITE);
-  display.setTextWrap(true);
-  display.print("WAITING FOR SERIAL");
+  display.begin(UCG_FONT_MODE_SOLID);
+  display.setPrintDir(3);
+  display.clearScreen();
+  display.setFontPosTop();
+  display.setPrintPos(0,160);
+  display.setFont(ucg_font_helvB08_tf);
+  display.print("Does not work:");
 }
 
 void MP3Display::drawLines(){
-  display.setCursor(0,0);
-  char title[128];
-  display.println(state->getMenuState().title);
+  display.setColor(255, 255, 255);
+  display.setFont(ucg_font_helvB08_tr);
+  drawText(state->getMenuState().title, 0);
+
   for(int i = 0; i < 6; i++){
     char * line = state->lines[i];
-    display.println(line);
+    drawText(line, i+1);
   }
 }
 
@@ -40,17 +34,29 @@ float MP3Display::checkBattery(){
  return measuredvbat;
 }
 
+void MP3Display::drawText(char* text, int line){
+  if(strlen(texts[line].text)){
+    // erase the previous text: 
+    display.setPrintPos(0,160 - line * 8);
+    display.setColor(0, 0, 0);
+    display.print(texts[line].text);
+  }
+  //record the new line
+  strcpy(texts[line].text, text);
+  display.setPrintPos(0,160 - line * 8);
+  display.setColor(255, 255, 255);
+  display.print(texts[line].text);
+ 
+}
 
 void MP3Display::drawBattery(){
-  float battery = checkBattery();
-  display.setCursor(0,25);
-  display.println(battery);
+  // float battery = checkBattery();
+  // display.setCursor(0,25);
+  // display.println(battery);
 }
 
 void MP3Display::update(){
-  display.clearDisplay();
-  drawLines();
-  drawBattery();
-  tft.fillScreen(ST77XX_BLACK);
-
+  // display.fillScreen(ST77XX_BLACK);
+  // drawLines();
+  // drawBattery();
 }

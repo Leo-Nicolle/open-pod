@@ -9,10 +9,11 @@ MP3MusicShield::MP3MusicShield(State* state){
   }
   Serial.println("VS1053 initialized");
 
-  if (! musicPlayer.useInterrupt(VS1053_FILEPLAYER_PIN_INT)){
-   Serial.println(F("DREQ pin is not an interrupt pin"));
-}
+//   if (! musicPlayer.useInterrupt(VS1053_FILEPLAYER_PIN_INT)){
+//    Serial.println(F("DREQ pin is not an interrupt pin"));
+// }
   delay(400);
+  musicPlayer.sineTest(0x44, 200); 
 
   Serial.print("Initializing SD card...");
    if (!SD.begin(CARDCS)) {
@@ -22,7 +23,7 @@ MP3MusicShield::MP3MusicShield(State* state){
 
 
 
-  musicPlayer.setVolume(20,20);
+  // musicPlayer.setVolume(20,20);
   musicPlayer.useInterrupt(VS1053_FILEPLAYER_PIN_INT);
 }
 
@@ -33,6 +34,6 @@ void MP3MusicShield::playFile(){
   Serial.println("PLay audio file");
   Serial.println(state->audio_file_path);
 
-    musicPlayer.startPlayingFile(state->audio_file_path);
-    delay(10);
+  musicPlayer.startPlayingFile(state->audio_file_path);
+  delay(10);
 }
