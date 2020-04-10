@@ -2,40 +2,22 @@
 #include "display.h"
 
 MP3Display::MP3Display(State* state){
-
-  // display.setPrintPos(0,160);
-  // display.setFont(ucg_font_helvB08_tf);
-  // display.print("Does not work:");
-
   this->state = state;
   display.begin(UCG_FONT_MODE_SOLID);
-  // display.setPrintDir(3);
   display.clearScreen();
-  display.setColor(255, 255, 255);
-  display.drawRBox(0,0,128,80,1);
-  display.setColor(255, 0, 0);
-  display.drawRBox(0,80,128,80,1);
-
-  // display.setFontPosTop();
-  // display.setPrintPos(0,160);
-  // display.print("coucou");
-  // display.setPrintPos(40,40);
-  // display.print("coucou");
-  // display.setPrintPos(100,0);
-  // display.print("coucou");
-  // display.setPrintPos(0,0);
-  // display.print("coucou");
-
+  display.setPrintDir(3);
+  display.setFontPosTop();
   display.setFont(ucg_font_helvB08_tf);
- 
 }
 
 void MP3Display::drawLines(){
+  display.clearScreen();
   display.setFont(ucg_font_helvB08_tf);
+  display.setPrintPos(X_FIRST_LINE,Y_FIRST_LINE);
+  display.print(state->getMenuState().title);
 
-  // drawText(state->getMenuState().title, 0);
   for(int i = 0; i < NUM_DISPLAY_LINES; i++){
-    display.setPrintPos(0,Y_FIRST_LINE - LINE_LINEHEIGHT * i);
+    display.setPrintPos(LINE_LINEHEIGHT * (i+1) + X_FIRST_LINE,Y_FIRST_LINE);
     char * line = state->lines[i];
     display.print(line);
   }

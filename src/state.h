@@ -11,7 +11,7 @@ typedef struct menuState
 {
    char path[256];
    char title[16];
-   int line;
+   int line=0;
 };
 #endif
 

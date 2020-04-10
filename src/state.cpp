@@ -3,7 +3,6 @@
 
 State::State(){
         Serial.print("init state ");
-        Serial.println(battery);
         strcpy(menuStates[0].title, "Menu");
         strcpy(menuStates[1].title, "Artists");
         strcpy(menuStates[2].title, "Albums");
@@ -33,7 +32,6 @@ void State::readDataLines(){
       }
       data_file.read(lineBuffer, 128);
       int index = strchr(lineBuffer, (char)1) - lineBuffer;
-      Serial.println(index);
 
       strncpy(lines[i], lineBuffer, index);
       for(int j=index; j< 128 ; j++){
@@ -53,16 +51,11 @@ void State::setDataFilePath(char * path){
   Serial.println(path);
 
   if(data_file) {
-    Serial.println("CLOSE");
     data_file.close();
   }
   strcpy(menuStates[menuIndex].path, path);
   data_file = SD.open(menuStates[menuIndex].path);
   max_lines = data_file.size()/128;
-  Serial.print("max lines ");
-  Serial.print(data_file.size());
-  Serial.print(" ");
-  Serial.println(max_lines);
   readDataLines();
 }
 
@@ -86,37 +79,29 @@ int State::forward(){
   int secondSeparatorIndex = (int) (endSecondPart - endFirstPart-1 );
 
 
-  Serial.println(buffer);
   char description[128];
   if(firstSeparatorIndex > 0 && firstSeparatorIndex < 128){
     strncpy(description, buffer,firstSeparatorIndex);
     description[firstSeparatorIndex] = 0;
-    Serial.println(description);
   }
   char path[128];
   if(secondSeparatorIndex > 0 && secondSeparatorIndex < 128 - firstSeparatorIndex){
     strncpy(path, endFirstPart+1, secondSeparatorIndex );
     path[secondSeparatorIndex] = 0;
-    Serial.println(path);
   }
 
   char* txt = strstr(path, ".txt");
   if(txt == NULL){
-    Serial.println("audio file");
-    Serial.println(path);
-
     // audio file, play it
     strcpy(audio_file_path, root_music_path);
     strcat(audio_file_path, path);
     return 1;
   }else{
+  
     //data file, display it
-    Serial.print("data file " );
-    Serial.println(path);
     menuStates[menuIndex].line = line_index_file;
     line_index_file = 0;
-    // menuIndex++;
-
+    menuIndex++;
     strcpy(menuStates[menuIndex].path, root_data_path);
     strcat(menuStates[menuIndex].path, path);
     setDataFilePath(menuStates[menuIndex].path);
@@ -125,7 +110,7 @@ int State::forward(){
 }
 
 void State::backward(){
-  menuIndex--;
+  menuIndex-=1;
   line_index_file = getMenuState().line;
   setDataFilePath(getMenuState().path);
 }

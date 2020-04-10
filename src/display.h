@@ -13,7 +13,9 @@
 
 class MP3Display {
     private:
-    const char Y_FIRST_LINE = 160;
+    const char X_FIRST_LINE = 2;
+    const char Y_FIRST_LINE = 160-2;
+
     const char LINE_LINEHEIGHT = 10;
     const char NUM_DISPLAY_LINES = 6;
 

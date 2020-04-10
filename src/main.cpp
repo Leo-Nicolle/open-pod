@@ -14,7 +14,7 @@ MP3Display* display;
 MP3MusicShield* musicShield;
 Touch* touch;
 
-
+char switchIndex = 0;
 
 void setup(){
  
@@ -27,6 +27,12 @@ void setup(){
   musicShield = new MP3MusicShield(state);
   state->init();
   state->forward();
+  state->forward();
+  delay(3000);
+  state->backward();
+
+
+
   // Serial.println("IniT");
   // display->update();
 
@@ -64,8 +70,13 @@ void setup(){
 
 }
 void loop(){
-  delay(200);
-  // Serial.println("coucou");
- 
+  delay(500);
+  if(switchIndex==0){
+  state->forward();
+  }else{
+  state->backward();
+  }
+  switchIndex=(switchIndex + 1)%2;
+
   display->drawLines();
 }
