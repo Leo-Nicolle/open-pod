@@ -33,7 +33,6 @@ void State::readDataLines(){
       }
       data_file.read(lineBuffer, 128);
       int index = strchr(lineBuffer, (char)1) - lineBuffer;
-      Serial.println("index ici ");
       Serial.println(index);
 
       strncpy(lines[i], lineBuffer, index);
