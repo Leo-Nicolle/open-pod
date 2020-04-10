@@ -11,7 +11,6 @@ MP3Display::MP3Display(State* state){
 }
 
 void MP3Display::drawLines(){
-  display.clearScreen();
   display.setFont(ucg_font_helvB08_tf);
   display.setPrintPos(X_FIRST_LINE,Y_FIRST_LINE);
   display.print(state->getMenuState().title);
@@ -35,13 +34,26 @@ float MP3Display::checkBattery(){
 
 
 void MP3Display::drawBattery(){
-  // float battery = checkBattery();
-  // display.setCursor(0,25);
+  float battery = checkBattery();
+  display.setPrintPos( X_FIRST_LINE,30);
   // display.println(battery);
+  char barWidth = 4;
+  char barHeight = 7;
+  char numBars = 3;
+  for(char i = 0; i< numBars; i++){
+    display.drawBox(X_FIRST_LINE, 30- i* (barWidth+2), barHeight, barWidth);
+  }
+  if(battery>= 0.9){
+    display.drawBox(
+       X_FIRST_LINE+ barHeight/2-1,
+       30- numBars* (barWidth+2)+barWidth/2,
+       barHeight/2, barWidth/2);
+  }
 }
 
 void MP3Display::update(){
+  display.clearScreen();
   // display.fillScreen(ST77XX_BLACK);
-  // drawLines();
-  // drawBattery();
+  drawLines();
+  drawBattery();
 }

@@ -28,8 +28,8 @@ void setup(){
   state->init();
   state->forward();
   state->forward();
-  delay(3000);
   state->backward();
+  display->update();
 
 
 
@@ -78,5 +78,5 @@ void loop(){
   }
   switchIndex=(switchIndex + 1)%2;
 
-  display->drawLines();
+  display->update();
 }
