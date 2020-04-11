@@ -26,13 +26,15 @@ void setup(){
 
   musicShield = new MP3MusicShield(state);
   state->init();
-  state->forward();
-  state->forward();
-  state->incrementLine();
-  state->incrementLine();
-  state->incrementLine();
+  // state->incrementLine();
+
+  // state->forward();
+  // state->incrementLine();
+  // state->forward();
 
   // state->backward();
+  // state->forward();
+
   display->update();
 
 
@@ -75,13 +77,13 @@ void setup(){
 }
 void loop(){
   delay(1000);
-  // if(switchIndex==0){
-  // state->forward();
-  state->decrementLine();
-  // }else{
-  // state->backward();
-  // }
-  switchIndex=(switchIndex + 1)%2;
+  // // if(switchIndex==0){
+  // // state->forward();
+  // state->decrementLine();
+  // // }else{
+  // // state->backward();
+  // // }
+  // switchIndex=(switchIndex + 1)%2;
 
-  display->update();
+  // display->update();
 }

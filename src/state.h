@@ -46,6 +46,8 @@ class State {
         void init();
         // read the data to display from SD card
         void readDataLines();
+        void cleanLines();
+
         // change the date file path (depends on the menu)
         void setDataFilePath(char* path);
         // go down of one line into a menu

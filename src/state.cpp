@@ -39,6 +39,12 @@ void State::readDataLines(){
     }
 }
 
+void State::cleanLines(){
+  for(short i=0;i< NUM_LINES; i++){
+    lines[i][0]= 0;
+  }
+}
+
 void State::setDataFilePath(char * path){
   Serial.println("set menu");
   Serial.println(path);
@@ -49,6 +55,7 @@ void State::setDataFilePath(char * path){
   strcpy(menuStates[menuIndex].path, path);
   data_file = SD.open(menuStates[menuIndex].path);
   max_lines = data_file.size()/128;
+  cleanLines();
   readDataLines();
 }
 
@@ -106,7 +113,7 @@ int State::forward(){
   }else{
   
     //data file, display it
-    // menuStates[menuIndex].line = first_line_index;
+
     menuIndex++;
     menuState* currentMenu = getMenuStatePointer();
     currentMenu->line = 0;
@@ -119,8 +126,6 @@ int State::forward(){
 
 void State::backward(){
   menuIndex-=1;
-  // first_line_index = getMenuState().line;
-  //  = getMenuState().line;
   setDataFilePath(getMenuState().path);
 }
 
