@@ -28,7 +28,11 @@ void setup(){
   state->init();
   state->forward();
   state->forward();
-  state->backward();
+  state->incrementLine();
+  state->incrementLine();
+  state->incrementLine();
+
+  // state->backward();
   display->update();
 
 
@@ -70,12 +74,13 @@ void setup(){
 
 }
 void loop(){
-  delay(500);
-  if(switchIndex==0){
-  state->forward();
-  }else{
-  state->backward();
-  }
+  delay(1000);
+  // if(switchIndex==0){
+  // state->forward();
+  state->decrementLine();
+  // }else{
+  // state->backward();
+  // }
   switchIndex=(switchIndex + 1)%2;
 
   display->update();

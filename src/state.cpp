@@ -25,8 +25,8 @@ void State::init(){
 void State::readDataLines(){
     char lineBuffer[128];
     int i = 0;
-    data_file.seek(line_index_file*128);
-    while(i < min(NUM_LINES, max_lines)) {
+    data_file.seek(getMenuStatePointer()->line*128);
+    while(i <  max_lines) {
       if(data_file.position() >= data_file.size()){
           data_file.seek(0);
       }
@@ -34,14 +34,7 @@ void State::readDataLines(){
       int index = strchr(lineBuffer, (char)1) - lineBuffer;
 
       strncpy(lines[i], lineBuffer, index);
-      for(int j=index; j< 128 ; j++){
-        lines[i][j]=0;
-      }
       lines[i][index]=0;
-      i++;
-    }
-    while(i < 6) {
-      lines[i][0]=(char)0;
       i++;
     }
 }
@@ -60,17 +53,31 @@ void State::setDataFilePath(char * path){
 }
 
 void State::incrementLine(){
-    line_index_file = (line_index_file + 1) % max_lines;
-    readDataLines();
+    menuState* currentMenu = getMenuStatePointer(); 
+    if(currentMenu->selectedLine<5){
+      currentMenu->selectedLine = currentMenu->selectedLine + 1;
+    }else{
+      currentMenu->line = (currentMenu->line + 1) % max_lines;
+      readDataLines();
+    }
 }
 void State::decrementLine(){
-    line_index_file = (line_index_file + max_lines - 1) % max_lines;
-    readDataLines();
+    menuState* currentMenu = getMenuStatePointer(); 
+    if(currentMenu->selectedLine>0){
+      currentMenu->selectedLine = currentMenu->selectedLine - 1;
+    }else{
+      currentMenu->line -=1;
+      if(currentMenu->line < 0){
+        currentMenu->line = max_lines - currentMenu->line-1;
+      }
+      readDataLines();
+    }
 }
 
 
 int State::forward(){
-  data_file.seek(line_index_file*128);
+  menuState* currentMenu = getMenuStatePointer();
+  data_file.seek((currentMenu->line + currentMenu->selectedLine)*128);
   char buffer[128];
   data_file.read(buffer, 128);
   char* endFirstPart=  strchr(buffer, (char)1);
@@ -99,22 +106,27 @@ int State::forward(){
   }else{
   
     //data file, display it
-    menuStates[menuIndex].line = line_index_file;
-    line_index_file = 0;
+    // menuStates[menuIndex].line = first_line_index;
     menuIndex++;
-    strcpy(menuStates[menuIndex].path, root_data_path);
-    strcat(menuStates[menuIndex].path, path);
-    setDataFilePath(menuStates[menuIndex].path);
+    menuState* currentMenu = getMenuStatePointer();
+    currentMenu->line = 0;
+    strcpy(currentMenu->path, root_data_path);
+    strcat(currentMenu->path, path);
+    setDataFilePath(currentMenu->path);
     return 0;
   }
 }
 
 void State::backward(){
   menuIndex-=1;
-  line_index_file = getMenuState().line;
+  // first_line_index = getMenuState().line;
+  //  = getMenuState().line;
   setDataFilePath(getMenuState().path);
 }
 
 menuState State::getMenuState(){
   return menuStates[menuIndex];
+}
+menuState* State::getMenuStatePointer(){
+  return menuStates+menuIndex;
 }

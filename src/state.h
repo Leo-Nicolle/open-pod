@@ -11,10 +11,11 @@ typedef struct menuState
 {
    char path[256];
    char title[16];
+    // current line index into the data file
    int line=0;
+   int selectedLine=0;
 };
 #endif
-
 #define NUM_MENUS 4
 #define NUM_LINES 18
 class State {
@@ -31,8 +32,6 @@ class State {
         // SD card root audio path (should not change during runtime)
         char root_music_path[64];
 
-        // current line index into the data file
-        int line_index_file = 0;
         // number of lines into the data file
         int max_lines = 0;
 
@@ -60,6 +59,8 @@ class State {
         void backward();
         // get current menu state
         menuState getMenuState();
+        menuState* getMenuStatePointer();
+
 
 
         void getDescription(char* line, char* result);

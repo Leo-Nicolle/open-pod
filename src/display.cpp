@@ -15,10 +15,15 @@ void MP3Display::drawLines(){
   display.setPrintPos(X_FIRST_LINE,Y_FIRST_LINE);
   display.print(state->getMenuState().title);
 
-  for(int i = 0; i < NUM_DISPLAY_LINES; i++){
+  for(int i = 0; i < 6; i++){
     display.setPrintPos(LINE_LINEHEIGHT * (i+1) + X_FIRST_LINE,Y_FIRST_LINE);
     char * line = state->lines[i];
-    display.print(line);
+    if(state->getMenuState().selectedLine == i){
+      display.setColor(0,255,0);
+    }else{
+      display.setColor(255,255,255);
+    }
+      display.print(line);
   }
 }
 
@@ -36,7 +41,6 @@ float MP3Display::checkBattery(){
 void MP3Display::drawBattery(){
   float battery = checkBattery();
   display.setPrintPos( X_FIRST_LINE,30);
-  // display.println(battery);
   char barWidth = 4;
   char barHeight = 7;
   char numBars = 3;
