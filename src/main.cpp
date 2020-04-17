@@ -18,14 +18,14 @@ char switchIndex = 0;
 
 void setup(){
  
-  state = new State();
-
-  display = new MP3Display(state);
   Serial.begin(9600);
+  state = new State();
   // display->drawLines();
 
+  touch = new Touch(state);
   musicShield = new MP3MusicShield(state);
   state->init();
+  display = new MP3Display(state);
   // state->incrementLine();
 
   // state->forward();
@@ -76,7 +76,7 @@ void setup(){
 
 }
 void loop(){
-  delay(1000);
+  delay(200);
   // // if(switchIndex==0){
   // // state->forward();
   // state->decrementLine();
@@ -84,6 +84,8 @@ void loop(){
   // // state->backward();
   // // }
   // switchIndex=(switchIndex + 1)%2;
+  // touch->update();
+  // touch->debug();
 
-  // display->update();
+  display->update();
 }

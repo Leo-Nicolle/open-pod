@@ -38,6 +38,10 @@ class State {
         // battery power
         int battery = 100;
 
+        int centerX = 0;
+        int centerY = 0;
+
+
         // saves the menu state (the line number into this menu)
         menuState menuStates[NUM_MENUS];
         // current menu index

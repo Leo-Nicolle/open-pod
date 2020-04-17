@@ -57,7 +57,7 @@ void MP3Display::drawBattery(){
 
 void MP3Display::update(){
   display.clearScreen();
-  // display.fillScreen(ST77XX_BLACK);
   drawLines();
   drawBattery();
+  // display.drawCircle(state->centerX,state->centerY, 5, UCG_DRAW_ALL);
 }

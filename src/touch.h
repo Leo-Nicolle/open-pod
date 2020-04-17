@@ -12,10 +12,16 @@ class Touch {
       Adafruit_MPR121 cap = Adafruit_MPR121();
       uint16_t lasttouched = 0;
       uint16_t currtouched = 0;
+      State* state;
+      short lastTouchIndex =-1;
+      short touchIndex =-1;
+      void setTouchIndex(short touchIndex);
     public:
-    Touch();
+    Touch(State*state);
     void update();
-    State* state;
+    void debug();
+
+
 };
 
 #endif
