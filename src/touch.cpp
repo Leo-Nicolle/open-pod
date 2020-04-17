@@ -151,7 +151,7 @@ void Touch::setTouchIndex(short touchIndex){
   }
   short delta =touchIndex - lastTouchIndex ; 
   if(delta< 0){
-    for(short i=0;i<delta ; i++ )
+    for(short i=0;i<abs(delta) ; i++ )
       state->decrementLine();
   }else{
      for(short i=0;i<delta ; i++ )

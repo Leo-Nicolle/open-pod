@@ -76,7 +76,6 @@ void setup(){
 
 }
 void loop(){
-  delay(200);
   // // if(switchIndex==0){
   // // state->forward();
   // state->decrementLine();
@@ -84,7 +83,7 @@ void loop(){
   // // state->backward();
   // // }
   // switchIndex=(switchIndex + 1)%2;
-  // touch->update();
+  touch->update();
   // touch->debug();
 
   display->update();
