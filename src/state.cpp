@@ -30,7 +30,7 @@ void State::readDataLines(){
       if(data_file.position() >= data_file.size()){
           data_file.seek(0);
       }
-      data_file.read(lineBuffer, 128);
+      data_file.read((uint8_t *)lineBuffer, 128);
       int index = strchr(lineBuffer, (char)1) - lineBuffer;
 
       strncpy(lines[i], lineBuffer, index);
@@ -86,7 +86,7 @@ int State::forward(){
   menuState* currentMenu = getMenuStatePointer();
   data_file.seek((currentMenu->line + currentMenu->selectedLine)*128);
   char buffer[128];
-  data_file.read(buffer, 128);
+  data_file.read((uint8_t *)buffer, 128);
   char* endFirstPart=  strchr(buffer, (char)1);
   char* endSecondPart= strchr(endFirstPart+1, (char)1);
   int firstSeparatorIndex = (int) (endFirstPart - buffer );

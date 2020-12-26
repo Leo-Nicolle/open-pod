@@ -1,18 +1,14 @@
 #include  "state.h"
 #include  "display.h"
-#include  "music-shield.h"
-#include  "touch.h"
-
-
-#include <CapacitiveSensor.h>
-
+// #include  "music-shield.h"
+// #include  "touch.h"
 #include <Arduino.h>
 
 
 State* state;
 MP3Display* display;
-MP3MusicShield* musicShield;
-Touch* touch;
+// MP3MusicShield* musicShield;
+// Touch* touch;
 
 char switchIndex = 0;
 
@@ -22,8 +18,8 @@ void setup(){
   state = new State();
   // display->drawLines();
 
-  touch = new Touch(state);
-  musicShield = new MP3MusicShield(state);
+  // touch = new Touch(state);
+  // musicShield = new MP3MusicShield(state);
   state->init();
   display = new MP3Display(state);
   // state->incrementLine();
@@ -83,7 +79,7 @@ void loop(){
   // // state->backward();
   // // }
   // switchIndex=(switchIndex + 1)%2;
-  touch->update();
+  // touch->update();
   // touch->debug();
 
   display->update();

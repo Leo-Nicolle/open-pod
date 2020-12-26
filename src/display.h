@@ -6,9 +6,9 @@
 #include <SPI.h>
 #include "Ucglib.h"
 #include  "state.h"
-#define TFT_CS 11
-#define TFT_RST 10
-#define TFT_DC 13
+#define TFT_CS 15
+#define TFT_RST 13
+#define TFT_DC 2
 
 class MP3Display {
     private:
