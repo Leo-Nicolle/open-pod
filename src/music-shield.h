@@ -4,7 +4,6 @@
 #include  "state.h"
 #include  "utils.h"
 #include <SPI.h>
-#include <VS1053.h>
 #include <SD.h>
 
 // enum
@@ -14,10 +13,14 @@
 //   CARDCS = 5,
 //   DREQ = 9
 // };
+#include <Adafruit_VS1053.h>
 
 class MP3MusicShield{
 private :
-  VS1053 musicPlayer(17, 33, 9);
+  Adafruit_VS1053_FilePlayer* musicPlayer;
+  static const int CARDCS = 5;
+
+  // Adafruit* musicPlayer;
 
   // Adafruit_VS1053_FilePlayer musicPlayer =
   // Adafruit_VS1053_FilePlayer(BREAKOUT_RESET, BREAKOUT_CS, BREAKOUT_DCS, DREQ, CARDCS);

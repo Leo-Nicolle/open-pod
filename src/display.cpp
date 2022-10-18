@@ -27,6 +27,23 @@ void MP3Display::drawLines(){
   }
 }
 
+void MP3Display::test()
+{
+  analogWrite(TFT_BL, 127);
+  display.setColor(0, 0, 40, 80);
+  display.setColor(1, 80, 0, 40);
+  display.setColor(2, 255, 0, 255);
+  display.setColor(3, 0, 255, 255);
+
+  display.drawGradientBox(0, 0, display.getWidth(), display.getHeight());
+
+  display.setColor(255, 168, 0);
+  display.setPrintDir(0);
+  display.setPrintPos(2, 18);
+  display.print("displaylib");
+  display.setPrintPos(2, 18 + 20);
+  display.print("GraphicsTest");
+}
 
 float MP3Display::checkBattery(){
  //This returns the current voltage of the battery on a Feather 32u4.

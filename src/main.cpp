@@ -1,13 +1,13 @@
 #include  "state.h"
-#include  "display.h"
-// #include  "music-shield.h"
+// #include  "display.h"
+#include  "music-shield.h"
 // #include  "touch.h"
 #include <Arduino.h>
 
 
 State* state;
-MP3Display* display;
-// MP3MusicShield* musicShield;
+// MP3Display* display;
+MP3MusicShield* musicShield;
 // Touch* touch;
 
 char switchIndex = 0;
@@ -15,13 +15,13 @@ char switchIndex = 0;
 void setup(){
  
   Serial.begin(9600);
+  Serial.println("START");
   state = new State();
-  // display->drawLines();
 
   // touch = new Touch(state);
-  // musicShield = new MP3MusicShield(state);
-  state->init();
-  display = new MP3Display(state);
+  musicShield = new MP3MusicShield(state);
+  // state->init();
+  // display = new MP3Display(state);
   // state->incrementLine();
 
   // state->forward();
@@ -31,7 +31,7 @@ void setup(){
   // state->backward();
   // state->forward();
 
-  display->update();
+  // display->update();
 
 
 
@@ -72,6 +72,8 @@ void setup(){
 
 }
 void loop(){
+  // display->test();
+
   // // if(switchIndex==0){
   // // state->forward();
   // state->decrementLine();
@@ -82,5 +84,5 @@ void loop(){
   // touch->update();
   // touch->debug();
 
-  display->update();
+  // display->update();
 }

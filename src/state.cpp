@@ -2,23 +2,24 @@
 #include "state.h"
 
 State::State(){
-        Serial.print("init state ");
-        strcpy(menuStates[0].title, "Menu");
-        strcpy(menuStates[1].title, "Artists");
-        strcpy(menuStates[2].title, "Albums");
-        strcpy(menuStates[3].title, "Tracks");
-        for(int i=0;i<4;i++){
-          menuStates[i].line = 0;
-          strcpy(menuStates[i].path,"");
-        }
-        menuIndex=1;
-        strcpy(root_data_path, "/mp3/data/files/");
-        strcpy(root_music_path, "/mp3/audio/");
-
 }
 
 void State::init(){
-  setDataFilePath("/mp3/data/files/00000000.txt");
+  Serial.print("init state ");
+  strcpy(menuStates[0].title, "Menu");
+  strcpy(menuStates[1].title, "Artists");
+  strcpy(menuStates[2].title, "Albums");
+  strcpy(menuStates[3].title, "Tracks");
+  for (int i = 0; i < 4; i++)
+  {
+    menuStates[i].line = 0;
+    strcpy(menuStates[i].path, "");
+  }
+  menuIndex = 1;
+  strcpy(root_data_path, "/mp3/data/files/");
+  strcpy(root_music_path, "/mp3/audio/");
+
+  setDataFilePath((char *)"/mp3/data/files/00000000.txt");
 }
 
 

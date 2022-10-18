@@ -6,10 +6,12 @@
 #include <SPI.h>
 #include "Ucglib.h"
 #include  "state.h"
+#include "analogWrite.h"
+
 #define TFT_CS 15
 #define TFT_RST 13
 #define TFT_DC 2
-
+#define TFT_BL 27
 class MP3Display {
     private:
     const char X_FIRST_LINE = 2;
@@ -26,6 +28,7 @@ class MP3Display {
     float checkBattery();
     void drawBattery();
     void update();
+    void test();
     State* state;
 };
 
