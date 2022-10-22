@@ -20,7 +20,7 @@ void setup() {
     while (1);
   }
   Serial.println("MPR121 found!");
-  clickWheel.initTouchWheel(4, -20 ,1);
+  clickWheel.initTouchWheel(4, 90 ,1);
   delay(100);
   clickWheel.takeWheelBaseline();
 }
@@ -31,6 +31,10 @@ void loop() {
   int16_t deltaWheel = clickWheel.getWheelIncrement();  
   if(deltaWheel != 0){
     angle += deltaWheel;
-    debug.post(angle);
+    debug.post("angle", clickWheel.lastWheelAngle);
+  }else if (clickWheel.lastWheelAngle ==-1){
+    // not touched
+    // debug.post(clickWheel.lastWheelAngle);
+
   }
 }

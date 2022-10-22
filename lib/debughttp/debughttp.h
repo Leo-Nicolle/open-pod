@@ -3,6 +3,8 @@
 #include <WiFi.h>
 #include <HTTPClient.h>
 
+#include <constants.h>
+
 #ifndef DEBUGHTTP_H
 #define DEBUGHTTP_H
 class DebugHTTP
@@ -12,7 +14,7 @@ class DebugHTTP
    HTTPClient http;
 
   void setup();
-  void post(int value);
+  void post(String key, int value);
 };
 
 #endif // DEBUGHTTP_H

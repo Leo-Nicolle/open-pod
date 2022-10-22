@@ -2,8 +2,6 @@
 #include <ota.h>
 
 
-const char* ssid = "4G-Gateway-1B52";
-const char* password = "9NG4AT1NARF";
 
 void OTA::setup() {
   Serial.println("Booting");

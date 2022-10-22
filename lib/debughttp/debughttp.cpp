@@ -2,26 +2,22 @@
 #include <debughttp.h>
 
 void DebugHTTP::setup() {
-  // const char* ssid = "4G-Gateway-1B52";
-  // const char* password = "9NG4AT1NARF";
-
-
-  // if(!(WiFi.waitForConnectResult() != WL_CONNECTED)){
-  //   WiFi.begin(ssid, password);
-  // }
-  // while (WiFi.waitForConnectResult() != WL_CONNECTED) {
-  //   Serial.println("Connection Failed! Rebooting...");
-  //   delay(5000);
-  //   ESP.restart();
-  // }
+  if(!(WiFi.waitForConnectResult() != WL_CONNECTED)){
+    WiFi.begin(ssid, password);
+  }
+  while (WiFi.waitForConnectResult() != WL_CONNECTED) {
+    Serial.println("Connection Failed! Rebooting...");
+    delay(5000);
+    ESP.restart();
+  }
 }
 
-void DebugHTTP::post(int value) {
+void DebugHTTP::post(String key, int value) {
     // Your Domain name with URL path or IP address with path
-  http.begin(client, "http://192.168.8.137:3011/angle");
+  http.begin(client, serverURL + key);
   http.addHeader("Content-Type", "application/json");
 
-  int httpResponseCode = http.POST("{\"angle\":" + String(value) + "}");
+  int httpResponseCode = http.POST("{\"" + key + "\":" + String(value) + "}");
   if(httpResponseCode>0){
       String response = http.getString();  //Get the response to the request
       Serial.println(httpResponseCode);   //Print return code
