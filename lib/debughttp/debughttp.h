@@ -14,7 +14,7 @@ class DebugHTTP
    HTTPClient http;
 
   void setup();
-  void post(String key, int value);
+  void post(String key, int value, boolean print = false);
 };
 
 #endif // DEBUGHTTP_H

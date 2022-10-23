@@ -12,19 +12,21 @@ void DebugHTTP::setup() {
   }
 }
 
-void DebugHTTP::post(String key, int value) {
+void DebugHTTP::post(String key, int value, boolean print) {
     // Your Domain name with URL path or IP address with path
   http.begin(client, serverURL + key);
   http.addHeader("Content-Type", "application/json");
-
+  if(print){
+    Serial.println(key + ": " + value);
+  }
   int httpResponseCode = http.POST("{\"" + key + "\":" + String(value) + "}");
   if(httpResponseCode>0){
       String response = http.getString();  //Get the response to the request
-      Serial.println(httpResponseCode);   //Print return code
-      Serial.println(response);           //Print request answer
+      // Serial.println(httpResponseCode);   //Print return code
+      // Serial.println(response);           //Print request answer
     
   }else{
-      Serial.print("Error on sending POST: ");
-      Serial.println(httpResponseCode); 
+      // Serial.print("Error on sending POST: ");
+      // Serial.println(httpResponseCode); 
   }
 }

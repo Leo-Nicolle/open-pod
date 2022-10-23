@@ -7,9 +7,7 @@ OTA ota = OTA();
 DebugHTTP debug;
 ClickWheel clickWheel = ClickWheel();
 
-int angle = 0;
-
-
+unsigned long lastUpdateTime = 0;
 void setup() {
   Serial.begin(115200);
   ota.setup();
@@ -27,14 +25,19 @@ void setup() {
 
 void loop() {
   ota.update();
+  unsigned long currentTime = millis();
 
   int16_t deltaWheel = clickWheel.getWheelIncrement();  
   if(deltaWheel != 0){
-    angle += deltaWheel;
     debug.post("angle", clickWheel.lastWheelAngle);
+    debug.post("delta", deltaWheel, true);
   }else if (clickWheel.lastWheelAngle ==-1){
-    // not touched
-    // debug.post(clickWheel.lastWheelAngle);
-
+    debug.post("touched", -1);
+    if(currentTime - lastUpdateTime >= 1000){
+        clickWheel.takeWheelBaseline();
+        lastUpdateTime= currentTime;
+    }
+  }else{
+      debug.post("touched", 1);
   }
 }
