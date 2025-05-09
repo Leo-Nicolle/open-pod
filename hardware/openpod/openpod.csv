@@ -1,0 +1,5 @@
+"#","Reference","Qty","Value","Footprint","DNP"
+"1","ESP1","1","ESP32-S3-WROOM-2","RF_Module:ESP32-S3-WROOM-2",""
+"2","MPR121","1","MPR121QR2","Package_DFN_QFN:UQFN-20_3x3mm_P0.4mm",""
+"3","S_CONNECTOR1","1","~","Connector_FFC-FPC:Hirose_FH12-40S-0.5SH_1x40-1MP_P0.50mm_Horizontal",""
+"4","VS1063","1","~","Package_QFP:LQFP-48_7x7mm_P0.5mm",""
