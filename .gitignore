@@ -4,3 +4,6 @@
 .vscode/launch.json
 .vscode/ipch
 openpod-backups/
+node_modules/
+docs/.vitepress/cache/
+docs/.vitepress/dist/
