@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, ref } from 'vue'
+import { computed, ref, nextTick } from 'vue'
 import {
   NCard, NForm, NFormItem, NInputNumber, NButton, NDivider, NDescriptions, NDescriptionsItem,
   NCheckbox
@@ -14,14 +14,86 @@ const numPads = ref(4);
 const numCurves = ref(8);
 const gap = ref(-Math.PI / 24); // gap between the pads
 const offset = ref(Math.PI / 16);
+const strokeWidth = ref(0.2);
 const margin = 1;
 
 const showCopper = ref(true);
 const showCuts = ref(true);
 const showGizmo = ref(true);
+const svg = ref<SVGSVGElement | null>(null);
+function exportSVG() {
+  const save = showGizmo.value;
+  showGizmo.value = false;
+  nextTick(() => {
+    const svgElement = svg.value;
+    if (!svgElement) return;
+    const serializer = new XMLSerializer();
+    const svgString = serializer.serializeToString(svgElement);
+    // .replaceAll(/data-v-[^\s]+/g, '')
+    const blob = new Blob([svgString], { type: 'image/svg+xml' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = `${url}`;
+    a.download = 'clickwheel.svg';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showGizmo.value = save;
+  });
+}
+function download() {
+  const data = {
+    R: R.value,
+    r: r.value,
+    numPads: numPads.value,
+    numCurves: numCurves.value,
+    gap: gap.value,
+    offset: offset.value,
+    strokeWidth: strokeWidth.value,
+    roundness: roundness.value,
+    W2: W2.value,
+  };
+  const json = JSON.stringify(data, null, 2);
+  const blob = new Blob([json], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = `${url}`;
+  a.download = 'clickwheel.json';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showGizmo.value = save;
+}
+function upload() {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.json';
+  input.onchange = (event: Event) => {
+    const file = (event.target as HTMLInputElement).files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const data = JSON.parse(e.target?.result as string);
+      R.value = data.R;
+      r.value = data.r;
+      numPads.value = data.numPads;
+      numCurves.value = data.numCurves;
+      gap.value = data.gap;
+      offset.value = data.offset;
+      strokeWidth.value = data.strokeWidth;
+      roundness.value = data.roundness;
+      W2.value = data.W2;
+    };
+    reader.readAsText(file);
+  };
+  input.click();
+  input.remove();
+}
 
-function interp(min: number, max: number, t: number) {
-  return min + (max - min) * t;
+function interp(a: number, b: number, t: number) {
+  return a + (b - a) * t;
 }
 
 const width = computed(() => 2 * (Math.max(R.value, W2.value) + margin));
@@ -109,11 +181,11 @@ const copperPath = computed(() => {
 <template>
   <!-- <n-form label-width="120px" label-align="left"> -->
   <div class="form-container">
-    <n-form-item label="Radius (R)">
+    <n-form-item label="Radius (mm)">
       <n-input-number v-model:value="R" placeholder="Enter radius" :min="r" />
     </n-form-item>
 
-    <n-form-item label="Inner Radius (r)">
+    <n-form-item label="Inner Radius (mm)">
       <n-input-number v-model:value="r" placeholder="Enter inner radius" :min="1" :max="R" />
     </n-form-item>
 
@@ -131,11 +203,15 @@ const copperPath = computed(() => {
     <n-form-item label="Pads Roundness">
       <n-input-number v-model:value="roundness" placeholder="Enter roundness" :step="0.1" />
     </n-form-item>
-    <n-form-item label="Start Angle">
+    <n-form-item label="Stroke width(mm)">
+      <n-input-number v-model:value="strokeWidth" placeholder="Enter stroke width" :step="0.01" />
+    </n-form-item>
+
+    <n-form-item label="Start Angle(rad)">
       <n-input-number v-model:value="offset" placeholder="Enter offset (radians)" :step="0.01" />
     </n-form-item>
 
-    <n-form-item label="Square half width">
+    <n-form-item label="Square half width(mm)">
       <n-input-number v-model:value="W2" placeholder="Square Width" :min="r" />
     </n-form-item>
   </div>
@@ -149,40 +225,51 @@ const copperPath = computed(() => {
     <n-checkbox v-model:checked="showGizmo">
       Gizmo Layer
     </n-checkbox>
-
-
   </n-form-item>
+  <div class="buttons">
+    <n-button @click="download">Download JSON</n-button>
+    <n-button @click="upload">Upload JSON</n-button>
+    <n-button @click="exportSVG">Download SVG</n-button>
+  </div>
+  <n-divider></n-divider>
 
-  <svg :width="`${width}mm`" :height="`${width}mm`" :viewBox="`0 0 ${width} ${width}`"
-    xmlns="http://www.w3.org/2000/svg">
+  <svg ref="svg" :width="`${width}mm`" :height="`${width}mm`" :viewBox="`0 0 ${width} ${width}`"
+    xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cc="http://creativecommons.org/ns#"
+    xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:svg="http://www.w3.org/2000/svg"
+    xmlns="http://www.w3.org/2000/svg" xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+    xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape" sodipodi:docname="clickwheel.svg"
+    inkscape:version="0.92.5 (2060ec1f9f, 2020-04-08)" id="svg8" version="1.1">
 
     <defs>
       <mask id="coppermask">
-
-        <!-- White rectangle: fill area -->
         <rect width="100%" height="100%" fill="white" />
-        <!-- Black path: transparent area -->
         <circle stroke="none" fill="black" :cx="`${width / 2}`" :cy="`${width / 2}`" :r="`${r}`" />
-        <path stroke="black" stroke-width="0.2" fill="none" :d="copperPath" />
+        <path stroke="black" :stroke-width="strokeWidth" fill="none" :d="copperPath" />
+      </mask>
+
+      <mask id="innercutmask">
+        <rect width="100%" height="100%" fill="white" />
+        <circle stroke="none" fill="black" :cx="`${width / 2}`" :cy="`${width / 2}`" :r="`${r}`" />
       </mask>
     </defs>
 
 
 
     <g v-if="showGizmo">
-      <circle cx="20" cy="20" r="19" stroke="blue" stroke-width="0.02" fill="none" />
-      <circle cx="20" cy="20" r="9.5" stroke="blue" stroke-width="0.02" fill="none" />
-      <rect x="5" y="5" width="30" height="30" stroke="blue" stroke-width="0.02" fill="none" />
-      <path stroke="blue" stroke-width="0.02" fill="none" d="M 0 0 L 40 40 M 40 0 L 0 40" />
+      <circle :cx="`${width / 2}`" :cy="`${width / 2}`" :r="`${R}`" stroke="blue" stroke-width="0.02" fill="none" />
+      <circle :cx="`${width / 2}`" :cy="`${width / 2}`" :r="`${r}`" stroke="blue" stroke-width="0.02" fill="none" />
+      <rect :x="`${width / 2 - W2}`" :y="`${width / 2 - W2}`" :width="`${2 * W2}`" :height="`${2 * W2}`" stroke="blue"
+        stroke-width="0.02" fill="none" />
+      <path stroke="blue" stroke-width="0.02" fill="none" :d="`M 0 0 L ${width} ${width} M ${width} 0 L 0 ${width}`" />
     </g>
-    <g v-if="showCuts" id="Edge.Cuts" stroke="black" stroke-width="0.2" fill="none">
-      <path stroke="#0c0" stroke-width="0.2" fill="none" :d="cutPath" />
-      <circle stroke="#0c0" stroke-width="0.2" fill="none" :cx="`${width / 2}`" :cy="`${width / 2}`" :r="`${r}`" />
+    <g v-if="showCuts" inkscape:groupmode="layer" id="layer5" inkscape:label="Edge.Cuts" style="display:inline">
+      <path stroke="none" stroke-width="0.2" fill="#0c0" :d="cutPath" mask="url(#innercutmask)" />
     </g>
-    <g v-if="showCopper" id="F.Cu">
-      <circle fill="#c00" :cx="`${width / 2}`" :cy="`${width / 2}`" :r="`${R}`" mask="url(#coppermask)" />
+    <g v-if="showCopper" i inkscape:groupmode="layer" id="layer4" inkscape:label="F.Cu" style="display:inline">
+      <circle fill="#d3bc5f" :cx="`${width / 2}`" :cy="`${width / 2}`" :r="`${R}`" mask="url(#coppermask)" />
     </g>
   </svg>
+
 </template>
 
 <style scoped>
@@ -213,5 +300,11 @@ svg {
   width: 100%;
   height: auto;
   margin-top: 20px;
+}
+
+.buttons {
+  display: flex;
+  justify-content: flex-start;
+  gap: 1em;
 }
 </style>
