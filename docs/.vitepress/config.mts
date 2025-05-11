@@ -1,9 +1,11 @@
 import { defineConfig } from "vitepress";
 
-// https://vitepress.dev/reference/site-config
+const fileAndStyles: Record<string, string> = {};
+
 export default defineConfig({
   title: "Openpod",
   description: "An ESP32 mp3 player",
+  base: "/open-pod/",
   themeConfig: {
     // https://vitepress.dev/reference/default-theme-config
     nav: [
@@ -25,5 +27,29 @@ export default defineConfig({
     socialLinks: [
       { icon: "github", link: "https://github.com/Leo-Nicolle/open-pod" },
     ],
+  },
+  vite: {
+    ssr: {
+      noExternal: ["naive-ui", "date-fns", "vueuc"],
+    },
+  },
+  postRender(context) {
+    const styleRegex = /<css-render-style>((.|\s)+)<\/css-render-style>/;
+    const vitepressPathRegex = /<vitepress-path>(.+)<\/vitepress-path>/;
+    const style = styleRegex.exec(context.content)?.[1];
+    const vitepressPath = vitepressPathRegex.exec(context.content)?.[1];
+    if (vitepressPath && style) {
+      fileAndStyles[vitepressPath] = style;
+    }
+    context.content = context.content.replace(styleRegex, "");
+    context.content = context.content.replace(vitepressPathRegex, "");
+  },
+  transformHtml(code, id) {
+    const html = id.split("/").pop();
+    if (!html) return;
+    const style = fileAndStyles[`/${html}`];
+    if (style) {
+      return code.replace(/<\/head>/, `${style}</head>`);
+    }
   },
 });

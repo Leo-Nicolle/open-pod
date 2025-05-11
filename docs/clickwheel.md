@@ -7,5 +7,6 @@ When I tried to create the clickwheel the first time, it was hard and today I ju
 ### How to use 
 
  - Use the UI above to choose your pattern
- - Click on the "Download SVG" button to download the SVG file 
- - 
+ - Click on the "Download PNG" button to download the PNG file 
+ - In Kicad, use the image converter, and copy the shape to clipboard
+ - Paste the shape in your PCB Editor ( press E to change the layer to cut/copper)
