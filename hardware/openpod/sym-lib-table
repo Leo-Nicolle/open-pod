@@ -1,0 +1,5 @@
+(sym_lib_table
+  (version 7)
+  (lib (name "openpod")(type "KiCad")(uri "${KIPRJMOD}/openpod.kicad_sym")(options "")(descr ""))
+  (lib (name "jack")(type "Legacy")(uri "${KIPRJMOD}/jack/SJ-43515TS-SMT-TR.lib")(options "")(descr ""))
+)

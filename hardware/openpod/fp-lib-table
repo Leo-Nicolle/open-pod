@@ -1,0 +1,5 @@
+(fp_lib_table
+  (version 7)
+  (lib (name "openpod")(type "KiCad")(uri "${KIPRJMOD}/openpod.pretty")(options "")(descr ""))
+  (lib (name "jack")(type "KiCad")(uri "${KIPRJMOD}/jack")(options "")(descr ""))
+)
