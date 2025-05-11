@@ -1,5 +1,7 @@
 # Openpod
 
+Work in progress.
+
 This is a mp3 player in the style of an ipod classic. 
 
 ### Hardware
