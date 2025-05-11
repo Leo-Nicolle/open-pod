@@ -9,7 +9,7 @@ const props = defineProps<{
   svg: SVGElement | null | undefined
 }>();
 
-const R = defineModel<number>('R', {
+const outR = defineModel<number>('outR', {
   type: Number,
   default: 19,
 });
@@ -17,7 +17,7 @@ const W2 = defineModel<number>('W2', {
   type: Number,
   default: 15,
 });
-const r = defineModel<number>('r', {
+const inR = defineModel<number>('inR', {
   type: Number,
   default: 9.5,
 });
@@ -123,8 +123,8 @@ function exportPNG() {
 }
 function download() {
   const data = {
-    R: R.value,
-    r: r.value,
+    outR: outR.value,
+    inR: inR.value,
     numPads: numPads.value,
     numCurves: numCurves.value,
     gap: gap.value,
@@ -154,8 +154,8 @@ function upload() {
     const reader = new FileReader();
     reader.onload = (e) => {
       const data = JSON.parse(e.target?.result as string);
-      R.value = data.R;
-      r.value = data.r;
+      outR.value = data.outR;
+      inR.value = data.inR;
       numPads.value = data.numPads;
       numCurves.value = data.numCurves;
       gap.value = data.gap;
@@ -176,11 +176,11 @@ function upload() {
   <!-- <n-form label-width="120px" label-align="left"> -->
   <div class="form-container">
     <n-form-item label="Radius (mm)">
-      <n-input-number v-model:value="R" placeholder="Enter radius" :min="r" />
+      <n-input-number v-model:value="outR" placeholder="Enter radius" :min="inR" />
     </n-form-item>
 
     <n-form-item label="Inner Radius (mm)">
-      <n-input-number v-model:value="r" placeholder="Enter inner radius" :min="1" :max="R" />
+      <n-input-number v-model:value="inR" placeholder="Enter inner radius" :min="1" :max="outR" />
     </n-form-item>
 
     <n-form-item label="Number of Pads">
@@ -206,7 +206,7 @@ function upload() {
     </n-form-item>
 
     <n-form-item label="Square half width(mm)">
-      <n-input-number v-model:value="W2" placeholder="Square Width" :min="r" />
+      <n-input-number v-model:value="W2" placeholder="Square Width" :min="inR" />
     </n-form-item>
   </div>
   <n-form-item label="Show/hide">

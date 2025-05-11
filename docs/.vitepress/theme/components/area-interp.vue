@@ -124,6 +124,7 @@ const computeOverlap = () => {
   for (let i = 0; i < props.numPads; i++) {
     padCount.set(i + 1, 0);
   }
+  let total = 0;
   for (let x = cx - r; x < cx + r; x++) {
     for (let y = cy - r; y < cy + r; y++) {
       const dx = x - cx;
@@ -138,11 +139,11 @@ const computeOverlap = () => {
       if (!padCount.has(pad)) {
         continue;
       }
+      total++;
       padCount.set(pad, (padCount.get(pad) || 0) + 1);
     }
   }
 
-  const total = Math.PI * r * r;
   const res = [...padCount.entries()].sort((a, b) => a[0] - b[0])
     .map(([pad, count]) => {
       const ratio = Math.floor(100 * count / total);
@@ -179,7 +180,6 @@ watch(() => radius.value, (newR) => {
 
 <template>
   <div>
-
     <h2>Touch test</h2>
     <p>
       Hover this element to refresh it (if you change params in the clickwheel, just re-hover to refresh). Move the
@@ -187,7 +187,7 @@ watch(() => radius.value, (newR) => {
       Seems like the more curves, the most stable the ratios are across the width of the whee, but this tool is here so
       you can make your own idea.
     </p>
-    <n-form-item label="Finger size">
+    <n-form-item label="Finger size(px)">
       <n-input-number v-model:value="radius" placeholder="Finger radius" :min="8" />
     </n-form-item>
     <canvas ref="canvas" @mousemove="updatePosition">

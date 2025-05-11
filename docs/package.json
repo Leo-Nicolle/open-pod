@@ -1,6 +1,8 @@
 {
   "name": "Openpod-docs",
   "scripts": {
+    "publish": "gh-pages -d .vitepress/dist",
+    "prepublish": "npm run docs:build",
     "docs:dev": "vitepress dev",
     "docs:build": "vitepress build",
     "docs:preview": "vitepress preview"

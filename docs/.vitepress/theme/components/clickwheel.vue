@@ -11,17 +11,17 @@ const svg = useTemplateRef('svg');
 const area = useTemplateRef('area-interp');
 const canvas = useTemplateRef('canvas');
 // radius of the circle
-const R = ref(19);
+const outR = ref(19);
 const W2 = ref(15);
-const r = ref(R.value / 2);
+const inR = ref(9.5);
 const roundness = ref(0);
 const numPads = ref(4);
 const numCurves = ref(8);
 const gap = ref(-Math.PI / 24); // gap between the pads
-const offset = ref(Math.PI / 16);
+const offset = ref(0);
 const strokeWidth = ref(0.2);
 const margin = ref(1);
-const width = computed(() => 2 * (Math.max(R.value, W2.value) + margin.value));
+const width = computed(() => 2 * (Math.max(outR.value, W2.value) + margin.value));
 const showCopper = ref(true);
 const showCuts = ref(true);
 const showGizmo = ref(true);
@@ -43,14 +43,14 @@ function onMouseEnter() {
 }
 </script>
 <template>
-  <!-- <n-form label-width="120px" label-align="left"> -->
-  <clickwheel-form v-model:-r="r" v-model:-R="R" v-model:numPads="numPads" v-model:numCurves="numCurves"
+  <clickwheel-form v-model:inR="inR" v-model:outR="outR" v-model:numPads="numPads" v-model:numCurves="numCurves"
     v-model:gap="gap" v-model:offset="offset" v-model:strokeWidth="strokeWidth" v-model:roundness="roundness"
     v-model:W2="W2" v-model:margin="margin" v-model:showCopper="showCopper" v-model:showCuts="showCuts"
     v-model:showGizmo="showGizmo" :svg="svg?.svg" />
+
   <n-divider></n-divider>
 
-  <clickwheel-render :R="R" :r="r" :numPads="numPads" :numCurves="numCurves" :gap="gap" :offset="offset"
+  <clickwheel-render :outR="outR" :inR="inR" :numPads="numPads" :numCurves="numCurves" :gap="gap" :offset="offset"
     :strokeWidth="strokeWidth" :roundness="roundness" :W2="W2" :width="width" :margin="margin" :showCopper="showCopper"
     :showCuts="showCuts" :showGizmo="showGizmo" ref="svg">
 
