@@ -6,6 +6,7 @@ export default defineConfig({
   title: "Openpod",
   description: "An ESP32 mp3 player",
   base: "/open-pod/",
+  head: [["link", { rel: "icon", href: "/open-pod/favicon.svg" }]],
   themeConfig: {
     // https://vitepress.dev/reference/default-theme-config
     nav: [
