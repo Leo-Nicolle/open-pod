@@ -67,7 +67,6 @@ function colorise() {
       );
     }
     if (count < 10) return false;
-    console.log(componentIndex, count);
     return true;
   };
   let currentIndex = 1;
