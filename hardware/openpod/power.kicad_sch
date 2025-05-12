@@ -2021,7 +2021,7 @@
     (property "Footprint" "Package_TO_SOT_SMD:TSOT-23-5" (at 149.86 87.122 0)
       (effects (font (size 1.27 1.27)) (justify left) hide)
     )
-    (property "Datasheet" "https://www.ti.com/lit/ds/symlink/lm3671.pdf?HQS=dis-dk-null-digikeymode-dsf-pf-null-wwe&ts=1746696645904&ref_url=https%253A%252F%252Fwww.e-komponent.com%252F" (at 142.24 89.662 0)
+    (property "Datasheet" "http://www.ti.com/lit/ds/symlink/lm3670.pdf" (at 142.24 89.662 0)
       (effects (font (size 1.27 1.27)) hide)
     )
     (property "Manufacturer" "Texas Instruments" (at 148.59 80.772 0)

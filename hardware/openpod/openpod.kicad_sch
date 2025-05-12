@@ -576,7 +576,7 @@
     (property "Value" "ESP32-S3-WROOM-2" (at 150.2761 92.202 0)
       (effects (font (size 1.27 1.27)) (justify left))
     )
-    (property "Footprint" "openpod:ESP32-S3-WROOM-2" (at 148.082 201.422 0)
+    (property "Footprint" "RF_Module:ESP32-S3-WROOM-2" (at 148.082 201.422 0)
       (effects (font (size 1.27 1.27)) hide)
     )
     (property "Datasheet" "https://www.espressif.com/sites/default/files/documentation/esp32-s3-wroom-2_datasheet_en.pdf" (at 148.082 203.962 0)
