@@ -390,7 +390,9 @@
       "jack",
       "openpod"
     ],
-    "pinned_symbol_libs": []
+    "pinned_symbol_libs": [
+      "openpod"
+    ]
   },
   "meta": {
     "filename": "openpod.kicad_pro",
