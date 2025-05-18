@@ -1,0 +1,119 @@
+<svg data-v-152a035f="" width="62mm" height="103mm" viewBox="-2 -2 102 152" xmlns="http://www.w3.org/2000/svg" stroke-width="0.1">
+	<defs>
+		<pattern id="dashed" width="5" height="5" patternUnits="userSpaceOnUse">
+			<path d="M 0 0 L 10 10" stroke="#3498db" stroke-width="0.1" />
+		</pattern>
+	</defs>
+	<rect class="sheet" x="-1" y="-1" width="100" height="150" fill="none" stroke="#ccc" stroke-dasharray="1 0.5" stroke-width="0.2" />
+	<g id="frontview">
+		<g class="case" stroke="#d3bc5f" fill="none">
+			<path class="outer" fill="white" d="
+    M 5 0 L 57 0 
+    A 5 5 0 0 1 62 5 
+    L 62 98
+    A 5 5 0 0 1 57 103
+    L 5 103
+    A 5 5 0 0 1 0 98
+    L 0 5
+    A 5 5 0 0 1 5 0
+    " />
+			<rect x="5" y="5" width="52" height="40" fill="none" stroke="#ccc" />
+			<path class="screen-hole" d="
+    M 6 5 L 56 5
+    A 1 1 0 0 1 57 6
+    L 57 44
+    A 1 1 0 0 1 56 45
+    L 6 45
+    A 1 1 0 0 1 5 44
+    L 5 6
+    A 1 1 0 0 1 6 5
+    " />
+			<circle class="wheel-hole" cx="31" cy="73" r="19" />
+		</g>
+		<g class="jack" stroke="black" fill="none" transform="translate(50, 0.9)">
+			<rect class="jack" x="3" y="0" width="6" height="3.3" />
+			<rect class="jack" x="0" y="3.3" width="12" height="11" />
+		</g>
+		<g class="screen" stroke="black" fill="none" transform="translate(3.5, 4.3)">
+			>
+			<rect class="screen-plastic" x="0" y="0" width="59.91" height="42.8" stroke-dasharray="1 0.5" />
+			<rect class="screen-outer" x="1.12" y="1" width="56.26" height="40.32" />
+			<rect class="screen-view" x="2.82" y="2.80" width="48.96" height="36.72" />
+			<g class="fpc-ribbon1" stroke="red" transform="translate(26.56, 0)">
+				<rect class="fpc-ribbon1" x="0" y="10.91" width="16.8" height="20.5" />
+				<rect class="fpc-ribbon2" x="16.8" y="1.66" width="13.2" height="39" />
+			</g>
+			<!-- <g class="fpc-connector" fill="blue" opacity="0.5" transform="translate(23, 7.5)"> -->
+			<g class="fpc-connector" fill="blue" opacity="0.5" transform="translate(40, 7.5)">
+				<rect class="fpc-case" x="0" y="0" width="5.7" height="27.6" />
+				<rect class="fpc-contact" x="3.1" y="2.8" width="1" height="22" />
+			</g>
+		</g>
+		<g class="battery" stroke="#3498db" fill="url(#dashed)">
+			<!-- <rect class="battery-1" x="2" y="2" width="34" height="50" /> -->
+			<rect class="battery-2" x="2" y="48" width="46" height="45" />
+		</g>
+		<g class="PCB" stroke="purple" fill="none" transform="translate(1.6, 4.3)">
+			>
+			<rect class="PCB-outer" x="0" y="0" width="59.5" height="89" />
+			<!--
+			<path class="PCB-inner-1" fill="#9834db" opacity="0.4" d="
+			M 36 0 L 59 0
+			A 1 1 0 0 1 60 1
+			L 60 90
+			A 1 1 0 0 1 59 91
+			L 0.5 91
+			A 1 1 0 0 1 -0.5 90
+			L -0.5 49
+			L 36 49
+			" />
+			-->
+			<rect class="BTFSC-BT1035" x="0" y="73" width="26.9" height="13" />
+			<path class="PCB-inner" fill="#9834db" opacity="0.4" d="
+        M 0 0 L 48 0
+        L 48 11.5
+        L 60 11.5
+        L 60 93
+        A 5 5 0 0 1 55 98
+        L 5 98
+        A 5 5 0 0 1 0 93
+        L 0 43
+        " />
+		</g>
+	</g>
+	<g id="leftview" transform="translate(70, 0)">
+		<g class="case" stroke="#d3bc5f" fill="none">
+			<path class="outer" fill="white" d="
+    M 5 0 L 10 0 
+    L 10 103 
+    L 5 103 
+    A 5 5 0 0 1 0 98 
+    L 0 5
+    A 5 5 0 0 1 5 0
+    " />
+		</g>
+		<g class="jack" stroke="black" fill="none" transform="translate(2, 0.9)">
+			<rect class="jack" x="-0.5" y="0" width="6" height="3.3" />
+			<rect class="jack" x="0" y="3.3" width="5" height="11" />
+		</g>
+		<g class="screen" stroke="black" fill="none" transform="translate(7.3, 4.3)">
+			>
+			<rect class="screen-plastic" x="0" y="0" width="2.4" height="42.8" stroke-dasharray="1 0.5" />
+			<rect class="screen-outer" x="0" y="1" width="2.4" height="40.32" />
+			<rect class="screen-view" x="0" y="2.80" width="2.4" height="36.72" />
+			<g class="fpc-connector" fill="blue" opacity="0.5" transform="translate(-5.3, 7.5)">
+				<rect class="fpc-case" x="0" y="0" width="2" height="27.6" />
+			</g>
+		</g>
+		<g class="battery" stroke="#3498db" fill="url(#dashed)">
+			<rect class="battery-2" x="0" y="48" width="5.6" height="45" />
+		</g>
+		<g class="PCB" stroke="#9834db" fill="#9834db" opacity="0.4" transform="translate(0.9, 4.3)">
+			>
+			<!--
+			<rect class="PCB-outer-1" x="0" y="0" width="1" height="89" />
+			-->
+			<rect class="PCB-outer-2" x="5.2" y="0" width="1" height="98" />
+		</g>
+	</g>
+</svg>

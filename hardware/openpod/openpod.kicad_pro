@@ -431,7 +431,7 @@
       "idf": "",
       "netlist": "",
       "specctra_dsn": "",
-      "step": "",
+      "step": "../../../../../openpod.step",
       "vrml": ""
     },
     "page_layout_descr_file": ""
@@ -486,6 +486,10 @@
     [
       "a2d473bc-020f-4f45-b688-c249a4b738f4",
       "Buttons"
+    ],
+    [
+      "cd416ea8-5a7a-445f-9d82-6d6499825b26",
+      "bluetooth"
     ]
   ],
   "text_variables": {}
