@@ -5,7 +5,7 @@
 #include <Adafruit_GFX.h>
 
 class ILI9341_GFX : public Adafruit_GFX {
-private:
+public:
   // Pin definitions
   static const int TFT_DC = PC10;
   static const int TFT_WR = PC11;
@@ -380,23 +380,121 @@ private:
     Serial.print(" y1="); Serial.println(y1);
     
     // Column Address Set
+    Serial.println("Setting Column Address (0x2A)");
     writeCommand(0x2A); 
     
     // Try sending coordinates as separate high/low bytes instead of byte-swapped
+    Serial.print("  X0: 0x"); Serial.print(x0 >> 8, HEX); Serial.print(" 0x"); Serial.println(x0 & 0xFF, HEX);
     writeData(x0 >> 8);   // High byte of x0
     writeData(x0 & 0xFF); // Low byte of x0
+    Serial.print("  X1: 0x"); Serial.print(x1 >> 8, HEX); Serial.print(" 0x"); Serial.println(x1 & 0xFF, HEX);
     writeData(x1 >> 8);   // High byte of x1
     writeData(x1 & 0xFF); // Low byte of x1
     
     // Page Address Set  
+    Serial.println("Setting Page Address (0x2B)");
     writeCommand(0x2B);
+    Serial.print("  Y0: 0x"); Serial.print(y0 >> 8, HEX); Serial.print(" 0x"); Serial.println(y0 & 0xFF, HEX);
     writeData(y0 >> 8);   // High byte of y0
     writeData(y0 & 0xFF); // Low byte of y0
+    Serial.print("  Y1: 0x"); Serial.print(y1 >> 8, HEX); Serial.print(" 0x"); Serial.println(y1 & 0xFF, HEX);
     writeData(y1 >> 8);   // High byte of y1
     writeData(y1 & 0xFF); // Low byte of y1
     
+    Serial.println("Setting Memory Write (0x2C)");
+    writeCommand(0x2C); // Memory Write
+    
+    // Let's also try an alternative approach for comparison
+    Serial.println("Alternative: trying different coordinate format...");
+  }
+
+  // Alternative window setting method to test
+  void setWindowAlt2(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1) {
+    // Some displays expect coordinates in different format
+    writeCommand(0x2A); // Column Address Set
+    writeData16(x0);    // No byte swapping
+    writeData16(x1);
+    
+    writeCommand(0x2B); // Page Address Set
+    writeData16(y0);    // No byte swapping  
+    writeData16(y1);
+    
     writeCommand(0x2C); // Memory Write
   }
+
+  // Test method to verify window setting
+  // Debug and test methods
+  void testDisplayDimensions() {
+    Serial.println("=== Display Dimensions Test ===");
+    
+    fillScreen(0x0000); // Black background
+    delay(500);
+    
+    // Test 1: Draw lines at expected boundaries
+    Serial.println("Drawing boundary lines...");
+    
+    // Top edge (should be a horizontal line at top)
+    setWindowDebug(0, 0, 319, 0);
+    for (int i = 0; i < 320; i++) {
+      writeData16(0xF800); // Red
+    }
+    
+    // Bottom edge (should be a horizontal line at bottom)  
+    setWindowDebug(0, 239, 319, 239);
+    for (int i = 0; i < 320; i++) {
+      writeData16(0xF800); // Red
+    }
+    
+    // Left edge (should be a vertical line at left)
+    setWindowDebug(0, 0, 0, 239);
+    for (int i = 0; i < 240; i++) {
+      writeData16(0x07E0); // Green
+    }
+    
+    // Right edge (should be a vertical line at right)
+    setWindowDebug(319, 0, 319, 239);
+    for (int i = 0; i < 240; i++) {
+      writeData16(0x07E0); // Green
+    }
+    
+    delay(3000);
+  }
+
+  void testMADCTL() {
+    Serial.println("=== MADCTL Test ===");
+    
+    // Try different MADCTL values to see which one works
+    uint8_t madctl_values[] = {0x48, 0x28, 0x88, 0xE8, 0x08, 0x68, 0xA8, 0xC8};
+    const char* names[] = {"0x48 (orig)", "0x28", "0x88", "0xE8", "0x08", "0x68", "0xA8", "0xC8"};
+    
+    for (int i = 0; i < 8; i++) {
+      Serial.print("Testing MADCTL: "); Serial.println(names[i]);
+      
+      writeCommand(0x36); // MADCTL
+      writeData(madctl_values[i]);
+      delay(100);
+      
+      // Fill with a color and draw a test pattern
+      fillScreen(0x0000); // Black
+      
+      // Draw a small rectangle in top-left to see orientation
+      setWindowDebug(10, 10, 50, 30);
+      for (int j = 0; j < 41 * 21; j++) {
+        writeData16(0xF800); // Red rectangle
+      }
+      
+      // Draw text to see if wrapping is fixed
+      setCursor(10, 50);
+      setTextColor(0x07E0); // Green
+      setTextSize(1);
+      print("MADCTL: "); println(names[i]);
+      println("This is a test line to check wrapping behavior");
+      testDisplayDimensions();
+      
+      delay(3000);
+    }
+  }
+
 
   void setWindowAlt(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1) {
     // Alternative windowing - try if first doesn't work
@@ -411,7 +509,7 @@ private:
     writeCommand(0x2C); // Memory Write
   }
 
-public:
+// public:
   // Constructor - Initialize Adafruit_GFX with display dimensions
   ILI9341_GFX() : Adafruit_GFX(320, 240) {
     // Constructor can be empty since setupPins() and initILI9341() will be called explicitly
@@ -469,9 +567,9 @@ public:
     fillRect(x, y, w, 1, color);
   }
 
-  // void fillScreen(uint16_t color) override {
-  //   fillRect(0, 0, _width, _height, color);
-  // }
+  void fillScreen(uint16_t color) override {
+    fillRect(0, 0, _width, _height, color);
+  }
 
   void setRotation(uint8_t r) override {
     rotation = r & 3;
@@ -515,12 +613,12 @@ public:
   }
 
   // Enhanced fillScreen that uses the optimized setWindow method
-  void fillScreen(uint16_t color) {
-    setWindow(0, 0, _width - 1, _height - 1);
-    for (uint32_t i = 0; i < (uint32_t)_width * _height; i++) {
-      writeData16(color);
-    }
-  }
+  // void fillScreen(uint16_t color) {
+  //   setWindow(0, 0, _width - 1, _height - 1);
+  //   for (uint32_t i = 0; i < (uint32_t)_width * _height; i++) {
+  //     writeData16(color);
+  //   }
+  // }
 
   void detectController() {
     Serial.println("=== Controller Detection ===");
@@ -592,6 +690,46 @@ public:
     return color565((color >> 16) & 0xFF, (color >> 8) & 0xFF, color & 0xFF);
   }
 
+//  Debug and test methods
+  void testWindowSetting() {
+    Serial.println("=== Window Setting Test ===");
+    
+    // Test 1: Try a simple small rectangle with alternative method
+    Serial.println("Test 1: Alternative window method");
+    writeCommand(0x2A); // Column Address Set
+    writeData16(100);   // x0
+    writeData16(150);   // x1
+    
+    writeCommand(0x2B); // Page Address Set  
+    writeData16(100);   // y0
+    writeData16(150);   // y1
+    
+    writeCommand(0x2C); // Memory Write
+    
+    // Fill small area with green
+    for (int i = 0; i < 51 * 51; i++) {
+      writeData16(0x07E0); // Green
+    }
+    
+    delay(2000);
+    
+    // Test 2: Try the byte-separated method
+    Serial.println("Test 2: Byte-separated method");
+    writeCommand(0x2A); // Column Address Set
+    writeData(0); writeData(200); // x0 = 200
+    writeData(0); writeData(250); // x1 = 250
+    
+    writeCommand(0x2B); // Page Address Set
+    writeData(0); writeData(100); // y0 = 100  
+    writeData(0); writeData(150); // y1 = 150
+    
+    writeCommand(0x2C); // Memory Write
+    
+    // Fill with blue
+    for (int i = 0; i < 51 * 51; i++) {
+      writeData16(0x001F); // Blue
+    }
+  }
   void printStatus() {
     printRegister("Status",        0x09, 4);
     printRegister("Power Mode",    0x0A, 1);
