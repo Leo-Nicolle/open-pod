@@ -20,58 +20,39 @@
 | 5  | 36 | GND | GND |
 | 6  | 35 | VDDI (2.8-3.3V) | 3.3V |
 | 7  | 34 | VDD (2.8-3.3V) | 3.3V |
-| 8  | 33 | NC/FMARK (TE) | ingored |
-| 9  | 32 | CSX  (SPI CS)| `GND` |
-| 10 | 31 | DCX (DC,A0)| PC10 |
-| 11 | 30 | WRX | PC11 |
-| 12 | 29 | RDX | PD2 |
+| 8  | 33 | NC/FMARK (TE) | ignored |
+| 9  | 32 | CSX  (SPI CS)| GND |
+| 10 | 31 | DCX (DC,A0)| PB8 |
+| 11 | 30 | WRX | PB9 |
+| 12 | 29 | RDX | PB10 |
 | 13 | 28 | SPI SDI (MOSI) | ignored |
 | 14 | 27 | SPI SDO (MISO)| ignored |
-| 15 | 26 | RESX (RESET) | PC12 |
+| 15 | 26 | RESX (RESET) | PB12 |
 | 16 | 25 | GND | GND |
-| 17 | 24 | DB0 |  `PB0` |
-| 18 | 23 | DB1 |  `PB1` |
-| 19 | 22 | DB2 |  `PB10` |
-| 20 | 21 | DB3 |  `PB12` |
-| 21 | 20 | DB4 |  `PB13` |
-| 22 | 19 | DB5 |  `PB14` |
-| 23 | 18 | DB6 |  `PB15` |
-| 24 | 17 | DB7 |  `PC0` |
-| 25 | 16 | DB8 |  `PC1` |
-| 26 | 15 | DB9 |  `PC2` |
-| 27 | 14 | DB10 |  `PC3` |
-| 28 | 13 | DB11 |  `PC4` |
-| 29 | 12 | DB12 |  `PC5` |
-| 30 | 11 | DB13 |  `PC6` |
-| 31 | 10 | DB14 |  `PC7` |
-| 32 | 9  | DB15 |  `PC8` |
-| 33 | 8  | LED-A | 3.3v |
-| 34 | 7  | LED-K | pulldown  10 ohm |
-| 35 | 6  | LED-K | pulldown  10 ohm |
-| 36 | 5  | LED-K | pulldown  10 ohm |
+| 17 | 24 | DB0 |  PC0 |
+| 18 | 23 | DB1 |  PC1 |
+| 19 | 22 | DB2 |  PC2 |
+| 20 | 21 | DB3 |  PC3 |
+| 21 | 20 | DB4 |  PC4 |
+| 22 | 19 | DB5 |  PC5 |
+| 23 | 18 | DB6 |  PC6 |
+| 24 | 17 | DB7 |  PC7 |
+| 25 | 16 | DB8 |  PC8 |
+| 26 | 15 | DB9 |  PC9 |
+| 27 | 14 | DB10 |  PC10 |
+| 28 | 13 | DB11 |  PC11 |
+| 29 | 12 | DB12 |  PC12 |
+| 30 | 11 | DB13 |  PC13 |
+| 31 | 10 | DB14 |  PC14 |
+| 32 | 9  | DB15 |  PC15 |
+| 33 | 8  | LED-A | 3.3V |
+| 34 | 7  | LED-K | pulldown 10 ohm |
+| 35 | 6  | LED-K | pulldown 10 ohm |
+| 36 | 5  | LED-K | pulldown 10 ohm |
 | 37 | 4  | GND | GND |
 | 38 | 3  | IM0 | 3.3V |
 | 39 | 2  | IM1 | 3.3V |
-| 40 | 1  | IM2 | GND  |
-
-| DB#  | STM32 Pin | Commentaire |
-| ---- | --------- | ----------- |
-| DB0  | PB0       | ✅ OK        |
-| DB1  | PB1       | ✅ OK        |
-| DB2  | PB10      | ✅ OK        |
-| DB3  | PB12      | ✅ OK        |
-| DB4  | PB13      | ✅ OK        |
-| DB5  | PB14      | ✅ OK        |
-| DB6  | PB15      | ✅ OK        |
-| DB7  | PC0       | ✅ OK        |
-| DB8  | PC1       | ✅ OK        |
-| DB9  | PC2       | ✅ OK        |
-| DB10 | PC3       | ✅ OK        |
-| DB11 | PC4       | ✅ OK        |
-| DB12 | PC5       | ✅ OK        |
-| DB13 | PC6       | ✅ OK        |
-| DB14 | PC7       | ✅ OK        |
-| DB15 | PC8       | ✅ OK        |
+| 40 | 1  | IM2 | GND |
 
 
 
