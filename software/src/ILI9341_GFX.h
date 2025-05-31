@@ -63,24 +63,69 @@ public:
   }
 
   inline void write16(uint16_t data) {
-    // Try alternative bit mapping based on your schematic
+    // CORRECTED bit mapping - skipping problematic bits 3 and 7
     // Your schematic: D0–D7 → PB0, PB1, PB10, PB12, PB13, PB14, PB15, PC0
     // Your schematic: D8–D15 → PC1, PC2, PC3, PC4, PC5, PC6, PC7, PC8
+    // BUT: Bit 3 (PB12) and Bit 7 (PC0) are not working correctly
     
     uint32_t b_val = 0;
     uint32_t c_val = 0;
     
-    // Map LOW byte (D0-D7) to mixed GPIOB/GPIOC pins
+    // Map LOW byte (D0-D7) - skipping bit 3 and 7
     b_val |= ((data >> 0) & 0x01) << 0;   // D0 → PB0
     b_val |= ((data >> 1) & 0x01) << 1;   // D1 → PB1  
     b_val |= ((data >> 2) & 0x01) << 10;  // D2 → PB10
-    b_val |= ((data >> 3) & 0x01) << 12;  // D3 → PB12
+    // SKIP D3 → PB12 (broken)
     b_val |= ((data >> 4) & 0x01) << 13;  // D4 → PB13
     b_val |= ((data >> 5) & 0x01) << 14;  // D5 → PB14
     b_val |= ((data >> 6) & 0x01) << 15;  // D6 → PB15
-    c_val |= ((data >> 7) & 0x01) << 0;   // D7 → PC0
+    // SKIP D7 → PC0 (broken)
     
     // Map HIGH byte (D8-D15) to GPIOC pins PC1-PC8
+    c_val |= ((data >> 8) & 0x01) << 1;   // D8 → PC1
+    c_val |= ((data >> 9) & 0x01) << 2;   // D9 → PC2
+    c_val |= ((data >> 10) & 0x01) << 3;  // D10 → PC3
+    c_val |= ((data >> 11) & 0x01) << 4;  // D11 → PC4
+    c_val |= ((data >> 12) & 0x01) << 5;  // D12 → PC5
+    c_val |= ((data >> 13) & 0x01) << 6;  // D13 → PC6
+    c_val |= ((data >> 14) & 0x01) << 7;  // D14 → PC7
+    c_val |= ((data >> 15) & 0x01) << 8;  // D15 → PC8
+    
+    // Apply the values
+    uint32_t b_mask = (1 << 0) | (1 << 1) | (1 << 10) | (1 << 13) | (1 << 14) | (1 << 15); // Skip bit 12
+    uint32_t c_mask = 0x1FE; // PC1-PC8 (skip PC0)
+    
+    GPIOB->ODR = (GPIOB->ODR & ~b_mask) | b_val;
+    GPIOC->ODR = (GPIOC->ODR & ~c_mask) | c_val;
+    
+    pulseWR();
+  }
+
+  // Alternative mapping - try different bit assignments for broken lines
+  inline void write16Alt(uint16_t data) {
+    // Try reassigning the broken bits to working pins
+    // Maybe bit 3 should go to a different pin, or bit 7 should go elsewhere
+    
+    uint32_t b_val = 0;
+    uint32_t c_val = 0;
+    
+    // Map bits 0-2 normally
+    b_val |= ((data >> 0) & 0x01) << 0;   // D0 → PB0
+    b_val |= ((data >> 1) & 0x01) << 1;   // D1 → PB1  
+    b_val |= ((data >> 2) & 0x01) << 10;  // D2 → PB10
+    
+    // Try putting bit 3 on PC0 instead of PB12
+    c_val |= ((data >> 3) & 0x01) << 0;   // D3 → PC0 (instead of PB12)
+    
+    // Continue normally for bits 4-6
+    b_val |= ((data >> 4) & 0x01) << 13;  // D4 → PB13
+    b_val |= ((data >> 5) & 0x01) << 14;  // D5 → PB14
+    b_val |= ((data >> 6) & 0x01) << 15;  // D6 → PB15
+    
+    // Try putting bit 7 on PB12 instead of PC0
+    b_val |= ((data >> 7) & 0x01) << 12;  // D7 → PB12 (instead of PC0)
+    
+    // Map HIGH byte (D8-D15) normally
     c_val |= ((data >> 8) & 0x01) << 1;   // D8 → PC1
     c_val |= ((data >> 9) & 0x01) << 2;   // D9 → PC2
     c_val |= ((data >> 10) & 0x01) << 3;  // D10 → PC3
@@ -489,9 +534,129 @@ public:
       setTextSize(1);
       print("MADCTL: "); println(names[i]);
       println("This is a test line to check wrapping behavior");
-      testDisplayDimensions();
       
       delay(3000);
+    }
+  }
+
+  void testDataBusBits() {
+    Serial.println("=== Data Bus Bit Test ===");
+    
+    fillScreen(0x0000); // Black background
+    delay(500);
+    
+    // Test coordinate values that use specific bits
+    Serial.println("Testing coordinate bit patterns...");
+    
+    // Test powers of 2 to identify which bits are wrong
+    uint16_t test_coords[] = {1, 2, 4, 8, 16, 32, 64, 128, 256};
+    uint16_t colors[] = {0xF800, 0x07E0, 0x001F, 0xFFE0, 0xF81F, 0x07FF, 0xFFFF, 0x8410, 0xFD20};
+    
+    for (int i = 0; i < 9; i++) {
+      Serial.print("Testing coordinate: "); Serial.println(test_coords[i]);
+      
+      // Test X coordinate with specific bit pattern
+      writeCommand(0x2A); // Column Address Set
+      writeData(test_coords[i] >> 8);   // High byte
+      writeData(test_coords[i] & 0xFF); // Low byte
+      writeData((test_coords[i] + 50) >> 8);   // High byte + 50
+      writeData((test_coords[i] + 50) & 0xFF); // Low byte + 50
+      
+      writeCommand(0x2B); // Page Address Set
+      writeData(0); writeData(50 + i * 20);  // Y position
+      writeData(0); writeData(70 + i * 20);  // Y end
+      
+      writeCommand(0x2C); // Memory Write
+      
+      // Draw a small line
+      for (int j = 0; j < 51 * 21; j++) {
+        writeData16(colors[i]);
+      }
+      
+      delay(1000);
+    }
+    
+    delay(3000);
+    
+    // Now test Y coordinates
+    Serial.println("Testing Y coordinate bit patterns...");
+    fillScreen(0x0000);
+    delay(500);
+    
+    for (int i = 0; i < 9; i++) {
+      Serial.print("Testing Y coordinate: "); Serial.println(test_coords[i]);
+      
+      writeCommand(0x2A); // Column Address Set  
+      writeData(0); writeData(50 + i * 30);  // X position
+      writeData(0); writeData(70 + i * 30);  // X end
+      
+      writeCommand(0x2B); // Page Address Set
+      writeData(test_coords[i] >> 8);   // High byte
+      writeData(test_coords[i] & 0xFF); // Low byte
+      writeData((test_coords[i] + 50) >> 8);   // High byte + 50
+      writeData((test_coords[i] + 50) & 0xFF); // Low byte + 50
+      
+      writeCommand(0x2C); // Memory Write
+      
+      // Draw a small rectangle
+      for (int j = 0; j < 21 * 51; j++) {
+        writeData16(colors[i]);
+      }
+      
+      delay(1000);
+    }
+  }
+
+  void testSpecificCoordinates() {
+    Serial.println("=== Specific Coordinate Test ===");
+    
+    fillScreen(0x0000);
+    delay(500);
+    
+    // Test specific problematic coordinates
+    struct TestCase {
+      uint16_t x0, y0, x1, y1;
+      const char* name;
+      uint16_t color;
+    };
+    
+    TestCase tests[] = {
+      {0, 0, 319, 0, "Top edge (should be full width)", 0xF800},
+      {0, 0, 79, 0, "1/4 width line", 0x07E0},
+      {0, 0, 159, 0, "1/2 width line", 0x001F},
+      {0, 0, 239, 0, "3/4 width line", 0xFFE0},
+      {100, 100, 200, 150, "Rectangle 100x50", 0xF81F}
+    };
+    
+    for (int i = 0; i < 5; i++) {
+      Serial.print("Test: "); Serial.println(tests[i].name);
+      Serial.print("Coordinates: ("); Serial.print(tests[i].x0);
+      Serial.print(","); Serial.print(tests[i].y0);
+      Serial.print(") to ("); Serial.print(tests[i].x1);
+      Serial.print(","); Serial.print(tests[i].y1); Serial.println(")");
+      
+      writeCommand(0x2A); // Column Address Set
+      writeData(tests[i].x0 >> 8);
+      writeData(tests[i].x0 & 0xFF);
+      writeData(tests[i].x1 >> 8);
+      writeData(tests[i].x1 & 0xFF);
+      
+      writeCommand(0x2B); // Page Address Set
+      writeData(tests[i].y0 >> 8);
+      writeData(tests[i].y0 & 0xFF);
+      writeData(tests[i].y1 >> 8);
+      writeData(tests[i].y1 & 0xFF);
+      
+      writeCommand(0x2C); // Memory Write
+      
+      uint32_t pixels = (tests[i].x1 - tests[i].x0 + 1) * (tests[i].y1 - tests[i].y0 + 1);
+      for (uint32_t j = 0; j < pixels; j++) {
+        writeData16(tests[i].color);
+      }
+      
+      delay(2000);
+      fillScreen(0x0000); // Clear for next test
+      delay(500);
     }
   }
 
@@ -509,7 +674,7 @@ public:
     writeCommand(0x2C); // Memory Write
   }
 
-// public:
+public:
   // Constructor - Initialize Adafruit_GFX with display dimensions
   ILI9341_GFX() : Adafruit_GFX(320, 240) {
     // Constructor can be empty since setupPins() and initILI9341() will be called explicitly
@@ -690,7 +855,7 @@ public:
     return color565((color >> 16) & 0xFF, (color >> 8) & 0xFF, color & 0xFF);
   }
 
-//  Debug and test methods
+  // Debug and test methods
   void testWindowSetting() {
     Serial.println("=== Window Setting Test ===");
     
@@ -730,6 +895,7 @@ public:
       writeData16(0x001F); // Blue
     }
   }
+
   void printStatus() {
     printRegister("Status",        0x09, 4);
     printRegister("Power Mode",    0x0A, 1);
@@ -740,34 +906,52 @@ public:
     printRegister("Self Diag",     0x0F, 1);
   }
 
-  void testAlternativeWindowing() {
-    Serial.println("Trying alternative windowing...");
+  void testAlternativeMapping() {
+    Serial.println("=== Testing Alternative Bit Mapping ===");
     
-    // Try different window approach
+    // Temporarily replace write16 with write16Alt for testing
+    Serial.println("Testing with alternative bit mapping...");
+    
+    fillScreen(0xF00);
+    delay(500);
+    
+    // Test the problematic coordinates with alternative mapping
     writeCommand(0x2A); // Column Address Set
-    writeData(0x00);
-    writeData(0x00);
-    writeData(0x01);
-    writeData(0x3F); // 319
+    writeData(0); writeData(0);     // x0 = 0
+    writeData(1); writeData(63);    // x1 = 319
     
     writeCommand(0x2B); // Page Address Set  
-    writeData(0x00);
-    writeData(0x00);
-    writeData(0x00);
-    writeData(0xEF); // 239
+    writeData(0); writeData(0);     // y0 = 0
+    writeData(0); writeData(0);     // y1 = 0
     
     writeCommand(0x2C); // Memory Write
     
-    // Fill with alternating pattern
-    for (uint32_t i = 0; i < 320UL * 240UL; i++) {
-      if (i % 2 == 0) {
-        writeData16(0xF800); // Red
-      } else {
-        writeData16(0x07E0); // Green  
-      }
+    // Draw using alternative mapping
+    for (int i = 0; i < 320; i++) {
+      write16Alt(0xF800); // Red line using alternative mapping
     }
     
-    delay(5000);
+    delay(3000);
+    
+    // Test a rectangle
+    fillScreen(0x0000);
+    delay(500);
+    
+    writeCommand(0x2A); // Column Address Set
+    writeData(0); writeData(100);   // x0 = 100
+    writeData(0); writeData(200);   // x1 = 200
+    
+    writeCommand(0x2B); // Page Address Set
+    writeData(0); writeData(100);   // y0 = 100
+    writeData(0); writeData(150);   // y1 = 150
+    
+    writeCommand(0x2C); // Memory Write
+    
+    for (int i = 0; i < 101 * 51; i++) {
+      write16Alt(0x07E0); // Green rectangle
+    }
+    
+    Serial.println("Alternative mapping test complete. Did the lines appear correctly?");
   }
 };
 
