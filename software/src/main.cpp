@@ -10,8 +10,9 @@ void setup() {
   Serial.println("=== ILI9341 Display Test ===");  
   
   display.begin();
-  display.setRotation(2);
-  display.fillScreen(0x0000); // Black background
+    display.demoComplete();
+  // display.setRotation(2);
+  // display.fillScreen(0x0000); // Black background
 }
 
 void loop() {

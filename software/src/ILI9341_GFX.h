@@ -637,22 +637,292 @@ public:
     Serial.println("Basic initialization complete");
   }
 
-  void testReadOperations() {
-    Serial.println("=== Read Operations Test ===");
-    Serial.println("NOTE: Many displays don't support reads in 16-bit parallel mode");
-    Serial.println("If reads fail, that's normal - write operations are what matter!");
+  // Cool demo methods
+  void demoBouncingBalls() {
+    Serial.println("=== Bouncing Balls Demo ===");
     
-    // Test if reads work at all
-    writeCommand(0x00); // NOP command
-    digitalWrite(TFT_DC, HIGH);
-    uint16_t test_read = read16();
+    struct Ball {
+      float x, y;
+      float oldX, oldY;  // Store previous position
+      float vx, vy;
+      uint16_t color;
+      uint8_t radius;
+    };
     
-    Serial.print("Test read result: 0x");
-    Serial.println(test_read, HEX);
+    Ball balls[5] = {
+      {50, 50, 50, 50, 2.5, 1.8, 0xF800, 8},   // Red
+      {100, 100, 100, 100, -1.9, 2.3, 0x07E0, 6}, // Green  
+      {150, 80, 150, 80, 3.1, -2.1, 0x001F, 10}, // Blue
+      {200, 120, 200, 120, -2.7, 1.5, 0xFFE0, 7}, // Yellow
+      {80, 160, 80, 160, 1.6, -2.8, 0xF81F, 9}   // Magenta
+    };
     
-    if (test_read == 0x00 || test_read == 0xFFFF) {
-      Serial.println("Reads may not be supported - this is OK for display operation!");
+    // Initial screen setup
+    fillScreen(0x0000);
+    
+    for (int frame = 0; frame < 500; frame++) {
+      // First, erase old ball positions (draw black circles)
+      for (int i = 0; i < 5; i++) {
+        fillCircle((int)balls[i].oldX, (int)balls[i].oldY, balls[i].radius + 1, 0x0000);
+      }
+      
+      // Update ball positions
+      for (int i = 0; i < 5; i++) {
+        // Store old position
+        balls[i].oldX = balls[i].x;
+        balls[i].oldY = balls[i].y;
+        
+        // Update position
+        balls[i].x += balls[i].vx;
+        balls[i].y += balls[i].vy;
+        
+        // Bounce off walls
+        if (balls[i].x <= balls[i].radius || balls[i].x >= _width - balls[i].radius) {
+          balls[i].vx = -balls[i].vx;
+          balls[i].x = constrain(balls[i].x, balls[i].radius, _width - balls[i].radius);
+        }
+        if (balls[i].y <= balls[i].radius || balls[i].y >= _height - balls[i].radius) {
+          balls[i].vy = -balls[i].vy;
+          balls[i].y = constrain(balls[i].y, balls[i].radius, _height - balls[i].radius);
+        }
+      }
+      
+      // Now draw balls at new positions
+      for (int i = 0; i < 5; i++) {
+        fillCircle((int)balls[i].x, (int)balls[i].y, balls[i].radius, balls[i].color);
+      }
+      
+      // Update frame counter (only erase the text area)
+      fillRect(0, 0, 100, 20, 0x0000); // Erase just the text area
+      setTextColor(0xFFFF, 0x0000);
+      setTextSize(1);
+      setCursor(5, 5);
+      print("Frame: ");
+      println(frame);
+      
+      delay(20); // ~50 FPS
     }
+  }
+
+  void demoColorWaves() {
+    Serial.println("=== Color Waves Demo ===");
+    
+    for (int t = 0; t < 200; t++) {
+      for (int y = 0; y < _height; y++) {
+        for (int x = 0; x < _width; x++) {
+          // Create wave patterns
+          float wave1 = sin((x + t * 2) * 0.05) * sin((y + t) * 0.03);
+          float wave2 = cos((x - t * 3) * 0.04) * cos((y - t * 2) * 0.06);
+          
+          // Map to RGB
+          uint8_t r = (uint8_t)((wave1 + 1) * 127);
+          uint8_t g = (uint8_t)((wave2 + 1) * 127);
+          uint8_t b = (uint8_t)((sin(t * 0.1) + 1) * 127);
+          
+          uint16_t color = color565(r, g, b);
+          drawPixel(x, y, color);
+        }
+      }
+      
+      // Show progress
+      setTextColor(0xFFFF, 0x0000);
+      setTextSize(2);
+      setCursor(10, 10);
+      print("Wave: ");
+      println(t);
+      
+      delay(50);
+    }
+  }
+
+  void demoMatrix() {
+    Serial.println("=== Matrix Rain Demo ===");
+    
+    const int cols = _width / 8;
+    int drops[cols];
+    
+    // Initialize drops
+    for (int i = 0; i < cols; i++) {
+      drops[i] = random(_height);
+    }
+    
+    fillScreen(0x0000);
+    
+    for (int frame = 0; frame < 300; frame++) {
+      // Fade the screen
+      for (int y = 0; y < _height; y += 4) {
+        for (int x = 0; x < _width; x += 4) {
+          uint16_t pixel = 0; // Get pixel would be complex, so just fade to black
+          drawPixel(x, y, 0x0000);
+        }
+      }
+      
+      // Draw matrix drops
+      setTextSize(1);
+      for (int i = 0; i < cols; i++) {
+        // Random character
+        char c = random(33, 127);
+        
+        // Bright green at the tip
+        setTextColor(0x07FF, 0x0000); // Bright cyan-green
+        setCursor(i * 8, drops[i] * 8);
+        print(c);
+        
+        // Dimmer green trail
+        if (drops[i] > 1) {
+          setTextColor(0x03E0, 0x0000); // Dim green
+          setCursor(i * 8, (drops[i] - 1) * 8);
+          print((char)random(33, 127));
+        }
+        
+        // Move drop down
+        drops[i]++;
+        
+        // Reset drop when it reaches bottom
+        if (drops[i] * 8 > _height && random(100) > 95) {
+          drops[i] = 0;
+        }
+      }
+      
+      delay(100);
+    }
+  }
+
+  void demoSpiral() {
+    Serial.println("=== Spiral Demo ===");
+    
+    fillScreen(0x0000);
+    
+    float centerX = _width / 2.0;
+    float centerY = _height / 2.0;
+    
+    for (int t = 0; t < 1000; t++) {
+      float angle = t * 0.1;
+      float radius = t * 0.15;
+      
+      int x = (int)(centerX + cos(angle) * radius);
+      int y = (int)(centerY + sin(angle) * radius);
+      
+      if (x >= 0 && x < _width && y >= 0 && y < _height) {
+        // Color changes with time
+        uint16_t color = color565(
+          (uint8_t)(sin(t * 0.01) * 127 + 128),
+          (uint8_t)(sin(t * 0.013 + 2) * 127 + 128),
+          (uint8_t)(sin(t * 0.017 + 4) * 127 + 128)
+        );
+        
+        fillCircle(x, y, 3, color);
+      }
+      
+      if (radius > max(_width, _height) / 2) {
+        break;
+      }
+      
+      delay(10);
+    }
+    
+    delay(2000);
+  }
+
+  void demoPlasma() {
+    Serial.println("=== Plasma Demo ===");
+    
+    for (int t = 0; t < 100; t++) {
+      for (int y = 0; y < _height; y += 2) {
+        for (int x = 0; x < _width; x += 2) {
+          // Plasma effect math
+          float v1 = sin(sqrt((x - _width/2) * (x - _width/2) + (y - _height/2) * (y - _height/2)) * 0.05 + t * 0.2);
+          float v2 = sin(x * 0.03 + t * 0.15);
+          float v3 = sin(y * 0.04 + t * 0.1);
+          float v4 = sin(sqrt(x * x + y * y) * 0.02 + t * 0.25);
+          
+          float plasma = (v1 + v2 + v3 + v4) / 4.0;
+          
+          // Map to color
+          uint8_t intensity = (uint8_t)((plasma + 1) * 127);
+          uint16_t color = color565(
+            intensity,
+            (uint8_t)(intensity * 0.8),
+            (uint8_t)(255 - intensity)
+          );
+          
+          fillRect(x, y, 2, 2, color);
+        }
+      }
+      
+      // Show progress
+      setTextColor(0xFFFF, 0x0000);
+      setTextSize(1);
+      setCursor(5, 5);
+      print("Plasma: ");
+      print(t);
+      print("/100");
+      
+      delay(50);
+    }
+  }
+
+  void demoComplete() {
+    Serial.println("=== Complete Demo Sequence ===");
+    
+    // Title screen
+    fillScreen(0x0000);
+    setTextColor(0xFFFF, 0x0000);
+    setTextSize(3);
+    setCursor(50, 100);
+    println("ILI9341");
+    setTextSize(2);
+    setCursor(80, 130);
+    println("16-bit Parallel");
+    setTextSize(1);
+    setCursor(110, 160);
+    println("Ultra Fast Display!");
+    delay(3000);
+    
+    // Run all demos
+    demoBouncingBalls();
+    delay(1000);
+    
+    demoSpiral();
+    delay(1000);
+    
+    demoMatrix();
+    delay(1000);
+    
+    demoColorWaves();
+    delay(1000);
+    
+    demoPlasma();
+    delay(1000);
+    
+    // Performance test
+    fillScreen(0x0000);
+    setTextColor(0x07E0, 0x0000);
+    setTextSize(2);
+    setCursor(50, 100);
+    println("Performance Test");
+    
+    unsigned long startTime = millis();
+    for (int i = 0; i < 1000; i++) {
+      fillRect(random(_width-50), random(_height-50), 50, 50, random(0xFFFF));
+    }
+    unsigned long endTime = millis();
+    
+    fillScreen(0x0000);
+    setTextColor(0xFFFF, 0x0000);
+    setTextSize(2);
+    setCursor(20, 100);
+    print("1000 rects in:");
+    setCursor(20, 120);
+    print(endTime - startTime);
+    println(" ms");
+    setCursor(20, 140);
+    print("FPS: ");
+    println(1000000.0 / (endTime - startTime));
+    
+    delay(5000);
+    
+    Serial.println("Demo complete!");
   }
 
   void testText() {
@@ -681,3 +951,45 @@ public:
     delay(5000);
   }
 };
+
+// Example usage with clean PC0-PC15 mapping:
+/*
+#include <Adafruit_GFX.h>
+#include "ILI9341_GFX.h"
+
+ILI9341_GFX display;
+
+void setup() {
+  Serial.begin(115200);
+  delay(100);
+  
+  Serial.println("=== ILI9341 Display Test - Clean PC0-PC15 Mapping ===");  
+  Serial.println("Pin mapping:");
+  Serial.println("- Data bus: D0-D15 → PC0-PC15");
+  Serial.println("- Control: DC=PB8, WR=PB9, RST=PB10, RD=PB12");
+  Serial.println("- IM pins: IM2=0, IM1=1, IM0=1 for 16-bit parallel");
+  
+  display.begin();
+  display.detectController();
+  display.printStatus();
+  
+  // Test basic functionality
+  display.testBasicRectangles();
+  display.testText();
+  
+  // Now you can use all Adafruit_GFX functions perfectly:
+  display.fillScreen(0x0000);                    // Black background
+  display.drawLine(0, 0, 319, 239, 0xFFFF);     // White diagonal line
+  display.drawRect(50, 50, 100, 80, 0xF800);    // Red rectangle
+  display.fillCircle(160, 120, 30, 0x07E0);     // Green filled circle
+  display.setTextColor(0x001F);                 // Blue text
+  display.setTextSize(2);
+  display.setCursor(10, 10);
+  display.println("Perfect!");
+}
+
+void loop() {
+  display.testColorMapping();
+  delay(1000);
+}
+*/
