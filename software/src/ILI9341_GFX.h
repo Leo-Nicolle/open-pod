@@ -1,10 +1,10 @@
 // ILI9341 16-bit parallel driver for STM32F4 (Arduino + PlatformIO)
 // FIXED VERSION - Corrected data bus mapping and read operations
-// Wrapped in ILI9341_GFX class
-#pragma once
+// Wrapped in ILI9341_GFX class - Adafruit_GFX compatible
 #include <Arduino.h>
+#include <Adafruit_GFX.h>
 
-class ILI9341_GFX {
+class ILI9341_GFX : public Adafruit_GFX {
 private:
   // Pin definitions
   static const int TFT_DC = PC10;
@@ -373,6 +373,31 @@ private:
     writeCommand(0x2C); // Memory Write
   }
 
+  void setWindowDebug(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1) {
+    Serial.print("setWindow: x0="); Serial.print(x0);
+    Serial.print(" y0="); Serial.print(y0);
+    Serial.print(" x1="); Serial.print(x1);
+    Serial.print(" y1="); Serial.println(y1);
+    
+    // Column Address Set
+    writeCommand(0x2A); 
+    
+    // Try sending coordinates as separate high/low bytes instead of byte-swapped
+    writeData(x0 >> 8);   // High byte of x0
+    writeData(x0 & 0xFF); // Low byte of x0
+    writeData(x1 >> 8);   // High byte of x1
+    writeData(x1 & 0xFF); // Low byte of x1
+    
+    // Page Address Set  
+    writeCommand(0x2B);
+    writeData(y0 >> 8);   // High byte of y0
+    writeData(y0 & 0xFF); // Low byte of y0
+    writeData(y1 >> 8);   // High byte of y1
+    writeData(y1 & 0xFF); // Low byte of y1
+    
+    writeCommand(0x2C); // Memory Write
+  }
+
   void setWindowAlt(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1) {
     // Alternative windowing - try if first doesn't work
     writeCommand(0x2A); // Column Address Set
@@ -387,15 +412,114 @@ private:
   }
 
 public:
-  // Constructor
-  ILI9341_GFX() {
+  // Constructor - Initialize Adafruit_GFX with display dimensions
+  ILI9341_GFX() : Adafruit_GFX(320, 240) {
     // Constructor can be empty since setupPins() and initILI9341() will be called explicitly
+  }
+
+  // Required Adafruit_GFX virtual methods
+  void drawPixel(int16_t x, int16_t y, uint16_t color) override {
+    if ((x < 0) || (x >= _width) || (y < 0) || (y >= _height)) return;
+    
+    setWindow(x, y, x, y);
+    writeData16(color);
+  }
+
+  void fillRect(int16_t x, int16_t y, int16_t w, int16_t h, uint16_t color) override {
+    if ((x >= _width) || (y >= _height)) return;
+    
+    int16_t x2 = x + w - 1, y2 = y + h - 1;
+    if ((x2 < 0) || (y2 < 0)) return;
+    
+    // Clip to screen boundaries
+    if (x < 0) {
+      w += x;
+      x = 0;
+    }
+    if (y < 0) {
+      h += y;
+      y = 0;
+    }
+    if (x2 >= _width) {
+      w = _width - x;
+    }
+    if (y2 >= _height) {
+      h = _height - y;
+    }
+    
+    // Debug output
+    Serial.print("fillRect: x="); Serial.print(x);
+    Serial.print(" y="); Serial.print(y);
+    Serial.print(" w="); Serial.print(w);
+    Serial.print(" h="); Serial.print(h);
+    Serial.print(" x2="); Serial.print(x + w - 1);
+    Serial.print(" y2="); Serial.println(y + h - 1);
+    
+    setWindowDebug(x, y, x + w - 1, y + h - 1);
+    for (int32_t i = 0; i < (int32_t)w * h; i++) {
+      writeData16(color);
+    }
+  }
+
+  void drawFastVLine(int16_t x, int16_t y, int16_t h, uint16_t color) override {
+    fillRect(x, y, 1, h, color);
+  }
+
+  void drawFastHLine(int16_t x, int16_t y, int16_t w, uint16_t color) override {
+    fillRect(x, y, w, 1, color);
+  }
+
+  // void fillScreen(uint16_t color) override {
+  //   fillRect(0, 0, _width, _height, color);
+  // }
+
+  void setRotation(uint8_t r) override {
+    rotation = r & 3;
+    switch (rotation) {
+      case 0:
+        _width = 320;
+        _height = 240;
+        writeCommand(0x36);
+        writeData(0x48);
+        break;
+      case 1:
+        _width = 240;
+        _height = 320;
+        writeCommand(0x36);
+        writeData(0x28);
+        break;
+      case 2:
+        _width = 320;
+        _height = 240;
+        writeCommand(0x36);
+        writeData(0x88);
+        break;
+      case 3:
+        _width = 240;
+        _height = 320;
+        writeCommand(0x36);
+        writeData(0xE8);
+        break;
+    }
+  }
+
+  void invertDisplay(bool i) {
+    writeCommand(i ? 0x21 : 0x20);
   }
 
   // Public methods
   void begin() {
     setupPins();
     initILI9341();
+    setRotation(0); // Set default rotation
+  }
+
+  // Enhanced fillScreen that uses the optimized setWindow method
+  void fillScreen(uint16_t color) {
+    setWindow(0, 0, _width - 1, _height - 1);
+    for (uint32_t i = 0; i < (uint32_t)_width * _height; i++) {
+      writeData16(color);
+    }
   }
 
   void detectController() {
@@ -425,12 +549,7 @@ public:
     Serial.println(id3, HEX);
   }
 
-  void fillScreen(uint16_t color) {
-    setWindow(0, 0, 319, 239);
-    for (uint32_t i = 0; i < 320UL * 240UL; i++) {
-      writeData16(color);
-    }
-  }
+
 
   void testColorMapping() {
     Serial.println("=== Color Mapping Test ===");
@@ -462,6 +581,15 @@ public:
     delay(2000);
     fillScreen(0xAAAA); // Alternating bits inverted
     delay(2000);
+  }
+
+  // Color conversion helpers for RGB888 to RGB565
+  uint16_t color565(uint8_t r, uint8_t g, uint8_t b) {
+    return ((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3);
+  }
+
+  uint16_t color565(uint32_t color) {
+    return color565((color >> 16) & 0xFF, (color >> 8) & 0xFF, color & 0xFF);
   }
 
   void printStatus() {
@@ -505,8 +633,11 @@ public:
   }
 };
 
-// Example usage:
+// Example usage with Adafruit_GFX compatibility:
 /*
+#include <Adafruit_GFX.h>
+#include "ILI9341_GFX.h"
+
 ILI9341_GFX display;
 
 void setup() {
@@ -519,6 +650,20 @@ void setup() {
   display.begin();
   display.detectController();
   display.printStatus();
+  
+  // Now you can use all Adafruit_GFX functions:
+  display.fillScreen(0x0000);                    // Black background
+  display.drawLine(0, 0, 319, 239, 0xFFFF);     // White diagonal line
+  display.drawRect(50, 50, 100, 80, 0xF800);    // Red rectangle
+  display.fillCircle(160, 120, 30, 0x07E0);     // Green filled circle
+  display.setTextColor(0x001F);                 // Blue text
+  display.setTextSize(2);
+  display.setCursor(10, 10);
+  display.println("Hello World!");
+  
+  // Set different rotations
+  display.setRotation(1);  // Portrait
+  display.setRotation(0);  // Landscape
 }
 
 void loop() {
