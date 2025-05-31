@@ -1,22 +1,19 @@
 // ILI9341 16-bit parallel driver for STM32F4 (Arduino + PlatformIO)
-// FIXED VERSION - Corrected data bus mapping and read operations
+// CLEAN VERSION - PC0-PC15 mapping for optimal performance
 // Wrapped in ILI9341_GFX class - Adafruit_GFX compatible
 #include <Arduino.h>
 #include <Adafruit_GFX.h>
 
 class ILI9341_GFX : public Adafruit_GFX {
-public:
-  // Pin definitions
-  static const int TFT_DC = PC10;
-  static const int TFT_WR = PC11;
-  static const int TFT_RST = PC12;
-  static const int TFT_RD = PD2;
+private:
+  // Pin definitions - CORRECTED
+  static const int TFT_DC = PB8;   // Data/Command
+  static const int TFT_WR = PB9;   // Write
+  static const int TFT_RD = PB10;  // Read (CORRECTED)
+  static const int TFT_RST = PB12; // Reset (CORRECTED)
 
-  // Data bus mapping:
-  // D0-D1 → PB0, PB1
-  // D2 → PB10  
-  // D3-D7 → PB12, PB13, PB14, PB15, PC0
-  // D8-D15 → PC1, PC2, PC3, PC4, PC5, PC6, PC7, PC8
+  // Data bus mapping: CLEAN!
+  // D0-D15 → PC0-PC15 (perfect 1:1 mapping!)
 
   void setupPins() {
     // Control pins
@@ -30,186 +27,58 @@ public:
     digitalWrite(TFT_RD, HIGH); // RD inactive
 
     // Enable GPIO clocks
-    RCC->AHB1ENR |= RCC_AHB1ENR_GPIOBEN | RCC_AHB1ENR_GPIOCEN | RCC_AHB1ENR_GPIODEN;
+    RCC->AHB1ENR |= RCC_AHB1ENR_GPIOBEN | RCC_AHB1ENR_GPIOCEN;
 
-    // Set data pins to output mode
-    // PB0, PB1, PB10, PB12-PB15
-    GPIOB->MODER &= ~(0b11 << (0 * 2) | 0b11 << (1 * 2) |
-                      0b11 << (10 * 2) | 0b11 << (12 * 2) |
-                      0b11 << (13 * 2) | 0b11 << (14 * 2) | 0b11 << (15 * 2));
-    GPIOB->MODER |=  (0b01 << (0 * 2) | 0b01 << (1 * 2) |
-                      0b01 << (10 * 2) | 0b01 << (12 * 2) |
-                      0b01 << (13 * 2) | 0b01 << (14 * 2) | 0b01 << (15 * 2));
-
-    // PC0-PC8, PC10-PC12
-    GPIOC->MODER &= ~(0b11 << (0 * 2) | 0b11 << (1 * 2) | 0b11 << (2 * 2) |
-                      0b11 << (3 * 2) | 0b11 << (4 * 2) | 0b11 << (5 * 2) |
-                      0b11 << (6 * 2) | 0b11 << (7 * 2) | 0b11 << (8 * 2) |
-                      0b11 << (10 * 2) | 0b11 << (11 * 2) | 0b11 << (12 * 2));
-    GPIOC->MODER |=  (0b01 << (0 * 2) | 0b01 << (1 * 2) | 0b01 << (2 * 2) |
-                      0b01 << (3 * 2) | 0b01 << (4 * 2) | 0b01 << (5 * 2) |
-                      0b01 << (6 * 2) | 0b01 << (7 * 2) | 0b01 << (8 * 2) |
-                      0b01 << (10 * 2) | 0b01 << (11 * 2) | 0b01 << (12 * 2));
+    // Set all PC0-PC15 pins to output mode (data bus)
+    GPIOC->MODER = 0x55555555; // Set all 16 pins to output mode (01 pattern)
     
     // Set all data pins to push-pull, high speed
-    GPIOB->OTYPER &= ~((1 << 0) | (1 << 1) | (1 << 10) | (1 << 12) | (1 << 13) | (1 << 14) | (1 << 15));
-    GPIOC->OTYPER &= ~((1 << 0) | (1 << 1) | (1 << 2) | (1 << 3) | (1 << 4) | (1 << 5) | (1 << 6) | (1 << 7) | (1 << 8));
+    GPIOC->OTYPER = 0x0000;     // All push-pull
+    GPIOC->OSPEEDR = 0xFFFFFFFF; // All high speed
   }
 
   inline void pulseWR() {
-    GPIOC->BSRR = (1 << (11 + 16));  // WR low
+    GPIOB->BSRR = (1 << (9 + 16));  // WR low (PB9)
     __NOP(); // Small delay
-    GPIOC->BSRR = (1 << 11);         // WR high
+    GPIOB->BSRR = (1 << 9);         // WR high (PB9)
   }
 
   inline void write16(uint16_t data) {
-    // CORRECTED bit mapping - skipping problematic bits 3 and 7
-    // Your schematic: D0–D7 → PB0, PB1, PB10, PB12, PB13, PB14, PB15, PC0
-    // Your schematic: D8–D15 → PC1, PC2, PC3, PC4, PC5, PC6, PC7, PC8
-    // BUT: Bit 3 (PB12) and Bit 7 (PC0) are not working correctly
-    
-    uint32_t b_val = 0;
-    uint32_t c_val = 0;
-    
-    // Map LOW byte (D0-D7) - skipping bit 3 and 7
-    b_val |= ((data >> 0) & 0x01) << 0;   // D0 → PB0
-    b_val |= ((data >> 1) & 0x01) << 1;   // D1 → PB1  
-    b_val |= ((data >> 2) & 0x01) << 10;  // D2 → PB10
-    // SKIP D3 → PB12 (broken)
-    b_val |= ((data >> 4) & 0x01) << 13;  // D4 → PB13
-    b_val |= ((data >> 5) & 0x01) << 14;  // D5 → PB14
-    b_val |= ((data >> 6) & 0x01) << 15;  // D6 → PB15
-    // SKIP D7 → PC0 (broken)
-    
-    // Map HIGH byte (D8-D15) to GPIOC pins PC1-PC8
-    c_val |= ((data >> 8) & 0x01) << 1;   // D8 → PC1
-    c_val |= ((data >> 9) & 0x01) << 2;   // D9 → PC2
-    c_val |= ((data >> 10) & 0x01) << 3;  // D10 → PC3
-    c_val |= ((data >> 11) & 0x01) << 4;  // D11 → PC4
-    c_val |= ((data >> 12) & 0x01) << 5;  // D12 → PC5
-    c_val |= ((data >> 13) & 0x01) << 6;  // D13 → PC6
-    c_val |= ((data >> 14) & 0x01) << 7;  // D14 → PC7
-    c_val |= ((data >> 15) & 0x01) << 8;  // D15 → PC8
-    
-    // Apply the values
-    uint32_t b_mask = (1 << 0) | (1 << 1) | (1 << 10) | (1 << 13) | (1 << 14) | (1 << 15); // Skip bit 12
-    uint32_t c_mask = 0x1FE; // PC1-PC8 (skip PC0)
-    
-    GPIOB->ODR = (GPIOB->ODR & ~b_mask) | b_val;
-    GPIOC->ODR = (GPIOC->ODR & ~c_mask) | c_val;
-    
-    pulseWR();
-  }
-
-  // Alternative mapping - try different bit assignments for broken lines
-  inline void write16Alt(uint16_t data) {
-    // Try reassigning the broken bits to working pins
-    // Maybe bit 3 should go to a different pin, or bit 7 should go elsewhere
-    
-    uint32_t b_val = 0;
-    uint32_t c_val = 0;
-    
-    // Map bits 0-2 normally
-    b_val |= ((data >> 0) & 0x01) << 0;   // D0 → PB0
-    b_val |= ((data >> 1) & 0x01) << 1;   // D1 → PB1  
-    b_val |= ((data >> 2) & 0x01) << 10;  // D2 → PB10
-    
-    // Try putting bit 3 on PC0 instead of PB12
-    c_val |= ((data >> 3) & 0x01) << 0;   // D3 → PC0 (instead of PB12)
-    
-    // Continue normally for bits 4-6
-    b_val |= ((data >> 4) & 0x01) << 13;  // D4 → PB13
-    b_val |= ((data >> 5) & 0x01) << 14;  // D5 → PB14
-    b_val |= ((data >> 6) & 0x01) << 15;  // D6 → PB15
-    
-    // Try putting bit 7 on PB12 instead of PC0
-    b_val |= ((data >> 7) & 0x01) << 12;  // D7 → PB12 (instead of PC0)
-    
-    // Map HIGH byte (D8-D15) normally
-    c_val |= ((data >> 8) & 0x01) << 1;   // D8 → PC1
-    c_val |= ((data >> 9) & 0x01) << 2;   // D9 → PC2
-    c_val |= ((data >> 10) & 0x01) << 3;  // D10 → PC3
-    c_val |= ((data >> 11) & 0x01) << 4;  // D11 → PC4
-    c_val |= ((data >> 12) & 0x01) << 5;  // D12 → PC5
-    c_val |= ((data >> 13) & 0x01) << 6;  // D13 → PC6
-    c_val |= ((data >> 14) & 0x01) << 7;  // D14 → PC7
-    c_val |= ((data >> 15) & 0x01) << 8;  // D15 → PC8
-    
-    // Apply the values
-    uint32_t b_mask = (1 << 0) | (1 << 1) | (1 << 10) | (1 << 12) | (1 << 13) | (1 << 14) | (1 << 15);
-    uint32_t c_mask = 0x1FF; // PC0-PC8
-    
-    GPIOB->ODR = (GPIOB->ODR & ~b_mask) | b_val;
-    GPIOC->ODR = (GPIOC->ODR & ~c_mask) | c_val;
-    
+    // ULTRA SIMPLE - This is the dream scenario!
+    GPIOC->ODR = data;  // Direct 16-bit write to PC0-PC15
     pulseWR();
   }
 
   void setBusToInput() {
-    // Set data pins to input mode
-    GPIOB->MODER &= ~((0b11 << (0 * 2)) | (0b11 << (1 * 2)) |
-                      (0b11 << (10 * 2)) | (0b11 << (12 * 2)) |
-                      (0b11 << (13 * 2)) | (0b11 << (14 * 2)) |
-                      (0b11 << (15 * 2)));
-
-    GPIOC->MODER &= ~((0b11 << (0 * 2)) | (0b11 << (1 * 2)) |
-                      (0b11 << (2 * 2)) | (0b11 << (3 * 2)) |
-                      (0b11 << (4 * 2)) | (0b11 << (5 * 2)) |
-                      (0b11 << (6 * 2)) | (0b11 << (7 * 2)) |
-                      (0b11 << (8 * 2)));
+    // Set all PC0-PC15 pins to input mode
+    GPIOC->MODER = 0x00000000; // All input mode (00 pattern)
   }
 
   void setBusToOutput() {
-    // Set data pins back to output mode
-    GPIOB->MODER |= (0b01 << (0 * 2)) | (0b01 << (1 * 2)) |
-                    (0b01 << (10 * 2)) | (0b01 << (12 * 2)) |
-                    (0b01 << (13 * 2)) | (0b01 << (14 * 2)) |
-                    (0b01 << (15 * 2));
-
-    GPIOC->MODER |= (0b01 << (0 * 2)) | (0b01 << (1 * 2)) |
-                    (0b01 << (2 * 2)) | (0b01 << (3 * 2)) |
-                    (0b01 << (4 * 2)) | (0b01 << (5 * 2)) |
-                    (0b01 << (6 * 2)) | (0b01 << (7 * 2)) |
-                    (0b01 << (8 * 2));
+    // Set all PC0-PC15 pins back to output mode
+    GPIOC->MODER = 0x55555555; // All output mode (01 pattern)
   }
 
   uint16_t readBus16() {
-    uint16_t value = 0;
-    uint32_t b = GPIOB->IDR;
-    uint32_t c = GPIOC->IDR;
-
-    // FIXED: Correct bit extraction
-    value |= ((b >> 0) & 0x01) << 0;   // D0 ← PB0
-    value |= ((b >> 1) & 0x01) << 1;   // D1 ← PB1
-    value |= ((b >> 10) & 0x01) << 2;  // D2 ← PB10
-    value |= ((b >> 12) & 0x01) << 3;  // D3 ← PB12
-    value |= ((b >> 13) & 0x01) << 4;  // D4 ← PB13
-    value |= ((b >> 14) & 0x01) << 5;  // D5 ← PB14
-    value |= ((b >> 15) & 0x01) << 6;  // D6 ← PB15
-    value |= ((c >> 0) & 0x01) << 7;   // D7 ← PC0
-    value |= ((c >> 1) & 0x01) << 8;   // D8 ← PC1
-    value |= ((c >> 2) & 0x01) << 9;   // D9 ← PC2
-    value |= ((c >> 3) & 0x01) << 10;  // D10 ← PC3
-    value |= ((c >> 4) & 0x01) << 11;  // D11 ← PC4
-    value |= ((c >> 5) & 0x01) << 12;  // D12 ← PC5
-    value |= ((c >> 6) & 0x01) << 13;  // D13 ← PC6
-    value |= ((c >> 7) & 0x01) << 14;  // D14 ← PC7
-    value |= ((c >> 8) & 0x01) << 15;  // D15 ← PC8
-
-    return value;
+    // ULTRA SIMPLE - Direct 16-bit read from PC0-PC15
+    return GPIOC->IDR & 0xFFFF;
   }
 
   uint16_t read16() {
     setBusToInput();
     
+    // Longer setup time before read
+    delayMicroseconds(1);
+    
     // RD low → start read
     digitalWrite(TFT_RD, LOW);
-    delayMicroseconds(2); // Increased delay for tACC
+    delayMicroseconds(5); // Much longer delay for read access time
     
     uint16_t value = readBus16();
     
     // RD high → end read
     digitalWrite(TFT_RD, HIGH);
+    delayMicroseconds(1); // Recovery time
     
     setBusToOutput();
     return value;
@@ -231,15 +100,18 @@ public:
   }
 
   void readRegisterBytes(uint8_t reg, uint8_t *buffer, uint8_t len) {
+    // Try different approach - some displays need different read protocol
     writeCommand(reg);
     digitalWrite(TFT_DC, HIGH);  // Read data mode
     
-    // First read is often dummy data
-    read16();
+    // Multiple dummy reads - some displays need this
+    read16(); // First dummy
+    read16(); // Second dummy (sometimes needed)
     
     for (uint8_t i = 0; i < len; i++) {
       uint16_t val = read16();
       buffer[i] = val & 0xFF;
+      delayMicroseconds(10); // Small delay between reads
     }
   }
 
@@ -314,9 +186,9 @@ public:
     writeCommand(0xC7);
     writeData(0x86);
     
-    // Memory Access Control
+    // Memory Access Control - CORRECTED for 320x240 landscape mode
     writeCommand(0x36);
-    writeData(0x48);
+    writeData(0xE8); // Landscape mode with proper RGB order
     
     // Pixel Format Set
     writeCommand(0x3A);
@@ -407,269 +279,17 @@ public:
   void setWindow(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1) {
     // Column Address Set
     writeCommand(0x2A); 
-    writeData16((x0 << 8) | (x0 >> 8)); // Send as 16-bit with byte swap
-    writeData16((x1 << 8) | (x1 >> 8)); // Send as 16-bit with byte swap
-    
-    // Page Address Set  
-    writeCommand(0x2B);
-    writeData16((y0 << 8) | (y0 >> 8)); // Send as 16-bit with byte swap
-    writeData16((y1 << 8) | (y1 >> 8)); // Send as 16-bit with byte swap
-    
-    writeCommand(0x2C); // Memory Write
-  }
-
-  void setWindowDebug(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1) {
-    Serial.print("setWindow: x0="); Serial.print(x0);
-    Serial.print(" y0="); Serial.print(y0);
-    Serial.print(" x1="); Serial.print(x1);
-    Serial.print(" y1="); Serial.println(y1);
-    
-    // Column Address Set
-    Serial.println("Setting Column Address (0x2A)");
-    writeCommand(0x2A); 
-    
-    // Try sending coordinates as separate high/low bytes instead of byte-swapped
-    Serial.print("  X0: 0x"); Serial.print(x0 >> 8, HEX); Serial.print(" 0x"); Serial.println(x0 & 0xFF, HEX);
     writeData(x0 >> 8);   // High byte of x0
     writeData(x0 & 0xFF); // Low byte of x0
-    Serial.print("  X1: 0x"); Serial.print(x1 >> 8, HEX); Serial.print(" 0x"); Serial.println(x1 & 0xFF, HEX);
     writeData(x1 >> 8);   // High byte of x1
     writeData(x1 & 0xFF); // Low byte of x1
     
     // Page Address Set  
-    Serial.println("Setting Page Address (0x2B)");
     writeCommand(0x2B);
-    Serial.print("  Y0: 0x"); Serial.print(y0 >> 8, HEX); Serial.print(" 0x"); Serial.println(y0 & 0xFF, HEX);
     writeData(y0 >> 8);   // High byte of y0
     writeData(y0 & 0xFF); // Low byte of y0
-    Serial.print("  Y1: 0x"); Serial.print(y1 >> 8, HEX); Serial.print(" 0x"); Serial.println(y1 & 0xFF, HEX);
     writeData(y1 >> 8);   // High byte of y1
     writeData(y1 & 0xFF); // Low byte of y1
-    
-    Serial.println("Setting Memory Write (0x2C)");
-    writeCommand(0x2C); // Memory Write
-    
-    // Let's also try an alternative approach for comparison
-    Serial.println("Alternative: trying different coordinate format...");
-  }
-
-  // Alternative window setting method to test
-  void setWindowAlt2(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1) {
-    // Some displays expect coordinates in different format
-    writeCommand(0x2A); // Column Address Set
-    writeData16(x0);    // No byte swapping
-    writeData16(x1);
-    
-    writeCommand(0x2B); // Page Address Set
-    writeData16(y0);    // No byte swapping  
-    writeData16(y1);
-    
-    writeCommand(0x2C); // Memory Write
-  }
-
-  // Test method to verify window setting
-  // Debug and test methods
-  void testDisplayDimensions() {
-    Serial.println("=== Display Dimensions Test ===");
-    
-    fillScreen(0x0000); // Black background
-    delay(500);
-    
-    // Test 1: Draw lines at expected boundaries
-    Serial.println("Drawing boundary lines...");
-    
-    // Top edge (should be a horizontal line at top)
-    setWindowDebug(0, 0, 319, 0);
-    for (int i = 0; i < 320; i++) {
-      writeData16(0xF800); // Red
-    }
-    
-    // Bottom edge (should be a horizontal line at bottom)  
-    setWindowDebug(0, 239, 319, 239);
-    for (int i = 0; i < 320; i++) {
-      writeData16(0xF800); // Red
-    }
-    
-    // Left edge (should be a vertical line at left)
-    setWindowDebug(0, 0, 0, 239);
-    for (int i = 0; i < 240; i++) {
-      writeData16(0x07E0); // Green
-    }
-    
-    // Right edge (should be a vertical line at right)
-    setWindowDebug(319, 0, 319, 239);
-    for (int i = 0; i < 240; i++) {
-      writeData16(0x07E0); // Green
-    }
-    
-    delay(3000);
-  }
-
-  void testMADCTL() {
-    Serial.println("=== MADCTL Test ===");
-    
-    // Try different MADCTL values to see which one works
-    uint8_t madctl_values[] = {0x48, 0x28, 0x88, 0xE8, 0x08, 0x68, 0xA8, 0xC8};
-    const char* names[] = {"0x48 (orig)", "0x28", "0x88", "0xE8", "0x08", "0x68", "0xA8", "0xC8"};
-    
-    for (int i = 0; i < 8; i++) {
-      Serial.print("Testing MADCTL: "); Serial.println(names[i]);
-      
-      writeCommand(0x36); // MADCTL
-      writeData(madctl_values[i]);
-      delay(100);
-      
-      // Fill with a color and draw a test pattern
-      fillScreen(0x0000); // Black
-      
-      // Draw a small rectangle in top-left to see orientation
-      setWindowDebug(10, 10, 50, 30);
-      for (int j = 0; j < 41 * 21; j++) {
-        writeData16(0xF800); // Red rectangle
-      }
-      
-      // Draw text to see if wrapping is fixed
-      setCursor(10, 50);
-      setTextColor(0x07E0); // Green
-      setTextSize(1);
-      print("MADCTL: "); println(names[i]);
-      println("This is a test line to check wrapping behavior");
-      
-      delay(3000);
-    }
-  }
-
-  void testDataBusBits() {
-    Serial.println("=== Data Bus Bit Test ===");
-    
-    fillScreen(0x0000); // Black background
-    delay(500);
-    
-    // Test coordinate values that use specific bits
-    Serial.println("Testing coordinate bit patterns...");
-    
-    // Test powers of 2 to identify which bits are wrong
-    uint16_t test_coords[] = {1, 2, 4, 8, 16, 32, 64, 128, 256};
-    uint16_t colors[] = {0xF800, 0x07E0, 0x001F, 0xFFE0, 0xF81F, 0x07FF, 0xFFFF, 0x8410, 0xFD20};
-    
-    for (int i = 0; i < 9; i++) {
-      Serial.print("Testing coordinate: "); Serial.println(test_coords[i]);
-      
-      // Test X coordinate with specific bit pattern
-      writeCommand(0x2A); // Column Address Set
-      writeData(test_coords[i] >> 8);   // High byte
-      writeData(test_coords[i] & 0xFF); // Low byte
-      writeData((test_coords[i] + 50) >> 8);   // High byte + 50
-      writeData((test_coords[i] + 50) & 0xFF); // Low byte + 50
-      
-      writeCommand(0x2B); // Page Address Set
-      writeData(0); writeData(50 + i * 20);  // Y position
-      writeData(0); writeData(70 + i * 20);  // Y end
-      
-      writeCommand(0x2C); // Memory Write
-      
-      // Draw a small line
-      for (int j = 0; j < 51 * 21; j++) {
-        writeData16(colors[i]);
-      }
-      
-      delay(1000);
-    }
-    
-    delay(3000);
-    
-    // Now test Y coordinates
-    Serial.println("Testing Y coordinate bit patterns...");
-    fillScreen(0x0000);
-    delay(500);
-    
-    for (int i = 0; i < 9; i++) {
-      Serial.print("Testing Y coordinate: "); Serial.println(test_coords[i]);
-      
-      writeCommand(0x2A); // Column Address Set  
-      writeData(0); writeData(50 + i * 30);  // X position
-      writeData(0); writeData(70 + i * 30);  // X end
-      
-      writeCommand(0x2B); // Page Address Set
-      writeData(test_coords[i] >> 8);   // High byte
-      writeData(test_coords[i] & 0xFF); // Low byte
-      writeData((test_coords[i] + 50) >> 8);   // High byte + 50
-      writeData((test_coords[i] + 50) & 0xFF); // Low byte + 50
-      
-      writeCommand(0x2C); // Memory Write
-      
-      // Draw a small rectangle
-      for (int j = 0; j < 21 * 51; j++) {
-        writeData16(colors[i]);
-      }
-      
-      delay(1000);
-    }
-  }
-
-  void testSpecificCoordinates() {
-    Serial.println("=== Specific Coordinate Test ===");
-    
-    fillScreen(0x0000);
-    delay(500);
-    
-    // Test specific problematic coordinates
-    struct TestCase {
-      uint16_t x0, y0, x1, y1;
-      const char* name;
-      uint16_t color;
-    };
-    
-    TestCase tests[] = {
-      {0, 0, 319, 0, "Top edge (should be full width)", 0xF800},
-      {0, 0, 79, 0, "1/4 width line", 0x07E0},
-      {0, 0, 159, 0, "1/2 width line", 0x001F},
-      {0, 0, 239, 0, "3/4 width line", 0xFFE0},
-      {100, 100, 200, 150, "Rectangle 100x50", 0xF81F}
-    };
-    
-    for (int i = 0; i < 5; i++) {
-      Serial.print("Test: "); Serial.println(tests[i].name);
-      Serial.print("Coordinates: ("); Serial.print(tests[i].x0);
-      Serial.print(","); Serial.print(tests[i].y0);
-      Serial.print(") to ("); Serial.print(tests[i].x1);
-      Serial.print(","); Serial.print(tests[i].y1); Serial.println(")");
-      
-      writeCommand(0x2A); // Column Address Set
-      writeData(tests[i].x0 >> 8);
-      writeData(tests[i].x0 & 0xFF);
-      writeData(tests[i].x1 >> 8);
-      writeData(tests[i].x1 & 0xFF);
-      
-      writeCommand(0x2B); // Page Address Set
-      writeData(tests[i].y0 >> 8);
-      writeData(tests[i].y0 & 0xFF);
-      writeData(tests[i].y1 >> 8);
-      writeData(tests[i].y1 & 0xFF);
-      
-      writeCommand(0x2C); // Memory Write
-      
-      uint32_t pixels = (tests[i].x1 - tests[i].x0 + 1) * (tests[i].y1 - tests[i].y0 + 1);
-      for (uint32_t j = 0; j < pixels; j++) {
-        writeData16(tests[i].color);
-      }
-      
-      delay(2000);
-      fillScreen(0x0000); // Clear for next test
-      delay(500);
-    }
-  }
-
-
-  void setWindowAlt(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1) {
-    // Alternative windowing - try if first doesn't work
-    writeCommand(0x2A); // Column Address Set
-    writeData16(x0);
-    writeData16(x1);
-    
-    writeCommand(0x2B); // Page Address Set
-    writeData16(y0);
-    writeData16(y1);
     
     writeCommand(0x2C); // Memory Write
   }
@@ -710,15 +330,7 @@ public:
       h = _height - y;
     }
     
-    // Debug output
-    Serial.print("fillRect: x="); Serial.print(x);
-    Serial.print(" y="); Serial.print(y);
-    Serial.print(" w="); Serial.print(w);
-    Serial.print(" h="); Serial.print(h);
-    Serial.print(" x2="); Serial.print(x + w - 1);
-    Serial.print(" y2="); Serial.println(y + h - 1);
-    
-    setWindowDebug(x, y, x + w - 1, y + h - 1);
+    setWindow(x, y, x + w - 1, y + h - 1);
     for (int32_t i = 0; i < (int32_t)w * h; i++) {
       writeData16(color);
     }
@@ -733,35 +345,38 @@ public:
   }
 
   void fillScreen(uint16_t color) override {
-    fillRect(0, 0, _width, _height, color);
+    setWindow(0, 0, _width - 1, _height - 1);
+    for (uint32_t i = 0; i < (uint32_t)_width * _height; i++) {
+      writeData16(color);
+    }
   }
 
   void setRotation(uint8_t r) override {
     rotation = r & 3;
     switch (rotation) {
-      case 0:
+      case 0: // 320x240 landscape
         _width = 320;
         _height = 240;
         writeCommand(0x36);
-        writeData(0x48);
+        writeData(0xE8); // MX=1, MY=1, MV=1 for proper 320x240
         break;
-      case 1:
+      case 1: // 240x320 portrait
         _width = 240;
         _height = 320;
         writeCommand(0x36);
-        writeData(0x28);
+        writeData(0x48); // Standard portrait
         break;
-      case 2:
+      case 2: // 320x240 landscape flipped
         _width = 320;
         _height = 240;
         writeCommand(0x36);
-        writeData(0x88);
+        writeData(0x28); // Flipped landscape
         break;
-      case 3:
+      case 3: // 240x320 portrait flipped
         _width = 240;
         _height = 320;
         writeCommand(0x36);
-        writeData(0xE8);
+        writeData(0x88); // Flipped portrait
         break;
     }
   }
@@ -776,14 +391,6 @@ public:
     initILI9341();
     setRotation(0); // Set default rotation
   }
-
-  // Enhanced fillScreen that uses the optimized setWindow method
-  // void fillScreen(uint16_t color) {
-  //   setWindow(0, 0, _width - 1, _height - 1);
-  //   for (uint32_t i = 0; i < (uint32_t)_width * _height; i++) {
-  //     writeData16(color);
-  //   }
-  // }
 
   void detectController() {
     Serial.println("=== Controller Detection ===");
@@ -811,8 +418,6 @@ public:
     Serial.print(" 0x");
     Serial.println(id3, HEX);
   }
-
-
 
   void testColorMapping() {
     Serial.println("=== Color Mapping Test ===");
@@ -855,47 +460,6 @@ public:
     return color565((color >> 16) & 0xFF, (color >> 8) & 0xFF, color & 0xFF);
   }
 
-  // Debug and test methods
-  void testWindowSetting() {
-    Serial.println("=== Window Setting Test ===");
-    
-    // Test 1: Try a simple small rectangle with alternative method
-    Serial.println("Test 1: Alternative window method");
-    writeCommand(0x2A); // Column Address Set
-    writeData16(100);   // x0
-    writeData16(150);   // x1
-    
-    writeCommand(0x2B); // Page Address Set  
-    writeData16(100);   // y0
-    writeData16(150);   // y1
-    
-    writeCommand(0x2C); // Memory Write
-    
-    // Fill small area with green
-    for (int i = 0; i < 51 * 51; i++) {
-      writeData16(0x07E0); // Green
-    }
-    
-    delay(2000);
-    
-    // Test 2: Try the byte-separated method
-    Serial.println("Test 2: Byte-separated method");
-    writeCommand(0x2A); // Column Address Set
-    writeData(0); writeData(200); // x0 = 200
-    writeData(0); writeData(250); // x1 = 250
-    
-    writeCommand(0x2B); // Page Address Set
-    writeData(0); writeData(100); // y0 = 100  
-    writeData(0); writeData(150); // y1 = 150
-    
-    writeCommand(0x2C); // Memory Write
-    
-    // Fill with blue
-    for (int i = 0; i < 51 * 51; i++) {
-      writeData16(0x001F); // Blue
-    }
-  }
-
   void printStatus() {
     printRegister("Status",        0x09, 4);
     printRegister("Power Mode",    0x0A, 1);
@@ -906,90 +470,214 @@ public:
     printRegister("Self Diag",     0x0F, 1);
   }
 
-  void testAlternativeMapping() {
-    Serial.println("=== Testing Alternative Bit Mapping ===");
+  // Test methods for debugging
+  void testBasicOperations() {
+    Serial.println("=== Basic Operations Test ===");
     
-    // Temporarily replace write16 with write16Alt for testing
-    Serial.println("Testing with alternative bit mapping...");
+    // Test 1: Simple data bus test
+    Serial.println("Test 1: Data bus test");
+    Serial.println("Writing test patterns to data bus...");
     
-    fillScreen(0xF00);
-    delay(500);
+    digitalWrite(TFT_DC, HIGH); // Data mode
     
-    // Test the problematic coordinates with alternative mapping
+    // Write some test patterns
+    GPIOC->ODR = 0x0000; pulseWR(); delay(100);
+    GPIOC->ODR = 0xFFFF; pulseWR(); delay(100);
+    GPIOC->ODR = 0x5555; pulseWR(); delay(100);
+    GPIOC->ODR = 0xAAAA; pulseWR(); delay(100);
+    
+    Serial.println("Data bus test complete");
+    
+    // Test 2: Try simple fill commands
+    Serial.println("Test 2: Simple fill test");
+    
+    // Try to fill screen with red using direct commands
     writeCommand(0x2A); // Column Address Set
-    writeData(0); writeData(0);     // x0 = 0
-    writeData(1); writeData(63);    // x1 = 319
+    writeData(0x00); writeData(0x00); // x0 = 0
+    writeData(0x01); writeData(0x3F); // x1 = 319
     
-    writeCommand(0x2B); // Page Address Set  
-    writeData(0); writeData(0);     // y0 = 0
-    writeData(0); writeData(0);     // y1 = 0
+    writeCommand(0x2B); // Page Address Set
+    writeData(0x00); writeData(0x00); // y0 = 0
+    writeData(0x00); writeData(0xEF); // y1 = 239
     
     writeCommand(0x2C); // Memory Write
     
-    // Draw using alternative mapping
-    for (int i = 0; i < 320; i++) {
-      write16Alt(0xF800); // Red line using alternative mapping
+    Serial.println("Filling screen with red...");
+    for (uint32_t i = 0; i < 320UL * 240UL; i++) {
+      writeData16(0xF800); // Red
+      if (i % 10000 == 0) {
+        Serial.print(".");
+      }
     }
+    Serial.println(" Done!");
     
     delay(3000);
     
-    // Test a rectangle
-    fillScreen(0x0000);
-    delay(500);
+    // Test 3: Try blue
+    Serial.println("Test 3: Filling screen with blue...");
+    writeCommand(0x2C); // Memory Write again
+    for (uint32_t i = 0; i < 320UL * 240UL; i++) {
+      writeData16(0x001F); // Blue
+    }
+    Serial.println("Blue fill complete");
+  }
+
+  void testControlPins() {
+    Serial.println("=== Control Pins Test ===");
+    
+    Serial.println("Testing control pin connections...");
+    
+    // Test reset sequence
+    Serial.println("Testing RESET pin...");
+    digitalWrite(TFT_RST, LOW);
+    delay(100);
+    digitalWrite(TFT_RST, HIGH);
+    delay(100);
+    
+    // Test DC pin
+    Serial.println("Testing DC pin...");
+    digitalWrite(TFT_DC, LOW);  // Command mode
+    delay(10);
+    digitalWrite(TFT_DC, HIGH); // Data mode
+    delay(10);
+    
+    // Test WR pin
+    Serial.println("Testing WR pin...");
+    digitalWrite(TFT_WR, LOW);
+    delay(10);
+    digitalWrite(TFT_WR, HIGH);
+    delay(10);
+    
+    // Test RD pin
+    Serial.println("Testing RD pin...");
+    digitalWrite(TFT_RD, LOW);
+    delay(10);
+    digitalWrite(TFT_RD, HIGH);
+    delay(10);
+    
+    Serial.println("Control pins test complete");
+  }
+
+  void testBasicRectangles() {
+    Serial.println("=== Basic Rectangle Test ===");
+    
+    // First try a very simple black screen
+    Serial.println("Attempting to clear screen to black...");
     
     writeCommand(0x2A); // Column Address Set
-    writeData(0); writeData(100);   // x0 = 100
-    writeData(0); writeData(200);   // x1 = 200
+    writeData(0x00); writeData(0x00); // x0 = 0
+    writeData(0x01); writeData(0x3F); // x1 = 319
     
     writeCommand(0x2B); // Page Address Set
-    writeData(0); writeData(100);   // y0 = 100
-    writeData(0); writeData(150);   // y1 = 150
+    writeData(0x00); writeData(0x00); // y0 = 0
+    writeData(0x00); writeData(0xEF); // y1 = 239
     
     writeCommand(0x2C); // Memory Write
     
-    for (int i = 0; i < 101 * 51; i++) {
-      write16Alt(0x07E0); // Green rectangle
+    for (uint32_t i = 0; i < 320UL * 240UL; i++) {
+      writeData16(0x0000); // Black
     }
     
-    Serial.println("Alternative mapping test complete. Did the lines appear correctly?");
+    Serial.println("Black screen attempt complete");
+    delay(2000);
+    
+    // Now try a small rectangle
+    Serial.println("Attempting small red rectangle...");
+    
+    writeCommand(0x2A); // Column Address Set
+    writeData(0x00); writeData(0x32); // x0 = 50
+    writeData(0x00); writeData(0x64); // x1 = 100
+    
+    writeCommand(0x2B); // Page Address Set
+    writeData(0x00); writeData(0x32); // y0 = 50
+    writeData(0x00); writeData(0x64); // y1 = 100
+    
+    writeCommand(0x2C); // Memory Write
+    
+    for (int i = 0; i < 51 * 51; i++) {
+      writeData16(0xF800); // Red
+    }
+    
+    Serial.println("Small rectangle attempt complete");
+    delay(2000);
+  }
+
+  void debugInitialization() {
+    Serial.println("=== Debug Initialization ===");
+    
+    Serial.println("Step 1: Hardware reset");
+    digitalWrite(TFT_RST, LOW);
+    delay(20);
+    digitalWrite(TFT_RST, HIGH);
+    delay(150);
+    Serial.println("Reset complete");
+    
+    Serial.println("Step 2: Software reset");
+    writeCommand(0x01); // Software reset
+    delay(100);
+    Serial.println("Software reset complete");
+    
+    Serial.println("Step 3: Wake up display");
+    writeCommand(0x11); // Sleep Out
+    delay(120);
+    Serial.println("Sleep out complete");
+    
+    Serial.println("Step 4: Turn on display");
+    writeCommand(0x29); // Display ON
+    delay(20);
+    Serial.println("Display on complete");
+    
+    Serial.println("Step 5: Set basic parameters");
+    writeCommand(0x36); // MADCTL
+    writeData(0x48);    // Standard orientation
+    
+    writeCommand(0x3A); // Pixel Format
+    writeData(0x55);    // 16-bit color
+    
+    Serial.println("Basic initialization complete");
+  }
+
+  void testReadOperations() {
+    Serial.println("=== Read Operations Test ===");
+    Serial.println("NOTE: Many displays don't support reads in 16-bit parallel mode");
+    Serial.println("If reads fail, that's normal - write operations are what matter!");
+    
+    // Test if reads work at all
+    writeCommand(0x00); // NOP command
+    digitalWrite(TFT_DC, HIGH);
+    uint16_t test_read = read16();
+    
+    Serial.print("Test read result: 0x");
+    Serial.println(test_read, HEX);
+    
+    if (test_read == 0x00 || test_read == 0xFFFF) {
+      Serial.println("Reads may not be supported - this is OK for display operation!");
+    }
+  }
+
+  void testText() {
+    Serial.println("=== Text Test ===");
+    
+    fillScreen(0x0000); // Black background
+    
+    // Fix text background issues by setting proper text background
+    setTextColor(0xFFFF, 0x0000); // White text on black background
+    setTextSize(1);
+    setCursor(10, 10);
+    println("Size 1: Hello World!");
+    println("This line should wrap properly");
+    println("Line 3");
+    
+    setTextSize(2);
+    setCursor(10, 80);
+    setTextColor(0xF800, 0x0000); // Red text on black background
+    println("Size 2: Test");
+    
+    setTextSize(3);
+    setCursor(10, 130);
+    setTextColor(0x07E0, 0x0000); // Green text on black background
+    println("Size 3!");
+    
+    delay(5000);
   }
 };
-
-// Example usage with Adafruit_GFX compatibility:
-/*
-#include <Adafruit_GFX.h>
-#include "ILI9341_GFX.h"
-
-ILI9341_GFX display;
-
-void setup() {
-  Serial.begin(115200);
-  delay(100);
-  
-  Serial.println("=== ILI9341/ST7789 Display Test ===");  
-  Serial.println("Set IM pins to: IM2=1, IM1=1, IM0=0 for 16-bit parallel");
-  
-  display.begin();
-  display.detectController();
-  display.printStatus();
-  
-  // Now you can use all Adafruit_GFX functions:
-  display.fillScreen(0x0000);                    // Black background
-  display.drawLine(0, 0, 319, 239, 0xFFFF);     // White diagonal line
-  display.drawRect(50, 50, 100, 80, 0xF800);    // Red rectangle
-  display.fillCircle(160, 120, 30, 0x07E0);     // Green filled circle
-  display.setTextColor(0x001F);                 // Blue text
-  display.setTextSize(2);
-  display.setCursor(10, 10);
-  display.println("Hello World!");
-  
-  // Set different rotations
-  display.setRotation(1);  // Portrait
-  display.setRotation(0);  // Landscape
-}
-
-void loop() {
-  display.testColorMapping();
-  display.testAlternativeWindowing();
-}
-*/

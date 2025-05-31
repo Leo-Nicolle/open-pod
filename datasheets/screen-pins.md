@@ -55,7 +55,6 @@
 | 40 | 1  | IM2 | GND |
 
 
-
 ### Availiable on Nucleo-F4
 
 - PA0
