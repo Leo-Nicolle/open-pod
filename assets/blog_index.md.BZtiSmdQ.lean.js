@@ -1,0 +1,1 @@
+import{_ as a,a as t,o as i,as as l}from"./chunks/framework.Dci8sy5M.js";const m=JSON.parse('{"title":"Blog","description":"","frontmatter":{},"headers":[],"relativePath":"blog/index.md","filePath":"blog/index.md"}'),o={name:"blog/index.md"};function r(n,e,s,c,d,h){return i(),t("div",null,e[0]||(e[0]=[l("",4)]))}const p=a(o,[["render",r]]);export{m as __pageData,p as default};
