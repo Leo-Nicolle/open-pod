@@ -6,11 +6,15 @@ OpenPodUI ui(&display);
 
 void setup() {
   Serial.begin(115200);
-  while(!Serial)
-    delay(10); // Wait for serial to be ready
   display.begin();
   ui.begin();
   ui.renderAllTracks();
+  // for(int i = 0; i < 2; i++) {
+  //   ui.scrollDown();
+  //   ui.updateChangedTracks();
+  //   delay(100); // Simulate user scrolling
+  // }
+
   // Run performance test
   // UIBenchmark::runBenchmark(&display);
 }

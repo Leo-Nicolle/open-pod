@@ -106,19 +106,29 @@
 - PD2 
 - PH0
 - PH1
-
 ### VS1053
 | Board Pin | STM32F4 Pin | Function  |
 | --------- | ----------- | --------- |
 | RST       | ignored     | Reset pin |
-| SCK       | PA5         | SCK       |
-| MOSI      | PA7         | MOSI      |
-| MISO      | PA6         | MISO      |
+| SCK       | PB13        | SCK       |
+| MOSI      | PB15        | MOSI      |
+| MISO      | PB14        | MISO      |
 | SDCS      | PA2         | SD CS     |
 | MP3CS     | PB5         | MP3 CS    |
 | DREQ      | PB3         | Dreq      |
-| XDCS      | PC15        | A0        |
+| XDCS      | PA0         | A0        |
 
+### PSRAM
+| APS6404L Pin | Function | STM32F446RE Pin | Notes |
+|--------------|----------|-----------------|-------|
+| 1 (~CE)      | Chip Enable | PA1 (SPI1_NSS) | Active low chip select |
+| 2 (SO/SIO1) | Data Output | PA6 (SPI1_MISO) | Serial data output |
+| 3 (~WP/SIO2) | Write Protect | 3.3V | Tie high to disable write protect |
+| 4 (VSS)      | Ground | GND | Ground connection |
+| 5 (SI/SIO0) | Data Input | PA7 (SPI1_MOSI) | Serial data input |
+| 6 (CLK)      | Clock | PA5 (SPI1_SCK) | SPI clock |
+| 7 (~HOLD/SIO3) | Hold | 3.3V | Tie high to disable hold |
+| 8 (VCC)      | Power | 3.3V | 3.3V power supply |
 
 ### Interface command selection
 
