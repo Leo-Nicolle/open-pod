@@ -1,20 +1,28 @@
-#include <Adafruit_GFX.h>
-#include "ILI9341_GFX.h"
+#include "openpod_ui.h"
 
 ILI9341_GFX display;
+OpenPodUI ui(&display);
 
 void setup() {
-  Serial.begin(115200);
-  delay(100);
-  
-  Serial.println("=== ILI9341 Display Test ===");  
-  
   display.begin();
-    display.demoComplete();
-  // display.setRotation(2);
-  // display.fillScreen(0x0000); // Black background
+  ui.begin();
+
+
+  delay(1000); // Allow display to initialize
+  ui.scrollUp();
+  for(int i = 0; i < 10; i++) {
+    delay(100); // Allow scrolling to complete
+    ui.scrollDown();
+  }
+
+  delay(500); // Allow scrolling to complete
+  ui.scrollDown();
+  delay(500); // Allow scrolling to complete
+  ui.selectTrack(); // Simulate selecting the first track
+  delay(2500); // Allow selection to complete
+  ui.returnToList();
 }
 
 void loop() {
-  // Once you find the right rotation, use that one
+
 }
