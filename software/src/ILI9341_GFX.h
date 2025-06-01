@@ -5,17 +5,15 @@
 
 class ILI9341_GFX : public Adafruit_GFX, public ILI9341_Driver {
 
- public:
-
-   // Constructor - Initialize Adafruit_GFX with display dimensions
+public:
+  // Constructor - Initialize Adafruit_GFX with display dimensions
   ILI9341_GFX() : Adafruit_GFX(320, 240) {
-    // Constructor can be empty since setupPins() and initILI9341() will be called explicitly
   }
 
   void begin() {
-    setupPins(); // Setup GPIO pins
-    initILI9341(); // Initialize the ILI9341 display
-    setRotation(0); // Set default rotation
+    setupPins();
+    initILI9341();
+    setRotation(0);
   }
 
   // Required Adafruit_GFX virtual methods
@@ -49,9 +47,81 @@ class ILI9341_GFX : public Adafruit_GFX, public ILI9341_Driver {
     }
     
     setWindow(x, y, x + w - 1, y + h - 1);
-    for (int32_t i = 0; i < (int32_t)w * h; i++) {
-      writeData16(color);
+    
+    // Optimized fill using 16-bit parallel interface
+    digitalWrite(TFT_DC, HIGH); // Data mode
+    
+    // Unroll loop for better performance
+    uint32_t pixels = (uint32_t)w * h;
+    while (pixels >= 8) {
+      GPIOC->ODR = color; pulseWR();
+      GPIOC->ODR = color; pulseWR();
+      GPIOC->ODR = color; pulseWR();
+      GPIOC->ODR = color; pulseWR();
+      GPIOC->ODR = color; pulseWR();
+      GPIOC->ODR = color; pulseWR();
+      GPIOC->ODR = color; pulseWR();
+      GPIOC->ODR = color; pulseWR();
+      pixels -= 8;
     }
+    
+    // Handle remaining pixels
+    while (pixels--) {
+      GPIOC->ODR = color;
+      pulseWR();
+    }
+  }
+
+  // HIGH PERFORMANCE: Push array of pixels
+  void pushPixels(uint16_t* colors, uint32_t count) {
+    digitalWrite(TFT_DC, HIGH); // Data mode
+    
+    // Unrolled loop for maximum speed
+    while (count >= 8) {
+      GPIOC->ODR = *colors++; pulseWR();
+      GPIOC->ODR = *colors++; pulseWR();
+      GPIOC->ODR = *colors++; pulseWR();
+      GPIOC->ODR = *colors++; pulseWR();
+      GPIOC->ODR = *colors++; pulseWR();
+      GPIOC->ODR = *colors++; pulseWR();
+      GPIOC->ODR = *colors++; pulseWR();
+      GPIOC->ODR = *colors++; pulseWR();
+      count -= 8;
+    }
+    
+    // Handle remaining pixels
+    while (count--) {
+      GPIOC->ODR = *colors++;
+      pulseWR();
+    }
+  }
+  
+  // Push pixels with DMA support (if you add DMA later)
+  void pushPixelsDMA(uint16_t* colors, uint32_t count) {
+    // For now, fall back to regular push
+    pushPixels(colors, count);
+    
+    // TODO: Implement DMA transfer
+    // This would use DMA2 to transfer from memory to GPIOC->ODR
+    // with hardware triggering of WR signal
+  }
+
+  // Optimized window push - send pixels to a defined window area
+  void pushWindow(int16_t x, int16_t y, int16_t w, int16_t h, uint16_t* colors) {
+    setWindow(x, y, x + w - 1, y + h - 1);
+    pushPixels(colors, w * h);
+  }
+
+  // Fast vertical scroll (hardware accelerated if supported)
+  void verticalScroll(int16_t top, int16_t scrolllines, int16_t offset) {
+    // ILI9341 supports hardware scrolling
+    writeCommand(0x33); // Vertical Scrolling Definition
+    writeData16(top);
+    writeData16(scrolllines);
+    writeData16(320 - top - scrolllines); // Bottom fixed area
+    
+    writeCommand(0x37); // Vertical Scrolling Start Address
+    writeData16(offset);
   }
 
   void drawFastVLine(int16_t x, int16_t y, int16_t h, uint16_t color) override {
@@ -64,8 +134,36 @@ class ILI9341_GFX : public Adafruit_GFX, public ILI9341_Driver {
 
   void fillScreen(uint16_t color) override {
     setWindow(0, 0, _width - 1, _height - 1);
-    for (uint32_t i = 0; i < (uint32_t)_width * _height; i++) {
-      writeData16(color);
+    
+    digitalWrite(TFT_DC, HIGH);
+    
+    // Ultra-fast screen fill
+    uint32_t pixels = (uint32_t)_width * _height;
+    
+    // Fill 16 pixels at a time for maximum speed
+    while (pixels >= 16) {
+      GPIOC->ODR = color; pulseWR();
+      GPIOC->ODR = color; pulseWR();
+      GPIOC->ODR = color; pulseWR();
+      GPIOC->ODR = color; pulseWR();
+      GPIOC->ODR = color; pulseWR();
+      GPIOC->ODR = color; pulseWR();
+      GPIOC->ODR = color; pulseWR();
+      GPIOC->ODR = color; pulseWR();
+      GPIOC->ODR = color; pulseWR();
+      GPIOC->ODR = color; pulseWR();
+      GPIOC->ODR = color; pulseWR();
+      GPIOC->ODR = color; pulseWR();
+      GPIOC->ODR = color; pulseWR();
+      GPIOC->ODR = color; pulseWR();
+      GPIOC->ODR = color; pulseWR();
+      GPIOC->ODR = color; pulseWR();
+      pixels -= 16;
+    }
+    
+    while (pixels--) {
+      GPIOC->ODR = color;
+      pulseWR();
     }
   }
 
@@ -76,25 +174,25 @@ class ILI9341_GFX : public Adafruit_GFX, public ILI9341_Driver {
         _width = 320;
         _height = 240;
         writeCommand(0x36);
-        writeData(0xE8); // MX=1, MY=1, MV=1 for proper 320x240
+        writeData(0xE8);
         break;
       case 1: // 240x320 portrait
         _width = 240;
         _height = 320;
         writeCommand(0x36);
-        writeData(0x48); // Standard portrait
+        writeData(0x48);
         break;
       case 2: // 320x240 landscape flipped
         _width = 320;
         _height = 240;
         writeCommand(0x36);
-        writeData(0x28); // Flipped landscape
+        writeData(0x28);
         break;
       case 3: // 240x320 portrait flipped
         _width = 240;
         _height = 320;
         writeCommand(0x36);
-        writeData(0x88); // Flipped portrait
+        writeData(0x88);
         break;
     }
   }
@@ -102,6 +200,23 @@ class ILI9341_GFX : public Adafruit_GFX, public ILI9341_Driver {
   void invertDisplay(bool i) {
     writeCommand(i ? 0x21 : 0x20);
   }
-
   
+  // Performance testing
+  uint32_t testFillRate() {
+    uint32_t start = micros();
+    fillScreen(0xF800); // Red
+    fillScreen(0x07E0); // Green  
+    fillScreen(0x001F); // Blue
+    fillScreen(0x0000); // Black
+    uint32_t elapsed = micros() - start;
+    
+    uint32_t pixels = (uint32_t)_width * _height * 4; // 4 screens
+    float rate = (pixels * 1000000.0) / elapsed / 1000000.0; // MPixels/sec
+    
+    Serial.print("Fill rate: ");
+    Serial.print(rate);
+    Serial.println(" MPixels/sec");
+    
+    return elapsed;
+  }
 };
