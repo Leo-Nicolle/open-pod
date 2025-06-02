@@ -36,9 +36,11 @@ public:
   }
 
   inline void pulseWR() {
-    GPIOB->BSRR = (1 << (9 + 16));  // WR low (PB9)
-    __NOP(); // Small delay
-    GPIOB->BSRR = (1 << 9);         // WR high (PB9)
+    GPIOB->BSRR = (1 << (9 + 16)); 
+    // for(int i = 0; i< 250; i++){
+      __NOP();
+    // }
+    GPIOB->BSRR = (1 << 9);  
   }
 
   inline void write16(uint16_t data) {
@@ -85,6 +87,10 @@ public:
   void writeCommand(uint8_t cmd) {
     digitalWrite(TFT_DC, LOW);
     write16(cmd);
+  }
+  void writeData2x8(uint16_t data) {
+    writeData(data >> 8);
+    writeData(data & 0xFF);
   }
 
   void writeData(uint8_t data) {
@@ -303,8 +309,8 @@ public:
   void begin() {
     setupPins();
     initILI9341();
-    // setRotation(0); // Set default rotation
   }
+
 
   void detectController() {
     Serial.println("=== Controller Detection ===");
