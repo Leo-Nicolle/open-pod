@@ -47,15 +47,11 @@ struct Coords {
 class BufferManager {
 private:
     // Two swap buffers for double-buffering
-    uint16_t bufferA[SCREEN_WIDTH * 3];  // 3 rows worth of pixels
-    uint16_t bufferB[SCREEN_WIDTH * 3];  // 3 rows worth of pixels
+    uint16_t bufferA[SCREEN_WIDTH * 30];  // 30 rows worth of pixels
+    uint16_t bufferB[SCREEN_WIDTH * 30];  // 30 rows worth of pixels
     
     uint16_t* currentBuffer;
     uint16_t* backBuffer;
-    
-    // Single row/column buffers for individual operations
-    uint16_t rowBuffer[SCREEN_WIDTH];
-    uint16_t columnBuffer[SCREEN_HEIGHT];
     
 public:
     BufferManager() {
@@ -75,8 +71,8 @@ public:
     uint16_t* getBackBuffer() { return backBuffer; }
     
     // Get single-line buffers
-    uint16_t* getRowBuffer() { return rowBuffer; }
-    uint16_t* getColumnBuffer() { return columnBuffer; }
+    uint16_t* getRowBuffer(int index = 0) { return currentBuffer + (index * SCREEN_WIDTH); }
+    uint16_t* getColumnBuffer(int index = 0) { return currentBuffer + (index * SCREEN_HEIGHT); }
     
     // Get buffer for specific row within the 3-row buffer
     uint16_t* getBufferRow(int rowIndex) {
@@ -91,13 +87,17 @@ public:
         }
     }
     
-    void clearRowBuffer(uint16_t color = COLOR_BACKGROUND) {
+    void clearRowBuffer(int index = 0,  uint16_t color = COLOR_BACKGROUND) {
+        return;
+        uint16_t* rowBuffer = getRowBuffer(index);
         for (int i = 0; i < SCREEN_WIDTH; i++) {
             rowBuffer[i] = color;
         }
     }
     
-    void clearColumnBuffer(uint16_t color = COLOR_BACKGROUND) {
+    void clearColumnBuffer(int index = 0, uint16_t color = COLOR_BACKGROUND) {
+        return;
+        uint16_t* columnBuffer = getColumnBuffer(index);
         for (int i = 0; i < SCREEN_HEIGHT; i++) {
             columnBuffer[i] = color;
         }
