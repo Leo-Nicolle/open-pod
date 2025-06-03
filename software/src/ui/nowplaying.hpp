@@ -30,7 +30,7 @@ public:
     void setProgress(float progressPercent);
     void setPlayState(bool playing);
     
-    void renderFull(ILI9341_GFX* display);
+    void render(ILI9341_GFX* display);
     
     // Utility functions
     bool isInAlbumArtArea(int x, int y) const;
@@ -55,21 +55,25 @@ void NowPlayingComponent::setPlayState(bool playing) {
     isPlaying = playing;
 }
 
-bool NowPlayingComponent::isInAlbumArtArea(int x, int y) const {
-    return x >= ALBUM_ART_X && x < ALBUM_ART_X + ALBUM_ART_SIZE &&
-           y >= ALBUM_ART_Y && y < ALBUM_ART_Y + ALBUM_ART_SIZE;
-}
-
-bool NowPlayingComponent::isInTitleArea(int x, int y) const {
-    return y >= TITLE_Y && y < TITLE_Y + 20; // Approximate text height
-}
-
-bool NowPlayingComponent::isInProgressBarArea(int x, int y) const {
-    return x >= 10 && x < 10 + PROGRESS_BAR_WIDTH &&
-           y >= PROGRESS_BAR_Y && y < PROGRESS_BAR_Y + PROGRESS_BAR_HEIGHT;
-}
 
 
+void NowPlayingComponent::render(ILI9341_GFX* display) {
+    // Fill background
+    // TODO: Just fill the right area instead of the whole screen
+    // display->fillRect(COLOR_BACKGROUND);
 
-void NowPlayingComponent::renderFull(ILI9341_GFX* display) {
+    // Album art
+    display->fillRect(ALBUM_ART_X, ALBUM_ART_Y, ALBUM_ART_SIZE, ALBUM_ART_SIZE, COLOR_SECONDARY);
+    display->drawRect(ALBUM_ART_X, ALBUM_ART_Y, ALBUM_ART_SIZE, ALBUM_ART_SIZE, COLOR_ACCENT);
+
+    // Track title
+    fontRenderer.setBuffer(nullptr, 0, 0); // Use direct rendering if needed
+    fontRenderer.renderText(currentTrack, 10, TITLE_Y, IBMPlexSans16, COLOR_TEXT, COLOR_BACKGROUND);
+
+    // Progress bar
+    display->drawRect(10, PROGRESS_BAR_Y, PROGRESS_BAR_WIDTH, PROGRESS_BAR_HEIGHT, COLOR_ACCENT);
+    int filledWidth = static_cast<int>((PROGRESS_BAR_WIDTH - 2) * progress);
+    if (filledWidth > 0) {
+        display->fillRect(11, PROGRESS_BAR_Y + 1, filledWidth, PROGRESS_BAR_HEIGHT - 2, COLOR_HIGHLIGHT);
+    }
 }

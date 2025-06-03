@@ -1,0 +1,93 @@
+#include <Arduino.h>
+#include "ui/ILI9341_GFX.h"
+
+ILI9341_GFX display;
+
+// Colors
+#define COLOR_RED     0xF800
+#define COLOR_BLUE    0x001F
+#define COLOR_GREEN   0x07E0
+#define COLOR_BLACK   0x0000
+#define COLOR_WHITE   0xFFFF
+
+// Scroll parameters
+const uint16_t TFA = 0;
+const uint16_t BFA = 0;
+const uint16_t VSA = 240;
+
+uint16_t currentLine = 0;
+uint16_t lineBuffer[320];
+
+void writeData16(uint16_t value) {
+  display.writeData(value >> 8);
+  display.writeData(value & 0xFF);
+}
+
+void setup() {
+  Serial.begin(115200);
+  while (!Serial) delay(10);
+
+  display.begin();
+  Serial.println("Display initialized");
+  display.setRotation(1);
+  // Set scroll area: whole screen scrollable
+  display.writeCommand(0x33); // VSCRDEF
+  writeData16(TFA);
+  writeData16(VSA);
+  writeData16(BFA);
+
+  // Fill screen with RED
+  display.writeCommand(0x2A); // CASET
+  writeData16(0);
+  writeData16(239);
+  
+  display.writeCommand(0x2B); // PASET
+  writeData16(0);
+  writeData16(319);
+
+  display.writeCommand(0x2C); // RAMWR
+  for (int y = 0; y < 320; y++) {
+    for (int x = 0; x < 240; x++) {
+      lineBuffer[x] = COLOR_RED;
+    }
+    display.pushPixels(lineBuffer, 240);
+  }
+
+  delay(1000); // Let red show before starting transition
+}
+
+void addBlueLine() {
+  // Set scroll offset
+  display.writeCommand(0x37); // VSCRSADD
+  writeData16(currentLine);
+
+  // Write one blue line at current scroll position
+  display.writeCommand(0x2A); // CASET
+  writeData16(0);
+  writeData16(239);
+
+  display.writeCommand(0x2B); // PASET
+  writeData16(currentLine);
+  writeData16(currentLine);
+
+  display.writeCommand(0x2C); // RAMWR
+  for (int i = 0; i < 240; i++) {
+    lineBuffer[i] = COLOR_BLUE;
+  }
+  display.pushPixels(lineBuffer, 240);
+
+  // Advance within scroll range
+  currentLine++;
+  if (currentLine >= 320) {
+    currentLine = 0;
+  }
+}
+
+void loop() {
+  static uint32_t lastUpdate = 0;
+
+  if (millis() - lastUpdate >= 20) { // 50 FPS
+    lastUpdate = millis();
+    addBlueLine();
+  }
+}

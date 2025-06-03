@@ -157,20 +157,11 @@ void OpenPodUIEngine::renderTrackList() {
 }
 
 void OpenPodUIEngine::renderNowPlaying() {
-  if (!isRotatedMode) {
-    // Render using global buffers row by row
-    for (int y = 0; y < SCREEN_HEIGHT; y++) {
-      // Clear row buffer
-
-      // Render header
-      if (y <= HEADER_HEIGHT) {
-      }
-
-      // Render now playing screen
-
-      // Push the row to display
-    }
-  }
+  header.render(display);
+  nowPlaying.setTrack(tracks[selectedTrack]);
+  nowPlaying.setProgress(0.5f); // Example progress
+  nowPlaying.setPlayState(true); // Example play state
+  nowPlaying.render(display);
 }
 
 void OpenPodUIEngine::scrollUp() {

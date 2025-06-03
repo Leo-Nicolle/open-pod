@@ -1,0 +1,629 @@
+#pragma once
+#include "ILI9341_GFX.h"
+#include "animation_manager.h"
+#include "font-renderer.h"
+#include "fonts/IBMPlexSans12.h"
+#include "fonts/IBMPlexSans16.h"
+#include "theme.h"
+#include <Arduino.h>
+
+class OpenPodUI {
+private:
+  ILI9341_GFX *display;
+  AnimationManager animManager;
+
+  const char *tracks[20] = {"Bohemian Rhapsody",
+                            "Hotel California",
+                            "Stairway to Heaven",
+                            "Sweet Child O' Mine",
+                            "Imagine",
+                            "Billie Jean",
+                            "Like a Rolling Stone",
+                            "Smells Like Teen Spirit",
+                            "Purple Haze",
+                            "What's Going On",
+                            "Respect",
+                            "Good Vibrations",
+                            "Johnny B. Goode",
+                            "Hey Jude",
+                            "I Want to Hold Your Hand",
+                            "Yesterday",
+                            "Satisfaction",
+                            "My Girl",
+                            "Bridge Over Troubled Water",
+                            "The Sound of Silence"};
+
+  int totalTracks = 20;
+  int selectedTrack = 0;
+  int previousSelectedTrack = -1;
+  int topVisibleTrack = 0;
+  int tracksPerScreen = 6;
+
+  static const int headerHeight = 30;
+  static const int selectedMargin = 5;
+  static const int trackHeight = 30;
+  static const int margin = 5;
+  static const int trackListY = headerHeight + margin;
+  int lastDrawnOffset = 0;
+
+  uint16_t trackBuffer[320 * 30];
+  uint16_t headerBuffer[320 * 30];
+
+  MenuItemRenderer *menuRenderer;
+  FastFontRenderer *headerRenderer;
+
+  bool headerRendered = false;
+  bool isRotatedMode = false;
+
+  // UI State
+  enum UIState { STATE_TRACK_LIST, STATE_NOW_PLAYING, STATE_TRANSITIONING };
+  UIState currentState = STATE_TRACK_LIST;
+  UIState targetState = STATE_TRACK_LIST;
+
+  // Active animation IDs
+  uint32_t scrollAnimId = 0;
+  uint32_t transitionAnimId = 0;
+
+  // Coordinate transformation helpers
+  void transformCoords(int16_t &x, int16_t &y, int16_t &w, int16_t &h) {
+    if (isRotatedMode) {
+      // When rotated 90 degrees clockwise:
+      // Original (x,y) -> (239-y, x)
+      // Width and height swap
+      int16_t newX = 239 - y - h + 1;
+      int16_t newY = x;
+      int16_t newW = h;
+      int16_t newH = w;
+
+      x = newX;
+      y = newY;
+      w = newW;
+      h = newH;
+    }
+  }
+
+  void fillRectRotated(int16_t x, int16_t y, int16_t w, int16_t h,
+                       uint16_t color) {
+    if (isRotatedMode) {
+      transformCoords(x, y, w, h);
+    }
+    display->fillRect(x, y, w, h, color);
+  }
+
+  void setWindowRotated(int16_t x, int16_t y, int16_t x2, int16_t y2) {
+    if (isRotatedMode) {
+      // Transform window coordinates
+      int16_t newX = 239 - y2;
+      int16_t newY = x;
+      int16_t newX2 = 239 - y;
+      int16_t newY2 = x2;
+      display->setWindow(newX, newY, newX2, newY2);
+    } else {
+      display->setWindow(x, y, x2, y2);
+    }
+  }
+
+public:
+  OpenPodUI(ILI9341_GFX *disp) : display(disp) {
+    menuRenderer =
+        new MenuItemRenderer(trackBuffer, IBMPlexSans16, IBMPlexSans12);
+    headerRenderer = new FastFontRenderer(headerBuffer, 320, 30);
+  }
+
+  ~OpenPodUI() {
+    delete menuRenderer;
+    delete headerRenderer;
+  }
+
+  void begin() {
+    display->fillScreen(COLOR_BACKGROUND);
+    renderHeader();
+    renderAllTracks();
+  }
+
+  void renderHeader() {
+    for (int i = 0; i < 320 * 30; i++) {
+      headerBuffer[i] = COLOR_PRIMARY;
+    }
+
+    const char *title =
+        (currentState == STATE_NOW_PLAYING) ? "Now Playing" : "OpenPod";
+    headerRenderer->renderText(title, 10, 20, IBMPlexSans16, COLOR_TEXT,
+                               COLOR_PRIMARY);
+    renderBatteryIndicator();
+
+    if (!isRotatedMode) {
+      display->setWindow(0, 0, 319, 29);
+      display->pushPixels(headerBuffer, 320 * 30);
+      display->drawFastHLine(0, headerHeight, 320, COLOR_SECONDARY);
+    }
+
+    headerRendered = true;
+  }
+
+  void renderBatteryIndicator() {
+    int battX = 285;
+    int battY = 8;
+    int battW = 25;
+    int battH = 12;
+
+    for (int y = battY; y < battY + battH; y++) {
+      for (int x = battX; x < battX + battW; x++) {
+        int idx = y * 320 + x;
+        if (y == battY || y == battY + battH - 1 || x == battX ||
+            x == battX + battW - 1) {
+          headerBuffer[idx] = COLOR_TEXT;
+        }
+      }
+    }
+
+    for (int y = battY + 3; y < battY + 9; y++) {
+      headerBuffer[y * 320 + battX + battW] = COLOR_TEXT;
+    }
+
+    for (int y = battY + 2; y < battY + battH - 2; y++) {
+      for (int x = battX + 2; x < battX + 18; x++) {
+        headerBuffer[y * 320 + x] = COLOR_HIGHLIGHT;
+      }
+    }
+  }
+
+  void renderAllTracks() {
+    for (int i = 0; i < tracksPerScreen; i++) {
+      renderTrack(i);
+    }
+    drawScrollIndicator();
+  }
+
+  void renderTrack(int screenPosition) {
+    int trackIndex = topVisibleTrack + screenPosition;
+    if (trackIndex >= totalTracks)
+      return;
+
+    bool isSelected = (trackIndex == selectedTrack);
+    bool previousSelected = (trackIndex - 1 == selectedTrack);
+    int y = trackListY + (screenPosition * trackHeight);
+
+    menuRenderer->renderMenuItem(trackIndex + 1, tracks[trackIndex], isSelected,
+                                 previousSelected);
+
+    if (!isRotatedMode) {
+      display->setWindow(0, y, 319, y + trackHeight - 1);
+      display->pushPixels(trackBuffer, 320 * trackHeight);
+    }
+  }
+
+  void drawScrollIndicator() {
+    if (totalTracks <= tracksPerScreen || isRotatedMode)
+      return;
+
+    int scrollBarX = SCROLLBAR_X;
+    int scrollBarY = trackListY;
+    int scrollBarHeight = tracksPerScreen * trackHeight;
+
+    display->fillRect(scrollBarX, scrollBarY, 8, scrollBarHeight,
+                      COLOR_BACKGROUND);
+    display->drawRect(scrollBarX, scrollBarY, 6, scrollBarHeight, COLOR_ACCENT);
+
+    int thumbHeight =
+        max(20, (scrollBarHeight * tracksPerScreen) / totalTracks);
+    int thumbPos =
+        scrollBarY + ((scrollBarHeight - thumbHeight) * topVisibleTrack) /
+                         (totalTracks - tracksPerScreen);
+
+    display->fillRect(scrollBarX + 1, thumbPos, 4, thumbHeight,
+                      COLOR_SECONDARY);
+  }
+
+  void updateChangedTracks() {
+    if (previousSelectedTrack != selectedTrack) {
+      int oldPos = previousSelectedTrack - topVisibleTrack;
+      if (oldPos >= 0 && oldPos < tracksPerScreen) {
+        renderTrack(oldPos);
+      }
+
+      int newPos = selectedTrack - topVisibleTrack;
+      if (newPos >= 0 && newPos < tracksPerScreen) {
+        renderTrack(newPos);
+      }
+
+      previousSelectedTrack = selectedTrack;
+    }
+    drawScrollIndicator();
+  }
+
+  void scrollUp() {
+    if (selectedTrack > 0 && currentState == STATE_TRACK_LIST &&
+        !animManager.isActive()) {
+      previousSelectedTrack = selectedTrack;
+      selectedTrack--;
+
+      if (selectedTrack < topVisibleTrack) {
+        topVisibleTrack--;
+        animateScroll(true);
+      } else {
+        updateChangedTracks();
+      }
+    }
+  }
+
+  void scrollDown() {
+    if (selectedTrack < totalTracks - 1 && currentState == STATE_TRACK_LIST &&
+        !animManager.isActive()) {
+      previousSelectedTrack = selectedTrack;
+      selectedTrack++;
+
+      if (selectedTrack >= topVisibleTrack + tracksPerScreen) {
+        topVisibleTrack++;
+        animateScroll(false);
+      } else {
+        updateChangedTracks();
+      }
+    }
+  }
+
+  void animateScroll(bool scrollingUp) {
+    // Setup vertical scrolling area for track list
+    display->writeCommand(0x33);                 // VSCRDEF
+    display->writeData16(headerHeight + margin); // TFA = header area
+    display->writeData16(tracksPerScreen *
+                         trackHeight); // VSA = scrollable area
+    display->writeData16(240 - headerHeight - margin -
+                         (tracksPerScreen * trackHeight)); // BFA
+
+    int startOffset = scrollingUp ? -trackHeight : trackHeight;
+
+    scrollAnimId = animManager.animate(
+        ANIM_CUSTOM, startOffset, 0, 150,
+        [this](float offset) {
+          int intOffset = (int)offset;
+          display->writeCommand(0x37); // VSCRSADD
+          display->writeData16(topVisibleTrack * trackHeight + intOffset);
+        },
+        [this]() {
+          display->writeCommand(0x37);
+          display->writeData16(0);
+          renderAllTracks();
+        },
+        Easing::easeOutCubic);
+  }
+
+  void selectTrack() {
+    if (currentState == STATE_TRACK_LIST && !animManager.isActive()) {
+      transitionToNowPlaying();
+    }
+  }
+
+  void returnToList() {
+    if (currentState == STATE_NOW_PLAYING && !animManager.isActive()) {
+      transitionToTrackList();
+    }
+  }
+
+  void transitionToNowPlaying() {
+    currentState = STATE_TRANSITIONING;
+    targetState = STATE_NOW_PLAYING;
+
+    // First, prepare the display memory with both screens
+    prepareTransitionBuffer();
+
+    // Setup scrolling area for entire display
+    display->writeCommand(0x33); // VSCRDEF
+    display->writeData16(0);     // TFA = 0 (no top fixed area)
+    display->writeData16(240);   // VSA = 240 (entire display height)
+    display->writeData16(0);     // BFA = 0 (no bottom fixed area)
+
+    // Animate horizontal scroll
+    transitionAnimId = animManager.animate(
+        ANIM_CUSTOM, 0, 320, 300,
+        [this](float offset) {
+          int scrollPos = (int)offset;
+          // Scroll horizontally by using the start column parameter
+          display->writeCommand(0x37); // VSCRSADD
+          display->writeData16(scrollPos % 320);
+        },
+        [this]() {
+          // Reset scroll position
+          display->writeCommand(0x37);
+          display->writeData16(0);
+
+          // Disable scrolling
+          display->writeCommand(0x33);
+          display->writeData16(0);
+          display->writeData16(240);
+          display->writeData16(0);
+
+          currentState = STATE_NOW_PLAYING;
+          renderNowPlayingScreen();
+        },
+        Easing::easeInOutCubic);
+  }
+
+  void prepareTransitionBuffer() {
+    // We need to prepare a 640x240 virtual buffer in the display memory
+    // Left half (0-319): Current track list
+    // Right half (320-639): Now Playing screen
+
+    // First, ensure tearing effect is off
+    display->writeCommand(0x34); // TEOFF
+
+    // Set column address to full width (0-319)
+    display->writeCommand(0x2A); // CASET
+    display->writeData16(0);     // Start column
+    display->writeData16(319);   // End column
+
+    // Set page address to full height
+    display->writeCommand(0x2B); // PASET
+    display->writeData16(0);     // Start page
+    display->writeData16(239);   // End page
+
+    // The current screen is already displayed (track list)
+    // Now we need to render the Now Playing screen to the right
+
+    // Unfortunately, ILI9341 doesn't support 640 pixel width
+    // So let's use a different approach with vertical scrolling
+    // We'll render screens vertically stacked instead
+    renderNowPlayingOffScreen();
+  }
+
+  void renderNowPlayingOffScreen() {
+    // Change approach: use vertical stacking since ILI9341 has 320x240 display
+    // We'll render Now Playing below the current screen
+
+    // The ILI9341 has internal memory for 240x320 when in portrait mode
+    // So we need to work within these constraints
+
+    // Set memory write direction for extended area
+    display->writeCommand(0x36); // MADCTL
+    display->writeData(0xE8);    // Keep current rotation
+
+    // Now render the Now Playing screen data
+    // We'll use a sliding window approach instead
+
+    // For now, let's just fill with the background color
+    // The white issue is because we're not writing actual data
+
+    // Write to the lower portion of memory (if available)
+    // This is tricky because ILI9341 doesn't have double buffering
+  }
+  void transitionToNowPlayingSimple() {
+    currentState = STATE_TRANSITIONING;
+    targetState = STATE_NOW_PLAYING;
+
+    // Initialize scroll system
+    display->setupScroll(0, 320, 0); // Full-width scroll area
+
+    // Fill screen with current UI (assumed to already be on screen)
+    // Now prepare animation
+    transitionAnimId = animManager.animate(
+        ANIM_CUSTOM, 0, 320, 1000,
+        [this](float offset) {
+          int currentOffset = (int)offset;
+
+          // Scroll the screen visually
+          display->setScrollOffset(320 - currentOffset);
+
+          // Draw all new columns between lastOffset and currentOffset
+          for (int i = lastDrawnOffset + 1; i <= currentOffset; i++) {
+            int drawX = (i + 319) % 320;
+            uint16_t colBuffer[240];
+
+            for (int y = 0; y < 240; y++) {
+              colBuffer[y] = COLOR_BACKGROUND;
+
+              if (y < 30)
+                colBuffer[y] = COLOR_PRIMARY;
+              if (y == 30)
+                colBuffer[y] = COLOR_SECONDARY;
+
+              if (y >= 50 && y < 170 && drawX >= 100 && drawX < 220)
+                colBuffer[y] = COLOR_SECONDARY;
+
+              if ((y == 50 || y == 169) && drawX >= 100 && drawX < 220)
+                colBuffer[y] = COLOR_ACCENT;
+
+              if ((drawX == 100 || drawX == 219) && y >= 50 && y < 170)
+                colBuffer[y] = COLOR_ACCENT;
+
+              if (y >= 220 && y < 228 && drawX >= 10 && drawX < 310) {
+                if (y == 220 || y == 227 || drawX == 10 || drawX == 309)
+                  colBuffer[y] = COLOR_ACCENT;
+                else if (drawX < 100)
+                  colBuffer[y] = COLOR_HIGHLIGHT;
+              }
+            }
+
+            // Push one column
+            display->writeCommand(0x2A); // CASET
+            display->writeData2x8(drawX);
+            display->writeData2x8(drawX);
+
+            display->writeCommand(0x2B); // PASET
+            display->writeData2x8(0);
+            display->writeData2x8(239);
+
+            display->writeCommand(0x2C); // RAMWR
+            display->pushPixels(colBuffer, 240);
+          }
+
+          lastDrawnOffset = currentOffset;
+        },
+        [this]() {
+          currentState = STATE_NOW_PLAYING;
+          display->setScrollOffset(0); // Reset scroll
+          renderNowPlayingScreen();    // Final render
+        },
+        Easing::easeInOutCubic);
+  }
+
+  void transitionToTrackList() {
+    currentState = STATE_TRANSITIONING;
+    targetState = STATE_TRACK_LIST;
+
+    // Switch to portrait mode
+    display->writeCommand(0x36);
+    display->writeData(0x48);
+    isRotatedMode = true;
+
+    // Render track list off-screen
+    // renderTrackListRotated();
+
+    // Setup scrolling
+    display->writeCommand(0x33);
+    display->writeData16(0);
+    display->writeData16(320);
+    display->writeData16(0);
+
+    // Start from Now Playing position
+    display->writeCommand(0x37);
+    display->writeData16(240);
+    transitionAnimId = animManager.animate(
+        ANIM_CUSTOM, 240, 0, 300,
+        [this](float offset) {
+          int scrollPos = (int)offset;
+          display->writeCommand(0x37);
+          display->writeData16(scrollPos);
+        },
+        [this]() {
+          // Now safe to render rotated content
+          display->writeCommand(0x36); // restore portrait
+          display->writeData(0xE8);
+          isRotatedMode = false;
+
+          display->writeCommand(0x37);
+          display->writeData16(0);
+
+          currentState = STATE_TRACK_LIST;
+          display->fillScreen(COLOR_BACKGROUND);
+          renderHeader();
+          renderAllTracks(); // <- safe to call here
+        },
+        Easing::easeInOutCubic);
+  }
+
+  void renderNowPlayingRotated() {
+    // When rotated, we need to render at "vertical" position 240-319
+    // This appears as horizontal position in the rotated view
+
+    // Clear the off-screen area
+    fillRectRotated(240, 0, 80, 240, COLOR_BACKGROUND);
+
+    // Header (will appear at top when scrolled in)
+    fillRectRotated(240, 0, 80, 30, COLOR_PRIMARY);
+
+    // Line under header
+    fillRectRotated(240, 30, 80, 1, COLOR_SECONDARY);
+
+    // Album art placeholder
+    fillRectRotated(260, 50, 40, 120, COLOR_SECONDARY);
+
+    // Progress bar area
+    fillRectRotated(245, 220, 70, 8, COLOR_ACCENT);
+  }
+
+  void renderTrackListRotated() {
+    // Render track list in off-screen area when rotated
+    fillRectRotated(240, 0, 80, 240, COLOR_BACKGROUND);
+
+    // Header
+    fillRectRotated(240, 0, 80, 30, COLOR_PRIMARY);
+    fillRectRotated(240, 30, 80, 1, COLOR_SECONDARY);
+
+    // Track placeholders
+    for (int i = 0; i < tracksPerScreen; i++) {
+      int y = trackListY + (i * trackHeight);
+      if ((topVisibleTrack + i) == selectedTrack) {
+        fillRectRotated(240, y, 80, trackHeight, COLOR_HIGHLIGHT);
+      }
+    }
+  }
+
+  void renderNowPlayingScreen() {
+    display->fillScreen(COLOR_BACKGROUND);
+
+    // Header
+    for (int i = 0; i < 320 * 30; i++) {
+      headerBuffer[i] = COLOR_PRIMARY;
+    }
+    headerRenderer->renderText("Now Playing", 10, 20, IBMPlexSans16, COLOR_TEXT,
+                               COLOR_PRIMARY);
+    renderBatteryIndicator();
+    display->setWindow(0, 0, 319, 29);
+    display->pushPixels(headerBuffer, 320 * 30);
+    display->drawFastHLine(0, 30, 320, COLOR_SECONDARY);
+
+    // Album art
+    int albumX = 100;
+    int albumY = 50;
+    display->fillRect(albumX, albumY, 120, 120, COLOR_SECONDARY);
+    display->drawRect(albumX, albumY, 120, 120, COLOR_ACCENT);
+
+    // Track title
+    display->setTextColor(COLOR_TEXT);
+    display->setTextSize(2);
+    display->setCursor(10, 185);
+    display->print(tracks[selectedTrack]);
+
+    // Progress bar
+    display->drawRect(10, 220, 300, 8, COLOR_ACCENT);
+    display->fillRect(11, 221, 90, 6, COLOR_HIGHLIGHT);
+  }
+
+  void update() { animManager.update(); }
+
+  void pageUp() {
+    if (currentState != STATE_TRACK_LIST || animManager.isActive())
+      return;
+
+    int oldSelected = selectedTrack;
+    int oldTop = topVisibleTrack;
+
+    selectedTrack = max(0, selectedTrack - tracksPerScreen);
+    topVisibleTrack = max(0, topVisibleTrack - tracksPerScreen);
+
+    if (topVisibleTrack != oldTop) {
+      renderAllTracks();
+    } else if (selectedTrack != oldSelected) {
+      previousSelectedTrack = oldSelected;
+      updateChangedTracks();
+    }
+  }
+
+  void pageDown() {
+    if (currentState != STATE_TRACK_LIST || animManager.isActive())
+      return;
+
+    int oldSelected = selectedTrack;
+    int oldTop = topVisibleTrack;
+
+    selectedTrack = min(totalTracks - 1, selectedTrack + tracksPerScreen);
+    topVisibleTrack =
+        min(totalTracks - tracksPerScreen, topVisibleTrack + tracksPerScreen);
+
+    if (topVisibleTrack != oldTop) {
+      renderAllTracks();
+    } else if (selectedTrack != oldSelected) {
+      previousSelectedTrack = oldSelected;
+      updateChangedTracks();
+    }
+  }
+
+  float getFPS() const { return animManager.getFPS(); }
+
+  void measurePerformance() {
+    Serial.println("\n=== UI Performance Metrics ===");
+
+    Serial.print("Current FPS: ");
+    Serial.println(animManager.getFPS());
+
+    uint32_t avg, min, max;
+    animManager.getPerformanceStats(avg, min, max);
+    Serial.print("Frame times - Avg: ");
+    Serial.print(avg);
+    Serial.print("µs, Min: ");
+    Serial.print(min);
+    Serial.print("µs, Max: ");
+    Serial.print(max);
+    Serial.println("µs");
+  }
+};
