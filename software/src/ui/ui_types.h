@@ -1,6 +1,8 @@
 #pragma once
 #include <stdint.h>
 #include <Arduino.h>
+#include "ui/theme.h"
+#include "rendering/font_renderer.h"
 
 // UI States
 enum UIState {
@@ -16,7 +18,6 @@ static const int HEADER_HEIGHT = 30;
 static const int TRACK_HEIGHT = 30;
 static const int TRACKS_PER_SCREEN = 6;
 static const int SCROLLBAR_WIDTH = 8;
-static const int SCROLLBAR_X = 312;
 static const int MARGIN = 5;
 static const int TRACK_LIST_Y = HEADER_HEIGHT + MARGIN;
 
@@ -69,60 +70,13 @@ public:
     // Get buffer pointers
     uint16_t* getCurrentBuffer() { return currentBuffer; }
     uint16_t* getBackBuffer() { return backBuffer; }
-    
-    // Get single-line buffers
-    uint16_t* getRowBuffer(int index = 0) { return currentBuffer + (index * SCREEN_WIDTH); }
-    uint16_t* getColumnBuffer(int index = 0) { return currentBuffer + (index * SCREEN_HEIGHT); }
-    
-    // Get buffer for specific row within the 3-row buffer
-    uint16_t* getBufferRow(int rowIndex) {
-        if (rowIndex < 0 || rowIndex >= 3) return nullptr;
-        return currentBuffer + (rowIndex * SCREEN_WIDTH);
-    }
-    
-    // Clear buffers
     void clearCurrentBuffer(uint16_t color = COLOR_BACKGROUND) {
         for (int i = 0; i < SCREEN_WIDTH * 3; i++) {
             currentBuffer[i] = color;
         }
     }
-    
-    void clearRowBuffer(int index = 0,  uint16_t color = COLOR_BACKGROUND) {
-        return;
-        uint16_t* rowBuffer = getRowBuffer(index);
-        for (int i = 0; i < SCREEN_WIDTH; i++) {
-            rowBuffer[i] = color;
-        }
-    }
-    
-    void clearColumnBuffer(int index = 0, uint16_t color = COLOR_BACKGROUND) {
-        return;
-        uint16_t* columnBuffer = getColumnBuffer(index);
-        for (int i = 0; i < SCREEN_HEIGHT; i++) {
-            columnBuffer[i] = color;
-        }
-    }
-    
-    // Memory usage info
-    size_t getTotalMemoryUsage() const {
-        return (SCREEN_WIDTH * 3 * 2 + SCREEN_WIDTH + SCREEN_HEIGHT) * sizeof(uint16_t);
-    }
-    
-    void printMemoryInfo() const {
-        Serial.print("BufferManager memory usage: ");
-        Serial.print(getTotalMemoryUsage());
-        Serial.println(" bytes");
-        Serial.print("3-row buffers: 2x ");
-        Serial.print(SCREEN_WIDTH * 3 * sizeof(uint16_t));
-        Serial.println(" bytes");
-        Serial.print("Row buffer: ");
-        Serial.print(SCREEN_WIDTH * sizeof(uint16_t));
-        Serial.println(" bytes");
-        Serial.print("Column buffer: ");
-        Serial.print(SCREEN_HEIGHT * sizeof(uint16_t));
-        Serial.println(" bytes");
-    }
 };
 
 // Global buffer manager instance
 extern BufferManager g_buffers;
+extern FastFontRenderer fontRenderer;

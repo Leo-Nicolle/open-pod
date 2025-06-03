@@ -1,7 +1,6 @@
 #include <Arduino.h>
 #include "rendering/ILI9341_GFX.h"
 #include "rendering/ILI9341_driver.h"
-#include "rendering/ILI9341_GFX.h"
 #include "ui/ui_engine.hpp"
 
 // Display instance
@@ -10,15 +9,17 @@ OpenPodUIEngine ui(&display);
 
 void setup() {
     Serial.begin(115200);
-    while(!Serial) {
+    // while(!Serial) {
       // Wait for serial to be ready
-      delay(10);
-    }
+      // delay(10);
+    // }
     Serial.println("OpenPod UI starting...");
     // Initialize display
     display.begin();
     display.setRotation(0);
     delay(100); // Allow display to initialize
+    display.fillRect(0,0,120,120, 0x0000); // Clear the display with black color);
+    delay(500); // Allow display to initialize
     
     // Initialize UI
     ui.begin();

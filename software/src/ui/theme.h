@@ -17,6 +17,7 @@
 #define COLOR_HIGHLIGHT  0xED91  // #E8B86D
 #define COLOR_ACCENT     0x9EDD  // #81BFDA
 #define COLOR_TEXT       0x4208  // #333333
+
 #define SCROLLBAR_X 312
 #define SCROLLBAR_W 8
 

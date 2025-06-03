@@ -1,7 +1,7 @@
 #pragma once
 #include "../fonts/IBMPlexSans12.h"
 #include "../fonts/IBMPlexSans16.h"
-#include "../theme.h"
+#include "theme.h"
 #include "menu.hpp"
 #include "ui_types.h"
 #include <Arduino.h>
@@ -79,22 +79,15 @@ const char *TrackListComponent::getTrackName(int index) const {
 }
 
 void TrackListComponent::renderTrack(int trackIndex, bool isSelected) {
-  uint16_t* buffer = g_buffers.getCurrentBuffer();
-  uint16_t bgColor = isSelected ? COLOR_HIGHLIGHT : COLOR_BACKGROUND;
-  uint16_t textColor = isSelected ? COLOR_TEXT : COLOR_TEXT;
-
-  menuRenderer->renderMenuItem(trackIndex + 1, tracks[trackIndex], isSelected,
-                               previousSelected);
+  fontRenderer.setBuffer(g_buffers.getCurrentBuffer(), SCREEN_WIDTH, 30);
+  menuRenderer->renderMenuItem(trackIndex + 1, tracks[trackIndex], isSelected);
 }
 void TrackListComponent::renderAllTracks(ILI9341_GFX *display) {
-  // Use row-by-row rendering for full update
-  for (int y = TRACK_LIST_Y;
-       y < TRACK_LIST_Y + TRACKS_PER_SCREEN * TRACK_HEIGHT; y++) {
-    renderRow(y);
-    uint16_t *rowBuffer = g_buffers.getRowBuffer();
-
-    // Push only the track list portion (excluding scrollbar)
-    display->setWindow(0, y, SCROLLBAR_X - 1, y);
-    display->pushPixels(rowBuffer, SCROLLBAR_X);
+  for (int i = topVisibleTrack; i < topVisibleTrack + TRACKS_PER_SCREEN; i++) {
+    renderTrack(i, i == selectedTrack);
+    uint16_t y = i * TRACK_HEIGHT + TRACK_LIST_Y;
+    display->setWindow(0, y, SCREEN_WIDTH - 1, y + TRACK_HEIGHT - 1);
+    display->pushPixels(g_buffers.getCurrentBuffer(), SCREEN_WIDTH * TRACK_HEIGHT);
+    g_buffers.swapBuffers();
   }
 }

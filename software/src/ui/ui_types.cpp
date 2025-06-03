@@ -2,3 +2,4 @@
 
 // Global buffer manager instance
 BufferManager g_buffers;
+FastFontRenderer fontRenderer = FastFontRenderer(g_buffers.getCurrentBuffer(), SCREEN_WIDTH, 30);

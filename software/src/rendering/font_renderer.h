@@ -179,94 +179,10 @@ public:
     renderText(text, x, y, font, color, bgColor);
   }
 
-  // Render a single horizontal scanline of text at given Y (in buffer), with
-  // alpha blending
-  void renderTextScanline(const char *text, int x, int y, const FastFont &font,
-                          uint16_t fgColor, uint16_t bgColor,
-                          uint16_t *lineBuffer) {
-    if (y < 0 || y >= bufferHeight)
-      return;
-
-    const uint16_t *blendTable = colorCache.getBlendTable(bgColor, fgColor);
-
-    while (*text) {
-      char c = *text++;
-
-      if (c < font.firstChar || c > font.lastChar) {
-        continue;
-      }
-
-      const FastGlyph &glyph = font.glyphs[c - font.firstChar];
-
-      int glyphY = y - glyph.yOffset;
-      if (glyphY < 0 || glyphY >= glyph.height) {
-        x += glyph.xAdvance;
-        continue;
-      }
-
-      const uint8_t *alphaRow = glyph.alphaData + glyphY * glyph.width;
-
-      for (int gx = 0; gx < glyph.width; gx++) {
-        int screenX = x + gx + glyph.xOffset;
-        if (screenX < 0 || screenX >= bufferWidth)
-          continue;
-
-        uint8_t alpha = alphaRow[gx];
-        lineBuffer[screenX] = blendTable[alpha];
-      }
-
-      x += glyph.xAdvance;
-    }
-  }
-
-  // Render a single vertical column of text at given X (screen position), with
-  // alpha blending
-  void renderTextColumn(const char *text, int x, int y, const FastFont &font,
-                        uint16_t fgColor, uint16_t bgColor,
-                        uint16_t *columnBuffer) {
-    // Initialize full column with background
-    for (int i = 0; i < bufferHeight; ++i) {
-      columnBuffer[i] = bgColor;
-    }
-
-    const uint16_t *blendTable = colorCache.getBlendTable(bgColor, fgColor);
-
-    int cursorX = x;
-
-    while (*text) {
-      char c = *text++;
-
-      if (c < font.firstChar || c > font.lastChar)
-        continue;
-
-      const FastGlyph &glyph = font.glyphs[c - font.firstChar];
-
-      int glyphXStart = cursorX + glyph.xOffset;
-      int glyphXEnd = glyphXStart + glyph.width;
-
-      if (x < glyphXStart) {
-        cursorX += glyph.xAdvance;
-        continue;
-      }
-
-      if (x >= glyphXStart && x < glyphXEnd) {
-        int glyphColumn = x - glyphXStart;
-        for (int dy = 0; dy < glyph.height; ++dy) {
-          int screenY = y + glyph.yOffset + dy;
-          if (screenY < 0 || screenY >= bufferHeight)
-            continue;
-
-          uint8_t alpha = glyph.alphaData[dy * glyph.width + glyphColumn];
-          columnBuffer[screenY] = blendTable[alpha];
-        }
-      }
-
-      cursorX += glyph.xAdvance;
-
-      // Stop early if we've gone past the current column
-      if (cursorX > x)
-        break;
-    }
+  void setBuffer(uint16_t *buffer, int width, int height) {
+    renderBuffer = buffer;
+    bufferWidth = width;
+    bufferHeight = height;
   }
 
 private:

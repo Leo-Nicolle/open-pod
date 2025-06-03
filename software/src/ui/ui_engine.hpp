@@ -81,8 +81,6 @@ public:
   // Efficient transition rendering
   void transitionToNowPlaying();
   void transitionToTrackList();
-  void renderTransitionColumn(int x, bool toNowPlaying);
-  void renderTransitionRow(int y, bool toNowPlaying);
 
   // Smooth scrolling
   void animateScroll(bool scrollingUp);
@@ -106,12 +104,6 @@ OpenPodUIEngine::OpenPodUIEngine(ILI9341_GFX *disp)
       currentState(STATE_TRACK_LIST), targetState(STATE_TRACK_LIST),
       isRotatedMode(false), scrollAnimId(0), transitionAnimId(0),
       lastDrawnOffset(0) {
-  Serial.println("Tracks:");
-  for (auto &track : tracks) {
-    Serial.println(track);
-  }
-  // Print buffer manager info
-  g_buffers.printMemoryInfo();
 }
 
 void OpenPodUIEngine::begin() {
@@ -159,32 +151,9 @@ void OpenPodUIEngine::renderCurrentState() {
 }
 
 void OpenPodUIEngine::renderTrackList() {
-  // if (!isRotatedMode) {
-    // Render using global buffers row by row
-    for (int y = 0; y < SCREEN_HEIGHT; y++) {
-      // Clear row buffer
-      g_buffers.clearRowBuffer(COLOR_BACKGROUND);
-
-      // Render header
-      if (y <= HEADER_HEIGHT) {
-        header.renderRow(y, "OpenPod");
-      }
-
-      // Render track list
-      if (y >= TRACK_LIST_Y &&
-          y < TRACK_LIST_Y + TRACKS_PER_SCREEN * TRACK_HEIGHT) {
-        trackList.renderRow(y);
-      }
-
-      // Render scrollbar (overlays on top)
-      scrollbar.renderRow(y);
-
-      // Push the row to display
-      uint16_t *rowBuffer = g_buffers.getRowBuffer();
-      display->setWindow(0, y, SCREEN_WIDTH - 1, y);
-      display->pushPixels(rowBuffer, SCREEN_WIDTH);
-    }
-  // }
+  header.render(display);
+  trackList.renderAllTracks(display);
+  scrollbar.render(display);
 }
 
 void OpenPodUIEngine::renderNowPlaying() {
@@ -192,20 +161,14 @@ void OpenPodUIEngine::renderNowPlaying() {
     // Render using global buffers row by row
     for (int y = 0; y < SCREEN_HEIGHT; y++) {
       // Clear row buffer
-      g_buffers.clearRowBuffer(COLOR_BACKGROUND);
 
       // Render header
       if (y <= HEADER_HEIGHT) {
-        header.renderRow(y, "Now Playing");
       }
 
       // Render now playing screen
-      nowPlaying.renderRow(y);
 
       // Push the row to display
-      uint16_t *rowBuffer = g_buffers.getRowBuffer();
-      display->setWindow(0, y, SCREEN_WIDTH - 1, y);
-      display->pushPixels(rowBuffer, SCREEN_WIDTH);
     }
   }
 }
@@ -227,13 +190,7 @@ void OpenPodUIEngine::scrollUp() {
       // Quick update - just redraw track list area
       for (int y = TRACK_LIST_Y;
            y < TRACK_LIST_Y + TRACKS_PER_SCREEN * TRACK_HEIGHT; y++) {
-        g_buffers.clearRowBuffer(COLOR_BACKGROUND);
-        trackList.renderRow(y);
-        scrollbar.renderRow(y);
 
-        uint16_t *rowBuffer = g_buffers.getRowBuffer();
-        display->setWindow(0, y, SCREEN_WIDTH - 1, y);
-        display->pushPixels(rowBuffer, SCREEN_WIDTH);
       }
     }
   }
@@ -256,13 +213,6 @@ void OpenPodUIEngine::scrollDown() {
       // Quick update - just redraw track list area
       for (int y = TRACK_LIST_Y;
            y < TRACK_LIST_Y + TRACKS_PER_SCREEN * TRACK_HEIGHT; y++) {
-        g_buffers.clearRowBuffer(COLOR_BACKGROUND);
-        trackList.renderRow(y);
-        scrollbar.renderRow(y);
-
-        uint16_t *rowBuffer = g_buffers.getRowBuffer();
-        display->setWindow(0, y, SCREEN_WIDTH - 1, y);
-        display->pushPixels(rowBuffer, SCREEN_WIDTH);
       }
     }
   }
@@ -292,7 +242,7 @@ void OpenPodUIEngine::transitionToNowPlaying() {
 
         // Draw columns from right to left
         for (int x = lastDrawnOffset; x < currentOffset; x++) {
-          renderTransitionColumn(SCREEN_WIDTH - 1 - x, true);
+          // renderTransitionColumn(SCREEN_WIDTH - 1 - x, true);
         }
         lastDrawnOffset = currentOffset;
       },
@@ -315,35 +265,11 @@ void OpenPodUIEngine::transitionToTrackList() {
 
         // Draw columns from left to right
         for (int x = lastDrawnOffset; x < currentOffset; x++) {
-          renderTransitionColumn(x, false);
+          // renderTransitionColumn(x, false);
         }
         lastDrawnOffset = currentOffset;
       },
       nullptr, Easing::easeInOutCubic);
-}
-
-void OpenPodUIEngine::renderTransitionColumn(int x, bool toNowPlaying) {
-  if (x < 0 || x >= SCREEN_WIDTH)
-    return;
-
-  // Clear column buffer
-  g_buffers.clearColumnBuffer(COLOR_BACKGROUND);
-
-  if (toNowPlaying) {
-    // Render now playing column
-    header.renderColumn(x, "Now Playing");
-    nowPlaying.renderColumn(x);
-  } else {
-    // Render track list column
-    header.renderColumn(x, "OpenPod");
-    trackList.renderColumn(x);
-    scrollbar.renderColumn(x);
-  }
-
-  // Push column to display
-  uint16_t *columnBuffer = g_buffers.getColumnBuffer();
-  display->setWindow(x, 0, x, SCREEN_HEIGHT - 1);
-  display->pushPixels(columnBuffer, SCREEN_HEIGHT);
 }
 
 void OpenPodUIEngine::animateScroll(bool scrollingUp) {
@@ -409,9 +335,6 @@ void OpenPodUIEngine::measurePerformance() {
   Serial.print("µs, Max: ");
   Serial.print(max);
   Serial.println("µs");
-
-  Serial.println("=== Buffer Manager Stats ===");
-  g_buffers.printMemoryInfo();
   Serial.print("Free heap: ");
   // Serial.println(ESP.getFreeHeap());
 }
