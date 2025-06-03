@@ -1,5 +1,5 @@
 #pragma once
-#include "ui/ILI9341_driver.h"
+#include "rendering/ILI9341_driver.h"
 #include <Adafruit_GFX.h>
 #include <Arduino.h>
 
