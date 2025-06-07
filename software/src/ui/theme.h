@@ -1,30 +1,17 @@
 #pragma once
 
-/**
- * #CEDF9F Primary
- * #A1D6B2 Secondary
- * #F5F0CD Background
- * #E8B86D Highlight
- * #81BFDA Accent
- * #333333 Text
- */
+#define RGB565(r, g, b) (((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3))
+#define BGR565(r, g, b) (((b & 0xF8) << 8) | ((g & 0xFC) << 3) | (r >> 3))
+#define HEX_TO_RGB565(hex) RGB565(((hex) >> 16) & 0xFF, ((hex) >> 8) & 0xFF, (hex) & 0xFF)
+#define HEX_TO_BGR565(hex) BGR565(((hex) >> 16) & 0xFF, ((hex) >> 8) & 0xFF, (hex) & 0xFF)
 
- // ILI9341 RGB565 colors converted from HEX
-
-#define COLOR_PRIMARY    0xCE9D  // #CEDF9F
-#define COLOR_SECONDARY  0xAD75  // #A1D6B2
-#define COLOR_BACKGROUND 0xF79B  // #F5F0CD
-#define COLOR_HIGHLIGHT  0xED91  // #E8B86D
-#define COLOR_ACCENT     0x9EDD  // #81BFDA
-#define COLOR_TEXT       0x4208  // #333333
+// Usage with hex values:
+#define COLOR_PRIMARY    HEX_TO_BGR565(0x1E40AF)
+#define COLOR_SECONDARY  HEX_TO_BGR565(0xA1D6B2)
+#define COLOR_BACKGROUND HEX_TO_BGR565(0xF8FAFC)
+#define COLOR_HIGHLIGHT  HEX_TO_BGR565(0x8B5CF6)
+#define COLOR_ACCENT     HEX_TO_BGR565(0x10B981)
+#define COLOR_TEXT       HEX_TO_BGR565(0x374151)
 
 #define SCROLLBAR_X 312
 #define SCROLLBAR_W 8
-
-
-#define COLOR_PRIMARY_32    COLOR_PRIMARY | (COLOR_PRIMARY << 16)
-#define COLOR_SECONDARY_32  COLOR_SECONDARY | (COLOR_SECONDARY << 16)
-#define COLOR_BACKGROUND_32  COLOR_BACKGROUND | (COLOR_BACKGROUND << 16)
-#define COLOR_HIGHLIGHT_32  COLOR_HIGHLIGHT | (COLOR_HIGHLIGHT << 16)
-#define COLOR_ACCENT_32     COLOR_ACCENT | (COLOR_ACCENT << 16)
-#define COLOR_TEXT_32        COLOR_TEXT | (COLOR_TEXT << 16)

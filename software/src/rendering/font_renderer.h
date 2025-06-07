@@ -51,11 +51,17 @@ private:
     uint8_t fg_g = (fg >> 5) & 0x3F;
     uint8_t fg_b = fg & 0x1F;
 
-    // Compute blend for each alpha level
+    // Apply gamma correction for more perceptually uniform blending
     for (int alpha = 0; alpha < 256; alpha++) {
-      uint8_t r = bg_r + ((fg_r - bg_r) * alpha) / 255;
-      uint8_t g = bg_g + ((fg_g - bg_g) * alpha) / 255;
-      uint8_t b = bg_b + ((fg_b - bg_b) * alpha) / 255;
+      float normalizedAlpha = alpha / 255.0f;
+
+      // Apply gamma curve to alpha for better visual weight consistency
+      float gammaCorrectedAlpha =
+          pow(normalizedAlpha, 1.8f); // Adjust gamma value
+
+      uint8_t r = bg_r + ((fg_r - bg_r) * gammaCorrectedAlpha);
+      uint8_t g = bg_g + ((fg_g - bg_g) * gammaCorrectedAlpha);
+      uint8_t b = bg_b + ((fg_b - bg_b) * gammaCorrectedAlpha);
 
       table[alpha] = (r << 11) | (g << 5) | b;
     }
@@ -107,33 +113,40 @@ public:
 
   // Render single glyph with alpha blending
   void renderGlyph(const FastGlyph &glyph, int x, int y,
-                 const uint16_t *blendTable, uint16_t bgColor) {
-  const uint8_t *alphaPtr = glyph.alphaData;
+                   const uint16_t *blendTable, uint16_t bgColor) {
+    const uint8_t *alphaPtr = glyph.alphaData;
 
-  for (int dy = 0; dy < glyph.height; dy++) {
-    bool rowVisible = (y + dy >= 0 && y + dy < bufferHeight);
-    int bufferOffset = (y + dy) * bufferWidth + x;
+    // Detect if background is dark (like your blue selection)
+    bool isDarkBackground = isColorDark(bgColor);
 
-    for (int dx = 0; dx < glyph.width; dx++) {
-      uint8_t alpha = *alphaPtr++;  // Always advance alphaPtr
-      
-      // Only render if pixel is within bounds
-      if (rowVisible && x + dx >= 0 && x + dx < bufferWidth) {
-        if (alpha == 0) {
-          // Fully transparent
-          renderBuffer[bufferOffset + dx] = bgColor;
-        } else if (alpha == 255) {
-          // Fully opaque
-          renderBuffer[bufferOffset + dx] = blendTable[255];
-        } else {
-          // Blend using pre-computed table
-          renderBuffer[bufferOffset + dx] = blendTable[alpha];
+    for (int dy = 0; dy < glyph.height; dy++) {
+      bool rowVisible = (y + dy >= 0 && y + dy < bufferHeight);
+      int bufferOffset = (y + dy) * bufferWidth + x;
+
+      for (int dx = 0; dx < glyph.width; dx++) {
+        uint8_t alpha = *alphaPtr++;
+
+        if (rowVisible && x + dx >= 0 && x + dx < bufferWidth) {
+          if (alpha == 0) {
+            renderBuffer[bufferOffset + dx] = bgColor;
+          } else {
+            // Adjust alpha for dark backgrounds to make text appear bolder
+            if (isDarkBackground && alpha > 0 && alpha < 255) {
+              // Curve the alpha to make anti-aliased edges more opaque
+              alpha = min(255,
+                          (alpha * alpha) / 180); // Adjust the divisor to taste
+            }
+
+            if (alpha == 255) {
+              renderBuffer[bufferOffset + dx] = blendTable[255];
+            } else {
+              renderBuffer[bufferOffset + dx] = blendTable[alpha];
+            }
+          }
         }
       }
     }
   }
-}
-
   // Measure text width without rendering
   int measureText(const char *text, const FastFont &font) {
     int width = 0;
@@ -191,6 +204,17 @@ private:
     // Simple kerning table lookup
     // You'd implement the actual lookup based on your kerning format
     return 0;
+  }
+
+  bool isColorDark(uint16_t color) {
+    // Extract RGB and calculate luminance
+    uint8_t r = (color >> 11) & 0x1F;
+    uint8_t g = (color >> 5) & 0x3F;
+    uint8_t b = color & 0x1F;
+
+    // Simple luminance calculation (you could use a more sophisticated one)
+    int luminance = r * 2 + g + b; // Rough approximation
+    return luminance < 40;         // Adjust threshold as needed
   }
 };
 

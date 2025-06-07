@@ -2,7 +2,7 @@
 #include "ui_types.h"
 #include "theme.h"
 #include "rendering/font_renderer.h"
-#include "fonts/IBMPlexSans16.h"
+#include "fonts/IBMPlexSans16Bold.h"
 #include <Arduino.h>
 
 class ILI9341_GFX;
@@ -47,7 +47,7 @@ void HeaderComponent::render(ILI9341_GFX* display, const char* title) {
     }
     const char *headerTitle = title ? title : "OpenPod";
     fontRenderer.setBuffer(buffer, SCREEN_WIDTH, HEADER_HEIGHT);
-    fontRenderer.renderText(headerTitle, 10, 10, IBMPlexSans16, COLOR_TEXT, COLOR_PRIMARY);
+    fontRenderer.renderText(headerTitle, 10, 10, IBMPlexSans16Bold, COLOR_BACKGROUND, COLOR_PRIMARY);
     renderBatteryToBuffer(buffer, SCREEN_WIDTH, headerTitle);
     display->setWindow(0, 0, SCREEN_WIDTH - 1, HEADER_HEIGHT - 1);
     display->pushPixels(buffer, SCREEN_WIDTH * HEADER_HEIGHT);

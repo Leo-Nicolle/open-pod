@@ -138,7 +138,7 @@ void NowPlayingComponent::renderChunk(ILI9341_GFX *display, int x,
       for (col = overlapLeft; col < overlapRight; ++col) {
         int bufCol = col - x;
         if (bufCol >= 0 && bufCol < actualWidth) {
-          buffer[bufRow * actualWidth + bufCol] = COLOR_ACCENT;
+          buffer[bufRow * actualWidth + bufCol] = COLOR_PRIMARY;
         }
       }
     }
@@ -149,7 +149,7 @@ void NowPlayingComponent::renderChunk(ILI9341_GFX *display, int x,
       for (col = overlapLeft; col < overlapRight; ++col) {
         int bufCol = col - x;
         if (bufCol >= 0 && bufCol < actualWidth) {
-          buffer[bufRow * actualWidth + bufCol] = COLOR_ACCENT;
+          buffer[bufRow * actualWidth + bufCol] = COLOR_PRIMARY;
         }
       }
     }
@@ -160,12 +160,12 @@ void NowPlayingComponent::renderChunk(ILI9341_GFX *display, int x,
       // Left border
       if (artLeft >= x && artLeft < x + actualWidth) {
         int bufCol = artLeft - x;
-        buffer[bufRow * actualWidth + bufCol] = COLOR_ACCENT;
+        buffer[bufRow * actualWidth + bufCol] = COLOR_PRIMARY;
       }
       // Right border
       if (artRight - 1 >= x && artRight - 1 < x + actualWidth) {
         int bufCol = artRight - 1 - x;
-        buffer[bufRow * actualWidth + bufCol] = COLOR_ACCENT;
+        buffer[bufRow * actualWidth + bufCol] = COLOR_PRIMARY;
       }
     }
   }
@@ -197,17 +197,17 @@ void NowPlayingComponent::renderChunk(ILI9341_GFX *display, int x,
           int lineEnd = std::min(barRight, x + actualWidth);
           for (col = lineStart; col < lineEnd; ++col) {
             int bufCol = col - x;
-            buffer[bufRow * actualWidth + bufCol] = COLOR_ACCENT;
+            buffer[bufRow * actualWidth + bufCol] = COLOR_PRIMARY;
           }
         } else {
           // Draw left and right outline
           if (barLeft >= x && barLeft < x + actualWidth) {
             int bufCol = barLeft - x;
-            buffer[bufRow * actualWidth + bufCol] = COLOR_ACCENT;
+            buffer[bufRow * actualWidth + bufCol] = COLOR_PRIMARY;
           }
           if (barRight - 1 >= x && barRight - 1 < x + actualWidth) {
             int bufCol = barRight - 1 - x;
-            buffer[bufRow * actualWidth + bufCol] = COLOR_ACCENT;
+            buffer[bufRow * actualWidth + bufCol] = COLOR_PRIMARY;
           }
 
           // Fill track background
@@ -225,7 +225,7 @@ void NowPlayingComponent::renderChunk(ILI9341_GFX *display, int x,
           int fillEnd = std::min(progressEnd, x + actualWidth);
           for (col = fillStart; col < fillEnd && col < trackEnd; ++col) {
             int bufCol = col - x;
-            buffer[bufRow * actualWidth + bufCol] = COLOR_ACCENT;
+            buffer[bufRow * actualWidth + bufCol] = COLOR_PRIMARY;
           }
         }
       }

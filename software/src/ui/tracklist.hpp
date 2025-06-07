@@ -1,6 +1,6 @@
 #pragma once
 #include "../fonts/IBMPlexSans12.h"
-#include "../fonts/IBMPlexSans16.h"
+#include "../fonts/IBMPlexSans16Bold.h"
 #include "menu.hpp"
 #include "theme.h"
 #include "ui_types.h"
@@ -39,7 +39,7 @@ public:
 TrackListComponent::TrackListComponent(const char **trackList, int trackCount)
     : tracks(trackList), totalTracks(trackCount), selectedTrack(0),
       topVisibleTrack(0) {
-  menuRenderer = new MenuItemRenderer(IBMPlexSans16, IBMPlexSans12);
+  menuRenderer = new MenuItemRenderer(IBMPlexSans16Bold, IBMPlexSans12);
 }
 
 TrackListComponent::~TrackListComponent() { delete menuRenderer; }

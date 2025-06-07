@@ -5,24 +5,21 @@
 
 // Display instance
 ILI9341_GFX display;
-#define COLOR_BLUE 0x001F
 OpenPodUIEngine ui(&display);
-uint16_t lineBuffer[240];
-
-void addBlueLine() {
-  display.writeCommand(0x2A); // CASET
-  display.writeData2x8(0);
-  display.writeData2x8(239);
-
-  display.writeCommand(0x2B); // PASET
-  display.writeData2x8(SCREEN_HEIGHT - 1);
-  display.writeData2x8(SCREEN_HEIGHT - 1);
-
-  display.writeCommand(0x2C); // RAMWR
-  for (int i = 0; i < 240; i++) {
-    lineBuffer[i] = COLOR_BLUE;
+void testDataBus() {
+  // Test each bit individually
+  uint16_t testPatterns[] = {
+    0x0001, 0x0002, 0x0004, 0x0008,  // Test bits 0-3
+    0x0010, 0x0020, 0x0040, 0x0080,  // Test bits 4-7  
+    0x0100, 0x0200, 0x0400, 0x0800,  // Test bits 8-11
+    0x1000, 0x2000, 0x4000, 0x8000   // Test bits 12-15
+  };
+  
+  for(int i = 0; i < 16; i++) {
+    display.fillScreen(testPatterns[i]);
+    Serial.print("Bit "); Serial.print(i); Serial.println(" test");
+    delay(1000);
   }
-  display.pushPixels(lineBuffer, 240);
 }
 
 void setup() {
@@ -35,14 +32,10 @@ void setup() {
   // Initialize display
   display.begin();
   delay(100); // Allow display to initialize
-  // display.fillRect(0, 0, 120, 120, 0x0000);
-  // delay(500);
-
-  // Initialize UI
   ui.begin();
   display.setupScroll(0, SCREEN_WIDTH, 0);
-
-  ui.trackList.renderAllTracks(&display, 0, BODY_Y, 120);
+  // testDataBus();
+  // ui.trackList.renderAllTracks(&display, 0, BODY_Y, 120);
   ui.transitionToNowPlaying();
   while (ui.animManager.isActive()) {
     ui.update();
