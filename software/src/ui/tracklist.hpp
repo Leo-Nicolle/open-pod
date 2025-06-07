@@ -94,9 +94,15 @@ void TrackListComponent::renderAllTracks(ILI9341_GFX *display, int x, int y,
     renderTrack(i, i == selectedTrack, x, width);
     uint16_t trackY = i * TRACK_HEIGHT + BODY_Y;
     
-    // Make sure heights match what you're actually rendering
-    display->setWindow(tx, trackY, tx + width - 1, trackY + CHUNK_HEIGHT - 1);
-    display->pushPixels(g_buffers.getCurrentBuffer(), width * CHUNK_HEIGHT);
+    // Clip the window to screen bounds
+    int windowBottom = min(trackY + CHUNK_HEIGHT - 1, SCREEN_HEIGHT - 1);
+    int actualHeight = windowBottom - trackY + 1;
+    
+    // Only render if there's visible area
+    if (actualHeight > 0) {
+      display->setWindow(tx, trackY, tx + width - 1, windowBottom);
+      display->pushPixels(g_buffers.getCurrentBuffer(), width * actualHeight);
+    }
     g_buffers.swapBuffers();
   }
 }
