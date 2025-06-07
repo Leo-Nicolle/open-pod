@@ -15,22 +15,18 @@ private:
   int selectedTrack;
   int topVisibleTrack;
 
-  MenuItemRenderer *menuRenderer;
-
 public:
+  MenuItemRenderer *menuRenderer;
   TrackListComponent(const char **trackList, int trackCount);
   ~TrackListComponent();
 
   // Navigation
   void setSelection(int selected, int topVisible);
   void getSelection(int &selected, int &topVisible) const;
-  void renderTrack(int trackIndex, bool isSelected);
+  void renderTrack(int trackIndex, bool isSelected, int x = 0,
+                   int width = SCREEN_WIDTH);
   void renderAllTracks(ILI9341_GFX *display, int x = 0, int y = BODY_Y,
-                       int width = SCREEN_WIDTH - 1);
-
-  // Chunked rendering method matching NowPlayingComponent signature
-  void renderChunk(ILI9341_GFX *display, int x, int y, int width = SCREEN_WIDTH,
-                   int tx = -1, int ty = -1);
+                       int width = SCREEN_WIDTH, int tx = -1);
 
   // Utility functions
   int getTrackAtY(int y) const;
@@ -84,23 +80,23 @@ const char *TrackListComponent::getTrackName(int index) const {
   return tracks[index];
 }
 
-void TrackListComponent::renderTrack(int trackIndex, bool isSelected) {
-  fontRenderer.setBuffer(g_buffers.getCurrentBuffer(), SCREEN_WIDTH,
-                         CHUNK_HEIGHT);
-  menuRenderer->renderMenuItem(trackIndex + 1, tracks[trackIndex], isSelected);
+void TrackListComponent::renderTrack(int trackIndex, bool isSelected, int x,
+                                     int width) {
+  menuRenderer->renderMenuItem(tracks[trackIndex], isSelected, x, width);
 }
 
 void TrackListComponent::renderAllTracks(ILI9341_GFX *display, int x, int y,
-                                         int width) {
-  Serial.println("Rendering all tracks" + String(x));
+                                         int width, int tx) {
+  if (tx < 0) {
+    tx = x;
+  }
   for (int i = topVisibleTrack; i < topVisibleTrack + TRACKS_PER_SCREEN; i++) {
-    renderTrack(i, i == selectedTrack);
-    uint16_t y = i * TRACK_HEIGHT + BODY_Y;
-    display->setWindow(x, y, x + width, y + TRACK_HEIGHT - 1);
-    if (x > 0 || width < SCREEN_WIDTH - 1) {
-      g_buffers.crop(x, width + 1);
-    }
-    display->pushPixels(g_buffers.getCurrentBuffer(), width * TRACK_HEIGHT);
+    renderTrack(i, i == selectedTrack, x, width);
+    uint16_t trackY = i * TRACK_HEIGHT + BODY_Y;
+    
+    // Make sure heights match what you're actually rendering
+    display->setWindow(tx, trackY, tx + width - 1, trackY + CHUNK_HEIGHT - 1);
+    display->pushPixels(g_buffers.getCurrentBuffer(), width * CHUNK_HEIGHT);
     g_buffers.swapBuffers();
   }
 }

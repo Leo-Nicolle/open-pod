@@ -107,21 +107,18 @@ public:
 
   // Render single glyph with alpha blending
   void renderGlyph(const FastGlyph &glyph, int x, int y,
-                   const uint16_t *blendTable, uint16_t bgColor) {
-    const uint8_t *alphaPtr = glyph.alphaData;
+                 const uint16_t *blendTable, uint16_t bgColor) {
+  const uint8_t *alphaPtr = glyph.alphaData;
 
-    for (int dy = 0; dy < glyph.height; dy++) {
-      if (y + dy < 0 || y + dy >= bufferHeight)
-        continue;
+  for (int dy = 0; dy < glyph.height; dy++) {
+    bool rowVisible = (y + dy >= 0 && y + dy < bufferHeight);
+    int bufferOffset = (y + dy) * bufferWidth + x;
 
-      int bufferOffset = (y + dy) * bufferWidth + x;
-
-      for (int dx = 0; dx < glyph.width; dx++) {
-        if (x + dx < 0 || x + dx >= bufferWidth)
-          continue;
-
-        uint8_t alpha = *alphaPtr++;
-
+    for (int dx = 0; dx < glyph.width; dx++) {
+      uint8_t alpha = *alphaPtr++;  // Always advance alphaPtr
+      
+      // Only render if pixel is within bounds
+      if (rowVisible && x + dx >= 0 && x + dx < bufferWidth) {
         if (alpha == 0) {
           // Fully transparent
           renderBuffer[bufferOffset + dx] = bgColor;
@@ -135,6 +132,7 @@ public:
       }
     }
   }
+}
 
   // Measure text width without rendering
   int measureText(const char *text, const FastFont &font) {

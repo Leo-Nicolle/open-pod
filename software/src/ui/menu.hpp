@@ -11,45 +11,72 @@ class MenuItemRenderer {
 private:
   const FastFont &font;
   const FastFont &smallFont;
-
+  static const int MARGIN_LEFT = 5; // Left margin for text
 public:
   MenuItemRenderer(const FastFont &mainFont, const FastFont &numFont)
       : font(mainFont), smallFont(numFont) {}
-
-  void renderMenuItem(int number, const char *title, bool selected, int x = 0,
+  void renderMenuItem(const char *title, bool selected, int x = 0,
                       int width = SCREEN_WIDTH) {
+    uint16_t *buf = g_buffers.getCurrentBuffer();
+    fontRenderer.setBuffer(buf, width, CHUNK_HEIGHT);
+
     uint16_t bgColor = selected ? COLOR_ACCENT : COLOR_BACKGROUND;
     uint16_t textColor = selected ? COLOR_BACKGROUND : COLOR_TEXT;
-    uint16_t numColor = 0x4208;
 
-    // Clear background (optimized, excludes scrollbar area)
-    const int menuWidth = SCROLLBAR_X; // Leave scrollbar at x = 312
-    uint32_t BG = selected ? COLOR_ACCENT : COLOR_BACKGROUND;
-    uint16_t *buf = g_buffers.getCurrentBuffer();
-    for (int i = 0; i < CHUNK_HEIGHT * SCREEN_WIDTH; i++) {
-      *buf++ = BG;
+    // Clear background
+    for (int i = 0; i < CHUNK_HEIGHT * width; i++) {
+      buf[i] = bgColor;
     }
-    // Render title (with truncation if needed)
-    int maxTitleWidth = 280; // Leave room for scrollbar
-    int titleWidth = fontRenderer.measureText(title, font);
 
-    if (titleWidth <= maxTitleWidth) {
-      fontRenderer.renderText(title, 5, 15, font, textColor, bgColor);
-    } else {
-      // Truncate with ellipsis
-      char truncated[32];
-      int i = 0;
-      int width = 0;
-      int ellipsisWidth = fontRenderer.measureText("...", font);
+    // Find visible portion in a single loop
+    int startChar = -1;
+    int endChar = -1;
+    int currentWidth = 0;
+    int textStartX = MARGIN_LEFT;
 
-      while (title[i] && width + ellipsisWidth < maxTitleWidth) {
-        truncated[i] = title[i];
-        width = fontRenderer.measureText(truncated, font);
-        i++;
+    for (int i = 0; title[i] != '\0' && i < 64; i++) {
+      // Measure width up to this character
+      char tempChar[2] = {title[i], '\0'};
+      int charWidth = fontRenderer.measureText(tempChar, font);
+
+      int charStartX = textStartX + currentWidth;
+      int charEndX = charStartX + charWidth;
+
+      // Check if this character is visible
+      bool charVisible = (charEndX > x) && (charStartX < x + width);
+
+      if (charVisible) {
+        if (startChar == -1) {
+          startChar = i; // First visible character
+        }
+        endChar = i + 1; // Last visible character (exclusive)
+      } else if (startChar != -1) {
+        // We've passed the visible region
+        break;
       }
 
-      strcpy(&truncated[i - 1], "...");
-      fontRenderer.renderText(truncated, 30, 15, font, textColor, bgColor);
+      currentWidth += charWidth;
+
+      // Early exit if we're way past the visible area
+      if (charStartX > x + width) {
+        break;
+      }
+    }
+
+    if (startChar != -1) {
+      // Extract and render the visible portion
+      char toRender[64];
+      int visibleLen = endChar - startChar;
+      strncpy(toRender, title + startChar, visibleLen);
+      toRender[visibleLen] = '\0';
+
+      // Calculate render position within the buffer
+      char upToStart[64];
+      strncpy(upToStart, title, startChar);
+      upToStart[startChar] = '\0';
+      int offsetX = textStartX + fontRenderer.measureText(upToStart, font) - x;
+
+      fontRenderer.renderText(toRender, offsetX, 15, font, textColor, bgColor);
     }
   }
 

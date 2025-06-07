@@ -225,7 +225,7 @@ void OpenPodUIEngine::transitionToNowPlaying() {
   lastDrawnOffset = 0;
 
   transitionAnimId = animManager.animate(
-      ANIM_CUSTOM, 0, SCREEN_WIDTH, 400,
+      ANIM_CUSTOM, 0, SCREEN_WIDTH, 800,
       [this](float offset) {
         int currentOffset = (int)offset;
         int width = currentOffset - lastDrawnOffset;
@@ -246,30 +246,27 @@ void OpenPodUIEngine::transitionToNowPlaying() {
       },
       Easing::easeInOutCubic);
 }
-
 void OpenPodUIEngine::transitionToTrackList() {
   currentState = STATE_TRANSITIONING;
   targetState = STATE_TRACK_LIST;
   lastDrawnOffset = 0;
 
   transitionAnimId = animManager.animate(
-      ANIM_CUSTOM, 0, SCREEN_WIDTH, 10000,
+      ANIM_CUSTOM, 0, SCREEN_WIDTH, 800,
       [this](float offset) {
         int currentOffset = (int)offset;
         int width = currentOffset - lastDrawnOffset;
         if (!width)
           return;
-        
-        // Render track list chunks from left to right, similar to nowPlaying
-        trackList.renderAllTracks(display, SCREEN_WIDTH - lastDrawnOffset - width, BODY_Y,
-                                  width);
-        // Optional: Set scroll offset if you want the same scrolling effect
+
+        trackList.renderAllTracks(
+            display, SCREEN_WIDTH - width - lastDrawnOffset, BODY_Y, width);
         display->setScrollOffset(currentOffset);
         lastDrawnOffset = currentOffset;
       },
       [this]() {
         currentState = STATE_TRACK_LIST;
-        renderTrackList(); // Ensure full render when transition completes
+        renderTrackList();
       },
       Easing::easeInOutCubic);
 }
