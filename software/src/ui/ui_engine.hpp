@@ -9,7 +9,7 @@
 #include <Arduino.h>
 
 class OpenPodUIEngine {
-private:
+public:
   ILI9341_GFX *display;
   AnimationManager animManager;
 
@@ -63,7 +63,7 @@ public:
 
   // Lifecycle
   void begin();
-  void update();
+  bool update();
 
   // Navigation
   void scrollUp();
@@ -76,7 +76,7 @@ public:
   // Rendering using global buffers
   void renderCurrentState();
   void renderTrackList();
-  void renderNowPlaying();
+  void renderNowPlaying(int xOffset = 0, int width = SCREEN_WIDTH);
 
   // Efficient transition rendering
   void transitionToNowPlaying();
@@ -103,8 +103,7 @@ OpenPodUIEngine::OpenPodUIEngine(ILI9341_GFX *disp)
       topVisibleTrack(0), previousSelectedTrack(-1),
       currentState(STATE_TRACK_LIST), targetState(STATE_TRACK_LIST),
       isRotatedMode(false), scrollAnimId(0), transitionAnimId(0),
-      lastDrawnOffset(0) {
-}
+      lastDrawnOffset(0) {}
 
 void OpenPodUIEngine::begin() {
   display->fillScreen(COLOR_BACKGROUND);
@@ -119,7 +118,7 @@ void OpenPodUIEngine::begin() {
   Serial.println("OpenPod UI Engine initialized with global buffers");
 }
 
-void OpenPodUIEngine::update() { animManager.update(); }
+bool OpenPodUIEngine::update() { return animManager.update(); }
 
 void OpenPodUIEngine::updateScrollbar() {
   scrollbar.setScrollData(20, TRACKS_PER_SCREEN, topVisibleTrack);
@@ -135,8 +134,9 @@ void OpenPodUIEngine::updateSelection(int newSelected, int newTopVisible) {
 }
 
 void OpenPodUIEngine::renderCurrentState() {
-  Serial.println("Rendering current state: " +
-                 String(currentState == STATE_TRACK_LIST ? "Track List" : "Now Playing"));
+  Serial.println(
+      "Rendering current state: " +
+      String(currentState == STATE_TRACK_LIST ? "Track List" : "Now Playing"));
   switch (currentState) {
   case STATE_TRACK_LIST:
     renderTrackList();
@@ -156,12 +156,13 @@ void OpenPodUIEngine::renderTrackList() {
   scrollbar.render(display);
 }
 
-void OpenPodUIEngine::renderNowPlaying() {
+void OpenPodUIEngine::renderNowPlaying(int xOffset, int width) {
   header.render(display);
   nowPlaying.setTrack(tracks[selectedTrack]);
-  nowPlaying.setProgress(0.5f); // Example progress
+  nowPlaying.setTrackLength(300);
+  nowPlaying.setProgress(100);   // Example progress
   nowPlaying.setPlayState(true); // Example play state
-  nowPlaying.render(display);
+  nowPlaying.render(display, xOffset, width);
 }
 
 void OpenPodUIEngine::scrollUp() {
@@ -179,9 +180,7 @@ void OpenPodUIEngine::scrollUp() {
     } else {
       updateSelection(newSelected, newTopVisible);
       // Quick update - just redraw track list area
-      for (int y = TRACK_LIST_Y;
-           y < TRACK_LIST_Y + TRACKS_PER_SCREEN * TRACK_HEIGHT; y++) {
-
+      for (int y = BODY_Y; y < BODY_Y + TRACKS_PER_SCREEN * TRACK_HEIGHT; y++) {
       }
     }
   }
@@ -202,8 +201,7 @@ void OpenPodUIEngine::scrollDown() {
     } else {
       updateSelection(newSelected, newTopVisible);
       // Quick update - just redraw track list area
-      for (int y = TRACK_LIST_Y;
-           y < TRACK_LIST_Y + TRACKS_PER_SCREEN * TRACK_HEIGHT; y++) {
+      for (int y = BODY_Y; y < BODY_Y + TRACKS_PER_SCREEN * TRACK_HEIGHT; y++) {
       }
     }
   }
@@ -227,14 +225,19 @@ void OpenPodUIEngine::transitionToNowPlaying() {
   lastDrawnOffset = 0;
 
   transitionAnimId = animManager.animate(
-      ANIM_CUSTOM, 0, SCREEN_WIDTH, 1000,
+      ANIM_CUSTOM, 0, SCREEN_WIDTH, 400,
       [this](float offset) {
         int currentOffset = (int)offset;
-
-        // Draw columns from right to left
-        for (int x = lastDrawnOffset; x < currentOffset; x++) {
-          // renderTransitionColumn(SCREEN_WIDTH - 1 - x, true);
+        int width = currentOffset - lastDrawnOffset;
+        if (!width)
+          return;
+        for (int y = BODY_Y; y < SCREEN_HEIGHT; y += CHUNK_HEIGHT) {
+          nowPlaying.renderChunk(display, lastDrawnOffset, y, width);
+          // TODO: understand I get wrong colors during scroll
+          // display->fillRect(lastDrawnOffset, BODY_Y, width, BODY_HEIGHT,
+          //            COLOR_ACCENT);
         }
+        display->setScrollOffset(SCREEN_WIDTH - currentOffset);
         lastDrawnOffset = currentOffset;
       },
       [this]() {
@@ -250,19 +253,26 @@ void OpenPodUIEngine::transitionToTrackList() {
   lastDrawnOffset = 0;
 
   transitionAnimId = animManager.animate(
-      ANIM_CUSTOM, 0, SCREEN_WIDTH, 1000,
+      ANIM_CUSTOM, 0, SCREEN_WIDTH, 10000,
       [this](float offset) {
         int currentOffset = (int)offset;
-
-        // Draw columns from left to right
-        for (int x = lastDrawnOffset; x < currentOffset; x++) {
-          // renderTransitionColumn(x, false);
-        }
+        int width = currentOffset - lastDrawnOffset;
+        if (!width)
+          return;
+        
+        // Render track list chunks from left to right, similar to nowPlaying
+        trackList.renderAllTracks(display, SCREEN_WIDTH - lastDrawnOffset - width, BODY_Y,
+                                  width);
+        // Optional: Set scroll offset if you want the same scrolling effect
+        display->setScrollOffset(currentOffset);
         lastDrawnOffset = currentOffset;
       },
-      nullptr, Easing::easeInOutCubic);
+      [this]() {
+        currentState = STATE_TRACK_LIST;
+        renderTrackList(); // Ensure full render when transition completes
+      },
+      Easing::easeInOutCubic);
 }
-
 void OpenPodUIEngine::animateScroll(bool scrollingUp) {
   // Setup hardware scrolling
   display->writeCommand(0x33);                  // VSCRDEF

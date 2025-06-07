@@ -16,7 +16,8 @@ public:
   MenuItemRenderer(const FastFont &mainFont, const FastFont &numFont)
       : font(mainFont), smallFont(numFont) {}
 
-  void renderMenuItem(int number, const char *title, bool selected) {
+  void renderMenuItem(int number, const char *title, bool selected, int x = 0,
+                      int width = SCREEN_WIDTH) {
     uint16_t bgColor = selected ? COLOR_ACCENT : COLOR_BACKGROUND;
     uint16_t textColor = selected ? COLOR_BACKGROUND : COLOR_TEXT;
     uint16_t numColor = 0x4208;
@@ -24,12 +25,12 @@ public:
     // Clear background (optimized, excludes scrollbar area)
     const int menuWidth = SCROLLBAR_X; // Leave scrollbar at x = 312
     uint32_t BG = selected ? COLOR_ACCENT : COLOR_BACKGROUND;
-    uint16_t* buf = g_buffers.getCurrentBuffer();
-    for (int i = 0; i < 30 * 320; i++) {
+    uint16_t *buf = g_buffers.getCurrentBuffer();
+    for (int i = 0; i < CHUNK_HEIGHT * SCREEN_WIDTH; i++) {
       *buf++ = BG;
     }
     // Render title (with truncation if needed)
-   int maxTitleWidth = 280; // Leave room for scrollbar
+    int maxTitleWidth = 280; // Leave room for scrollbar
     int titleWidth = fontRenderer.measureText(title, font);
 
     if (titleWidth <= maxTitleWidth) {

@@ -1,19 +1,19 @@
+#include "rendering/ILI9341_GFX.h"
 #include <Arduino.h>
-#include "ui/ILI9341_GFX.h"
 
 ILI9341_GFX display;
 
 // Colors
-#define COLOR_RED     0xF800
-#define COLOR_BLUE    0x001F
-#define COLOR_GREEN   0x07E0
-#define COLOR_BLACK   0x0000
-#define COLOR_WHITE   0xFFFF
+#define COLOR_RED 0xF800
+#define COLOR_BLUE 0x001F
+#define COLOR_GREEN 0x07E0
+#define COLOR_BLACK 0x0000
+#define COLOR_WHITE 0xFFFF
 
 // Scroll parameters
 const uint16_t TFA = 0;
 const uint16_t BFA = 0;
-const uint16_t VSA = 240;
+const uint16_t VSA = 320;
 
 uint16_t currentLine = 0;
 uint16_t lineBuffer[320];
@@ -25,7 +25,8 @@ void writeData16(uint16_t value) {
 
 void setup() {
   Serial.begin(115200);
-  while (!Serial) delay(10);
+  while (!Serial)
+    delay(10);
 
   display.begin();
   Serial.println("Display initialized");
@@ -40,7 +41,7 @@ void setup() {
   display.writeCommand(0x2A); // CASET
   writeData16(0);
   writeData16(239);
-  
+
   display.writeCommand(0x2B); // PASET
   writeData16(0);
   writeData16(319);
@@ -57,11 +58,6 @@ void setup() {
 }
 
 void addBlueLine() {
-  // Set scroll offset
-  display.writeCommand(0x37); // VSCRSADD
-  writeData16(currentLine);
-
-  // Write one blue line at current scroll position
   display.writeCommand(0x2A); // CASET
   writeData16(0);
   writeData16(239);
@@ -75,19 +71,23 @@ void addBlueLine() {
     lineBuffer[i] = COLOR_BLUE;
   }
   display.pushPixels(lineBuffer, 240);
-
-  // Advance within scroll range
-  currentLine++;
-  if (currentLine >= 320) {
-    currentLine = 0;
-  }
 }
 
+void scroll() {
+  currentLine++;
+  if (currentLine >= 318) {
+    currentLine = 0;
+  }
+  display.setScrollOffset(currentLine);
+}
 void loop() {
   static uint32_t lastUpdate = 0;
 
   if (millis() - lastUpdate >= 20) { // 50 FPS
     lastUpdate = millis();
+    scroll();
+    if (currentLine < 20) {
     addBlueLine();
+    } 
   }
 }

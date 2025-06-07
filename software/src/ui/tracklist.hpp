@@ -1,8 +1,8 @@
 #pragma once
 #include "../fonts/IBMPlexSans12.h"
 #include "../fonts/IBMPlexSans16.h"
-#include "theme.h"
 #include "menu.hpp"
+#include "theme.h"
 #include "ui_types.h"
 #include <Arduino.h>
 
@@ -25,7 +25,13 @@ public:
   void setSelection(int selected, int topVisible);
   void getSelection(int &selected, int &topVisible) const;
   void renderTrack(int trackIndex, bool isSelected);
-  void renderAllTracks(ILI9341_GFX *display);
+  void renderAllTracks(ILI9341_GFX *display, int x = 0, int y = BODY_Y,
+                       int width = SCREEN_WIDTH - 1);
+
+  // Chunked rendering method matching NowPlayingComponent signature
+  void renderChunk(ILI9341_GFX *display, int x, int y, int width = SCREEN_WIDTH,
+                   int tx = -1, int ty = -1);
+
   // Utility functions
   int getTrackAtY(int y) const;
   int getRowInTrack(int y) const;
@@ -54,17 +60,17 @@ void TrackListComponent::getSelection(int &selected, int &topVisible) const {
 }
 
 int TrackListComponent::getTrackAtY(int y) const {
-  if (y < TRACK_LIST_Y)
+  if (y < BODY_Y)
     return -1;
-  int relativeY = y - TRACK_LIST_Y;
+  int relativeY = y - BODY_Y;
   int trackIndex = topVisibleTrack + (relativeY / TRACK_HEIGHT);
   return (trackIndex < totalTracks) ? trackIndex : -1;
 }
 
 int TrackListComponent::getRowInTrack(int y) const {
-  if (y < TRACK_LIST_Y)
+  if (y < BODY_Y)
     return -1;
-  return (y - TRACK_LIST_Y) % TRACK_HEIGHT;
+  return (y - BODY_Y) % TRACK_HEIGHT;
 }
 
 bool TrackListComponent::isTrackVisible(int trackIndex) const {
@@ -79,15 +85,22 @@ const char *TrackListComponent::getTrackName(int index) const {
 }
 
 void TrackListComponent::renderTrack(int trackIndex, bool isSelected) {
-  fontRenderer.setBuffer(g_buffers.getCurrentBuffer(), SCREEN_WIDTH, 30);
+  fontRenderer.setBuffer(g_buffers.getCurrentBuffer(), SCREEN_WIDTH,
+                         CHUNK_HEIGHT);
   menuRenderer->renderMenuItem(trackIndex + 1, tracks[trackIndex], isSelected);
 }
-void TrackListComponent::renderAllTracks(ILI9341_GFX *display) {
+
+void TrackListComponent::renderAllTracks(ILI9341_GFX *display, int x, int y,
+                                         int width) {
+  Serial.println("Rendering all tracks" + String(x));
   for (int i = topVisibleTrack; i < topVisibleTrack + TRACKS_PER_SCREEN; i++) {
     renderTrack(i, i == selectedTrack);
-    uint16_t y = i * TRACK_HEIGHT + TRACK_LIST_Y;
-    display->setWindow(0, y, SCREEN_WIDTH - 1, y + TRACK_HEIGHT - 1);
-    display->pushPixels(g_buffers.getCurrentBuffer(), SCREEN_WIDTH * TRACK_HEIGHT);
+    uint16_t y = i * TRACK_HEIGHT + BODY_Y;
+    display->setWindow(x, y, x + width, y + TRACK_HEIGHT - 1);
+    if (x > 0 || width < SCREEN_WIDTH - 1) {
+      g_buffers.crop(x, width + 1);
+    }
+    display->pushPixels(g_buffers.getCurrentBuffer(), width * TRACK_HEIGHT);
     g_buffers.swapBuffers();
   }
 }

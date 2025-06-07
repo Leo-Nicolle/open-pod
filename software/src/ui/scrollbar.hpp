@@ -14,7 +14,7 @@ private:
     int scrollAreaHeight;
     
 public:
-    ScrollbarComponent(int scrollY = TRACK_LIST_Y, int scrollHeight = TRACKS_PER_SCREEN * TRACK_HEIGHT);
+    ScrollbarComponent(int scrollY = BODY_Y, int scrollHeight = TRACKS_PER_SCREEN * TRACK_HEIGHT);
     
     // Configuration
     void setScrollData(int total, int visible, int topVisible);
