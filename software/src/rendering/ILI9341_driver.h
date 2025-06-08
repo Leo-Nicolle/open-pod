@@ -42,14 +42,8 @@ public:
     // // }
     // GPIOB->BSRR = (1 << 9);
     GPIOB->BSRR = (1 << (9 + 16)); // WR LOW
-    __NOP();
-    __NOP();
-    __NOP();
-    __NOP();
     __NOP();                // More delay
     GPIOB->BSRR = (1 << 9); // WR HIGH
-    __NOP();
-    __NOP(); // Recovery time
   }
 
   inline void write16(uint16_t data) {
