@@ -113,10 +113,20 @@
 | SCK       | PA5         | SCK       |
 | MOSI      | PA7         | MOSI      |
 | MISO      | PA6         | MISO      |
-| MP3CS     | PA8         | MP3 CS    |
+| MP3CS     | PA11        | MP3 CS    |
 | SDCS      | PA4         | SD CS     |
 | DREQ      | PB3         | Dreq      |
 | XDCS      | PA9         | A0        |
+
+## MPR121 Capacitive Touch Sensor
+
+| MPR121 Pin | Function  | STM32F446RE Pin | Notes                  |
+| ---------- | --------- | --------------- | ---------------------- |
+| VIN        | Power     | 3.3V            | 2.8V-5V power supply   |
+| GND        | Ground    | GND             | Ground connection      |
+| SCL        | Clock     | PA8 (I2C3_SCL)  | I2C clock line         |
+| SDA        | Data      | PB4 (I2C3_SDA)  | I2C data line          |
+| IRQ        | Interrupt | PA12            | Optional interrupt pin |
 
 ### PSRAM
 
