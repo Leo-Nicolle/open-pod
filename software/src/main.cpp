@@ -5,8 +5,8 @@
 #include <Arduino.h>
 // Display instance
 
-PodPlayer player;
 ILI9341_GFX display;
+PodPlayer player;
 OpenPodUIEngine ui(&display);
 void testDataBus() {
   // Test each bit individually
@@ -63,19 +63,6 @@ void setup() {
     ui.update();
     delay(10); // Small delay to allow animations to progress
   }
-  // for (int y = 0; y < SCREEN_HEIGHT; y += CHUNK_HEIGHT)
-  // for (int x = 0; x < SCREEN_WIDTH; x += W) {
-  //   ui.trackList.renderAllTracks(&display, x, BODY_Y,
-  //                                W);
-  //   delay(500);
-  // }
-  // ui.trackList.renderAllTracks(&display, 0, BODY_Y, 20);
-  // delay(500);
-
-  // for (int x = 0; x < SCREEN_WIDTH; x+=CHUNK_HEIGHT) {
-  // ui.trackList.renderAllTracks(&display, x, BODY_Y, CHUNK_HEIGHT);
-  // }
-
   Serial.println("Now Playing rendered");
 }
 
