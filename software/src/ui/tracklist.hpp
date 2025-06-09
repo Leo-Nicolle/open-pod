@@ -90,16 +90,25 @@ void TrackListComponent::renderAllTracks(ILI9341_GFX *display, int x, int y,
   if (tx < 0) {
     tx = x;
   }
-  for (int i = topVisibleTrack; i < topVisibleTrack + TRACKS_PER_SCREEN; i++) {
-    renderTrack(i, i == selectedTrack, x, width);
-    uint16_t trackY = i * TRACK_HEIGHT + BODY_Y;
+  
+  for (int i = 0; i < TRACKS_PER_SCREEN; i++) {
+    int trackIndex = topVisibleTrack + i;
+    
+    // Stop if we've run out of tracks
+    if (trackIndex >= totalTracks) break;
+    
+    // Render the track to buffer
+    renderTrack(trackIndex, trackIndex == selectedTrack, x, width);
+    
+    // Calculate Y position based on screen position, not absolute track index
+    uint16_t trackY = y + (i * TRACK_HEIGHT);
     
     // Clip the window to screen bounds
-    int windowBottom = min(trackY + CHUNK_HEIGHT - 1, SCREEN_HEIGHT - 1);
+    int windowBottom = min(trackY + TRACK_HEIGHT - 1, SCREEN_HEIGHT - 1);
     int actualHeight = windowBottom - trackY + 1;
     
     // Only render if there's visible area
-    if (actualHeight > 0) {
+    if (actualHeight > 0 && trackY < SCREEN_HEIGHT) {
       display->setWindow(tx, trackY, tx + width - 1, windowBottom);
       display->pushPixels(g_buffers.getCurrentBuffer(), width * actualHeight);
     }
