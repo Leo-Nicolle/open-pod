@@ -68,6 +68,7 @@ public:
   // Navigation
   void scrollUp();
   void scrollDown();
+  void renderTrackListArea();
   void pageUp();
   void pageDown();
   void selectTrack();
@@ -179,9 +180,8 @@ void OpenPodUIEngine::scrollUp() {
       animateScroll(true);
     } else {
       updateSelection(newSelected, newTopVisible);
-      // Quick update - just redraw track list area
-      for (int y = BODY_Y; y < BODY_Y + TRACKS_PER_SCREEN * TRACK_HEIGHT; y++) {
-      }
+      // Quick update - redraw track list area without animation
+      renderTrackListArea();
     }
   }
 }
@@ -200,13 +200,19 @@ void OpenPodUIEngine::scrollDown() {
       animateScroll(false);
     } else {
       updateSelection(newSelected, newTopVisible);
-      // Quick update - just redraw track list area
-      for (int y = BODY_Y; y < BODY_Y + TRACKS_PER_SCREEN * TRACK_HEIGHT; y++) {
-      }
+      // Quick update - redraw track list area without animation
+      renderTrackListArea();
     }
   }
 }
 
+// Add this helper function to the OpenPodUIEngine class
+void OpenPodUIEngine::renderTrackListArea() {
+  // Only re-render the track list portion (not header or scrollbar)
+  trackList.renderAllTracks(display, 0, BODY_Y, SCREEN_WIDTH - SCROLLBAR_WIDTH);
+  // Update scrollbar to reflect new position
+  scrollbar.render(display);
+}
 void OpenPodUIEngine::selectTrack() {
   if (currentState == STATE_TRACK_LIST && !isAnimating()) {
     transitionToNowPlaying();
