@@ -3,7 +3,6 @@
 #include "WheelTrace.hpp"
 #include "player.h"
 #include "rendering/ILI9341_GFX.h"
-#include "rendering/ILI9341_driver.h"
 #include "ui/ui_engine.hpp"
 #include <Arduino.h>
 #include <Wire.h>

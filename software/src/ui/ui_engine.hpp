@@ -110,6 +110,7 @@ void OpenPodUIEngine::begin() {
   display->fillScreen(COLOR_BACKGROUND);
 
   // Initialize components
+  trackList.begin();
   trackList.setSelection(selectedTrack, topVisibleTrack);
   updateScrollbar();
 
@@ -197,7 +198,8 @@ void OpenPodUIEngine::scrollDown() {
     if (newSelected >= topVisibleTrack + TRACKS_PER_SCREEN) {
       newTopVisible = topVisibleTrack + 1;
       updateSelection(newSelected, newTopVisible);
-      animateScroll(false);
+      trackList.renderAllTracks(display, 0, BODY_Y,
+                                SCREEN_WIDTH - SCROLLBAR_WIDTH);
     } else {
       updateSelection(newSelected, newTopVisible);
       // Quick update - redraw track list area without animation
