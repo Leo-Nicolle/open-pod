@@ -6,6 +6,7 @@
 #include "scrollbar.hpp"
 #include "tracklist.hpp"
 #include "ui_types.h"
+#include "appstate.hpp"
 #include <Arduino.h>
 
 class OpenPodUIEngine {
@@ -19,14 +20,8 @@ public:
   TrackListComponent trackList;
   NowPlayingComponent nowPlaying;
 
-  // State management
-  UIState currentState;
-  UIState targetState;
-  bool isRotatedMode;
-
-  // Animation IDs
-  uint32_t scrollAnimId;
-  uint32_t transitionAnimId;
+  // Centralized application state
+  AppState appState;
 
   // Track data
   const char *tracks[20] = {"Bohemian Rhapsody",
@@ -50,11 +45,6 @@ public:
                             "Bridge Over Troubled Water",
                             "The Sound of Silence"};
 
-  // Navigation state
-  int selectedTrack;
-  int topVisibleTrack;
-  int previousSelectedTrack;
-
   // Transition rendering
   int lastDrawnOffset;
 
@@ -68,18 +58,23 @@ public:
   // Navigation
   void scrollUp();
   void scrollDown();
-  void renderTrackListArea();
   void pageUp();
   void pageDown();
   void selectTrack();
   void returnToList();
 
-  // Rendering using global buffers
+  // Playback control
+  void playSelectedTrack();
+  void togglePlayback();
+  void stopPlayback();
+
+  // Rendering
   void renderCurrentState();
   void renderTrackList();
   void renderNowPlaying(int xOffset = 0, int width = SCREEN_WIDTH);
+  void renderTrackListArea();
 
-  // Efficient transition rendering
+  // Transitions
   void transitionToNowPlaying();
   void transitionToTrackList();
 
@@ -87,59 +82,63 @@ public:
   void animateScroll(bool scrollingUp);
 
   // Utility
-  void setRotation(bool rotated) { isRotatedMode = rotated; }
+  void setRotation(bool rotated) { appState.isRotatedMode = rotated; }
   float getFPS() const { return animManager.getFPS(); }
   void measurePerformance();
 
 private:
   // Internal helpers
   void updateScrollbar();
-  void updateSelection(int newSelected, int newTopVisible);
-  bool isAnimating() const { return animManager.isActive(); }
+  void updateTrackListScroll();
+  bool isAnimating() const { return appState.isAnimating; }
 };
 
 // Implementation
 OpenPodUIEngine::OpenPodUIEngine(ILI9341_GFX *disp)
-    : display(disp), trackList(tracks, 20), selectedTrack(0),
-      topVisibleTrack(0), previousSelectedTrack(-1),
-      currentState(STATE_TRACK_LIST), targetState(STATE_TRACK_LIST),
-      isRotatedMode(false), scrollAnimId(0), transitionAnimId(0),
-      lastDrawnOffset(0) {}
+    : display(disp), trackList(tracks, 20), lastDrawnOffset(0) {
+  
+  // Initialize app state with track data
+  appState.setTracks(tracks, 20);
+}
 
 void OpenPodUIEngine::begin() {
   display->fillScreen(COLOR_BACKGROUND);
 
   // Initialize components
   trackList.begin();
-  trackList.setSelection(selectedTrack, topVisibleTrack);
+  updateTrackListScroll();
   updateScrollbar();
 
   // Render initial state
   renderCurrentState();
 
-  Serial.println("OpenPod UI Engine initialized with global buffers");
+  Serial.println("OpenPod UI Engine initialized with centralized state");
 }
 
-bool OpenPodUIEngine::update() { return animManager.update(); }
+bool OpenPodUIEngine::update() { 
+  bool wasAnimating = appState.isAnimating;
+  appState.isAnimating = animManager.isActive();
+  
+  // Update animation state
+  bool result = animManager.update();
+  
+  return result;
+}
 
 void OpenPodUIEngine::updateScrollbar() {
-  scrollbar.setScrollData(20, TRACKS_PER_SCREEN, topVisibleTrack);
+  scrollbar.setScrollData(appState.totalTracks, TRACKS_PER_SCREEN, appState.topVisibleTrackIndex);
 }
 
-void OpenPodUIEngine::updateSelection(int newSelected, int newTopVisible) {
-  previousSelectedTrack = selectedTrack;
-  selectedTrack = constrain(newSelected, 0, 19);
-  topVisibleTrack = constrain(newTopVisible, 0, max(0, 20 - TRACKS_PER_SCREEN));
-
-  trackList.setSelection(selectedTrack, topVisibleTrack);
-  updateScrollbar();
+void OpenPodUIEngine::updateTrackListScroll() {
+  trackList.setScroll(appState.selectedTrackIndex, appState.topVisibleTrackIndex);
 }
 
 void OpenPodUIEngine::renderCurrentState() {
   Serial.println(
       "Rendering current state: " +
-      String(currentState == STATE_TRACK_LIST ? "Track List" : "Now Playing"));
-  switch (currentState) {
+      String(appState.currentUIState == STATE_TRACK_LIST ? "Track List" : "Now Playing"));
+  
+  switch (appState.currentUIState) {
   case STATE_TRACK_LIST:
     renderTrackList();
     break;
@@ -160,79 +159,148 @@ void OpenPodUIEngine::renderTrackList() {
 
 void OpenPodUIEngine::renderNowPlaying(int xOffset, int width) {
   header.render(display);
-  nowPlaying.setTrack(tracks[selectedTrack]);
-  nowPlaying.setTrackLength(300);
-  nowPlaying.setProgress(100);   // Example progress
-  nowPlaying.setPlayState(true); // Example play state
+  
+  const char* trackName = appState.getPlayingTrackName();
+  if (!trackName) {
+    trackName = appState.getCurrentTrackName();
+  }
+  
+  if (trackName) {
+    nowPlaying.setTrack(trackName);
+  }
+  
+  nowPlaying.setTrackLength(appState.trackDuration);
+  nowPlaying.setProgress(appState.playbackPosition);
+  nowPlaying.setPlayState(appState.isPlaying);
   nowPlaying.render(display, xOffset, width);
 }
 
 void OpenPodUIEngine::scrollUp() {
-  if (currentState != STATE_TRACK_LIST || isAnimating())
+  if (appState.currentUIState != STATE_TRACK_LIST || isAnimating())
     return;
 
-  if (selectedTrack > 0) {
-    int newSelected = selectedTrack - 1;
-    int newTopVisible = topVisibleTrack;
-
-    if (newSelected < topVisibleTrack) {
-      newTopVisible = newSelected;
-      updateSelection(newSelected, newTopVisible);
-      animateScroll(true);
-    } else {
-      updateSelection(newSelected, newTopVisible);
-      // Quick update - redraw track list area without animation
-      renderTrackListArea();
+  int oldSelected = appState.selectedTrackIndex;
+  int oldTopVisible = appState.topVisibleTrackIndex;
+  
+  appState.scrollUp();
+  
+  if (appState.needsScrollUpdate(oldSelected, oldTopVisible)) {
+    updateTrackListScroll();
+    updateScrollbar();
+    
+    // Check if we need to scroll the cache
+    if (appState.topVisibleTrackIndex != oldTopVisible) {
+      // Calculate how many tracks we scrolled up
+      int scrollDelta = oldTopVisible - appState.topVisibleTrackIndex;
+      
+      // Get the tracks that should now be visible
+      int startIdx, endIdx;
+      appState.getVisibleTrackIndices(startIdx, endIdx);
+      
+      // Create array of visible track names for cache update
+      const char* visibleTracks[TRACKS_PER_SCREEN];
+      for (int i = 0; i < TRACKS_PER_SCREEN; i++) {
+        int trackIdx = startIdx + i;
+        visibleTracks[i] = (trackIdx < appState.totalTracks) ? appState.tracks[trackIdx] : "";
+      }
+      
+      // Update the track list cache
+      trackList.scrollUp(scrollDelta, visibleTracks);
     }
+    
+    renderTrackListArea();
   }
 }
 
 void OpenPodUIEngine::scrollDown() {
-  if (currentState != STATE_TRACK_LIST || isAnimating())
+  if (appState.currentUIState != STATE_TRACK_LIST || isAnimating())
     return;
 
-  if (selectedTrack < 19) {
-    int newSelected = selectedTrack + 1;
-    int newTopVisible = topVisibleTrack;
-
-    if (newSelected >= topVisibleTrack + TRACKS_PER_SCREEN) {
-      newTopVisible = topVisibleTrack + 1;
-      updateSelection(newSelected, newTopVisible);
-      trackList.renderAllTracks(display, 0, BODY_Y,
-                                SCREEN_WIDTH - SCROLLBAR_WIDTH);
-    } else {
-      updateSelection(newSelected, newTopVisible);
-      // Quick update - redraw track list area without animation
-      renderTrackListArea();
+  int oldSelected = appState.selectedTrackIndex;
+  int oldTopVisible = appState.topVisibleTrackIndex;
+  
+  appState.scrollDown();
+  
+  if (appState.needsScrollUpdate(oldSelected, oldTopVisible)) {
+    updateTrackListScroll();
+    updateScrollbar();
+    
+    // Check if we need to scroll the cache
+    if (appState.topVisibleTrackIndex != oldTopVisible) {
+      // Calculate how many tracks we scrolled down
+      int scrollDelta = appState.topVisibleTrackIndex - oldTopVisible;
+      
+      // Get the tracks that should now be visible
+      int startIdx, endIdx;
+      appState.getVisibleTrackIndices(startIdx, endIdx);
+      
+      // Create array of visible track names for cache update
+      const char* visibleTracks[TRACKS_PER_SCREEN];
+      for (int i = 0; i < TRACKS_PER_SCREEN; i++) {
+        int trackIdx = startIdx + i;
+        visibleTracks[i] = (trackIdx < appState.totalTracks) ? appState.tracks[trackIdx] : "";
+      }
+      
+      // Update the track list cache
+      trackList.scrollDown(scrollDelta, visibleTracks);
     }
+    
+    renderTrackListArea();
   }
 }
 
-// Add this helper function to the OpenPodUIEngine class
 void OpenPodUIEngine::renderTrackListArea() {
   // Only re-render the track list portion (not header or scrollbar)
   trackList.renderAllTracks(display, 0, BODY_Y, SCREEN_WIDTH - SCROLLBAR_WIDTH);
   // Update scrollbar to reflect new position
   scrollbar.render(display);
 }
+
 void OpenPodUIEngine::selectTrack() {
-  if (currentState == STATE_TRACK_LIST && !isAnimating()) {
+  if (appState.currentUIState == STATE_TRACK_LIST && !isAnimating()) {
     transitionToNowPlaying();
   }
 }
 
 void OpenPodUIEngine::returnToList() {
-  if (currentState == STATE_NOW_PLAYING && !isAnimating()) {
+  if (appState.currentUIState == STATE_NOW_PLAYING && !isAnimating()) {
     transitionToTrackList();
   }
 }
 
+void OpenPodUIEngine::playSelectedTrack() {
+  appState.startPlayback();
+  // Here you would typically interface with your audio system
+  Serial.println("Starting playback of: " + String(appState.getPlayingTrackName()));
+}
+
+void OpenPodUIEngine::togglePlayback() {
+  appState.togglePlayback();
+  Serial.println(appState.isPlaying ? "Resumed playback" : "Paused playback");
+  
+  // Update now playing display if visible
+  if (appState.currentUIState == STATE_NOW_PLAYING) {
+    renderNowPlaying();
+  }
+}
+
+void OpenPodUIEngine::stopPlayback() {
+  appState.stopPlayback();
+  Serial.println("Stopped playback");
+  
+  // Update now playing display if visible
+  if (appState.currentUIState == STATE_NOW_PLAYING) {
+    renderNowPlaying();
+  }
+}
+
 void OpenPodUIEngine::transitionToNowPlaying() {
-  currentState = STATE_TRANSITIONING;
-  targetState = STATE_NOW_PLAYING;
+  appState.currentUIState = STATE_TRANSITIONING;
+  appState.targetUIState = STATE_NOW_PLAYING;
+  appState.isAnimating = true;
   lastDrawnOffset = 0;
 
-  transitionAnimId = animManager.animate(
+  appState.transitionAnimId = animManager.animate(
       ANIM_CUSTOM, 0, SCREEN_WIDTH, 800,
       [this](float offset) {
         int currentOffset = (int)offset;
@@ -241,25 +309,25 @@ void OpenPodUIEngine::transitionToNowPlaying() {
           return;
         for (int y = BODY_Y; y < SCREEN_HEIGHT; y += CHUNK_HEIGHT) {
           nowPlaying.renderChunk(display, lastDrawnOffset, y, width);
-          // TODO: understand I get wrong colors during scroll
-          // display->fillRect(lastDrawnOffset, BODY_Y, width, BODY_HEIGHT,
-          //            COLOR_ACCENT);
         }
         display->setScrollOffset(SCREEN_WIDTH - currentOffset);
         lastDrawnOffset = currentOffset;
       },
       [this]() {
-        currentState = STATE_NOW_PLAYING;
+        appState.currentUIState = STATE_NOW_PLAYING;
+        appState.isAnimating = false;
         renderNowPlaying();
       },
       Easing::easeInOutCubic);
 }
+
 void OpenPodUIEngine::transitionToTrackList() {
-  currentState = STATE_TRANSITIONING;
-  targetState = STATE_TRACK_LIST;
+  appState.currentUIState = STATE_TRANSITIONING;
+  appState.targetUIState = STATE_TRACK_LIST;
+  appState.isAnimating = true;
   lastDrawnOffset = 0;
 
-  transitionAnimId = animManager.animate(
+  appState.transitionAnimId = animManager.animate(
       ANIM_CUSTOM, 0, SCREEN_WIDTH, 800,
       [this](float offset) {
         int currentOffset = (int)offset;
@@ -273,57 +341,57 @@ void OpenPodUIEngine::transitionToTrackList() {
         lastDrawnOffset = currentOffset;
       },
       [this]() {
-        currentState = STATE_TRACK_LIST;
+        appState.currentUIState = STATE_TRACK_LIST;
+        appState.isAnimating = false;
         renderTrackList();
       },
       Easing::easeInOutCubic);
 }
+
 void OpenPodUIEngine::animateScroll(bool scrollingUp) {
   // Setup hardware scrolling
   display->writeCommand(0x33);                  // VSCRDEF
   display->writeData16(HEADER_HEIGHT + MARGIN); // TFA = header area
-  display->writeData16(TRACKS_PER_SCREEN *
-                       TRACK_HEIGHT); // VSA = scrollable area
+  display->writeData16(TRACKS_PER_SCREEN * TRACK_HEIGHT); // VSA = scrollable area
   display->writeData16(SCREEN_HEIGHT - HEADER_HEIGHT - MARGIN -
                        (TRACKS_PER_SCREEN * TRACK_HEIGHT)); // BFA
 
   int startOffset = scrollingUp ? -TRACK_HEIGHT : TRACK_HEIGHT;
+  appState.isAnimating = true;
 
-  scrollAnimId = animManager.animate(
+  appState.scrollAnimId = animManager.animate(
       ANIM_CUSTOM, startOffset, 2 * startOffset, 500,
       [this](float offset) {
         int intOffset = (int)offset;
         display->writeCommand(0x37); // VSCRSADD
-        display->writeData16(topVisibleTrack * TRACK_HEIGHT + intOffset);
+        display->writeData16(appState.topVisibleTrackIndex * TRACK_HEIGHT + intOffset);
       },
       [this]() {
         display->writeCommand(0x37);
         display->writeData16(0);
+        appState.isAnimating = false;
         renderTrackList();
       },
       [](float t) { return Easing::easeOutCubic(t); });
 }
 
 void OpenPodUIEngine::pageUp() {
-  if (currentState != STATE_TRACK_LIST || isAnimating())
+  if (appState.currentUIState != STATE_TRACK_LIST || isAnimating())
     return;
 
-  int newSelected = max(0, selectedTrack - TRACKS_PER_SCREEN);
-  int newTopVisible = max(0, topVisibleTrack - TRACKS_PER_SCREEN);
-
-  updateSelection(newSelected, newTopVisible);
+  appState.pageUp();
+  updateTrackListScroll();
+  updateScrollbar();
   renderTrackList();
 }
 
 void OpenPodUIEngine::pageDown() {
-  if (currentState != STATE_TRACK_LIST || isAnimating())
+  if (appState.currentUIState != STATE_TRACK_LIST || isAnimating())
     return;
 
-  int newSelected = min(19, selectedTrack + TRACKS_PER_SCREEN);
-  int newTopVisible =
-      min(20 - TRACKS_PER_SCREEN, topVisibleTrack + TRACKS_PER_SCREEN);
-
-  updateSelection(newSelected, newTopVisible);
+  appState.pageDown();
+  updateTrackListScroll();
+  updateScrollbar();
   renderTrackList();
 }
 

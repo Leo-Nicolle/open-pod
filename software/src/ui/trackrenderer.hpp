@@ -4,22 +4,28 @@
 #include "ui_types.h"
 #include <Arduino.h>
 
-// Binary track renderer for fast caching
+// Binary track renderer for fast caching with multi-bit support
 class TrackRenderer {
 private:
   const FastFont &font;
   static const int MARGIN_LEFT = 5;
-  
-public:
-  TrackRenderer(const FastFont &mainFont)
-      : font(mainFont) {}
+  int bitsPerPixel;
 
-  // Render track to binary bitmap (1 = text, 0 = background)
+public:
+  TrackRenderer(const FastFont &mainFont, int bpp = 1)
+      : font(mainFont), bitsPerPixel(bpp) {
+    // Validate bits per pixel
+    if (bpp != 1 && bpp != 2 && bpp != 4) {
+      bitsPerPixel = 1; // Default to 1 if invalid
+    }
+  }
+
+  // Render track to binary bitmap with multi-bit support
   void renderTrackBinary(const char *title, uint8_t* binaryBuffer, 
                          int bufferWidth, int bufferHeight, int x = 0, int width = SCREEN_WIDTH) {
     
     // Clear the binary buffer first
-    int totalBits = bufferWidth * bufferHeight;
+    int totalBits = bufferWidth * bufferHeight * bitsPerPixel;
     int totalBytes = (totalBits + 7) / 8;
     memset(binaryBuffer, 0, totalBytes);
     
@@ -80,6 +86,31 @@ public:
     
     // Convert pixel buffer to binary bitmap
     convertPixelsToBinary(tempPixelBuffer, binaryBuffer, width, bufferHeight, bufferWidth);
+  }
+
+  // Render binary bitmap to display with transparency support
+  void renderBinaryToDisplay(uint8_t* binaryBuffer, int bufferWidth, int bufferHeight,
+                            uint16_t* displayBuffer, int displayWidth, int displayHeight,
+                            uint16_t textColor, uint16_t backgroundColor, bool selected = false) {
+    
+    uint16_t baseColor = selected ? COLOR_PRIMARY : backgroundColor;
+    
+    for (int y = 0; y < bufferHeight && y < displayHeight; y++) {
+      for (int x = 0; x < bufferWidth && x < displayWidth; x++) {
+        uint8_t pixelValue = getBinaryPixel(binaryBuffer, x, y, bufferWidth);
+        uint16_t finalColor = blendColor(baseColor, textColor, pixelValue);
+        
+        // Apply gradient if selected
+        if (selected) {
+          finalColor = getGradientColor(finalColor, y, bufferHeight);
+        }
+        
+        int displayIndex = y * displayWidth + x;
+        if (displayIndex < displayWidth * displayHeight) {
+          displayBuffer[displayIndex] = finalColor;
+        }
+      }
+    }
   }
 
   // Original color rendering method (keep for compatibility)
@@ -146,43 +177,148 @@ public:
   }
 
 private:
-  // Convert rendered pixels to binary bitmap
+  // Convert rendered pixels to binary bitmap with optimized bit packing
   void convertPixelsToBinary(uint16_t* pixels, uint8_t* binaryBuffer, 
                             int pixelWidth, int pixelHeight, int binaryWidth) {
-    for (int y = 0; y < pixelHeight && y < binaryWidth; y++) { // Prevent overflow
+    for (int y = 0; y < pixelHeight && y < binaryWidth; y++) {
       for (int x = 0; x < pixelWidth && x < binaryWidth; x++) {
         int pixelIndex = y * pixelWidth + x;
-        bool isText = (pixels[pixelIndex] != COLOR_BACKGROUND);
-        
-        setBinaryBit(binaryBuffer, x, y, binaryWidth, isText);
+        uint8_t shade = getShadeFromColor(pixels[pixelIndex]);
+        setBinaryPixel(binaryBuffer, x, y, binaryWidth, shade);
       }
     }
   }
-  
-  // Set bit in binary buffer
-  void setBinaryBit(uint8_t* buffer, int x, int y, int width, bool value) {
-    if (x >= width || y >= width) return; // bounds check
-    
-    int bitIndex = y * width + x;
-    int byteIndex = bitIndex / 8;
-    int bitOffset = bitIndex % 8;
-    
-    if (value) {
-      buffer[byteIndex] |= (1 << bitOffset);
+
+  // Optimized pixel setting with proper bit manipulation
+  void setBinaryPixel(uint8_t* buffer, int x, int y, int width, uint8_t value) {
+    // Calculate bit position
+    int totalBitIndex = (y * width + x) * bitsPerPixel;
+    int byteIndex = totalBitIndex >> 3; // Divide by 8 (faster than /)
+    int bitOffset = totalBitIndex & 7;  // Modulo 8 (faster than %)
+
+    // Create mask for the bits we want to modify
+    uint8_t maxValue = (1 << bitsPerPixel) - 1;
+    value &= maxValue; // Ensure value fits in our bit range
+
+    // Handle case where bits don't cross byte boundary
+    if (bitOffset + bitsPerPixel <= 8) {
+      uint8_t mask = maxValue << bitOffset;
+      buffer[byteIndex] = (buffer[byteIndex] & ~mask) | (value << bitOffset);
     } else {
-      buffer[byteIndex] &= ~(1 << bitOffset);
+      // Handle crossing byte boundary
+      int bitsInFirstByte = 8 - bitOffset;
+      int bitsInSecondByte = bitsPerPixel - bitsInFirstByte;
+      
+      // First byte
+      uint8_t firstMask = ((1 << bitsInFirstByte) - 1) << bitOffset;
+      uint8_t firstValue = (value & ((1 << bitsInFirstByte) - 1)) << bitOffset;
+      buffer[byteIndex] = (buffer[byteIndex] & ~firstMask) | firstValue;
+      
+      // Second byte
+      uint8_t secondMask = (1 << bitsInSecondByte) - 1;
+      uint8_t secondValue = value >> bitsInFirstByte;
+      buffer[byteIndex + 1] = (buffer[byteIndex + 1] & ~secondMask) | secondValue;
     }
   }
-  
-  // Get bit from binary buffer
-  bool getBinaryBit(uint8_t* buffer, int x, int y, int width) {
-    if (x >= width || y >= width) return false;
+
+  // Optimized pixel reading with proper bit manipulation
+  uint8_t getBinaryPixel(uint8_t* buffer, int x, int y, int width) {
+    // Calculate bit position
+    int totalBitIndex = (y * width + x) * bitsPerPixel;
+    int byteIndex = totalBitIndex >> 3; // Divide by 8
+    int bitOffset = totalBitIndex & 7;  // Modulo 8
+
+    uint8_t maxValue = (1 << bitsPerPixel) - 1;
+
+    // Handle case where bits don't cross byte boundary
+    if (bitOffset + bitsPerPixel <= 8) {
+      return (buffer[byteIndex] >> bitOffset) & maxValue;
+    } else {
+      // Handle crossing byte boundary
+      int bitsInFirstByte = 8 - bitOffset;
+      int bitsInSecondByte = bitsPerPixel - bitsInFirstByte;
+      
+      uint8_t firstPart = (buffer[byteIndex] >> bitOffset) & ((1 << bitsInFirstByte) - 1);
+      uint8_t secondPart = buffer[byteIndex + 1] & ((1 << bitsInSecondByte) - 1);
+      
+      return firstPart | (secondPart << bitsInFirstByte);
+    }
+  }
+
+  // Improved color to shade mapping with better anti-aliasing detection
+  uint8_t getShadeFromColor(uint16_t color) {
+    if (bitsPerPixel == 1) {
+      // Simple binary: background or text
+      return (color != COLOR_BACKGROUND) ? 1 : 0;
+    } 
     
-    int bitIndex = y * width + x;
-    int byteIndex = bitIndex / 8;
-    int bitOffset = bitIndex % 8;
+    // For multi-bit modes, analyze color similarity for anti-aliasing
+    uint8_t maxShade = (1 << bitsPerPixel) - 1;
     
-    return (buffer[byteIndex] & (1 << bitOffset)) != 0;
+    if (color == COLOR_BACKGROUND) return 0;
+    if (color == COLOR_TEXT) return maxShade;
+    
+    // Calculate luminance-based transparency for anti-aliased pixels
+    float bgLuma = getColorLuminance(COLOR_BACKGROUND);
+    float textLuma = getColorLuminance(COLOR_TEXT);
+    float pixelLuma = getColorLuminance(color);
+    
+    // Interpolate between background and text based on luminance
+    float ratio;
+    if (textLuma != bgLuma) {
+      ratio = (pixelLuma - bgLuma) / (textLuma - bgLuma);
+      ratio = constrain(ratio, 0.0f, 1.0f);
+    } else {
+      ratio = (color == COLOR_TEXT) ? 1.0f : 0.0f;
+    }
+    
+    return (uint8_t)(ratio * maxShade + 0.5f); // Round to nearest
+  }
+
+  // Calculate luminance of RGB565 color
+  float getColorLuminance(uint16_t color) {
+    // Extract RGB components from RGB565
+    uint8_t r = (color >> 11) & 0x1F;
+    uint8_t g = (color >> 5) & 0x3F;
+    uint8_t b = color & 0x1F;
+    
+    // Convert to 8-bit values
+    float r8 = (r * 255.0f) / 31.0f;
+    float g8 = (g * 255.0f) / 63.0f;
+    float b8 = (b * 255.0f) / 31.0f;
+    
+    // Calculate luminance using standard coefficients
+    return (0.299f * r8 + 0.587f * g8 + 0.114f * b8) / 255.0f;
+  }
+
+  // Blend colors based on transparency value
+  uint16_t blendColor(uint16_t backgroundColor, uint16_t textColor, uint8_t transparency) {
+    if (transparency == 0) return backgroundColor;
+    
+    uint8_t maxTransparency = (1 << bitsPerPixel) - 1;
+    if (transparency >= maxTransparency) return textColor;
+    
+    // Extract RGB565 components
+    uint8_t bgR = (backgroundColor >> 11) & 0x1F;
+    uint8_t bgG = (backgroundColor >> 5) & 0x3F;
+    uint8_t bgB = backgroundColor & 0x1F;
+    
+    uint8_t textR = (textColor >> 11) & 0x1F;
+    uint8_t textG = (textColor >> 5) & 0x3F;
+    uint8_t textB = textColor & 0x1F;
+    
+    // Blend components
+    float alpha = (float)transparency / maxTransparency;
+    uint8_t blendR = (uint8_t)(bgR + alpha * (textR - bgR) + 0.5f);
+    uint8_t blendG = (uint8_t)(bgG + alpha * (textG - bgG) + 0.5f);
+    uint8_t blendB = (uint8_t)(bgB + alpha * (textB - bgB) + 0.5f);
+    
+    // Clamp values to valid ranges
+    blendR = constrain(blendR, 0, 31);
+    blendG = constrain(blendG, 0, 63);
+    blendB = constrain(blendB, 0, 31);
+    
+    return (blendR << 11) | (blendG << 5) | blendB;
   }
 
   // Generate gradient color (keep for color rendering)
@@ -199,5 +335,22 @@ private:
 
     return (newR << 11) | (newG << 5) | newB;
   }
+
+public:
+  // Utility function to calculate buffer size needed
+  static int calculateBufferSize(int width, int height, int bpp) {
+    int totalBits = width * height * bpp;
+    return (totalBits + 7) / 8; // Round up to nearest byte
+  }
+  
+  // Change bits per pixel (useful for testing different modes)
+  void setBitsPerPixel(int bpp) {
+    if (bpp == 1 || bpp == 2 || bpp == 4) {
+      bitsPerPixel = bpp;
+    }
+  }
+  
+  int getBitsPerPixel() const {
+    return bitsPerPixel;
+  }
 };
-// Pure bitmap cache - no screen buffers here!
