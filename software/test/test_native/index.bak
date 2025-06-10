@@ -1,0 +1,53 @@
+#include <unity.h>
+#include "test_track_renderer.cpp"
+
+// Macros
+#define WRAP_TEST(obj, method) \
+    void wrapper_##method() { obj.method(); }
+
+#define RUN_WRAPPED(method) \
+    RUN_TEST(wrapper_##method)
+
+// Global test instance
+TrackRendererTest rendererTestInstance;
+
+// Optional: call per-test setup (if needed by Unity)
+void setUp(void) {
+    rendererTestInstance.setUp();
+}
+
+// Generate wrapper functions (must be at global scope!)
+WRAP_TEST(rendererTestInstance, test_constructor)
+WRAP_TEST(rendererTestInstance, test_buffer_size_calculation)
+WRAP_TEST(rendererTestInstance, test_bits_per_pixel_validation)
+WRAP_TEST(rendererTestInstance, test_binary_render_basic)
+WRAP_TEST(rendererTestInstance, test_binary_pixel_operations)
+WRAP_TEST(rendererTestInstance, test_color_blending)
+WRAP_TEST(rendererTestInstance, test_gradient_effect)
+WRAP_TEST(rendererTestInstance, test_empty_text_rendering)
+WRAP_TEST(rendererTestInstance, test_long_text_rendering)
+WRAP_TEST(rendererTestInstance, test_offset_rendering)
+
+// Test runner
+void runRendererTests() {
+    UNITY_BEGIN();
+
+    RUN_WRAPPED(test_constructor);
+    RUN_WRAPPED(test_buffer_size_calculation);
+    RUN_WRAPPED(test_bits_per_pixel_validation);
+    RUN_WRAPPED(test_binary_render_basic);
+    RUN_WRAPPED(test_binary_pixel_operations);
+    RUN_WRAPPED(test_color_blending);
+    RUN_WRAPPED(test_gradient_effect);
+    RUN_WRAPPED(test_empty_text_rendering);
+    RUN_WRAPPED(test_long_text_rendering);
+    RUN_WRAPPED(test_offset_rendering);
+
+    UNITY_END();
+}
+
+// Main entry point
+int main(int argc, char **argv) {
+    runRendererTests();
+    return 0;
+}
