@@ -118,7 +118,7 @@ void handleWheelInput() {
   // Center button
   if (wheel.wasCenterJustPressed()) {
     Serial.println("🔘 Center pressed");
-    ui.selectTrack();
+    // ui.selectTrack();
   }
 
   // Scroll wheel
