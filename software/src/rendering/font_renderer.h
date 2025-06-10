@@ -2,6 +2,7 @@
 #include "fonts/Fastfont.h"
 #include "ui/theme.h"
 #include <Arduino.h>
+#include <algorithm>
 // Color cache for fast blending
 class ColorCache {
 private:
@@ -133,7 +134,7 @@ public:
             // Adjust alpha for dark backgrounds to make text appear bolder
             if (isDarkBackground && alpha > 0 && alpha < 255) {
               // Curve the alpha to make anti-aliased edges more opaque
-              alpha = min(255,
+              alpha = std::min(255,
                           (alpha * alpha) / 180); // Adjust the divisor to taste
             }
 
