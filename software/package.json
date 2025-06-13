@@ -12,7 +12,7 @@
   },
   "scripts": {
     "clean": "../scripts/pio.sh run -t clean ",
-    "upload": "../scripts/pio.sh run -t upload",
+    "upload": "../scripts/pio.sh run -e nucleo_f446re -t upload",
     "monitor": "../scripts/pio.sh device monitor",
     "test": "../scripts/pio.sh test -e test_native -v ",
     "test:report": "../scripts/pio.sh test -e test_native -v | ../scripts/reporter.js"
