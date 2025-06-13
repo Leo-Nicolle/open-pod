@@ -11,13 +11,19 @@ bool isColorDark(uint16_t color) {
   return luminance < 40;         // Adjust threshold as needed
 }
 
-float adjustedAlpha(uint8_t alpha, bool darkBackground) {
-  if (!darkBackground || alpha == 0 || alpha == 255)
-    return alpha / 255.0f;
-  return std::min(1.0f, (alpha * alpha) / 180.0f / 255.0f);
+
+float computeGamma(float alpha, bool darkBackground) {
+  if (alpha <= 0.0f) return 0.0f;
+  if (alpha >= 1.0f) return 1.0f;
+
+  if (darkBackground) {
+    // Alpha curve that boosts edge contrast on dark
+    return std::min(1.0f, (alpha * alpha + alpha) * 0.5f); // empirical
+  } else {
+    return powf(alpha, 1.8f);
+  }
 }
 uint16_t blendColor(uint16_t bgColor, uint16_t fgColor, float alpha) {
-  // Extract RGB565 components
   uint8_t bgR = (bgColor >> 11) & 0x1F;
   uint8_t bgG = (bgColor >> 5) & 0x3F;
   uint8_t bgB = bgColor & 0x1F;
@@ -26,18 +32,19 @@ uint16_t blendColor(uint16_t bgColor, uint16_t fgColor, float alpha) {
   uint8_t fgG = (fgColor >> 5) & 0x3F;
   uint8_t fgB = fgColor & 0x1F;
 
-  // Apply gamma correction
-  float a = powf(alpha, 1.8f);
+  bool darkBackground = isColorDark(bgColor);
+  float a = alpha;
+  if (darkBackground) {
+    a = std::min(1.0f, (a * a) / 0.75f); // Better boost on dark
+  } else {
+    a = powf(a, 1.8f);
+  }
 
-  // Blend components with full float precision
   int blendR = roundf((1.0f - a) * bgR + a * fgR);
   int blendG = roundf((1.0f - a) * bgG + a * fgG);
   int blendB = roundf((1.0f - a) * bgB + a * fgB);
 
-  // Clamp to RGB565 valid ranges
-  blendR = constrain(blendR, 0, 31);
-  blendG = constrain(blendG, 0, 63);
-  blendB = constrain(blendB, 0, 31);
-
-  return (blendR << 11) | (blendG << 5) | blendB;
+  return ((constrain(blendR, 0, 31) << 11) |
+          (constrain(blendG, 0, 63) << 5) |
+          constrain(blendB, 0, 31));
 }
