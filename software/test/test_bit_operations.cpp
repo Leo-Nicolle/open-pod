@@ -1,6 +1,7 @@
 #include <doctest.h>
 #include "../../src/ui/trackrenderer.hpp"
 #include "../../src/ui/trackscache.hpp"
+#include "../../src/fonts/IBMPlexSans16Bold.h"
 #include "./mock_ui_types.h"
 
 
@@ -9,12 +10,11 @@ public:
     TrackRenderer* renderer1bpp;
     TrackRenderer* renderer2bpp;
     TrackRenderer* renderer4bpp;
-    FastFont testFont;
     
     BitOperationsTestFixture() {
-        renderer1bpp = new TrackRenderer(testFont, 1);
-        renderer2bpp = new TrackRenderer(testFont, 2);
-        renderer4bpp = new TrackRenderer(testFont, 4);
+        renderer1bpp = new TrackRenderer(IBMPlexSans16Bold, 1);
+        renderer2bpp = new TrackRenderer(IBMPlexSans16Bold, 2);
+        renderer4bpp = new TrackRenderer(IBMPlexSans16Bold, 4);
     }
     
     ~BitOperationsTestFixture() {
@@ -57,7 +57,7 @@ TEST_CASE_FIXTURE(BitOperationsTestFixture, "1bpp storage efficiency") {
     // Test that we can actually store and retrieve data
     uint8_t* buffer = new uint8_t[actualBytes];
     memset(buffer, 0, actualBytes);
-    
+
     renderer1bpp->renderTrackBinary("Test", buffer, width, height, 0, width);
     
     // Buffer should have some content

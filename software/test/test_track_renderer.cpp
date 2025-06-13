@@ -6,13 +6,12 @@
 class TrackRendererTestFixture {
 public:
     TrackRenderer* renderer;
-    FastFont testFont;
     uint8_t* testBuffer;
     int bufferSize;
     
     TrackRendererTestFixture() {
         // Test with 2 bits per pixel
-        renderer = new TrackRenderer(testFont, 2);
+        renderer = new TrackRenderer(IBMPlexSans16Bold, 2);
         
         // Allocate test buffer
         int width = 100;
@@ -35,12 +34,12 @@ TEST_CASE_FIXTURE(TrackRendererTestFixture, "Constructor") {
 TEST_CASE_FIXTURE(TrackRendererTestFixture, "Buffer size calculation") {
     SUBCASE("1 bit per pixel") {
         int size1 = TrackRenderer::calculateBufferSize(100, 30, 1);
-        CHECK_EQ((100 * 30 + 7) / 8, size1+1);
+        CHECK_EQ((100 * 30 + 7) / 8, size1);
     }
     
     SUBCASE("2 bits per pixel") {
         int size2 = TrackRenderer::calculateBufferSize(100, 30, 2);
-        CHECK_EQ((100 * 30 * 2 + 7) / 8, size2+2);
+        CHECK_EQ((100 * 30 * 2 + 7) / 8, size2);
     }
     
     SUBCASE("4 bits per pixel") {
@@ -88,9 +87,9 @@ TEST_CASE_FIXTURE(TrackRendererTestFixture, "Binary render basic") {
 
 TEST_CASE_FIXTURE(TrackRendererTestFixture, "Binary pixel operations") {
     // Test setting and getting pixels for different bit depths
-    TrackRenderer renderer1(testFont, 1);
-    TrackRenderer renderer2(testFont, 2);
-    TrackRenderer renderer4(testFont, 4);
+    TrackRenderer renderer1(IBMPlexSans16Bold, 1);
+    TrackRenderer renderer2(IBMPlexSans16Bold, 2);
+    TrackRenderer renderer4(IBMPlexSans16Bold, 4);
     
     // Create a small test binary buffer
     int testWidth = 8;

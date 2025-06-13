@@ -1,15 +1,15 @@
 #include <doctest.h>
 #include "../../src/ui/trackscache.hpp"
+// #include "../../src/fonts/IBMPlexSans16Bold.h"
 #include "./mock_ui_types.h"
 
 class TracksCacheTestFixture {
 public:
     TracksCache* cache;
-    FastFont testFont;
     const char* testTracks[TRACKS_PER_SCREEN];
     
     TracksCacheTestFixture() {
-        cache = new TracksCache(testFont, 2);
+        cache = new TracksCache(IBMPlexSans16Bold, 2);
         
         // Initialize test tracks
         testTracks[0] = "Track 1";
@@ -19,7 +19,6 @@ public:
         testTracks[4] = "Track 5";
         testTracks[5] = "Track 6";
         testTracks[6] = "Track 7";
-        testTracks[7] = "Track 8";
     }
     
     ~TracksCacheTestFixture() {
@@ -64,7 +63,7 @@ TEST_CASE_FIXTURE(TracksCacheTestFixture, "Scroll operations") {
         // Create new tracks for scroll test
         const char* newTracks[TRACKS_PER_SCREEN] = {
             "New Track 1", "Track 1", "Track 2", "Track 3", 
-            "Track 4", "Track 5", "Track 6"
+            "Track 4", "Track 5"
         };
         
         // Scroll up by 1
@@ -94,7 +93,7 @@ TEST_CASE_FIXTURE(TracksCacheTestFixture, "Scroll operations") {
         // Create new tracks for scroll test
         const char* newTracks[TRACKS_PER_SCREEN] = {
             "Track 2", "Track 3", "Track 4", "Track 5", 
-            "Track 6", "Track 7", "Track 8"
+            "Track 6", "Track 7"
         };
         
         // Scroll down by 1
@@ -124,7 +123,7 @@ TEST_CASE_FIXTURE(TracksCacheTestFixture, "Scroll operations") {
         // Create completely new tracks
         const char* newTracks[TRACKS_PER_SCREEN] = {
             "New 1", "New 2", "New 3", "New 4", 
-            "New 5", "New 6", "New 7"
+            "New 5", "New 6"
         };
         
         // Scroll by more than screen size (should trigger rebuild)
