@@ -4,7 +4,7 @@
 #include <Arduino.h>
 
 class TracksCache {
-private:
+public:
   TrackRenderer renderer;
   
   // Cache storage for binary bitmaps

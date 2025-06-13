@@ -7,7 +7,7 @@
 
 class ILI9341_GFX;
 class TrackListComponent {
-private:
+public:
   TracksCache cache; // Using the updated TracksCache with pointer swapping
   const char **tracks;
   int totalTracks;
@@ -15,10 +15,10 @@ private:
   int topVisibleTrack;
 
 public:
-  static const int BITS_PER_PIXEL = 2;
+  static const int BITS_PER_PIXEL = 4;
   TrackListComponent(const char **trackList, int count)
       : tracks(trackList), totalTracks(count), selectedTrack(0),
-        topVisibleTrack(0), cache(IBMPlexSans16Bold, 2) {}
+        topVisibleTrack(0), cache(IBMPlexSans16Bold, BITS_PER_PIXEL) {}
 
   void begin() {
     // Build initial cache with visible tracks

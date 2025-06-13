@@ -101,4 +101,4 @@ public:
 
 // Global buffer manager instance
 extern BufferManager g_buffers;
-extern FastFontRenderer fontRenderer;
+extern FontRenderer fontRenderer;

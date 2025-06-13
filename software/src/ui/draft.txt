@@ -50,7 +50,7 @@ private:
   uint16_t headerBuffer[320 * 30];
 
   MenuItemRenderer *menuRenderer;
-  FastFontRenderer *headerRenderer;
+  FontRenderer *headerRenderer;
 
   bool headerRendered = false;
   bool isRotatedMode = false;
@@ -107,7 +107,7 @@ public:
   OpenPodUI(ILI9341_GFX *disp) : display(disp) {
     menuRenderer =
         new MenuItemRenderer(trackBuffer, IBMPlexSans16, IBMPlexSans12);
-    headerRenderer = new FastFontRenderer(headerBuffer, 320, 30);
+    headerRenderer = new FontRenderer(headerBuffer, 320, 30);
   }
 
   ~OpenPodUI() {

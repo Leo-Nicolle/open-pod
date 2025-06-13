@@ -2,4 +2,4 @@
 
 // Minimal dummy implementations for test
 BufferManager g_buffers;
-FastFontRenderer fontRenderer(g_buffers.getCurrentBuffer(), SCREEN_WIDTH, CHUNK_HEIGHT);
+FontRenderer fontRenderer(g_buffers.getCurrentBuffer(), SCREEN_WIDTH, CHUNK_HEIGHT);

@@ -65,7 +65,7 @@ void setup() {
 
   Serial.println("✅ ClickWheel initialized!");
   Serial.println("Keep hands off wheel for baseline...");
-  delay(3000);
+  // delay(3000);
   wheel.takeBaseline();
 
   // Apply your calibrated sensitivity values
@@ -73,7 +73,7 @@ void setup() {
 
   // Initialize UI
   ui.begin();
-  
+  ui.trackList.cache.renderer.printDebugInfo();
   // Optional demo animations
   demoAnimations();
   

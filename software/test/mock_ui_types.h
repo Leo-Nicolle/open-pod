@@ -2,4 +2,4 @@
 #include "../../src/ui/ui_types.h"
 
 extern BufferManager g_buffers;
-extern FastFontRenderer fontRenderer;
+extern FontRenderer fontRenderer;
