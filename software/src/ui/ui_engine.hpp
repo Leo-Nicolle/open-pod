@@ -5,7 +5,7 @@
 #include "header.hpp"
 #include "nowplaying.hpp"
 #include "scrollbar.hpp"
-#include "tracklist.hpp"
+#include "list/tracklist.hpp"
 #include "ui_types.h"
 #include <Arduino.h>
 
@@ -534,6 +534,7 @@ void OpenPodUIEngine::transitionToTrackList() {
 
         trackList.renderAllTracks(
             display, SCREEN_WIDTH - width - lastDrawnOffset, BODY_Y, width);
+            trackList.red
         display->setScrollOffset(currentOffset);
         lastDrawnOffset = currentOffset;
       },

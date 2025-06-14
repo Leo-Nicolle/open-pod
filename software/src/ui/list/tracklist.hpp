@@ -1,14 +1,17 @@
 #pragma once
-#include "../fonts/IBMPlexSans16Bold.h"
-#include "theme.h"
+#include "../../fonts/IBMPlexSans16Bold.h"
+#include "../theme.h"
+#include "../ui_types.h"
 #include "trackscache.hpp"
-#include "ui_types.h"
+#include "trackrenderer.hpp"
+#include "utils.h"
 #include <Arduino.h>
 
 class ILI9341_GFX;
 class TrackListComponent {
 public:
   TracksCache cache; // Using the updated TracksCache with pointer swapping
+  TrackRenderer renderer;
   const char **tracks;
   int totalTracks;
   int selectedTrack;
@@ -76,28 +79,6 @@ public:
     }
   }
 
-  void renderTrackRange(ILI9341_GFX *display, int startTrack, int endTrack,
-                        int xOffset = 0, int yOffset = BODY_Y,
-                        int width = SCREEN_WIDTH - SCROLLBAR_WIDTH) {
-    uint16_t *buffer = g_buffers.getCurrentBuffer();
-
-    for (int i = startTrack; i <= endTrack && i < TRACKS_PER_SCREEN; i++) {
-      int trackIndex = topVisibleTrack + i;
-      bool isVisible = (trackIndex < totalTracks);
-      bool isSelected = (trackIndex == selectedTrack);
-
-      if (isVisible) {
-        cache.renderTrackToBuffer(i, isSelected, buffer, width);
-      } else {
-        cache.fillBufferWithBackground(buffer, width);
-      }
-
-      int yPos = yOffset + (i * TRACK_HEIGHT);
-      display->pushWindow(xOffset, yPos, width, TRACK_HEIGHT, buffer);
-    }
-  }
-
-  // Render a specific chunk for transitions
   void renderChunk(ILI9341_GFX *display, int xOffset, int yOffset, int width) {
     // Calculate which tracks are visible in this chunk
     int startY = yOffset - BODY_Y;
@@ -109,8 +90,9 @@ public:
     // Constrain to valid range
     startTrack = max(0, min(startTrack, TRACKS_PER_SCREEN - 1));
     endTrack = max(0, min(endTrack, TRACKS_PER_SCREEN - 1));
+    display->pushWindow(xOffset, yPos, width, TRACK_HEIGHT, buffer);
 
-    renderTrackRange(display, startTrack, endTrack, xOffset, yOffset, width);
+    // renderTrackRange(display, startTrack, endTrack, xOffset, yOffset, width);
   }
 
   // Force rebuild cache (useful when track list changes significantly)
