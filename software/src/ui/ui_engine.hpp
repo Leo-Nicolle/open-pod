@@ -1,16 +1,19 @@
 #pragma once
 #include "../rendering/ILI9341_GFX.h"
 #include "../rendering/animation_manager.h"
+#include "../state/state.h"
 #include "header.hpp"
 #include "nowplaying.hpp"
 #include "scrollbar.hpp"
 #include "tracklist.hpp"
 #include "ui_types.h"
-#include "appstate.hpp"
 #include <Arduino.h>
 
+// Forward declaration for global state
+extern State state;
+
 class OpenPodUIEngine {
-public:
+private:
   ILI9341_GFX *display;
   AnimationManager animManager;
 
@@ -20,69 +23,60 @@ public:
   TrackListComponent trackList;
   NowPlayingComponent nowPlaying;
 
-  // Centralized application state
-  AppState appState;
-
-  // Track data
-  const char *tracks[20] = {"Bohemian Rhapsody",
-                            "Hotel California",
-                            "Stairway to Heaven",
-                            "Sweet Child O' Mine",
-                            "Imagine",
-                            "Billie Jean",
-                            "Like a Rolling Stone",
-                            "Smells Like Teen Spirit",
-                            "Purple Haze",
-                            "What's Going On",
-                            "Respect",
-                            "Good Vibrations",
-                            "Johnny B. Goode",
-                            "Hey Jude",
-                            "I Want to Hold Your Hand",
-                            "Yesterday",
-                            "Satisfaction",
-                            "My Girl",
-                            "Bridge Over Troubled Water",
-                            "The Sound of Silence"};
-
-  // Transition rendering
   int lastDrawnOffset;
+
+  // Event handler - must be static to use as callback
+  static void onStateEvent(int eventType, void *eventData, EventTarget *source);
+
+  // Instance pointer for static callback access
+  static OpenPodUIEngine *instance;
+
+  // Internal UI update methods (called by event handlers)
+  void handleTrackSelected(const TrackSelectedEvent *event);
+  void handleScrollChanged(const ScrollChangedEvent *event);
+  void handlePageChanged(const ScrollChangedEvent *event);
+  void handlePlaybackStarted(const PlaybackEvent *event);
+  void handlePlaybackPaused(const PlaybackEvent *event);
+  void handlePlaybackResumed(const PlaybackEvent *event);
+  void handlePlaybackStopped(const PlaybackEvent *event);
+  void handleProgressUpdated(const ProgressEvent *event);
+  void handleTrackEnded(const PlaybackEvent *event);
+  void handleShowingChanged(const ShowingEvent *event);
+  void handleAnimationStarted(const AnimationEvent *event);
+  void handleAnimationFinished(const AnimationEvent *event);
+  void handleTrackListUpdated(const TrackListEvent *event);
+  void handleTrackDurationChanged(int *duration);
 
 public:
   OpenPodUIEngine(ILI9341_GFX *disp);
+  ~OpenPodUIEngine();
 
   // Lifecycle
   void begin();
   bool update();
+  void hookToEvents(); // Connect to state events
 
-  // Navigation
-  void scrollUp();
-  void scrollDown();
-  void pageUp();
-  void pageDown();
-  void selectTrack();
-  void returnToList();
+  // User input handlers (these call state methods, not UI methods directly)
+  void handleScrollUpInput();
+  void handleScrollDownInput();
+  void handlePageUpInput();
+  void handlePageDownInput();
+  void handleSelectInput();
+  void handleBackInput();
+  void handlePlayPauseInput();
+  void handleStopInput();
 
-  // Playback control
-  void playSelectedTrack();
-  void togglePlayback();
-  void stopPlayback();
-
-  // Rendering
+  // Rendering methods (called by event handlers)
   void renderCurrentState();
   void renderTrackList();
   void renderNowPlaying(int xOffset = 0, int width = SCREEN_WIDTH);
   void renderTrackListArea();
 
-  // Transitions
+  // Transitions (triggered by events)
   void transitionToNowPlaying();
   void transitionToTrackList();
 
-  // Smooth scrolling
-  void animateScroll(bool scrollingUp);
-
   // Utility
-  void setRotation(bool rotated) { appState.isRotatedMode = rotated; }
   float getFPS() const { return animManager.getFPS(); }
   void measurePerformance();
 
@@ -90,20 +84,34 @@ private:
   // Internal helpers
   void updateScrollbar();
   void updateTrackListScroll();
-  bool isAnimating() const { return appState.isAnimating; }
+  bool isAnimating() const { return state.getIsAnimating(); }
 };
+
+// Static member definition
+OpenPodUIEngine *OpenPodUIEngine::instance = nullptr;
 
 // Implementation
 OpenPodUIEngine::OpenPodUIEngine(ILI9341_GFX *disp)
-    : display(disp), trackList(tracks, 20), lastDrawnOffset(0) {
-  
-  // Initialize app state with track data
-  appState.setTracks(tracks, 20);
+    : display(disp), trackList(nullptr, 0), lastDrawnOffset(0) {
+
+  // Set static instance for callback access
+  instance = this;
+}
+
+OpenPodUIEngine::~OpenPodUIEngine() {
+  // Remove event listener on destruction
+  state.removeEventListener(onStateEvent);
+
+  // Clear static instance
+  if (instance == this) {
+    instance = nullptr;
+  }
 }
 
 void OpenPodUIEngine::begin() {
   display->fillScreen(COLOR_BACKGROUND);
-
+  // Hook up to state events first
+  hookToEvents();
   // Initialize components
   trackList.begin();
   updateTrackListScroll();
@@ -112,40 +120,331 @@ void OpenPodUIEngine::begin() {
   // Render initial state
   renderCurrentState();
 
-  Serial.println("OpenPod UI Engine initialized with centralized state");
+  Serial.println(
+      "OpenPod UI Engine initialized with event-driven architecture");
 }
 
-bool OpenPodUIEngine::update() { 
-  bool wasAnimating = appState.isAnimating;
-  appState.isAnimating = animManager.isActive();
-  
-  // Update animation state
+void OpenPodUIEngine::hookToEvents() {
+  // Register for all state change events
+  bool success = state.addEventListener(onStateEvent);
+
+  if (success) {
+    Serial.println("UI Engine successfully hooked to state events");
+  } else {
+    Serial.println("Warning: Failed to register UI Engine for state events");
+  }
+}
+
+bool OpenPodUIEngine::update() {
+  // Update animation manager
   bool result = animManager.update();
-  
   return result;
 }
 
-void OpenPodUIEngine::updateScrollbar() {
-  scrollbar.setScrollData(appState.totalTracks, TRACKS_PER_SCREEN, appState.topVisibleTrackIndex);
+// Static event handler - routes events to instance methods
+void OpenPodUIEngine::onStateEvent(int eventType, void *eventData,
+                                   EventTarget *source) {
+  if (!instance) {
+    Serial.println(
+        "Warning: UI Engine instance not available for event handling");
+    return;
+  }
+
+  switch (eventType) {
+  case EVENT_TRACK_SELECTED:
+    instance->handleTrackSelected((TrackSelectedEvent *)eventData);
+    break;
+
+  case EVENT_SCROLL_CHANGED:
+    instance->handleScrollChanged((ScrollChangedEvent *)eventData);
+    break;
+
+  case EVENT_PAGE_CHANGED:
+    instance->handlePageChanged((ScrollChangedEvent *)eventData);
+    break;
+
+  case EVENT_PLAYBACK_STARTED:
+    instance->handlePlaybackStarted((PlaybackEvent *)eventData);
+    break;
+
+  case EVENT_PLAYBACK_PAUSED:
+    instance->handlePlaybackPaused((PlaybackEvent *)eventData);
+    break;
+
+  case EVENT_PLAYBACK_RESUMED:
+    instance->handlePlaybackResumed((PlaybackEvent *)eventData);
+    break;
+
+  case EVENT_PLAYBACK_STOPPED:
+    instance->handlePlaybackStopped((PlaybackEvent *)eventData);
+    break;
+
+  case EVENT_PROGRESS_UPDATED:
+    instance->handleProgressUpdated((ProgressEvent *)eventData);
+    break;
+
+  case EVENT_TRACK_ENDED:
+    instance->handleTrackEnded((PlaybackEvent *)eventData);
+    break;
+
+  case EVENT_UI_STATE_CHANGED:
+    instance->handleShowingChanged((ShowingEvent *)eventData);
+    break;
+
+  case EVENT_ANIMATION_STARTED:
+    instance->handleAnimationStarted((AnimationEvent *)eventData);
+    break;
+
+  case EVENT_ANIMATION_FINISHED:
+    instance->handleAnimationFinished((AnimationEvent *)eventData);
+    break;
+
+  case EVENT_TRACK_LIST_UPDATED:
+    instance->handleTrackListUpdated((TrackListEvent *)eventData);
+    break;
+
+  case EVENT_TRACK_DURATION_CHANGED:
+    instance->handleTrackDurationChanged((int *)eventData);
+    break;
+
+  default:
+    Serial.print("UI Engine: Unhandled event type: ");
+    Serial.println(eventType);
+    break;
+  }
 }
 
-void OpenPodUIEngine::updateTrackListScroll() {
-  trackList.setScroll(appState.selectedTrackIndex, appState.topVisibleTrackIndex);
+// Event handler implementations
+void OpenPodUIEngine::handleTrackSelected(const TrackSelectedEvent *event) {
+  Serial.print("UI: Track selected - ");
+  Serial.println(event->trackName);
+
+  // Update UI components
+  updateTrackListScroll();
+
+  // Re-render if we're in track list view
+  if (state.getCurrentShowing() == TRACK_LIST) {
+    renderTrackListArea();
+  }
 }
 
+void OpenPodUIEngine::handleScrollChanged(const ScrollChangedEvent *event) {
+  Serial.print("UI: Scroll changed - selected: ");
+  Serial.print(event->selectedIndex);
+  Serial.print(", top visible: ");
+  Serial.println(event->topVisibleIndex);
+
+  updateTrackListScroll();
+  updateScrollbar();
+
+  // Handle cache updates for track list
+  if (event->topVisibleIndex != event->oldTopVisibleIndex) {
+    int scrollDelta = event->topVisibleIndex - event->oldTopVisibleIndex;
+    if (scrollDelta > 0) {
+      Serial.print("Scrolling down by ");
+      Serial.println(scrollDelta);
+      trackList.scrollDown(scrollDelta, event->visibleTracks);
+    } else {
+      trackList.scrollUp(-scrollDelta, event->visibleTracks);
+    }
+  }
+
+  renderTrackListArea();
+}
+
+void OpenPodUIEngine::handlePageChanged(const ScrollChangedEvent *event) {
+  Serial.println("UI: Page changed");
+  for(int i = 0; i < TRACKS_PER_SCREEN; i++) {
+    Serial.print("Track ");
+    Serial.print(i);
+    Serial.print(": ");
+    Serial.println(event->visibleTracks[i]);
+  }
+  updateTrackListScroll();
+  trackList.rebuildCache();
+  updateScrollbar();
+  renderTrackList(); // Full re-render for page changes
+}
+
+void OpenPodUIEngine::handlePlaybackStarted(const PlaybackEvent *event) {
+  Serial.print("UI: Playback started - ");
+  Serial.println(event->trackName);
+
+  // Update now playing component
+  nowPlaying.setTrack(event->trackName);
+  nowPlaying.setPlayState(true);
+
+  // If we're in now playing view, update display
+  if (state.getCurrentShowing() == NOW_PLAYING) {
+    renderNowPlaying();
+  }
+
+  // Could also trigger transition to now playing view automatically
+  // transitionToNowPlaying();
+}
+
+void OpenPodUIEngine::handlePlaybackPaused(const PlaybackEvent *event) {
+  Serial.println("UI: Playback paused");
+
+  nowPlaying.setPlayState(false);
+
+  if (state.getCurrentShowing() == NOW_PLAYING) {
+    renderNowPlaying();
+  }
+}
+
+void OpenPodUIEngine::handlePlaybackResumed(const PlaybackEvent *event) {
+  Serial.println("UI: Playback resumed");
+
+  nowPlaying.setPlayState(true);
+
+  if (state.getCurrentShowing() == NOW_PLAYING) {
+    renderNowPlaying();
+  }
+}
+
+void OpenPodUIEngine::handlePlaybackStopped(const PlaybackEvent *event) {
+  Serial.println("UI: Playback stopped");
+
+  nowPlaying.setPlayState(false);
+  nowPlaying.setProgress(0);
+
+  if (state.getCurrentShowing() == NOW_PLAYING) {
+    renderNowPlaying();
+  }
+}
+
+void OpenPodUIEngine::handleProgressUpdated(const ProgressEvent *event) {
+  // Only update if we're showing the now playing screen
+  if (state.getCurrentShowing() == NOW_PLAYING) {
+    nowPlaying.setProgress(event->position);
+    nowPlaying.setTrackLength(event->duration);
+
+    // Only re-render the progress portion to avoid flicker
+    // nowPlaying.renderProgressOnly(display);
+  }
+}
+
+void OpenPodUIEngine::handleTrackEnded(const PlaybackEvent *event) {
+  Serial.print("UI: Track ended - ");
+  Serial.println(event->trackName);
+
+  // Visual feedback for track end (could show brief message, etc.)
+}
+
+void OpenPodUIEngine::handleShowingChanged(const ShowingEvent *event) {
+  Serial.print("UI: State changed from ");
+  Serial.print(event->oldState);
+  Serial.print(" to ");
+  Serial.println(event->newState);
+
+  // Handle transitions between states
+  if (event->oldState == TRACK_LIST && event->newState == NOW_PLAYING) {
+    transitionToNowPlaying();
+  } else if (event->oldState == NOW_PLAYING && event->newState == TRACK_LIST) {
+    transitionToTrackList();
+  } else {
+    // Direct state change without transition
+    renderCurrentState();
+  }
+}
+
+void OpenPodUIEngine::handleAnimationStarted(const AnimationEvent *event) {
+  Serial.print("UI: Animation started - ID: ");
+  Serial.println(event->animationId);
+}
+
+void OpenPodUIEngine::handleAnimationFinished(const AnimationEvent *event) {
+  Serial.print("UI: Animation finished - ID: ");
+  Serial.println(event->animationId);
+
+  // Ensure final render after animation
+  renderCurrentState();
+}
+
+void OpenPodUIEngine::handleTrackListUpdated(const TrackListEvent *event) {
+  Serial.print("UI: Track list updated - ");
+  Serial.print(event->totalTracks);
+  Serial.println(" tracks");
+  trackList.updateTracks(event->tracks, event->totalTracks);
+  updateScrollbar();
+  // Re-render if we're showing the track list
+  if (state.getCurrentShowing() == TRACK_LIST) {
+    renderTrackList();
+  }
+}
+
+void OpenPodUIEngine::handleTrackDurationChanged(int *duration) {
+  Serial.print("UI: Track duration changed to ");
+  Serial.print(*duration);
+  Serial.println(" seconds");
+
+  nowPlaying.setTrackLength(*duration);
+
+  if (state.getCurrentShowing() == NOW_PLAYING) {
+    renderNowPlaying();
+  }
+}
+
+// User input handlers - these call state methods instead of UI methods
+void OpenPodUIEngine::handleScrollUpInput() {
+  state.scrollUp(); // This will trigger EVENT_SCROLL_CHANGED
+}
+
+void OpenPodUIEngine::handleScrollDownInput() {
+  state.scrollDown(); // This will trigger EVENT_SCROLL_CHANGED
+}
+
+void OpenPodUIEngine::handlePageUpInput() {
+  state.pageUp(); // This will trigger EVENT_PAGE_CHANGED
+}
+
+void OpenPodUIEngine::handlePageDownInput() {
+  state.pageDown(); // This will trigger EVENT_PAGE_CHANGED
+}
+
+void OpenPodUIEngine::handleSelectInput() {
+  if (state.getCurrentShowing() == TRACK_LIST && !isAnimating()) {
+    // This could either start playback or transition to now playing
+    state.setShowing(NOW_PLAYING); // This will trigger EVENT_UI_STATE_CHANGED
+  }
+}
+
+void OpenPodUIEngine::handleBackInput() {
+  if (state.getCurrentShowing() == NOW_PLAYING && !isAnimating()) {
+    state.setShowing(TRACK_LIST); // This will trigger EVENT_UI_STATE_CHANGED
+  }
+}
+
+void OpenPodUIEngine::handlePlayPauseInput() {
+  if (state.getPlayingTrackIndex() == -1) {
+    // No track playing, start playback
+    state.startPlayback(); // This will trigger EVENT_PLAYBACK_STARTED
+  } else {
+    // Toggle current playback
+    state.togglePlayback(); // This will trigger EVENT_PLAYBACK_PAUSED/RESUMED
+  }
+}
+
+void OpenPodUIEngine::handleStopInput() {
+  state.stopPlayback(); // This will trigger EVENT_PLAYBACK_STOPPED
+}
+
+// Rendering methods (mostly unchanged, but now use state getters)
 void OpenPodUIEngine::renderCurrentState() {
-  Serial.println(
-      "Rendering current state: " +
-      String(appState.currentUIState == STATE_TRACK_LIST ? "Track List" : "Now Playing"));
-  
-  switch (appState.currentUIState) {
-  case STATE_TRACK_LIST:
+  Serial.println("Rendering current state: " +
+                 String(state.getCurrentShowing() == TRACK_LIST
+                            ? "Track List"
+                            : "Now Playing"));
+
+  switch (state.getCurrentShowing()) {
+  case TRACK_LIST:
     renderTrackList();
     break;
-  case STATE_NOW_PLAYING:
+  case NOW_PLAYING:
     renderNowPlaying();
     break;
-  case STATE_TRANSITIONING:
+  case TRANSITIONING:
     // Don't render during transitions - handled by animation
     break;
   }
@@ -159,94 +458,20 @@ void OpenPodUIEngine::renderTrackList() {
 
 void OpenPodUIEngine::renderNowPlaying(int xOffset, int width) {
   header.render(display);
-  
-  const char* trackName = appState.getPlayingTrackName();
+
+  const char *trackName = state.getPlayingTrackName();
   if (!trackName) {
-    trackName = appState.getCurrentTrackName();
+    trackName = state.getCurrentTrackName();
   }
-  
+
   if (trackName) {
     nowPlaying.setTrack(trackName);
   }
-  
-  nowPlaying.setTrackLength(appState.trackDuration);
-  nowPlaying.setProgress(appState.playbackPosition);
-  nowPlaying.setPlayState(appState.isPlaying);
+
+  nowPlaying.setTrackLength(state.getTrackDuration());
+  nowPlaying.setProgress(state.getPlaybackPosition());
+  nowPlaying.setPlayState(state.getIsPlaying());
   nowPlaying.render(display, xOffset, width);
-}
-
-void OpenPodUIEngine::scrollUp() {
-  if (appState.currentUIState != STATE_TRACK_LIST || isAnimating())
-    return;
-
-  int oldSelected = appState.selectedTrackIndex;
-  int oldTopVisible = appState.topVisibleTrackIndex;
-  
-  appState.scrollUp();
-  
-  if (appState.needsScrollUpdate(oldSelected, oldTopVisible)) {
-    updateTrackListScroll();
-    updateScrollbar();
-    
-    // Check if we need to scroll the cache
-    if (appState.topVisibleTrackIndex != oldTopVisible) {
-      // Calculate how many tracks we scrolled up
-      int scrollDelta = oldTopVisible - appState.topVisibleTrackIndex;
-      
-      // Get the tracks that should now be visible
-      int startIdx, endIdx;
-      appState.getVisibleTrackIndices(startIdx, endIdx);
-      
-      // Create array of visible track names for cache update
-      const char* visibleTracks[TRACKS_PER_SCREEN];
-      for (int i = 0; i < TRACKS_PER_SCREEN; i++) {
-        int trackIdx = startIdx + i;
-        visibleTracks[i] = (trackIdx < appState.totalTracks) ? appState.tracks[trackIdx] : "";
-      }
-      
-      // Update the track list cache
-      trackList.scrollUp(scrollDelta, visibleTracks);
-    }
-    
-    renderTrackListArea();
-  }
-}
-
-void OpenPodUIEngine::scrollDown() {
-  if (appState.currentUIState != STATE_TRACK_LIST || isAnimating())
-    return;
-
-  int oldSelected = appState.selectedTrackIndex;
-  int oldTopVisible = appState.topVisibleTrackIndex;
-  
-  appState.scrollDown();
-  
-  if (appState.needsScrollUpdate(oldSelected, oldTopVisible)) {
-    updateTrackListScroll();
-    updateScrollbar();
-    
-    // Check if we need to scroll the cache
-    if (appState.topVisibleTrackIndex != oldTopVisible) {
-      // Calculate how many tracks we scrolled down
-      int scrollDelta = appState.topVisibleTrackIndex - oldTopVisible;
-      
-      // Get the tracks that should now be visible
-      int startIdx, endIdx;
-      appState.getVisibleTrackIndices(startIdx, endIdx);
-      
-      // Create array of visible track names for cache update
-      const char* visibleTracks[TRACKS_PER_SCREEN];
-      for (int i = 0; i < TRACKS_PER_SCREEN; i++) {
-        int trackIdx = startIdx + i;
-        visibleTracks[i] = (trackIdx < appState.totalTracks) ? appState.tracks[trackIdx] : "";
-      }
-      
-      // Update the track list cache
-      trackList.scrollDown(scrollDelta, visibleTracks);
-    }
-    
-    renderTrackListArea();
-  }
 }
 
 void OpenPodUIEngine::renderTrackListArea() {
@@ -256,51 +481,22 @@ void OpenPodUIEngine::renderTrackListArea() {
   scrollbar.render(display);
 }
 
-void OpenPodUIEngine::selectTrack() {
-  if (appState.currentUIState == STATE_TRACK_LIST && !isAnimating()) {
-    transitionToNowPlaying();
-  }
+void OpenPodUIEngine::updateScrollbar() {
+  scrollbar.setScrollData(state.getTotalTracks(), TRACKS_PER_SCREEN,
+                          state.getTopVisibleTrackIndex());
 }
 
-void OpenPodUIEngine::returnToList() {
-  if (appState.currentUIState == STATE_NOW_PLAYING && !isAnimating()) {
-    transitionToTrackList();
-  }
+void OpenPodUIEngine::updateTrackListScroll() {
+  trackList.setScroll(state.getSelectedTrackIndex(),
+                      state.getTopVisibleTrackIndex());
 }
 
-void OpenPodUIEngine::playSelectedTrack() {
-  appState.startPlayback();
-  // Here you would typically interface with your audio system
-  Serial.println("Starting playback of: " + String(appState.getPlayingTrackName()));
-}
-
-void OpenPodUIEngine::togglePlayback() {
-  appState.togglePlayback();
-  Serial.println(appState.isPlaying ? "Resumed playback" : "Paused playback");
-  
-  // Update now playing display if visible
-  if (appState.currentUIState == STATE_NOW_PLAYING) {
-    renderNowPlaying();
-  }
-}
-
-void OpenPodUIEngine::stopPlayback() {
-  appState.stopPlayback();
-  Serial.println("Stopped playback");
-  
-  // Update now playing display if visible
-  if (appState.currentUIState == STATE_NOW_PLAYING) {
-    renderNowPlaying();
-  }
-}
-
+// Transition methods (triggered by UI state change events)
 void OpenPodUIEngine::transitionToNowPlaying() {
-  appState.currentUIState = STATE_TRANSITIONING;
-  appState.targetUIState = STATE_NOW_PLAYING;
-  appState.isAnimating = true;
+  // Set transitioning state
   lastDrawnOffset = 0;
-
-  appState.transitionAnimId = animManager.animate(
+  state.setAnimating(true); // Set animating state
+  uint32_t animId = animManager.animate(
       ANIM_CUSTOM, 0, SCREEN_WIDTH, 800,
       [this](float offset) {
         int currentOffset = (int)offset;
@@ -314,20 +510,21 @@ void OpenPodUIEngine::transitionToNowPlaying() {
         lastDrawnOffset = currentOffset;
       },
       [this]() {
-        appState.currentUIState = STATE_NOW_PLAYING;
-        appState.isAnimating = false;
-        renderNowPlaying();
+        state.setShowing(NOW_PLAYING); // Update state to now playing
+        state.setAnimating(false);     // Animation complete
+        // Animation complete - state will be updated via event
+        // renderNowPlaying();
       },
       Easing::easeInOutCubic);
+
+  // Store animation ID in state
+  // Note: You might want to add this to your State class
 }
 
 void OpenPodUIEngine::transitionToTrackList() {
-  appState.currentUIState = STATE_TRANSITIONING;
-  appState.targetUIState = STATE_TRACK_LIST;
-  appState.isAnimating = true;
   lastDrawnOffset = 0;
-
-  appState.transitionAnimId = animManager.animate(
+  state.setAnimating(true); // Set animating state
+  uint32_t animId = animManager.animate(
       ANIM_CUSTOM, 0, SCREEN_WIDTH, 800,
       [this](float offset) {
         int currentOffset = (int)offset;
@@ -341,58 +538,11 @@ void OpenPodUIEngine::transitionToTrackList() {
         lastDrawnOffset = currentOffset;
       },
       [this]() {
-        appState.currentUIState = STATE_TRACK_LIST;
-        appState.isAnimating = false;
-        renderTrackList();
+        state.setShowing(TRACK_LIST); // Update state to now playing
+        state.setAnimating(false);    // Animation complete
+        // renderTrackList();
       },
       Easing::easeInOutCubic);
-}
-
-void OpenPodUIEngine::animateScroll(bool scrollingUp) {
-  // Setup hardware scrolling
-  display->writeCommand(0x33);                  // VSCRDEF
-  display->writeData16(HEADER_HEIGHT + MARGIN); // TFA = header area
-  display->writeData16(TRACKS_PER_SCREEN * TRACK_HEIGHT); // VSA = scrollable area
-  display->writeData16(SCREEN_HEIGHT - HEADER_HEIGHT - MARGIN -
-                       (TRACKS_PER_SCREEN * TRACK_HEIGHT)); // BFA
-
-  int startOffset = scrollingUp ? -TRACK_HEIGHT : TRACK_HEIGHT;
-  appState.isAnimating = true;
-
-  appState.scrollAnimId = animManager.animate(
-      ANIM_CUSTOM, startOffset, 2 * startOffset, 500,
-      [this](float offset) {
-        int intOffset = (int)offset;
-        display->writeCommand(0x37); // VSCRSADD
-        display->writeData16(appState.topVisibleTrackIndex * TRACK_HEIGHT + intOffset);
-      },
-      [this]() {
-        display->writeCommand(0x37);
-        display->writeData16(0);
-        appState.isAnimating = false;
-        renderTrackList();
-      },
-      [](float t) { return Easing::easeOutCubic(t); });
-}
-
-void OpenPodUIEngine::pageUp() {
-  if (appState.currentUIState != STATE_TRACK_LIST || isAnimating())
-    return;
-
-  appState.pageUp();
-  updateTrackListScroll();
-  updateScrollbar();
-  renderTrackList();
-}
-
-void OpenPodUIEngine::pageDown() {
-  if (appState.currentUIState != STATE_TRACK_LIST || isAnimating())
-    return;
-
-  appState.pageDown();
-  updateTrackListScroll();
-  updateScrollbar();
-  renderTrackList();
 }
 
 void OpenPodUIEngine::measurePerformance() {

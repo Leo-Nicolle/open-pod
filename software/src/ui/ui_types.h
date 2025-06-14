@@ -4,8 +4,6 @@
 #include <Arduino.h>
 #include <stdint.h>
 
-// UI States
-enum UIState { STATE_TRACK_LIST, STATE_NOW_PLAYING, STATE_TRANSITIONING };
 
 // UI Constants
 /** @brief Screen width (in landscape) */

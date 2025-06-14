@@ -56,9 +56,9 @@ private:
   bool isRotatedMode = false;
 
   // UI State
-  enum UIState { STATE_TRACK_LIST, STATE_NOW_PLAYING, STATE_TRANSITIONING };
-  UIState currentState = STATE_TRACK_LIST;
-  UIState targetState = STATE_TRACK_LIST;
+  enum UIState { TRACK_LIST, NOW_PLAYING, TRANSITIONING };
+  UIState currentState = TRACK_LIST;
+  UIState targetState = TRACK_LIST;
 
   // Active animation IDs
   uint32_t scrollAnimId = 0;
@@ -127,7 +127,7 @@ public:
     }
 
     const char *title =
-        (currentState == STATE_NOW_PLAYING) ? "Now Playing" : "OpenPod";
+        (currentState == NOW_PLAYING) ? "Now Playing" : "OpenPod";
     headerRenderer->renderText(title, 10, 20, IBMPlexSans16, COLOR_TEXT,
                                COLOR_PRIMARY);
     renderBatteryIndicator();
@@ -233,7 +233,7 @@ public:
   }
 
   void scrollUp() {
-    if (selectedTrack > 0 && currentState == STATE_TRACK_LIST &&
+    if (selectedTrack > 0 && currentState == TRACK_LIST &&
         !animManager.isActive()) {
       previousSelectedTrack = selectedTrack;
       selectedTrack--;
@@ -248,7 +248,7 @@ public:
   }
 
   void scrollDown() {
-    if (selectedTrack < totalTracks - 1 && currentState == STATE_TRACK_LIST &&
+    if (selectedTrack < totalTracks - 1 && currentState == TRACK_LIST &&
         !animManager.isActive()) {
       previousSelectedTrack = selectedTrack;
       selectedTrack++;
@@ -289,20 +289,20 @@ public:
   }
 
   void selectTrack() {
-    if (currentState == STATE_TRACK_LIST && !animManager.isActive()) {
+    if (currentState == TRACK_LIST && !animManager.isActive()) {
       transitionToNowPlaying();
     }
   }
 
   void returnToList() {
-    if (currentState == STATE_NOW_PLAYING && !animManager.isActive()) {
+    if (currentState == NOW_PLAYING && !animManager.isActive()) {
       transitionToTrackList();
     }
   }
 
   void transitionToNowPlaying() {
-    currentState = STATE_TRANSITIONING;
-    targetState = STATE_NOW_PLAYING;
+    currentState = TRANSITIONING;
+    targetState = NOW_PLAYING;
 
     // First, prepare the display memory with both screens
     prepareTransitionBuffer();
@@ -333,7 +333,7 @@ public:
           display->writeData16(240);
           display->writeData16(0);
 
-          currentState = STATE_NOW_PLAYING;
+          currentState = NOW_PLAYING;
           renderNowPlayingScreen();
         },
         Easing::easeInOutCubic);
@@ -387,8 +387,8 @@ public:
     // This is tricky because ILI9341 doesn't have double buffering
   }
   void transitionToNowPlayingSimple() {
-    currentState = STATE_TRANSITIONING;
-    targetState = STATE_NOW_PLAYING;
+    currentState = TRANSITIONING;
+    targetState = NOW_PLAYING;
 
     // Initialize scroll system
     display->setupScroll(0, 320, 0); // Full-width scroll area
@@ -449,7 +449,7 @@ public:
           lastDrawnOffset = currentOffset;
         },
         [this]() {
-          currentState = STATE_NOW_PLAYING;
+          currentState = NOW_PLAYING;
           display->setScrollOffset(0); // Reset scroll
           renderNowPlayingScreen();    // Final render
         },
@@ -457,8 +457,8 @@ public:
   }
 
   void transitionToTrackList() {
-    currentState = STATE_TRANSITIONING;
-    targetState = STATE_TRACK_LIST;
+    currentState = TRANSITIONING;
+    targetState = TRACK_LIST;
 
     // Switch to portrait mode
     display->writeCommand(0x36);
@@ -493,7 +493,7 @@ public:
           display->writeCommand(0x37);
           display->writeData16(0);
 
-          currentState = STATE_TRACK_LIST;
+          currentState = TRACK_LIST;
           display->fillScreen(COLOR_BACKGROUND);
           renderHeader();
           renderAllTracks(); // <- safe to call here
@@ -572,7 +572,7 @@ public:
   void update() { animManager.update(); }
 
   void pageUp() {
-    if (currentState != STATE_TRACK_LIST || animManager.isActive())
+    if (currentState != TRACK_LIST || animManager.isActive())
       return;
 
     int oldSelected = selectedTrack;
@@ -590,7 +590,7 @@ public:
   }
 
   void pageDown() {
-    if (currentState != STATE_TRACK_LIST || animManager.isActive())
+    if (currentState != TRACK_LIST || animManager.isActive())
       return;
 
     int oldSelected = selectedTrack;
