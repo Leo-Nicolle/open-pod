@@ -3,7 +3,7 @@
 #include "../rendering/animation_manager.h"
 #include "../state/state.h"
 #include "header.hpp"
-#include "list/tracklist.hpp"
+#include "list/list_component.hpp"
 #include "nowplaying.hpp"
 #include "scrollbar.hpp"
 #include "ui_types.h"
@@ -20,7 +20,7 @@ private:
   // UI Components
   HeaderComponent header;
   ScrollbarComponent scrollbar;
-  TrackListComponent trackList;
+  ListComponent trackList;
   NowPlayingComponent nowPlaying;
 
   int lastDrawnOffset;
@@ -366,7 +366,7 @@ void OpenPodUIEngine::handleTrackListUpdated(const TrackListEvent *event) {
   Serial.print("UI: Track list updated - ");
   Serial.print(event->totalTracks);
   Serial.println(" tracks");
-  trackList.updateTracks(event->tracks, event->totalTracks);
+  trackList.setElements(event->tracks, event->totalTracks);
   updateScrollbar();
   // Re-render if we're showing the track list
   if (state.getCurrentShowing() == TRACK_LIST) {
@@ -452,7 +452,7 @@ void OpenPodUIEngine::renderCurrentState() {
 
 void OpenPodUIEngine::renderTrackList() {
   header.render(display);
-  trackList.renderAllTracks(display);
+  trackList.renderAllElements(display);
   scrollbar.render(display);
 }
 
@@ -476,7 +476,7 @@ void OpenPodUIEngine::renderNowPlaying(int xOffset, int width) {
 
 void OpenPodUIEngine::renderTrackListArea() {
   // Only re-render the track list portion (not header or scrollbar)
-  trackList.renderAllTracks(display, 0, BODY_Y, SCREEN_WIDTH - SCROLLBAR_WIDTH);
+  trackList.renderAllElements(display, 0, BODY_Y, SCREEN_WIDTH - SCROLLBAR_WIDTH);
   // Update scrollbar to reflect new position
   scrollbar.render(display);
 }
