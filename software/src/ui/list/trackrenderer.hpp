@@ -2,6 +2,7 @@
 #include "../../rendering/font_renderer.h"
 #include "../theme.h"
 #include "../ui_types.h"
+#include "trackscache.hpp"
 #include <Arduino.h>
 
 // Optimized track renderer
@@ -13,7 +14,7 @@ public:
 #else
 private:
 #endif
-  const FastFont &font;
+  const TracksCache &cache;
   int bitsPerPixel;
   uint8_t maxPixelValue;
   // Pre-computed color blend tables for each transparency level
@@ -22,8 +23,8 @@ private:
   } normalBlend, selectedBlend;
 
 public:
-  TrackRenderer(const FastFont &mainFont, int bpp = 1)
-      : font(mainFont), bitsPerPixel(bpp) {
+  TrackRenderer(TracksCache &cache, int bpp = 4)
+      : cache(cache), bitsPerPixel(bpp) {
     if (bpp != 1 && bpp != 2 && bpp != 4) {
       bitsPerPixel = 1;
     }
@@ -55,9 +56,69 @@ public:
     }
   }
 
+  void renderRect(int startx, int starty, int width, int height,
+                  uint16_t *displayBuffer, int selectedRow) {
+    int pixelIndex = 0;
+    const int endy = starty + height;
 
-  
- 
+    for (int y = starty; y < endy; y++) {
+      // Calculate which cache row this y position corresponds to
+      int cacheRowIndex = y / TRACK_HEIGHT;
+      int yInTrack = y % TRACK_HEIGHT; // Y position within the track
+
+      // Check if this row should be highlighted
+      bool isSelected = (cacheRowIndex == selectedRow);
+
+      // Get the cached binary data for this row
+      uint8_t *binaryBuffer = cache.getCacheForRow(cacheRowIndex);
+
+      // Calculate colors for this track row
+      uint16_t bgColor =
+          isSelected ? getGradientColor(COLOR_PRIMARY, yInTrack, TRACK_HEIGHT)
+                     : COLOR_BACKGROUND;
+
+      for (int x = startx; x < startx + width; x++) {
+        uint8_t pixelValue = 0;
+
+        // Only read from cache if we have valid data
+        if (binaryBuffer && cache.cacheValid[cacheRowIndex]) {
+          pixelValue =
+              getBinaryPixel(binaryBuffer, x, yInTrack, cache.cacheWidth);
+        }
+
+        uint16_t color;
+        if (pixelValue == 0) {
+          color = bgColor; // Background color
+        } else if (isSelected) {
+          // For selected rows: blend text color with gradient background
+          // Fix: Correct blending order - text should be visible!
+          float alpha = (float)pixelValue / maxPixelValue;
+          color = blendColor(bgColor, COLOR_BACKGROUND,
+                             alpha); // Text in white/background color
+        } else {
+          // Use pre-computed normal blend table
+          color = normalBlend.colors[pixelValue];
+        }
+
+        displayBuffer[pixelIndex++] = color;
+      }
+    }
+  }
+  // Render cached track to display buffer
+  void renderTrackToBuffer(int trackIndex, bool selected,
+                           uint16_t *displayBuffer, int width) {  
+    renderRect(0, BODY_Y + trackIndex * TRACK_HEIGHT,SCREEN_WIDTH, TRACK_HEIGHT,
+      displayBuffer, selected ? trackIndex : -1);
+  }
+
+  // Fill buffer with background color
+  void fillBufferWithBackground(uint16_t *displayBuffer, int displayWidth,
+                                int height) {
+    int totalPixels = displayWidth * height;
+    for (int i = 0; i < totalPixels; i++) {
+      displayBuffer[i] = COLOR_BACKGROUND;
+    }
+  }
 
 #ifdef UNIT_TEST
 public:

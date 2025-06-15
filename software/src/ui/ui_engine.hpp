@@ -3,9 +3,9 @@
 #include "../rendering/animation_manager.h"
 #include "../state/state.h"
 #include "header.hpp"
+#include "list/tracklist.hpp"
 #include "nowplaying.hpp"
 #include "scrollbar.hpp"
-#include "list/tracklist.hpp"
 #include "ui_types.h"
 #include <Arduino.h>
 
@@ -254,7 +254,7 @@ void OpenPodUIEngine::handleScrollChanged(const ScrollChangedEvent *event) {
 
 void OpenPodUIEngine::handlePageChanged(const ScrollChangedEvent *event) {
   Serial.println("UI: Page changed");
-  for(int i = 0; i < TRACKS_PER_SCREEN; i++) {
+  for (int i = 0; i < TRACKS_PER_SCREEN; i++) {
     Serial.print("Track ");
     Serial.print(i);
     Serial.print(": ");
@@ -510,15 +510,10 @@ void OpenPodUIEngine::transitionToNowPlaying() {
         lastDrawnOffset = currentOffset;
       },
       [this]() {
-        state.setShowing(NOW_PLAYING); // Update state to now playing
-        state.setAnimating(false);     // Animation complete
-        // Animation complete - state will be updated via event
-        // renderNowPlaying();
+        state.setShowing(NOW_PLAYING);
+        state.setAnimating(false);     
       },
       Easing::easeInOutCubic);
-
-  // Store animation ID in state
-  // Note: You might want to add this to your State class
 }
 
 void OpenPodUIEngine::transitionToTrackList() {
@@ -531,17 +526,20 @@ void OpenPodUIEngine::transitionToTrackList() {
         int width = currentOffset - lastDrawnOffset;
         if (!width)
           return;
+        int startX = SCREEN_WIDTH - currentOffset;
+        if(startX + width > SCROLLBAR_X && startX + width < SCREEN_WIDTH) {
+          scrollbar.render(display, startX);
+        }
 
-        trackList.renderAllTracks(
-            display, SCREEN_WIDTH - width - lastDrawnOffset, BODY_Y, width);
-            trackList.red
+        trackList.renderRect(display, SCREEN_WIDTH - lastDrawnOffset, 0, width,
+                             SCREEN_HEIGHT - BODY_Y,
+                             SCREEN_WIDTH - currentOffset);
         display->setScrollOffset(currentOffset);
         lastDrawnOffset = currentOffset;
       },
       [this]() {
-        state.setShowing(TRACK_LIST); // Update state to now playing
-        state.setAnimating(false);    // Animation complete
-        // renderTrackList();
+        state.setShowing(TRACK_LIST); 
+        state.setAnimating(false);
       },
       Easing::easeInOutCubic);
 }

@@ -27,7 +27,7 @@ public:
     int getThumbHeight() const;
     
     // Legacy direct rendering (for full screen updates)
-    void render(ILI9341_GFX* display);
+    void render(ILI9341_GFX* display, int x = SCROLLBAR_X);
 };
 
 // Implementation
@@ -60,11 +60,11 @@ int ScrollbarComponent::getThumbPosition() const {
 }
 
 
-void ScrollbarComponent::render(ILI9341_GFX* display) {
+void ScrollbarComponent::render(ILI9341_GFX* display, int x) {
     if (!isVisible())
         return;
 
-    int scrollBarX = SCROLLBAR_X;
+    int scrollBarX = x;
     int scrollBarY = scrollAreaY;
     int scrollBarHeight = scrollAreaHeight;
 

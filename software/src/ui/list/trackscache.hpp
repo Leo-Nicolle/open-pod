@@ -1,6 +1,5 @@
 #pragma once
 #include "../ui_types.h"
-#include "trackrenderer.hpp"
 #include "utils.h"
 #include <Arduino.h>
 
@@ -11,12 +10,12 @@ public:
   int cacheWidth;
   int cacheHeight;
   int bytesPerTrack;
-  int bitsPerPixel = 2; // Default to 2 bits per pixel
+  int bitsPerPixel = 4; // Default to 2 bits per pixel
   bool cacheValid[TRACKS_PER_SCREEN];
   static const int MARGIN_LEFT = 5;
   const FastFont& font;
 public:
-  TracksCache(const FastFont &font, int bitsPerPixel = 2): font(font) {
+  TracksCache(const FastFont &font, int bitsPerPixel = 4): font(font) {
     // Calculate cache dimensions
     this->bitsPerPixel = bitsPerPixel;
     cacheWidth = SCREEN_WIDTH - SCROLLBAR_WIDTH;
@@ -179,11 +178,10 @@ public:
 
   // Change the bits per pixel for the renderer (useful for testing)
   void setBitsPerPixel(int bpp) {
-    setBitsPerPixel(bpp);
-
+    this->bitsPerPixel = bpp;
     // Recalculate buffer size if needed
     int newBytesPerTrack =
-        TrackRenderer::calculateBufferSize(cacheWidth, cacheHeight, bpp);
+        calculateBufferSize(cacheWidth, cacheHeight, bpp);
     if (newBytesPerTrack != bytesPerTrack) {
       // Need to reallocate cache
       for (int i = 0; i < TRACKS_PER_SCREEN; i++) {
@@ -202,7 +200,7 @@ public:
 
   // Get current bits per pixel
   int getBitsPerPixel() const { return bitsPerPixel; }
-  uint8_t *getCacheForRow(int index) {
+  uint8_t *getCacheForRow(int index) const {
     if (index < 0 || index >= TRACKS_PER_SCREEN)
       return nullptr;
     return binaryCache[index];

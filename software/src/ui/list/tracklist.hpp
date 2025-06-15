@@ -2,8 +2,8 @@
 #include "../../fonts/IBMPlexSans16Bold.h"
 #include "../theme.h"
 #include "../ui_types.h"
-#include "trackscache.hpp"
 #include "trackrenderer.hpp"
+#include "trackscache.hpp"
 #include "utils.h"
 #include <Arduino.h>
 
@@ -21,7 +21,8 @@ public:
   static const int BITS_PER_PIXEL = 4;
   TrackListComponent(const char **trackList, int count)
       : tracks(trackList), totalTracks(count), selectedTrack(0),
-        topVisibleTrack(0), cache(IBMPlexSans16Bold, BITS_PER_PIXEL) {}
+        topVisibleTrack(0), cache(IBMPlexSans16Bold, BITS_PER_PIXEL),
+        renderer(cache, BITS_PER_PIXEL) {}
 
   void begin() {
     // Build initial cache with visible tracks
@@ -59,18 +60,22 @@ public:
                        int width = SCREEN_WIDTH - SCROLLBAR_WIDTH) {
     // Use global buffer for efficient rendering
     uint16_t *buffer = g_buffers.getCurrentBuffer();
-
+  display->fillRect(xOffset, yOffset, width, TRACKS_PER_SCREEN * TRACK_HEIGHT,
+                  COLOR_BACKGROUND);
     for (int i = 0; i < TRACKS_PER_SCREEN; i++) {
       int trackIndex = topVisibleTrack + i;
       bool isVisible = (trackIndex < totalTracks);
       bool isSelected = (trackIndex == selectedTrack);
 
       if (isVisible) {
+        int relativeSelectedRow = isSelected ? i : -1;
         // Render track to buffer using cache
-        cache.renderTrackToBuffer(i, isSelected, buffer, width);
+        renderer.renderRect(
+            0,i * TRACK_HEIGHT, width, TRACK_HEIGHT,
+            buffer, relativeSelectedRow);
       } else {
         // Fill with background for empty slots
-        cache.fillBufferWithBackground(buffer, width);
+        renderer.fillBufferWithBackground(buffer, width, TRACK_HEIGHT);
       }
 
       // Copy buffer to display
@@ -79,20 +84,19 @@ public:
     }
   }
 
-  void renderChunk(ILI9341_GFX *display, int xOffset, int yOffset, int width) {
-    // Calculate which tracks are visible in this chunk
-    int startY = yOffset - BODY_Y;
-    int endY = startY + CHUNK_HEIGHT;
+  void renderRect(ILI9341_GFX *display, int x, int y, int width, int height,
+                  int tx = -1, int ty = -1) {
+    uint16_t *buffer = g_buffers.getCurrentBuffer();
+    renderer.renderRect(x, y, width, height, buffer,
+                        selectedTrack - topVisibleTrack);
 
-    int startTrack = startY / TRACK_HEIGHT;
-    int endTrack = (endY - 1) / TRACK_HEIGHT;
-
-    // Constrain to valid range
-    startTrack = max(0, min(startTrack, TRACKS_PER_SCREEN - 1));
-    endTrack = max(0, min(endTrack, TRACKS_PER_SCREEN - 1));
-    display->pushWindow(xOffset, yPos, width, TRACK_HEIGHT, buffer);
-
-    // renderTrackRange(display, startTrack, endTrack, xOffset, yOffset, width);
+    if (tx < 0) {
+      tx = x;
+    }
+    if (ty < 0) {
+      ty = BODY_Y;
+    }
+    display->pushWindow(tx, ty, width, height, buffer);
   }
 
   // Force rebuild cache (useful when track list changes significantly)
