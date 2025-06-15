@@ -69,7 +69,8 @@ const char *tracks[] = {
     "Track 91 - Artist 91",  "Track 92 - Artist 92", "Track 93 - Artist 93",
     "Track 94 - Artist 94",  "Track 95 - Artist 95", "Track 96 - Artist 96",
     "Track 97 - Artist 97",  "Track 98 - Artist 98", "Track 99 - Artist 99",
-    "Track 100 - Artist 100"};
+    "Track 100 - Artist 100"
+  };
 const int trackCount = sizeof(tracks) / sizeof(tracks[0]);
 
 // Function declarations

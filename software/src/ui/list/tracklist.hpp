@@ -18,7 +18,7 @@ public:
   int topVisibleTrack;
 
 public:
-  static const int BITS_PER_PIXEL = 4;
+  static const int BITS_PER_PIXEL = 2;
   TrackListComponent(const char **trackList, int count)
       : tracks(trackList), totalTracks(count), selectedTrack(0),
         topVisibleTrack(0), cache(IBMPlexSans16Bold, BITS_PER_PIXEL),
