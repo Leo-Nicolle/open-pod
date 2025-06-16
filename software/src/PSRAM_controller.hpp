@@ -1,19 +1,37 @@
 #pragma once
 #include <Arduino.h>
+#include <SPI.h>
+/*
+#### SPI1
 
-// SPI Pin Definitions for PSRAM
+| Board Pin | Function |
+| --------- | -------- |
+| PA4       | NSS      |
+| PA5       | SCK      |
+| PA6       | MISO     |
+| PA7       | MOSI     |
+
+#### SPI2
+
+| Board Pin | Function |
+| --------- | -------- |
+| PB12      | NSS      |
+| PB13      | SCK      |
+| PB14      | MISO     |
+| PB15      | MOSI     |
+*/
+// // SPI Pin Definitions for PSRAM - Updated pinout
 #define PSRAM_MISO PA6
 #define PSRAM_MOSI PA7
-#define PSRAM_CLK  PA5
-#define PSRAM_CS   PA1
+#define PSRAM_CLK PA5
+#define PSRAM_CS PA4
 
-// SPI PSRAM interface for APS6404L-3SQR-SN using SPI1
+// SPI PSRAM interface for APS6404L-3SQR-SN using Arduino SPI library
 class SPI_PSRAM {
 private:
-  SPI_HandleTypeDef hspi1;
-  GPIO_TypeDef* cs_port;
-  uint16_t cs_pin;
-  
+  SPIClass *spi;
+  SPISettings spiSettings;
+
   // APS6404L Commands
   static const uint8_t CMD_RESET_ENABLE = 0x66;
   static const uint8_t CMD_RESET = 0x99;
@@ -26,79 +44,90 @@ private:
   static const uint8_t CMD_FAST_READ_QUAD = 0xEB;
   static const uint8_t CMD_WRITE_QUAD = 0x38;
   static const uint8_t CMD_WRAP_TOGGLE = 0xC0;
-  
+
   // Timing constants (microseconds for delayMicroseconds)
-  static const uint32_t T_POWER_UP = 150;     // 150µs power-up time
-  static const uint32_t T_RESET = 100;        // 100µs after reset
-  static const uint32_t T_CS_PULSE = 18;      // 18ns min CS pulse width (use 1µs for safety)
-  static const uint32_t T_CS_SETUP = 1;       // CS setup time
-  static const uint32_t T_CS_HOLD = 1;        // CS hold time
-  
-public:
-  bool init() {
-    // Initialize SPI1 for APS6404L (64Mbit PSRAM) following datasheet specs
-    __HAL_RCC_SPI1_CLK_ENABLE();
-    __HAL_RCC_GPIOA_CLK_ENABLE();
-    
-    // Configure SPI1 pins using defined pin mappings
-    GPIO_InitTypeDef GPIO_InitStruct = {0};
-    
-    // Configure SPI pins: CLK, MISO, MOSI
-    GPIO_InitStruct.Pin = digitalPinToPinName(PSRAM_CLK) | 
-                          digitalPinToPinName(PSRAM_MISO) | 
-                          digitalPinToPinName(PSRAM_MOSI);
-    GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
-    GPIO_InitStruct.Pull = GPIO_NOPULL;
-    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
-    GPIO_InitStruct.Alternate = GPIO_AF5_SPI1;
-    HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
-    
+  static const uint32_t T_POWER_UP = 150; // 150µs power-up time
+  static const uint32_t T_RESET = 100;    // 100µs after reset
+  static const uint32_t T_CS_PULSE = 1;   // CS pulse width
+  static const uint32_t T_CS_SETUP = 1;   // CS setup time
+  static const uint32_t T_CS_HOLD = 1;    // CS hold time
+
+  void setupPins() {
     // Configure CS pin as GPIO output
-    GPIO_InitStruct.Pin = digitalPinToPinName(PSRAM_CS);
-    GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-    GPIO_InitStruct.Pull = GPIO_PULLUP;  // Pull-up for stable CS
-    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
-    HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
-    
-    // Set chip select high (inactive)
-    cs_port = GPIOA;
-    cs_pin = digitalPinToPinName(PSRAM_CS);
-    HAL_GPIO_WritePin(cs_port, cs_pin, GPIO_PIN_SET);
-    
-    // Configure SPI1 - Start with conservative settings for SPI mode
-    hspi1.Instance = SPI1;
-    hspi1.Init.Mode = SPI_MODE_MASTER;
-    hspi1.Init.Direction = SPI_DIRECTION_2LINES;
-    hspi1.Init.DataSize = SPI_DATASIZE_8BIT;
-    hspi1.Init.CLKPolarity = SPI_POLARITY_LOW;      // CPOL = 0
-    hspi1.Init.CLKPhase = SPI_PHASE_1EDGE;          // CPHA = 0
-    hspi1.Init.NSS = SPI_NSS_SOFT;
-    hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_16; // Start slower: ~22MHz
-    hspi1.Init.FirstBit = SPI_FIRSTBIT_MSB;
-    hspi1.Init.TIMode = SPI_TIMODE_DISABLE;
-    hspi1.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
-    hspi1.Init.CRCPolynomial = 10;
-    
-    if (HAL_SPI_Init(&hspi1) != HAL_OK) {
-      return false;
+    pinMode(PSRAM_CS, OUTPUT);
+    digitalWrite(PSRAM_CS, HIGH); // CS inactive (high)
+
+    // Initialize SPI with custom pins for SPI2
+    spi = new SPIClass(PSRAM_MOSI, PSRAM_MISO, PSRAM_CLK);
+
+    // Start SPI with conservative settings
+    spi->begin();
+  }
+
+  inline void chipSelect(bool active) {
+    if (active) {
+      delayMicroseconds(T_CS_SETUP);
+      digitalWrite(PSRAM_CS, LOW); // Active low
+      delayMicroseconds(T_CS_SETUP);
+    } else {
+      delayMicroseconds(T_CS_HOLD);
+      digitalWrite(PSRAM_CS, HIGH); // Inactive high
+      delayMicroseconds(T_CS_PULSE);
     }
-    
+  }
+
+public:
+  SPI_PSRAM() : spi(nullptr) {
+    // Conservative SPI settings: 1MHz, MSB first, SPI Mode 0
+    spiSettings = SPISettings(1000000, MSBFIRST, SPI_MODE0);
+  }
+
+  ~SPI_PSRAM() {
+    if (spi) {
+      spi->end();
+      delete spi;
+    }
+  }
+
+  bool init() {
+    Serial.println();
+    Serial.println("=== PSRAM INIT START ===");
+    Serial.flush();
+    delay(100); // Let serial stabilize
+
+    // Setup pins first
+    setupPins();
+
+    Serial.println("Pins configured, starting PSRAM init...");
+    Serial.flush();
+    delay(10);
+
     // Power-up initialization sequence per datasheet
-    delay(1);  // Ensure stable power
-    
-    // Wait for power-up initialization (150µs minimum)
     delayMicroseconds(T_POWER_UP);
-    
+
+    Serial.println("Starting reset sequence...");
+    Serial.flush();
+
     // Reset sequence
     resetDevice();
-    
+
+    Serial.println("Reset complete, reading device ID...");
+    Serial.flush();
+
     // Read and verify device ID
-    uint8_t id[2];
+    uint8_t id[2] = {0, 0};
     if (!readDeviceID(id)) {
       Serial.println("Failed to read device ID");
+      Serial.flush();
       return false;
     }
-    
+
+    Serial.print("Read ID: 0x");
+    Serial.print(id[0], HEX);
+    Serial.print(" 0x");
+    Serial.println(id[1], HEX);
+    Serial.flush();
+
     // Expected: Manufacturer ID = 0x0D, KGD = 0x5D
     if (id[0] != 0x0D || id[1] != 0x5D) {
       Serial.print("Unexpected ID: 0x");
@@ -106,297 +135,350 @@ public:
       Serial.print(" 0x");
       Serial.println(id[1], HEX);
       Serial.println("Expected: 0x0D 0x5D");
+      Serial.flush();
       return false;
     }
-    
+
     Serial.println("PSRAM ID verified: 0x0D 0x5D");
-    
+    Serial.flush();
+
     // Test basic communication
     return testPSRAM();
   }
-  
+
   void resetDevice() {
-    Serial.println("Resetting PSRAM...");
-    
     // Reset Enable command
+    spi->beginTransaction(spiSettings);
     chipSelect(true);
-    uint8_t cmd = CMD_RESET_ENABLE;
-    HAL_SPI_Transmit(&hspi1, &cmd, 1, HAL_MAX_DELAY);
+    spi->transfer(CMD_RESET_ENABLE);
     chipSelect(false);
-    
-    // Wait between commands (datasheet requires immediate sequence)
+    spi->endTransaction();
+
+    // Wait between commands
     delayMicroseconds(1);
-    
+
     // Reset command
+    spi->beginTransaction(spiSettings);
     chipSelect(true);
-    cmd = CMD_RESET;
-    HAL_SPI_Transmit(&hspi1, &cmd, 1, HAL_MAX_DELAY);
+    spi->transfer(CMD_RESET);
     chipSelect(false);
-    
-    // Wait for reset completion (datasheet: tRST = 50ns, use 100µs for safety)
+    spi->endTransaction();
+
+    // Wait for reset completion
     delayMicroseconds(T_RESET);
-    
+
     Serial.println("PSRAM reset complete");
+    Serial.flush();
   }
-  
-  bool readDeviceID(uint8_t* id) {
+
+  bool readDeviceID(uint8_t *id) {
+    spi->beginTransaction(spiSettings);
     chipSelect(true);
-    
+
     // Send Read ID command
-    uint8_t cmd = CMD_READ_ID;
-    if (HAL_SPI_Transmit(&hspi1, &cmd, 1, HAL_MAX_DELAY) != HAL_OK) {
-      chipSelect(false);
-      return false;
-    }
-    
+    spi->transfer(CMD_READ_ID);
+
     // Send 24-bit address (000000h for ID read)
-    uint8_t addr[3] = {0x00, 0x00, 0x00};
-    if (HAL_SPI_Transmit(&hspi1, addr, 3, HAL_MAX_DELAY) != HAL_OK) {
-      chipSelect(false);
-      return false;
-    }
-    
+    spi->transfer(0x00);
+    spi->transfer(0x00);
+    spi->transfer(0x00);
+
     // Read 2 bytes: Manufacturer ID and KGD
-    if (HAL_SPI_Receive(&hspi1, id, 2, HAL_MAX_DELAY) != HAL_OK) {
-      chipSelect(false);
-      return false;
-    }
-    
+    id[0] = spi->transfer(0x00);
+    id[1] = spi->transfer(0x00);
+
     chipSelect(false);
+    spi->endTransaction();
+
     return true;
   }
-  
-  void chipSelect(bool active) {
-    if (active) {
-      // Ensure minimum CS high time between operations
-      delayMicroseconds(T_CS_SETUP);
-      HAL_GPIO_WritePin(cs_port, cs_pin, GPIO_PIN_RESET);
-      // CS setup time
-      delayMicroseconds(T_CS_SETUP);
-    } else {
-      // CS hold time  
-      delayMicroseconds(T_CS_HOLD);
-      HAL_GPIO_WritePin(cs_port, cs_pin, GPIO_PIN_SET);
-      // Ensure CS high time between operations
-      delayMicroseconds(T_CS_PULSE);
-    }
-  }
-  
-  void writeData(uint32_t address, uint8_t* data, uint32_t size) {
+
+  void writeData(uint32_t address, uint8_t *data, uint32_t size) {
     // Split large transfers into page-aligned chunks
-    const uint32_t PAGE_SIZE = 1024;  // 1KB page size per datasheet
-    
+    const uint32_t PAGE_SIZE = 1024; // 1KB page size per datasheet
+
     while (size > 0) {
       // Calculate how much we can write in this page
-      uint32_t pageOffset = address & (PAGE_SIZE - 1);  // Offset within current page
+      uint32_t pageOffset =
+          address & (PAGE_SIZE - 1); // Offset within current page
       uint32_t remainingInPage = PAGE_SIZE - pageOffset;
       uint32_t chunkSize = (size > remainingInPage) ? remainingInPage : size;
-      
+
       writeChunk(address, data, chunkSize);
-      
+
       address += chunkSize;
       data += chunkSize;
       size -= chunkSize;
     }
   }
-  
-  void writeChunk(uint32_t address, uint8_t* data, uint32_t size) {
+
+  void writeChunk(uint32_t address, uint8_t *data, uint32_t size) {
+    spi->beginTransaction(spiSettings);
     chipSelect(true);
-    
+
     // Send write command
-    uint8_t cmd = CMD_WRITE;
-    if (HAL_SPI_Transmit(&hspi1, &cmd, 1, HAL_MAX_DELAY) != HAL_OK) {
-      chipSelect(false);
-      return;
-    }
-    
+    spi->transfer(CMD_WRITE);
+
     // Send 24-bit address (MSB first)
-    uint8_t addr[3];
-    addr[0] = (address >> 16) & 0xFF;
-    addr[1] = (address >> 8) & 0xFF;
-    addr[2] = address & 0xFF;
-    if (HAL_SPI_Transmit(&hspi1, addr, 3, HAL_MAX_DELAY) != HAL_OK) {
-      chipSelect(false);
-      return;
-    }
-    
+    spi->transfer((address >> 16) & 0xFF);
+    spi->transfer((address >> 8) & 0xFF);
+    spi->transfer(address & 0xFF);
+
     // Send data
-    if (HAL_SPI_Transmit(&hspi1, data, size, HAL_MAX_DELAY) != HAL_OK) {
-      chipSelect(false);
-      return;
+    for (uint32_t i = 0; i < size; i++) {
+      spi->transfer(data[i]);
     }
-    
+
     chipSelect(false);
-    
+    spi->endTransaction();
+
     // Small delay between operations for stability
     delayMicroseconds(10);
   }
-  
-  void readData(uint32_t address, uint8_t* data, uint32_t size) {
+
+  void readData(uint32_t address, uint8_t *data, uint32_t size) {
     // Split large transfers into smaller chunks
-    const uint32_t MAX_CHUNK = 1024;
-    
+    const uint32_t MAX_CHUNK = 256; // Smaller chunks for stability
+
     while (size > 0) {
       uint32_t chunkSize = (size > MAX_CHUNK) ? MAX_CHUNK : size;
-      
+
       readChunk(address, data, chunkSize);
-      
+
       address += chunkSize;
       data += chunkSize;
       size -= chunkSize;
     }
   }
-  
-  void readChunk(uint32_t address, uint8_t* data, uint32_t size) {
+
+  void readChunk(uint32_t address, uint8_t *data, uint32_t size) {
+    spi->beginTransaction(spiSettings);
     chipSelect(true);
-    
+
     // Use Fast Read command for better performance
-    uint8_t cmd = CMD_FAST_READ;
-    if (HAL_SPI_Transmit(&hspi1, &cmd, 1, HAL_MAX_DELAY) != HAL_OK) {
-      chipSelect(false);
-      return;
-    }
-    
+    spi->transfer(CMD_FAST_READ);
+
     // Send 24-bit address (MSB first)
-    uint8_t addr[3];
-    addr[0] = (address >> 16) & 0xFF;
-    addr[1] = (address >> 8) & 0xFF;
-    addr[2] = address & 0xFF;
-    if (HAL_SPI_Transmit(&hspi1, addr, 3, HAL_MAX_DELAY) != HAL_OK) {
-      chipSelect(false);
-      return;
-    }
-    
+    spi->transfer((address >> 16) & 0xFF);
+    spi->transfer((address >> 8) & 0xFF);
+    spi->transfer(address & 0xFF);
+
     // Send 8 dummy cycles (wait cycles) for Fast Read
-    uint8_t dummy = 0x00;
-    if (HAL_SPI_Transmit(&hspi1, &dummy, 1, HAL_MAX_DELAY) != HAL_OK) {
-      chipSelect(false);
-      return;
-    }
-    
+    spi->transfer(0x00);
+
     // Receive data
-    if (HAL_SPI_Receive(&hspi1, data, size, HAL_MAX_DELAY) != HAL_OK) {
-      chipSelect(false);
-      return;
+    for (uint32_t i = 0; i < size; i++) {
+      data[i] = spi->transfer(0x00);
     }
-    
+
     chipSelect(false);
-    
+    spi->endTransaction();
+
     // Small delay between operations
     delayMicroseconds(10);
   }
-  
-  // Enhanced test function with better diagnostics
+
+  // Simplified test function for debugging
   bool testPSRAM() {
-    Serial.println("Running comprehensive PSRAM test...");
-    
-    // Test 1: Basic read/write at address 0
-    Serial.println("Test 1: Basic 16-byte read/write at address 0x0000");
-    uint8_t testData1[16] = {0xAA, 0x55, 0xFF, 0x00, 0x12, 0x34, 0x56, 0x78,
-                            0x87, 0x65, 0x43, 0x21, 0x00, 0xFF, 0x55, 0xAA};
-    uint8_t readBuffer1[16] = {0};
-    
-    writeData(0x0000, testData1, 16);
-    delay(1); // Small delay
-    readData(0x0000, readBuffer1, 16);
-    
-    bool test1Pass = true;
-    for (int i = 0; i < 16; i++) {
-      if (testData1[i] != readBuffer1[i]) {
-        Serial.print("Test 1 FAIL at byte ");
-        Serial.print(i);
-        Serial.print(": wrote 0x");
-        Serial.print(testData1[i], HEX);
-        Serial.print(", read 0x");
-        Serial.println(readBuffer1[i], HEX);
-        test1Pass = false;
-      }
-    }
-    
-    if (test1Pass) {
-      Serial.println("Test 1: PASS");
-    }
-    
-    // Test 2: Page boundary test
-    Serial.println("Test 2: 32-byte write across 1KB page boundary");
-    uint8_t testData2[32];
-    uint8_t readBuffer2[32];
-    for (int i = 0; i < 32; i++) {
-      testData2[i] = i + 0x80;
-    }
-    
-    // Write across 1KB boundary (1024 = 0x400)
-    uint32_t boundaryAddr = 0x3F0;  // 16 bytes before boundary
-    writeData(boundaryAddr, testData2, 32);
+    Serial.println("Running basic PSRAM test...");
+    Serial.flush();
+
+    // Test 1: Single byte read/write at address 0
+    Serial.println("Test 1: Single byte at address 0x0000");
+    Serial.flush();
+
+    uint8_t testByte = 0xA5;
+    uint8_t readByte = 0x00;
+
+    writeData(0x0000, &testByte, 1);
     delay(1);
-    readData(boundaryAddr, readBuffer2, 32);
-    
+    readData(0x0000, &readByte, 1);
+
+    Serial.print("Wrote: 0x");
+    Serial.print(testByte, HEX);
+    Serial.print(", Read: 0x");
+    Serial.println(readByte, HEX);
+    Serial.flush();
+
+    if (testByte == readByte) {
+      Serial.println("Test 1: PASS");
+    } else {
+      Serial.println("Test 1: FAIL");
+      return false;
+    }
+
+    // Test 2: Small array
+    Serial.println("Test 2: 4-byte array");
+    Serial.flush();
+
+    uint8_t testData[4] = {0x12, 0x34, 0x56, 0x78};
+    uint8_t rData[4] = {0x00, 0x00, 0x00, 0x00};
+
+    writeData(0x1000, testData, 4);
+    delay(1);
+    readData(0x1000, rData, 4);
+
     bool test2Pass = true;
-    for (int i = 0; i < 32; i++) {
-      if (testData2[i] != readBuffer2[i]) {
+    for (int i = 0; i < 4; i++) {
+      if (testData[i] != rData[i]) {
         Serial.print("Test 2 FAIL at byte ");
         Serial.print(i);
-        Serial.print(" (addr 0x");
-        Serial.print(boundaryAddr + i, HEX);
-        Serial.print("): wrote 0x");
-        Serial.print(testData2[i], HEX);
+        Serial.print(": wrote 0x");
+        Serial.print(testData[i], HEX);
         Serial.print(", read 0x");
-        Serial.println(readBuffer2[i], HEX);
+        Serial.println(rData[i], HEX);
         test2Pass = false;
       }
     }
-    
+
     if (test2Pass) {
       Serial.println("Test 2: PASS");
-    }
-    
-    // Test 3: Different memory locations
-    Serial.println("Test 3: Testing various memory locations");
-    uint32_t testAddrs[] = {0x1000, 0x8000, 0x10000, 0x7FF00}; // Various locations
-    bool test3Pass = true;
-    
-    for (int addrIdx = 0; addrIdx < 4; addrIdx++) {
-      uint32_t addr = testAddrs[addrIdx];
-      uint8_t testVal = 0xA5 + addrIdx;
-      uint8_t readVal = 0;
-      
-      writeData(addr, &testVal, 1);
-      delay(1);
-      readData(addr, &readVal, 1);
-      
-      if (testVal != readVal) {
-        Serial.print("Test 3 FAIL at addr 0x");
-        Serial.print(addr, HEX);
-        Serial.print(": wrote 0x");
-        Serial.print(testVal, HEX);
-        Serial.print(", read 0x");
-        Serial.println(readVal, HEX);
-        test3Pass = false;
-      }
-    }
-    
-    if (test3Pass) {
-      Serial.println("Test 3: PASS");
-    }
-    
-    bool allTestsPass = test1Pass && test2Pass && test3Pass;
-    
-    if (allTestsPass) {
-      Serial.println("=== ALL PSRAM TESTS PASSED ===");
+      Serial.println("=== BASIC PSRAM TESTS PASSED ===");
     } else {
-      Serial.println("=== SOME PSRAM TESTS FAILED ===");
+      Serial.println("Test 2: FAIL");
     }
-    
-    return allTestsPass;
+
+    Serial.flush();
+    return test2Pass;
   }
-  
+
   // Get memory capacity in bytes
   uint32_t getCapacity() {
-    return 8 * 1024 * 1024;  // 8MB (64Mbit)
+    return 8 * 1024 * 1024; // 8MB (64Mbit)
   }
-  
+
   // Get page size in bytes
   uint32_t getPageSize() {
-    return 1024;  // 1KB pages
+    return 1024; // 1KB pages
+  }
+
+  bool testExtended() {
+    const uint32_t capacity = getCapacity();
+    const uint32_t pageSize = getPageSize();
+
+    Serial.println("=== EXTENDED PSRAM TEST BEGIN ===");
+    delay(50);
+
+    // Allocate buffers (static to avoid stack overflow)
+    static uint8_t writeBuf[256];
+    static uint8_t readBuf[256];
+
+    // Fill write buffer with known pattern (incrementing bytes)
+    for (int i = 0; i < sizeof(writeBuf); i++) {
+      writeBuf[i] = i;
+    }
+
+    // --- Test 1: Write to start of memory
+    Serial.println("Test 1: Write/read at address 0x000000");
+    writeData(0x000000, writeBuf, sizeof(writeBuf));
+    delay(2);
+    memset(readBuf, 0, sizeof(readBuf));
+    readData(0x000000, readBuf, sizeof(readBuf));
+
+    for (int i = 0; i < sizeof(writeBuf); i++) {
+      if (readBuf[i] != writeBuf[i]) {
+        Serial.print("Test 1 FAIL at byte ");
+        Serial.print(i);
+        Serial.print(": expected ");
+        Serial.print(writeBuf[i], HEX);
+        Serial.print(", got ");
+        Serial.println(readBuf[i], HEX);
+        return false;
+      }
+    }
+    Serial.println("Test 1: PASS");
+
+    // --- Test 2: Write near end of memory
+    uint32_t endAddr = capacity - sizeof(writeBuf);
+    Serial.print("Test 2: Write/read at end of memory (0x");
+    Serial.print(endAddr, HEX);
+    Serial.println(")");
+    for (int i = 0; i < sizeof(writeBuf); i++) {
+      writeBuf[i] = ~i;
+    }
+    writeData(endAddr, writeBuf, sizeof(writeBuf));
+    delay(2);
+    memset(readBuf, 0, sizeof(readBuf));
+    readData(endAddr, readBuf, sizeof(readBuf));
+
+    for (int i = 0; i < sizeof(writeBuf); i++) {
+      if (readBuf[i] != writeBuf[i]) {
+        Serial.print("Test 2 FAIL at byte ");
+        Serial.print(i);
+        Serial.print(": expected ");
+        Serial.print(writeBuf[i], HEX);
+        Serial.print(", got ");
+        Serial.println(readBuf[i], HEX);
+        return false;
+      }
+    }
+    Serial.println("Test 2: PASS");
+
+    // --- Test 3: Page boundary crossing
+    uint32_t boundaryAddr = pageSize - 128; // will cross into next page
+    Serial.print("Test 3: Write/read across page boundary at 0x");
+    Serial.println(boundaryAddr, HEX);
+
+    for (int i = 0; i < sizeof(writeBuf); i++) {
+      writeBuf[i] = i ^ 0xAA; // Different pattern
+    }
+
+    writeData(boundaryAddr, writeBuf, sizeof(writeBuf));
+    delay(2);
+    memset(readBuf, 0, sizeof(readBuf));
+    readData(boundaryAddr, readBuf, sizeof(readBuf));
+
+    for (int i = 0; i < sizeof(writeBuf); i++) {
+      if (readBuf[i] != writeBuf[i]) {
+        Serial.print("Test 3 FAIL at byte ");
+        Serial.print(i);
+        Serial.print(": expected ");
+        Serial.print(writeBuf[i], HEX);
+        Serial.print(", got ");
+        Serial.println(readBuf[i], HEX);
+        return false;
+      }
+    }
+    Serial.println("Test 3: PASS");
+
+    // --- Test 4: Multiple blocks at intervals
+    Serial.println("Test 4: Multiple blocks across memory...");
+
+    bool pass = true;
+    for (uint32_t addr = 0; addr < capacity; addr += (capacity / 8)) {
+      for (int i = 0; i < sizeof(writeBuf); i++) {
+        writeBuf[i] = (addr >> 8) ^ i;
+      }
+
+      writeData(addr, writeBuf, sizeof(writeBuf));
+      delay(1);
+      memset(readBuf, 0, sizeof(readBuf));
+      readData(addr, readBuf, sizeof(readBuf));
+
+      for (int i = 0; i < sizeof(writeBuf); i++) {
+        if (readBuf[i] != writeBuf[i]) {
+          Serial.print("Test 4 FAIL at 0x");
+          Serial.print(addr + i, HEX);
+          Serial.print(": expected ");
+          Serial.print(writeBuf[i], HEX);
+          Serial.print(", got ");
+          Serial.println(readBuf[i], HEX);
+          pass = false;
+          break;
+        }
+      }
+      if (!pass)
+        break;
+    }
+
+    if (pass) {
+      Serial.println("Test 4: PASS");
+    } else {
+      Serial.println("Test 4: FAIL");
+      return false;
+    }
+
+    Serial.println("=== EXTENDED PSRAM TEST PASSED ===");
+    return true;
   }
 };
