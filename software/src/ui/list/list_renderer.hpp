@@ -82,8 +82,8 @@ public:
 
     for (int y = starty; y < endy; y++) {
       // Calculate which cache row this y position corresponds to
-      int cacheRowIndex = y / TRACK_HEIGHT;
-      int yInList = y % TRACK_HEIGHT; // Y position within the element
+      int cacheRowIndex = y / ELEMENT_HEIGHT;
+      int yInList = y % ELEMENT_HEIGHT; // Y position within the element
 
       // Check if this row should be highlighted
       bool isSelected = (cacheRowIndex == selectedRow);
@@ -184,7 +184,7 @@ private:
    * @param y The y position of the pixel from the top of the element
    */
   uint16_t getGradientColor(uint16_t baseColor, int y) {
-    float progress = (float)y / (TRACK_HEIGHT - 1);
+    float progress = (float)y / (ELEMENT_HEIGHT - 1);
     uint8_t r = (baseColor >> 11) & 0x1F;
     uint8_t g = (baseColor >> 5) & 0x3F;
     uint8_t b = baseColor & 0x1F;

@@ -13,9 +13,9 @@ static const int SCREEN_HEIGHT = 240;
 /** @brief Height of the header */
 static const int HEADER_HEIGHT = 30;
 /** The height of a track (not the actual font size, which is smaller) */
-static const int TRACK_HEIGHT = 30;
+static const int ELEMENT_HEIGHT = 30;
 /** @brief How many tracks are visible on the screen */
-static const int TRACKS_PER_SCREEN = 7;
+static const int ELEMENTS_PER_SCREEN = 7;
 /** The width of the scrollbar in the lists */
 static const int SCROLLBAR_WIDTH = 8;
 /** @brief Margin between header and body (always BG color, never redrawn) */

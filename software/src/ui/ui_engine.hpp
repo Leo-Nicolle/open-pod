@@ -254,7 +254,7 @@ void OpenPodUIEngine::handleScrollChanged(const ScrollChangedEvent *event) {
 
 void OpenPodUIEngine::handlePageChanged(const ScrollChangedEvent *event) {
   Serial.println("UI: Page changed");
-  for (int i = 0; i < TRACKS_PER_SCREEN; i++) {
+  for (int i = 0; i < ELEMENTS_PER_SCREEN; i++) {
     Serial.print("Track ");
     Serial.print(i);
     Serial.print(": ");
@@ -482,7 +482,7 @@ void OpenPodUIEngine::renderTrackListArea() {
 }
 
 void OpenPodUIEngine::updateScrollbar() {
-  scrollbar.setScrollData(state.getTotalTracks(), TRACKS_PER_SCREEN,
+  scrollbar.setScrollData(state.getTotalTracks(), ELEMENTS_PER_SCREEN,
                           state.getTopVisibleTrackIndex());
 }
 

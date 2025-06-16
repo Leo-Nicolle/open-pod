@@ -9,7 +9,7 @@
 
 class ILI9341_GFX;
 /**
- * @brief Component for rendering a list of tracks with efficient scrolling
+ * @brief Component for rendering a list of Elements with efficient scrolling
  */
 class ListComponent {
 public:
@@ -28,9 +28,9 @@ public:
         renderer(cache) {}
 
   void begin() {
-    // Build initial cache with visible tracks
-    const char *visibleElements[TRACKS_PER_SCREEN];
-    for (int i = 0; i < TRACKS_PER_SCREEN && i < numElements; i++) {
+    // Build initial cache with visible elements
+    const char *visibleElements[ELEMENTS_PER_SCREEN];
+    for (int i = 0; i < ELEMENTS_PER_SCREEN && i < numElements; i++) {
       visibleElements[i] = elements[i];
     }
     cache.build(visibleElements);
@@ -43,28 +43,28 @@ public:
 
   /**
    * @brief Scroll the list up or down by a specified delta
-   * @param delta Number of tracks to scroll (alsways positive)
-   * @param newVisibleTracks Array of new visible tracks to update the cache
+   * @param delta Number of elements to scroll (alsways positive)
+   * @param newVisibleElements Array of new visible elements to update the cache
    */
-  void scrollUp(int delta, const char **newVisibleTracks) {
+  void scrollUp(int delta, const char **newVisibleElements) {
     if (delta <= 0)
       return;
 
     // Update the cache with efficient pointer swapping
-    cache.scrollUp(delta, newVisibleTracks);
+    cache.scrollUp(delta, newVisibleElements);
   }
 
   /**
    * @brief Scroll the list down by a specified delta
-   * @param delta Number of tracks to scroll (always positive)
-   * @param newVisibleTracks Array of new visible tracks to update the cache
+   * @param delta Number of elements to scroll (always positive)
+   * @param newVisibleElements Array of new visible elements to update the cache
    */
-  void scrollDown(int delta, const char **newVisibleTracks) {
+  void scrollDown(int delta, const char **newVisibleElements) {
     if (delta <= 0)
       return;
 
     // Update the cache with efficient pointer swapping
-    cache.scrollDown(delta, newVisibleTracks);
+    cache.scrollDown(delta, newVisibleElements);
   }
 
   /**
@@ -80,26 +80,26 @@ public:
                          int width = SCREEN_WIDTH - SCROLLBAR_WIDTH) {
     // Use global buffer for efficient rendering
     uint16_t *buffer = g_buffers.getCurrentBuffer();
-    display->fillRect(xOffset, yOffset, width, TRACKS_PER_SCREEN * TRACK_HEIGHT,
+    display->fillRect(xOffset, yOffset, width, ELEMENTS_PER_SCREEN * ELEMENT_HEIGHT,
                       COLOR_BACKGROUND);
-    for (int i = 0; i < TRACKS_PER_SCREEN; i++) {
-      int trackIndex = topVisibleElement + i;
-      bool isVisible = (trackIndex < numElements);
-      bool isSelected = (trackIndex == selectedIndex);
+    for (int i = 0; i < ELEMENTS_PER_SCREEN; i++) {
+      int elementIndex = topVisibleElement + i;
+      bool isVisible = (elementIndex < numElements);
+      bool isSelected = (elementIndex == selectedIndex);
 
       if (isVisible) {
         int relativeSelectedRow = isSelected ? i : -1;
-        // Render track to buffer using cache
-        renderer.renderRect(0, i * TRACK_HEIGHT, width, TRACK_HEIGHT, buffer,
+        // Render element to buffer using cache
+        renderer.renderRect(0, i * ELEMENT_HEIGHT, width, ELEMENT_HEIGHT, buffer,
                             relativeSelectedRow);
       } else {
         // Fill with background for empty slots
-        renderer.fillBufferWithBackground(buffer, width, TRACK_HEIGHT);
+        renderer.fillBufferWithBackground(buffer, width, ELEMENT_HEIGHT);
       }
 
       // Copy buffer to display
-      int yPos = yOffset + (i * TRACK_HEIGHT);
-      display->pushWindow(xOffset, yPos, width, TRACK_HEIGHT, buffer);
+      int yPos = yOffset + (i * ELEMENT_HEIGHT);
+      display->pushWindow(xOffset, yPos, width, ELEMENT_HEIGHT, buffer);
     }
   }
 
@@ -136,10 +136,10 @@ public:
    * Use scrollUp and scrollDown for incremental updates.
    */
   void rebuildCache() {
-    const char *visibleElements[TRACKS_PER_SCREEN];
-    for (int i = 0; i < TRACKS_PER_SCREEN; i++) {
-      int trackIdx = topVisibleElement + i;
-      visibleElements[i] = (trackIdx < numElements) ? elements[trackIdx] : "";
+    const char *visibleElements[ELEMENTS_PER_SCREEN];
+    for (int i = 0; i < ELEMENTS_PER_SCREEN; i++) {
+      int elementIdx = topVisibleElement + i;
+      visibleElements[i] = (elementIdx < numElements) ? elements[elementIdx] : "";
     }
     cache.build(visibleElements);
   }
@@ -156,7 +156,7 @@ public:
     // Ensure indices are still valid
     selectedIndex = constrain(selectedIndex, 0, numElements - 1);
     topVisibleElement = constrain(topVisibleElement, 0,
-                                  max(0, numElements - TRACKS_PER_SCREEN));
+                                  max(0, numElements - ELEMENTS_PER_SCREEN));
 
     // Rebuild cache with new data
     rebuildCache();

@@ -79,7 +79,7 @@ private:
   // Track data
   const char **tracks;
   int totalTracks;
-  const char* visibleTracks[TRACKS_PER_SCREEN];
+  const char* visibleTracks[ELEMENTS_PER_SCREEN];
 
   // Current playback state
   int playingTrackIndex;
