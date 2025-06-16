@@ -1,4 +1,4 @@
-#include "../../src/ui/ui_types.h"
+#include "./mock_ui_types.h"
 
 // Minimal dummy implementations for test
 BufferManager g_buffers;

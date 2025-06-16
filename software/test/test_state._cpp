@@ -1,0 +1,562 @@
+#include "../src/state/state.h"
+#include "../src/state/event-target.h"
+#include <doctest.h>
+#include <cstring>  // for strcmp
+#include <cmath>    // for abs
+namespace {
+struct {
+    bool captured = false;
+    int eventType = 0;
+    void* eventData = nullptr;
+} lastEvent;
+
+int eventCount = 0;
+
+void resetTestState() {
+    lastEvent.captured = false;
+    lastEvent.eventType = 0;
+    lastEvent.eventData = nullptr;
+    eventCount = 0;
+}
+
+void testEventCallback(int eventType, void* eventData, EventTarget* target) {
+    lastEvent.captured = true;
+    lastEvent.eventType = eventType;
+    lastEvent.eventData = eventData;
+    eventCount++;
+}
+
+// Example test tracks
+const char* testTracks[] = {
+    "Track 1", "Track 2", "Track 3", "Track 4", "Track 5",
+    "Track 6", "Track 7", "Track 8", "Track 9", "Track 10"
+};
+const int testTrackCount = 10;
+}
+
+TEST_SUITE("State Construction and Basic Properties") {
+  TEST_CASE("State - Default Construction") {
+    State state;
+
+    CHECK(state.getTotalTracks() == 0);
+    CHECK(state.getSelectedTrackIndex() == 0);
+    CHECK(state.getTopVisibleTrackIndex() == 0);
+    CHECK(state.getPlayingTrackIndex() == -1);
+    CHECK(state.getIsPlaying() == false);
+    CHECK(state.getPlaybackPosition() == 0);
+    CHECK(state.getTrackDuration() == 0);
+    CHECK(state.getCurrentShowing() == TRACK_LIST);
+    CHECK(state.getIsAnimating() == false);
+    CHECK(state.getIsRotatedMode() == false);
+    CHECK(state.getCurrentTrackName() == nullptr);
+    CHECK(state.getPlayingTrackName() == nullptr);
+  }
+
+  TEST_CASE("State - Set Tracks") {
+    State state;
+    resetTestState();
+    state.addEventListener(testEventCallback);
+
+    state.setTracks(testTracks, testTrackCount);
+
+    CHECK(state.getTotalTracks() == testTrackCount);
+    CHECK(lastEvent.captured == true);
+    CHECK(lastEvent.eventType == EVENT_TRACK_LIST_UPDATED);
+
+    TrackListEvent *event = (TrackListEvent *)lastEvent.eventData;
+    CHECK(event->totalTracks == testTrackCount);
+    CHECK(event->tracks == testTracks);
+  }
+
+  TEST_CASE("State - Set Tracks with Out of Bounds Selection") {
+    State state;
+
+    // Manually set selectedTrackIndex beyond bounds
+    state.selectTrack(5); // This won't work yet, but we'll test the bounds checking
+    state.setTracks(testTracks, 3); // Only 3 tracks
+
+    CHECK(state.getSelectedTrackIndex() < 3); // Should be clamped
+  }
+}
+
+TEST_SUITE("State Navigation Tests") {
+  TEST_CASE("State - Select Track") {
+    State state;
+    resetTestState();
+    state.setTracks(testTracks, testTrackCount);
+    state.addEventListener(testEventCallback);
+
+    state.selectTrack(3);
+
+    CHECK(state.getSelectedTrackIndex() == 3);
+    CHECK(lastEvent.captured == true);
+    CHECK(lastEvent.eventType == EVENT_TRACK_SELECTED);
+
+    TrackSelectedEvent *event = (TrackSelectedEvent *)lastEvent.eventData;
+    CHECK(event->trackIndex == 3);
+    CHECK(strcmp(event->trackName, "Track 4") == 0);
+  }
+
+  TEST_CASE("State - Select Same Track Twice") {
+    State state;
+    resetTestState();
+    state.setTracks(testTracks, testTrackCount);
+    state.addEventListener(testEventCallback);
+
+    state.selectTrack(2);
+    resetTestState();     // Reset event capture
+    state.selectTrack(2); // Same track again
+
+    CHECK(lastEvent.captured == false); // No event should be emitted
+  }
+
+  TEST_CASE("State - Select Track Out of Bounds") {
+    State state;
+    resetTestState();
+    state.setTracks(testTracks, testTrackCount);
+    state.addEventListener(testEventCallback);
+
+    state.selectTrack(15); // Beyond track count
+
+    CHECK(lastEvent.captured == false);        // No event for invalid selection
+    CHECK(state.getSelectedTrackIndex() == 0); // Should remain unchanged
+  }
+
+  TEST_CASE("State - Scroll Up from Beginning") {
+    State state;
+    resetTestState();
+    state.setTracks(testTracks, testTrackCount);
+    state.addEventListener(testEventCallback);
+
+    // Already at index 0
+    state.scrollUp();
+
+    CHECK(lastEvent.captured == false); // No event at boundary
+    CHECK(state.getSelectedTrackIndex() == 0);
+  }
+
+  TEST_CASE("State - Scroll Up Normal") {
+    State state;
+    resetTestState();
+    state.setTracks(testTracks, testTrackCount);
+    state.selectTrack(3);
+    state.addEventListener(testEventCallback);
+
+    state.scrollUp();
+
+    CHECK(state.getSelectedTrackIndex() == 2);
+    CHECK(lastEvent.captured == true);
+    CHECK(lastEvent.eventType == EVENT_SCROLL_CHANGED);
+
+    ScrollChangedEvent *event = (ScrollChangedEvent *)lastEvent.eventData;
+    CHECK(event->selectedIndex == 2);
+    CHECK(event->oldSelectedIndex == 3);
+  }
+
+  TEST_CASE("State - Scroll Down to End") {
+    State state;
+    resetTestState();
+    state.setTracks(testTracks, testTrackCount);
+    state.selectTrack(testTrackCount - 1); // Last track
+    state.addEventListener(testEventCallback);
+
+    state.scrollDown();
+
+    CHECK(lastEvent.captured == false); // No event at boundary
+    CHECK(state.getSelectedTrackIndex() == testTrackCount - 1);
+  }
+
+  TEST_CASE("State - Scroll Down Normal") {
+    State state;
+    resetTestState();
+    state.setTracks(testTracks, testTrackCount);
+    state.selectTrack(2);
+    state.addEventListener(testEventCallback);
+
+    state.scrollDown();
+
+    CHECK(state.getSelectedTrackIndex() == 3);
+    CHECK(lastEvent.captured == true);
+    CHECK(lastEvent.eventType == EVENT_SCROLL_CHANGED);
+
+    ScrollChangedEvent *event = (ScrollChangedEvent *)lastEvent.eventData;
+    CHECK(event->selectedIndex == 3);
+    CHECK(event->oldSelectedIndex == 2);
+  }
+
+  TEST_CASE("State - Page Up") {
+    State state;
+    resetTestState();
+    state.setTracks(testTracks, testTrackCount);
+    state.selectTrack(7); // Start at track 7
+    state.addEventListener(testEventCallback);
+
+    state.pageUp();
+
+    CHECK(state.getSelectedTrackIndex() == 2); // 7 - 5 = 2
+    CHECK(lastEvent.captured == true);
+    CHECK(lastEvent.eventType == EVENT_PAGE_CHANGED);
+  }
+
+  TEST_CASE("State - Page Up from Beginning") {
+    State state;
+    resetTestState();
+    state.setTracks(testTracks, testTrackCount);
+    // Start at track 0
+    state.addEventListener(testEventCallback);
+
+    state.pageUp();
+
+    CHECK(state.getSelectedTrackIndex() == 0); // Should stay at 0
+  }
+
+  TEST_CASE("State - Page Down") {
+    State state;
+    resetTestState();
+    state.setTracks(testTracks, testTrackCount);
+    state.selectTrack(2); // Start at track 2
+    state.addEventListener(testEventCallback);
+
+    state.pageDown();
+
+    CHECK(state.getSelectedTrackIndex() == 7); // 2 + 5 = 7
+    CHECK(lastEvent.captured == true);
+    CHECK(lastEvent.eventType == EVENT_PAGE_CHANGED);
+  }
+}
+
+TEST_SUITE("State Playback Tests") {
+  TEST_CASE("State - Start Playback Default Track") {
+    State state;
+    resetTestState();
+    state.setTracks(testTracks, testTrackCount);
+    state.selectTrack(3);
+    state.addEventListener(testEventCallback);
+
+    state.startPlayback(); // Should play selected track
+
+    CHECK(state.getPlayingTrackIndex() == 3);
+    CHECK(state.getIsPlaying() == true);
+    CHECK(state.getPlaybackPosition() == 0);
+    CHECK(lastEvent.captured == true);
+    CHECK(lastEvent.eventType == EVENT_PLAYBACK_STARTED);
+
+    PlaybackEvent *event = (PlaybackEvent *)lastEvent.eventData;
+    CHECK(event->trackIndex == 3);
+    CHECK(event->isPlaying == true);
+    CHECK(strcmp(event->trackName, "Track 4") == 0);
+  }
+
+  TEST_CASE("State - Start Playback Specific Track") {
+    State state;
+    resetTestState();
+    state.setTracks(testTracks, testTrackCount);
+    state.addEventListener(testEventCallback);
+
+    state.startPlayback(5); // Specific track
+
+    CHECK(state.getPlayingTrackIndex() == 5);
+    CHECK(state.getIsPlaying() == true);
+    CHECK(lastEvent.eventType == EVENT_PLAYBACK_STARTED);
+
+    PlaybackEvent *event = (PlaybackEvent *)lastEvent.eventData;
+    CHECK(event->trackIndex == 5);
+    CHECK(strcmp(event->trackName, "Track 6") == 0);
+  }
+
+  TEST_CASE("State - Start Playback Invalid Track") {
+    State state;
+    resetTestState();
+    state.setTracks(testTracks, testTrackCount);
+    state.addEventListener(testEventCallback);
+
+    state.startPlayback(15); // Invalid track index
+
+    CHECK(state.getPlayingTrackIndex() == -1); // Should remain -1
+    CHECK(state.getIsPlaying() == false);
+    CHECK(lastEvent.captured == false); // No event for invalid start
+  }
+
+  TEST_CASE("State - Toggle Playback Pause") {
+    State state;
+    resetTestState();
+    state.setTracks(testTracks, testTrackCount);
+    state.startPlayback(2);
+    state.addEventListener(testEventCallback);
+
+    state.togglePlayback(); // Should pause
+
+    CHECK(state.getIsPlaying() == false);
+    CHECK(state.getPlayingTrackIndex() == 2); // Still same track
+    CHECK(lastEvent.captured == true);
+    CHECK(lastEvent.eventType == EVENT_PLAYBACK_PAUSED);
+
+    PlaybackEvent *event = (PlaybackEvent *)lastEvent.eventData;
+    CHECK(event->isPlaying == false);
+    CHECK(event->trackIndex == 2);
+  }
+
+  TEST_CASE("State - Toggle Playback Resume") {
+    State state;
+    resetTestState();
+    state.setTracks(testTracks, testTrackCount);
+    state.startPlayback(2);
+    state.togglePlayback(); // Pause first
+    state.addEventListener(testEventCallback);
+
+    state.togglePlayback(); // Should resume
+
+    CHECK(state.getIsPlaying() == true);
+    CHECK(lastEvent.captured == true);
+    CHECK(lastEvent.eventType == EVENT_PLAYBACK_RESUMED);
+
+    PlaybackEvent *event = (PlaybackEvent *)lastEvent.eventData;
+    CHECK(event->isPlaying == true);
+  }
+
+  TEST_CASE("State - Toggle Playback No Track") {
+    State state;
+    resetTestState();
+    state.setTracks(testTracks, testTrackCount);
+    state.addEventListener(testEventCallback);
+
+    state.togglePlayback(); // No track playing
+
+    CHECK(lastEvent.captured == false); // No event when no track
+  }
+
+  TEST_CASE("State - Stop Playback") {
+    State state;
+    resetTestState();
+    state.setTracks(testTracks, testTrackCount);
+    state.startPlayback(3);
+    state.addEventListener(testEventCallback);
+
+    state.stopPlayback();
+
+    CHECK(state.getIsPlaying() == false);
+    CHECK(state.getPlayingTrackIndex() == -1);
+    CHECK(state.getPlaybackPosition() == 0);
+    CHECK(lastEvent.captured == true);
+    CHECK(lastEvent.eventType == EVENT_PLAYBACK_STOPPED);
+
+    PlaybackEvent *event = (PlaybackEvent *)lastEvent.eventData;
+    CHECK(event->trackIndex == 3); // Original track index
+    CHECK(event->isPlaying == false);
+  }
+
+  TEST_CASE("State - Update Progress") {
+    State state;
+    resetTestState();
+    state.setTracks(testTracks, testTrackCount);
+    state.setTrackDuration(180); // 3 minutes
+    state.addEventListener(testEventCallback);
+
+    state.updateProgress(60); // 1 minute
+
+    CHECK(state.getPlaybackPosition() == 60);
+    CHECK(lastEvent.captured == true);
+    CHECK(lastEvent.eventType == EVENT_PROGRESS_UPDATED);
+
+    ProgressEvent *event = (ProgressEvent *)lastEvent.eventData;
+    CHECK(event->position == 60);
+    CHECK(event->duration == 180);
+    CHECK(abs(event->percentage - (60.0f / 180.0f)) <
+          0.001f); // Floating point comparison
+  }
+
+  TEST_CASE("State - Update Progress Same Value") {
+    State state;
+    resetTestState();
+    state.setTracks(testTracks, testTrackCount);
+    state.setTrackDuration(180);
+    state.updateProgress(60);
+    state.addEventListener(testEventCallback);
+
+    state.updateProgress(60); // Same value again
+
+    CHECK(lastEvent.captured == false); // No event for same value
+  }
+
+  TEST_CASE("State - Set Track Duration") {
+    State state;
+    resetTestState();
+    state.addEventListener(testEventCallback);
+
+    state.setTrackDuration(240);
+
+    CHECK(state.getTrackDuration() == 240);
+    CHECK(lastEvent.captured == true);
+    CHECK(lastEvent.eventType == EVENT_TRACK_DURATION_CHANGED);
+
+    int *duration = (int *)lastEvent.eventData;
+    CHECK(*duration == 240);
+  }
+
+  TEST_CASE("State - Track Ended Auto Advance") {
+    State state;
+    resetTestState();
+    state.setTracks(testTracks, testTrackCount);
+    state.startPlayback(3);
+    state.addEventListener(testEventCallback);
+
+    state.notifyTrackEnded();
+
+    // Should emit track ended event first, then start next track
+    CHECK(eventCount >= 2);                   // At least 2 events
+    CHECK(state.getPlayingTrackIndex() == 4); // Advanced to next track
+    CHECK(state.getIsPlaying() == true);
+  }
+
+  TEST_CASE("State - Track Ended at Last Track") {
+    State state;
+    resetTestState();
+    state.setTracks(testTracks, testTrackCount);
+    state.startPlayback(testTrackCount - 1); // Last track
+    state.addEventListener(testEventCallback);
+
+    state.notifyTrackEnded();
+
+    CHECK(state.getPlayingTrackIndex() == -1); // Should stop
+    CHECK(state.getIsPlaying() == false);
+  }
+}
+
+TEST_SUITE("State UI and Animation Tests") {
+  TEST_CASE("State - Set Showing State") {
+    State state;
+    resetTestState();
+    state.addEventListener(testEventCallback);
+
+    state.setShowing(NOW_PLAYING);
+
+    CHECK(state.getCurrentShowing() == NOW_PLAYING);
+    CHECK(lastEvent.captured == true);
+    CHECK(lastEvent.eventType == EVENT_UI_STATE_CHANGED);
+
+    ShowingEvent *event = (ShowingEvent *)lastEvent.eventData;
+    CHECK(event->oldState == TRACK_LIST);
+    CHECK(event->newState == NOW_PLAYING);
+  }
+
+  TEST_CASE("State - Set Same Showing State") {
+    State state;
+    resetTestState();
+    state.setShowing(NOW_PLAYING);
+    state.addEventListener(testEventCallback);
+
+    state.setShowing(NOW_PLAYING); // Same state
+
+    CHECK(lastEvent.captured == false); // No event for same state
+  }
+
+  TEST_CASE("State - Set Animation State") {
+    State state;
+    resetTestState();
+    state.addEventListener(testEventCallback);
+
+    state.setAnimating(true, 12345);
+
+    CHECK(state.getIsAnimating() == true);
+    CHECK(lastEvent.captured == true);
+    CHECK(lastEvent.eventType == EVENT_ANIMATION_STARTED);
+
+    AnimationEvent *event = (AnimationEvent *)lastEvent.eventData;
+    CHECK(event->animationId == 12345);
+    CHECK(event->animationType == 1);
+  }
+
+  TEST_CASE("State - Set Rotation") {
+    State state;
+
+    state.setRotation(true);
+
+    CHECK(state.getIsRotatedMode() == true);
+
+    state.setRotation(false);
+
+    CHECK(state.getIsRotatedMode() == false);
+  }
+}
+
+TEST_SUITE("State Utility Tests") {
+  TEST_CASE("State - Get Current Track Name") {
+    State state;
+    state.setTracks(testTracks, testTrackCount);
+    state.selectTrack(3);
+
+    const char *name = state.getCurrentTrackName();
+
+    CHECK(name != nullptr);
+    CHECK(strcmp(name, "Track 4") == 0);
+  }
+
+  TEST_CASE("State - Get Current Track Name No Tracks") {
+    State state;
+
+    const char *name = state.getCurrentTrackName();
+
+    CHECK(name == nullptr);
+  }
+
+  TEST_CASE("State - Get Playing Track Name") {
+    State state;
+    state.setTracks(testTracks, testTrackCount);
+    state.startPlayback(5);
+
+    const char *name = state.getPlayingTrackName();
+
+    CHECK(name != nullptr);
+    CHECK(strcmp(name, "Track 6") == 0);
+  }
+
+  TEST_CASE("State - Get Playing Track Name Not Playing") {
+    State state;
+    state.setTracks(testTracks, testTrackCount);
+
+    const char *name = state.getPlayingTrackName();
+
+    CHECK(name == nullptr);
+  }
+
+  TEST_CASE("State - Get Visible Track Indices") {
+    State state;
+    state.setTracks(testTracks, testTrackCount);
+    state.selectTrack(7); // This should adjust topVisible
+
+    int start, end;
+    state.getVisibleTrackIndices(start, end);
+
+    CHECK(start >= 0);
+    CHECK(end < testTrackCount);
+    CHECK(end >= start);
+    CHECK((end - start + 1) <= TRACKS_PER_SCREEN);
+  }
+
+  TEST_CASE("State - Get Relative Selected Index") {
+    State state;
+    state.setTracks(testTracks, testTrackCount);
+    state.selectTrack(7);
+
+    int relative = state.getRelativeSelectedIndex();
+
+    CHECK(relative >= 0);
+    CHECK(relative < TRACKS_PER_SCREEN);
+    CHECK(relative ==
+          (state.getSelectedTrackIndex() - state.getTopVisibleTrackIndex()));
+  }
+
+  TEST_CASE("State - Needs Scroll Update") {
+    State state;
+    state.setTracks(testTracks, testTrackCount);
+
+    bool needsUpdate1 = state.needsScrollUpdate(0, 0); // Same values
+    CHECK(needsUpdate1 == false);
+
+    bool needsUpdate2 = state.needsScrollUpdate(1, 0); // Different selected
+    CHECK(needsUpdate2 == true);
+
+    bool needsUpdate3 = state.needsScrollUpdate(0, 1); // Different top visible
+    CHECK(needsUpdate3 == true);
+  }
+}
