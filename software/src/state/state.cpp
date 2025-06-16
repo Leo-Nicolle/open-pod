@@ -4,7 +4,7 @@
 // Application state management
 
 State::State()
-    : EventTarget(), tracks(nullptr), totalTracks(0), playingTrackIndex(-1),
+    : EventTarget(), elements(nullptr), totalElements(0), playingTrackIndex(-1),
       isPlaying(false), playbackPosition(0), trackDuration(0),
       selectedTrackIndex(0), topVisibleTrackIndex(0),
       currentShowing(TRACK_LIST), targetShowing(TRACK_LIST), isAnimating(false),
@@ -12,34 +12,34 @@ State::State()
 
 void State::updateVisibleTracks() {
   for (int i = 0; i < ELEMENTS_PER_SCREEN; i++) {
-    if (i + topVisibleTrackIndex < totalTracks) {
-      visibleTracks[i] = tracks[i + topVisibleTrackIndex];
+    if (i + topVisibleTrackIndex < totalElements) {
+      visibleElements[i] = elements[i + topVisibleTrackIndex];
     } else {
-      visibleTracks[i] = nullptr;
+      visibleElements[i] = nullptr;
     }
   }
 }
 
-void State::setTracks(const char **trackList, int count) {
-  tracks = trackList;
-  totalTracks = count;
+void State::setElements(const char **elementList, int count) {
+  elements = elementList;
+  totalElements = count;
 
   if (selectedTrackIndex >= count) {
     selectedTrackIndex = count > 0 ? count - 1 : 0;
   }
   for (int i = 0; i < ELEMENTS_PER_SCREEN; i++) {
     if (i < count) {
-      visibleTracks[i] = trackList[i];
+      visibleElements[i] = elementList[i];
     } else {
-      visibleTracks[i] = nullptr;
+      visibleElements[i] = nullptr;
     }
   }
-  TrackListEvent event = {count, trackList, visibleTracks};
+  ListEvent event = {count, elementList, visibleElements};
   emitEvent(EVENT_TRACK_LIST_UPDATED, &event);
 }
 
 void State::selectTrack(int index) {
-  if (index >= 0 && index < totalTracks && index != selectedTrackIndex) {
+  if (index >= 0 && index < totalElements && index != selectedTrackIndex) {
     int oldIndex = selectedTrackIndex;
     selectedTrackIndex = index;
     if (selectedTrackIndex < topVisibleTrackIndex) {
@@ -63,7 +63,7 @@ void State::scrollUp() {
     if (needsScrollUpdate(oldSelected, oldTopVisible)) {
       updateVisibleTracks();
       ScrollChangedEvent event = {selectedTrackIndex, topVisibleTrackIndex,
-                                  oldSelected, oldTopVisible, visibleTracks};
+                                  oldSelected, oldTopVisible, visibleElements};
       emitEvent(EVENT_SCROLL_CHANGED, &event);
     }
   }
@@ -72,7 +72,7 @@ void State::scrollUp() {
 void State::scrollDown() {
   int oldSelected = selectedTrackIndex;
   int oldTopVisible = topVisibleTrackIndex;
-  if (selectedTrackIndex < totalTracks - 1) {
+  if (selectedTrackIndex < totalElements - 1) {
     selectedTrackIndex++;
     if (selectedTrackIndex >= topVisibleTrackIndex + ELEMENTS_PER_SCREEN) {
       topVisibleTrackIndex = selectedTrackIndex - ELEMENTS_PER_SCREEN + 1;
@@ -80,7 +80,7 @@ void State::scrollDown() {
     if (needsScrollUpdate(oldSelected, oldTopVisible)) {
       updateVisibleTracks();
       ScrollChangedEvent event = {selectedTrackIndex, topVisibleTrackIndex,
-                                  oldSelected, oldTopVisible, visibleTracks};
+                                  oldSelected, oldTopVisible, visibleElements};
       emitEvent(EVENT_SCROLL_CHANGED, &event);
     }
   }
@@ -94,7 +94,7 @@ void State::pageUp() {
   if (needsScrollUpdate(oldSelected, oldTopVisible)) {
     updateVisibleTracks();
     ScrollChangedEvent event = {selectedTrackIndex, topVisibleTrackIndex,
-                                oldSelected, oldTopVisible, visibleTracks};
+                                oldSelected, oldTopVisible, visibleElements};
     emitEvent(EVENT_PAGE_CHANGED, &event);
   }
 }
@@ -103,13 +103,13 @@ void State::pageDown() {
   int oldSelected = selectedTrackIndex;
   int oldTopVisible = topVisibleTrackIndex;
   selectedTrackIndex =
-      min(totalTracks - 1, selectedTrackIndex + ELEMENTS_PER_SCREEN);
-  topVisibleTrackIndex = min(max(0, totalTracks - ELEMENTS_PER_SCREEN),
+      min(totalElements - 1, selectedTrackIndex + ELEMENTS_PER_SCREEN);
+  topVisibleTrackIndex = min(max(0, totalElements - ELEMENTS_PER_SCREEN),
                              topVisibleTrackIndex + ELEMENTS_PER_SCREEN);
   if (needsScrollUpdate(oldSelected, oldTopVisible)) {
     updateVisibleTracks();
     ScrollChangedEvent event = {selectedTrackIndex, topVisibleTrackIndex,
-                                oldSelected, oldTopVisible, visibleTracks};
+                                oldSelected, oldTopVisible, visibleElements};
     emitEvent(EVENT_PAGE_CHANGED, &event);
   }
 }
@@ -118,7 +118,7 @@ void State::startPlayback(int trackIndex) {
   if (trackIndex == -1) {
     trackIndex = selectedTrackIndex;
   }
-  if (trackIndex >= 0 && trackIndex < totalTracks) {
+  if (trackIndex >= 0 && trackIndex < totalElements) {
     playingTrackIndex = trackIndex;
     isPlaying = true;
     playbackPosition = 0;
@@ -169,7 +169,7 @@ void State::notifyTrackEnded() {
   if (playingTrackIndex >= 0) {
     PlaybackEvent event = {playingTrackIndex, getPlayingTrackName(), false};
     emitEvent(EVENT_TRACK_ENDED, &event);
-    if (playingTrackIndex < totalTracks - 1) {
+    if (playingTrackIndex < totalElements - 1) {
       startPlayback(playingTrackIndex + 1);
     } else {
       stopPlayback();
@@ -198,15 +198,15 @@ void State::setAnimating(bool animating, uint32_t animId) {
 void State::setRotation(bool rotated) { isRotatedMode = rotated; }
 
 const char *State::getCurrentTrackName() const {
-  if (selectedTrackIndex >= 0 && selectedTrackIndex < totalTracks) {
-    return tracks[selectedTrackIndex];
+  if (selectedTrackIndex >= 0 && selectedTrackIndex < totalElements) {
+    return elements[selectedTrackIndex];
   }
   return nullptr;
 }
 
 const char *State::getPlayingTrackName() const {
-  if (playingTrackIndex >= 0 && playingTrackIndex < totalTracks) {
-    return tracks[playingTrackIndex];
+  if (playingTrackIndex >= 0 && playingTrackIndex < totalElements) {
+    return elements[playingTrackIndex];
   }
   return nullptr;
 }
@@ -218,7 +218,7 @@ bool State::needsScrollUpdate(int oldSelected, int oldTopVisible) const {
 
 void State::getVisibleTrackIndices(int &startIndex, int &endIndex) const {
   startIndex = topVisibleTrackIndex;
-  endIndex = min(topVisibleTrackIndex + ELEMENTS_PER_SCREEN - 1, totalTracks - 1);
+  endIndex = min(topVisibleTrackIndex + ELEMENTS_PER_SCREEN - 1, totalElements - 1);
 }
 
 int State::getRelativeSelectedIndex() const {

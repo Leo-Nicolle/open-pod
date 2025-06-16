@@ -27,7 +27,7 @@ public:
    * @brief How many bytes arer needed to store one elements (depends on bits)
    * height and bits per pixel
    */
-  int bytesPerTrack;
+  int bytesPerElement;
   /**
    * @brief Array containing whether a row contains an element or not
    */
@@ -48,11 +48,11 @@ public:
     this->bitsPerPixel = bitsPerPixel;
     cacheWidth = SCREEN_WIDTH - SCROLLBAR_WIDTH;
     cacheHeight = ELEMENT_HEIGHT;
-    bytesPerTrack = calculateBufferSize(cacheWidth, cacheHeight, bitsPerPixel);
+    bytesPerElement = calculateBufferSize(cacheWidth, cacheHeight, bitsPerPixel);
 
     // Allocate cache memory
     for (int i = 0; i < ELEMENTS_PER_SCREEN; i++) {
-      binaryCache[i] = new uint8_t[bytesPerTrack];
+      binaryCache[i] = new uint8_t[bytesPerElement];
       cacheValid[i] = false;
     }
   }
@@ -78,7 +78,7 @@ public:
     }
     
     // Clear the binary buffer
-    memset(binaryBuffer, 0, bytesPerTrack);
+    memset(binaryBuffer, 0, bytesPerElement);
 
     // Create direct binary renderer using class members
     BinaryFontRenderer binaryRenderer(binaryBuffer, cacheWidth, cacheHeight,
@@ -135,11 +135,11 @@ public:
   /**
    * @brief Build the cache for the given elements
    */
-  void build(const char *visibleTracks[ELEMENTS_PER_SCREEN]) {
+  void build(const char *visibleElements[ELEMENTS_PER_SCREEN]) {
     for (int i = 0; i < ELEMENTS_PER_SCREEN; i++) {
-      if (visibleTracks[i] && strlen(visibleTracks[i]) > 0) {
+      if (visibleElements[i] && strlen(visibleElements[i]) > 0) {
         // Render element to binary cache
-        renderElementBinary(visibleTracks[i], binaryCache[i]);
+        renderElementBinary(visibleElements[i], binaryCache[i]);
         cacheValid[i] = true;
 
       } else {
@@ -165,7 +165,7 @@ public:
 
     // Shift content upward
     for (int i = ELEMENTS_PER_SCREEN - 1; i >= delta; i--) {
-      memcpy(binaryCache[i], binaryCache[i - delta], bytesPerTrack);
+      memcpy(binaryCache[i], binaryCache[i - delta], bytesPerElement);
       cacheValid[i] = cacheValid[i - delta];
     }
 
@@ -198,7 +198,7 @@ public:
 
     // Shift content downward
     for (int i = 0; i < ELEMENTS_PER_SCREEN - delta; i++) {
-      memcpy(binaryCache[i], binaryCache[i + delta], bytesPerTrack);
+      memcpy(binaryCache[i], binaryCache[i + delta], bytesPerElement);
       cacheValid[i] = cacheValid[i + delta];
     }
 
@@ -238,11 +238,11 @@ public:
     Serial.println("Cache size: " + String(cacheWidth) + "x" +
                    String(cacheHeight));
     Serial.println("Bits per pixel: " + String(bitsPerPixel));
-    Serial.println("Bytes per track: " + String(bytesPerTrack));
+    Serial.println("Bytes per element: " + String(bytesPerElement));
     Serial.println("Valid entries: " + String(validEntries) + "/" +
                    String(ELEMENTS_PER_SCREEN));
     Serial.println("Total memory: " +
-                   String(bytesPerTrack * ELEMENTS_PER_SCREEN) + " bytes");
+                   String(bytesPerElement * ELEMENTS_PER_SCREEN) + " bytes");
   }
 
 };

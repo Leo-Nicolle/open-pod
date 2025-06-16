@@ -42,7 +42,7 @@ struct ScrollChangedEvent {
   int topVisibleIndex;
   int oldSelectedIndex;
   int oldTopVisibleIndex;
-  const char** visibleTracks; // Current visible tracks after scroll
+  const char** visibleElements; // Current visible elements after scroll
 };
 
 struct PlaybackEvent {
@@ -67,19 +67,19 @@ struct AnimationEvent {
   int animationType;
 };
 
-struct TrackListEvent {
-  int totalTracks;
-  const char** tracks;
-  const char** visibleTracks;
+struct ListEvent {
+  int totalElements;
+  const char** elements;
+  const char** visibleElements;
 };
 
 // Application state management with event system
 class State : public EventTarget {
 private:
   // Track data
-  const char **tracks;
-  int totalTracks;
-  const char* visibleTracks[ELEMENTS_PER_SCREEN];
+  const char **elements;
+  int totalElements;
+  const char* visibleElements[ELEMENTS_PER_SCREEN];
 
   // Current playback state
   int playingTrackIndex;
@@ -110,7 +110,7 @@ public:
   State();
 
   // Track management
-  void setTracks(const char **trackList, int count);
+  void setElements(const char **elementList, int count);
   
   // Navigation
   void selectTrack(int index);
@@ -140,7 +140,7 @@ public:
   int getRelativeSelectedIndex() const;
   
   // Public accessors for UI components
-  int getTotalTracks() const { return totalTracks; }
+  int getTotalTracks() const { return totalElements; }
   int getSelectedTrackIndex() const { return selectedTrackIndex; }
   int getTopVisibleTrackIndex() const { return topVisibleTrackIndex; }
   int getPlayingTrackIndex() const { return playingTrackIndex; }

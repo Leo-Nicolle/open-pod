@@ -133,7 +133,7 @@ void setup() {
 
   // Initialize UI with event system
   ui.begin(); // This calls hookToEvents() internally
-  state.setTracks(tracks, trackCount);
+  state.setElements(tracks, trackCount);
 
   // Optional demo animations
   demoAnimations();

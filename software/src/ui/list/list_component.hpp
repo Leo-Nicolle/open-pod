@@ -13,7 +13,7 @@ class ILI9341_GFX;
  */
 class ListComponent {
 public:
-  ListCache cache; // Using the updated TracksCache with pointer swapping
+  ListCache cache; // Using the updated ElementsCache with pointer swapping
   ListRenderer renderer;
   const char **elements;
   int numElements;

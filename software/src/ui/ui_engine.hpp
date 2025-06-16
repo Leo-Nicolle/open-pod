@@ -20,7 +20,7 @@ private:
   // UI Components
   HeaderComponent header;
   ScrollbarComponent scrollbar;
-  ListComponent trackList;
+  ListComponent elementList;
   NowPlayingComponent nowPlaying;
 
   int lastDrawnOffset;
@@ -44,7 +44,7 @@ private:
   void handleShowingChanged(const ShowingEvent *event);
   void handleAnimationStarted(const AnimationEvent *event);
   void handleAnimationFinished(const AnimationEvent *event);
-  void handleTrackListUpdated(const TrackListEvent *event);
+  void handleTrackListUpdated(const ListEvent *event);
   void handleTrackDurationChanged(int *duration);
 
 public:
@@ -92,7 +92,7 @@ OpenPodUIEngine *OpenPodUIEngine::instance = nullptr;
 
 // Implementation
 OpenPodUIEngine::OpenPodUIEngine(ILI9341_GFX *disp)
-    : display(disp), trackList(nullptr, 0), lastDrawnOffset(0) {
+    : display(disp), elementList(nullptr, 0), lastDrawnOffset(0) {
 
   // Set static instance for callback access
   instance = this;
@@ -113,7 +113,7 @@ void OpenPodUIEngine::begin() {
   // Hook up to state events first
   hookToEvents();
   // Initialize components
-  trackList.begin();
+  elementList.begin();
   updateTrackListScroll();
   updateScrollbar();
 
@@ -200,7 +200,7 @@ void OpenPodUIEngine::onStateEvent(int eventType, void *eventData,
     break;
 
   case EVENT_TRACK_LIST_UPDATED:
-    instance->handleTrackListUpdated((TrackListEvent *)eventData);
+    instance->handleTrackListUpdated((ListEvent *)eventData);
     break;
 
   case EVENT_TRACK_DURATION_CHANGED:
@@ -243,9 +243,9 @@ void OpenPodUIEngine::handleScrollChanged(const ScrollChangedEvent *event) {
     if (scrollDelta > 0) {
       Serial.print("Scrolling down by ");
       Serial.println(scrollDelta);
-      trackList.scrollDown(scrollDelta, event->visibleTracks);
+      elementList.scrollDown(scrollDelta, event->visibleElements);
     } else {
-      trackList.scrollUp(-scrollDelta, event->visibleTracks);
+      elementList.scrollUp(-scrollDelta, event->visibleElements);
     }
   }
 
@@ -258,10 +258,10 @@ void OpenPodUIEngine::handlePageChanged(const ScrollChangedEvent *event) {
     Serial.print("Track ");
     Serial.print(i);
     Serial.print(": ");
-    Serial.println(event->visibleTracks[i]);
+    Serial.println(event->visibleElements[i]);
   }
   updateTrackListScroll();
-  trackList.rebuildCache();
+  elementList.rebuildCache();
   updateScrollbar();
   renderTrackList(); // Full re-render for page changes
 }
@@ -362,11 +362,11 @@ void OpenPodUIEngine::handleAnimationFinished(const AnimationEvent *event) {
   renderCurrentState();
 }
 
-void OpenPodUIEngine::handleTrackListUpdated(const TrackListEvent *event) {
+void OpenPodUIEngine::handleTrackListUpdated(const ListEvent *event) {
   Serial.print("UI: Track list updated - ");
-  Serial.print(event->totalTracks);
+  Serial.print(event->totalElements);
   Serial.println(" tracks");
-  trackList.setElements(event->tracks, event->totalTracks);
+  elementList.setElements(event->elements, event->totalElements);
   updateScrollbar();
   // Re-render if we're showing the track list
   if (state.getCurrentShowing() == TRACK_LIST) {
@@ -452,7 +452,7 @@ void OpenPodUIEngine::renderCurrentState() {
 
 void OpenPodUIEngine::renderTrackList() {
   header.render(display);
-  trackList.renderAllElements(display);
+  elementList.renderAllElements(display);
   scrollbar.render(display);
 }
 
@@ -476,7 +476,7 @@ void OpenPodUIEngine::renderNowPlaying(int xOffset, int width) {
 
 void OpenPodUIEngine::renderTrackListArea() {
   // Only re-render the track list portion (not header or scrollbar)
-  trackList.renderAllElements(display, 0, BODY_Y, SCREEN_WIDTH - SCROLLBAR_WIDTH);
+  elementList.renderAllElements(display, 0, BODY_Y, SCREEN_WIDTH - SCROLLBAR_WIDTH);
   // Update scrollbar to reflect new position
   scrollbar.render(display);
 }
@@ -487,7 +487,7 @@ void OpenPodUIEngine::updateScrollbar() {
 }
 
 void OpenPodUIEngine::updateTrackListScroll() {
-  trackList.setScroll(state.getSelectedTrackIndex(),
+  elementList.setScroll(state.getSelectedTrackIndex(),
                       state.getTopVisibleTrackIndex());
 }
 
@@ -531,7 +531,7 @@ void OpenPodUIEngine::transitionToTrackList() {
           scrollbar.render(display, startX);
         }
 
-        trackList.renderRect(display, SCREEN_WIDTH - lastDrawnOffset, 0, width,
+        elementList.renderRect(display, SCREEN_WIDTH - lastDrawnOffset, 0, width,
                              SCREEN_HEIGHT - BODY_Y,
                              SCREEN_WIDTH - currentOffset);
         display->setScrollOffset(currentOffset);
