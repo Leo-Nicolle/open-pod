@@ -21,10 +21,10 @@
 | PB15      | MOSI     |
 */
 // // SPI Pin Definitions for PSRAM - Updated pinout
-#define PSRAM_MISO PA6
-#define PSRAM_MOSI PA7
-#define PSRAM_CLK PA5
-#define PSRAM_CS PA4
+#define PSRAM_CS PB6
+#define PSRAM_CLK PB13
+#define PSRAM_MISO PB14
+#define PSRAM_MOSI PB15
 
 // SPI PSRAM interface for APS6404L-3SQR-SN using Arduino SPI library
 class SPI_PSRAM {
