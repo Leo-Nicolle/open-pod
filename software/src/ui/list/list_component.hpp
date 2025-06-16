@@ -25,7 +25,7 @@ public:
   ListComponent(const char **elements, int count)
       : elements(elements), numElements(count), selectedIndex(0),
         topVisibleElement(0), cache(IBMPlexSans16Bold, BITS_PER_PIXEL),
-        renderer(cache, BITS_PER_PIXEL) {}
+        renderer(cache) {}
 
   void begin() {
     // Build initial cache with visible tracks

@@ -21,38 +21,28 @@ private:
    */
   const ListCache &cache;
   /**
-   * @brief Number of bits per pixel used in the cache (1, 2, or 4)
-   * TODO: Should we just grab this from the cache?
-   */
-  int bitsPerPixel;
-  /**
    * @brief Maximum pixel value based on bits per pixel
    */
   uint8_t maxPixelValue;
-  // Pre-computed color blend tables for each transparency level
+  // Pre-computed color blend table for normal rows
   /**
-   * @brief Pre-computed blend tables for normal and selected rows
+   * @brief Pre-computed blend table for normal rows
    * Normal blend table: text on background (0 = background, max = text)
-   * Selected blend table: inverted text on primary (0 = primary, max =
-   * background)
-   * TODO: seems like we dont use the selected blend table, should we remove it?
    */
   struct BlendTable {
     uint16_t colors[16]; // Support up to 4-bit (16 levels)
-  } normalBlend, selectedBlend;
+  } normalBlend;
 
 public:
-  ListRenderer(ListCache &cache, int bpp = 4)
-      : cache(cache), bitsPerPixel(bpp) {
-    if (bpp != 1 && bpp != 2 && bpp != 4) {
-      bitsPerPixel = 1;
-    }
+  ListRenderer(const ListCache &cache) : cache(cache) {
+    int bitsPerPixel = cache.getBitsPerPixel();
     maxPixelValue = (1 << bitsPerPixel) - 1;
-    // Pre-compute blend tables
-    precomputeBlendTables();
+    // Pre-compute blend table
+    precomputeBlendTable();
   }
 
   void printDebugInfo() {
+    int bitsPerPixel = cache.getBitsPerPixel();
     Serial.print("ListRenderer: bitsPerPixel=");
     Serial.println(bitsPerPixel);
     Serial.print("maxPixelValue=");
@@ -102,20 +92,15 @@ public:
       uint8_t *binaryBuffer = cache.getCacheForRow(cacheRowIndex);
 
       // Calculate colors for this element row
-      uint16_t bgColor =
-          // TODO: I think we should hold an array of gradents for the selected
-          // column instead of recomputing it. We do it once per row but
-          // still... we have principles here XD.
-          isSelected ? getGradientColor(COLOR_PRIMARY, yInList, TRACK_HEIGHT)
-                     : COLOR_BACKGROUND;
+      uint16_t bgColor = isSelected ? getGradientColor(COLOR_PRIMARY, yInList)
+                                    : COLOR_BACKGROUND;
 
       for (int x = startx; x < startx + width; x++) {
         uint8_t pixelValue = 0;
 
         // Only read from cache if we have valid data
         if (binaryBuffer && cache.cacheValid[cacheRowIndex]) {
-          pixelValue =
-              getBinaryPixel(binaryBuffer, x, yInList, cache.cacheWidth);
+          pixelValue = getBinaryPixel(binaryBuffer, x, yInList);
         }
 
         uint16_t color;
@@ -137,25 +122,10 @@ public:
     }
   }
   /**
-   * @brief Render a single element to the display buffer
-   * @param elementIndex Index of the element to render
-   * @param selected Whether the element is selected or not
-   * @param displayBuffer Pointer to the display buffer to render into
-   * TODO: not used yet, not sure we need it cause even while scrolling we need
-   * to render the whole screen, not just one element
-   */
-  void renderElementToBuffer(int elementIndex, bool selected,
-                             uint16_t *displayBuffer) {
-    renderRect(0, BODY_Y + elementIndex * TRACK_HEIGHT, SCREEN_WIDTH,
-               TRACK_HEIGHT, displayBuffer, selected ? elementIndex : -1);
-  }
-
-  /**
    * @brief Fill the display buffer with the background color
    * @param displayBuffer Pointer to the display buffer to fill
    * @param width Width of the display buffer
    * @param height Height of the area to fill
-   * TODO: Should be removed, or use a helper, has nothin to do with the list
    */
   void fillBufferWithBackground(uint16_t *displayBuffer, int width,
                                 int height) {
@@ -170,23 +140,14 @@ public:
 #else
 private:
 #endif
-/**
- * @brief Pre-compute blend tables for normal and selected rows
- * 
- */
-  void precomputeBlendTables() {
+  /**
+   * @brief Pre-compute blend table for normal rows
+   */
+  void precomputeBlendTable() {
     // Normal blend table - text on background (0 = background, max = text)
     for (int i = 0; i <= maxPixelValue; i++) {
       float alpha = (float)i / maxPixelValue;
       normalBlend.colors[i] = blendColor(COLOR_BACKGROUND, COLOR_TEXT, alpha);
-    }
-
-    // Selected blend table - inverted text on primary (0 = primary, max =
-    // background)
-    for (int i = 0; i <= maxPixelValue; i++) {
-      float alpha = (float)i / maxPixelValue;
-      selectedBlend.colors[i] =
-          blendColor(COLOR_PRIMARY, COLOR_BACKGROUND, alpha);
     }
   }
 
@@ -195,11 +156,10 @@ private:
    * @param buffer Pointer to the binary buffer
    * @param x X coordinate of the pixel
    * @param y Y coordinate of the pixel
-   * @param width Width of the binary buffer (in pixels)
-   * @TODO: Width should be taken from the cache, not passed as a param
    */
-  inline uint8_t getBinaryPixel(uint8_t *buffer, int x, int y, int width) {
-    int totalBitIndex = (y * width + x) * bitsPerPixel;
+  inline uint8_t getBinaryPixel(uint8_t *buffer, int x, int y) {
+    int bitsPerPixel = cache.getBitsPerPixel();
+    int totalBitIndex = (y * cache.cacheWidth + x) * bitsPerPixel;
     int byteIndex = totalBitIndex >> 3;
     int bitOffset = totalBitIndex & 7;
 
@@ -222,12 +182,9 @@ private:
    * @brief Get the gradient color for selected rows
    * @param baseColor The base color to apply the gradient to
    * @param y The y position of the pixel from the top of the element
-   * @param totalHeight The total height of the element (used for gradient
-   * calculation)
-   * @TODO: totalHeight is always TRACK_HEIGHT, should be removed?
    */
-  uint16_t getGradientColor(uint16_t baseColor, int y, int totalHeight) {
-    float progress = (float)y / (totalHeight - 1);
+  uint16_t getGradientColor(uint16_t baseColor, int y) {
+    float progress = (float)y / (TRACK_HEIGHT - 1);
     uint8_t r = (baseColor >> 11) & 0x1F;
     uint8_t g = (baseColor >> 5) & 0x3F;
     uint8_t b = baseColor & 0x1F;
@@ -240,23 +197,4 @@ private:
     return (newR << 11) | (newG << 5) | newB;
   }
 
-  /**
-   * @brief Set the number of bits per pixel and recompute maxPixelValue and blend tables
-   * @param bpp New bits per pixel (1, 2, or 4)
-   * @TODO: Since we wont change the bits per pixel at runtime, this method might be
-   * removed in the future. Also, bpp should be taken from the cache.
-   */
-  void setBitsPerPixel(int bpp) {
-    if (bpp == 1 || bpp == 2 || bpp == 4) {
-      bitsPerPixel = bpp;
-      maxPixelValue = (1 << bitsPerPixel) - 1;
-      precomputeBlendTables(); // Recompute blend tables
-    }
-  }
-  /**
-   * @brief Get the number of bits per pixel used in the renderer
-   * @return Number of bits per pixel (1, 2, or 4)
-   * TODO: Remove? 
-   */
-  int getBitsPerPixel() const { return bitsPerPixel; }
 };

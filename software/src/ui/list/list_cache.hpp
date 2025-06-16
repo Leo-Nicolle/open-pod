@@ -65,25 +65,23 @@ public:
   }
 
   /**
-   * @brief Render a single element to a binary buffer:
-   * TODO: should just use the class members instead of params?
+   * @brief Render a single element to a binary buffer using class members
    * @param element The text element to render
    * @param binaryBuffer The buffer to render the element into
-   * @param bufferWidth Width of the binary buffer
-   * @param bufferHeight Height of the binary buffer
    * @param x X position to start rendering (default: 0)
-   * @param width Width of the rendering area (default: SCREEN_WIDTH)
+   * @param width Width of the rendering area (default: cache width)
    */
   void renderElementBinary(const char *element, uint8_t *binaryBuffer,
-                           int bufferWidth, int bufferHeight, int x = 0,
-                           int width = SCREEN_WIDTH) {
+                           int x = 0, int width = -1) {
+    if (width == -1) {
+      width = cacheWidth;
+    }
+    
     // Clear the binary buffer
-    int totalBytes =
-        calculateBufferSize(bufferWidth, bufferHeight, bitsPerPixel);
-    memset(binaryBuffer, 0, totalBytes);
+    memset(binaryBuffer, 0, bytesPerTrack);
 
-    // Create direct binary renderer
-    BinaryFontRenderer binaryRenderer(binaryBuffer, bufferWidth, bufferHeight,
+    // Create direct binary renderer using class members
+    BinaryFontRenderer binaryRenderer(binaryBuffer, cacheWidth, cacheHeight,
                                       bitsPerPixel);
 
     // Find visible portion
@@ -141,8 +139,7 @@ public:
     for (int i = 0; i < TRACKS_PER_SCREEN; i++) {
       if (visibleTracks[i] && strlen(visibleTracks[i]) > 0) {
         // Render element to binary cache
-        renderElementBinary(visibleTracks[i], binaryCache[i], cacheWidth,
-                            cacheHeight, 0, cacheWidth);
+        renderElementBinary(visibleTracks[i], binaryCache[i]);
         cacheValid[i] = true;
 
       } else {
@@ -176,8 +173,7 @@ public:
     for (int i = 0; i < delta; i++) {
       const char *element = newVisibleElements[i];
       if (element && strlen(element) > 0) {
-        renderElementBinary(element, binaryCache[i], cacheWidth, cacheHeight,
-                            0, cacheWidth);
+        renderElementBinary(element, binaryCache[i]);
         cacheValid[i] = true;
       } else {
         cacheValid[i] = false;
@@ -210,61 +206,11 @@ public:
     for (int i = TRACKS_PER_SCREEN - delta; i < TRACKS_PER_SCREEN; i++) {
       const char *element = newVisibleElements[i];
       if (element && strlen(element) > 0) {
-        renderElementBinary(element, binaryCache[i], cacheWidth, cacheHeight,
-                            0, cacheWidth);
+        renderElementBinary(element, binaryCache[i]);
         cacheValid[i] = true;
       } else {
         cacheValid[i] = false;
       }
-    }
-  }
-  /**
-   * @brief Update a specific track in the cache
-   * TODO: never used? Should be removed ?
-   * @param trackIndex Index of the track to update (0-6)
-   * @param element New track name to render
-   * @note If element is null or empty, the cache entry will be invalidated
-   * and the track will not be rendered.
-   * This allows for dynamic updates to the track list without rebuilding the
-   * entire cache.
-   */
-  void updateTrack(int trackIndex, const char *element) {
-    if (trackIndex < 0 || trackIndex >= TRACKS_PER_SCREEN)
-      return;
-
-    if (element && strlen(element) > 0) {
-      renderElementBinary(element, binaryCache[trackIndex], cacheWidth,
-                          cacheHeight, 0, cacheWidth);
-      cacheValid[trackIndex] = true;
-    } else {
-      cacheValid[trackIndex] = false;
-    }
-  }
-
-  /**
-   * @brief Reallocate cache with new bits per pixel
-   * @param bpp New bits per pixel (1, 2, or 4)
-   * @note This will resize the cache and invalidate all existing entries.
-   * If the new bpp is the same as the current one, it will not reallocate.
-   *  TODO: should be removed ? I dont think we will change it at runtime
-   */
-  void setBitsPerPixel(int bpp) {
-    this->bitsPerPixel = bpp;
-    // Recalculate buffer size if needed
-    int newBytesPerTrack = calculateBufferSize(cacheWidth, cacheHeight, bpp);
-    if (newBytesPerTrack != bytesPerTrack) {
-      // Need to reallocate cache
-      for (int i = 0; i < TRACKS_PER_SCREEN; i++) {
-        delete[] binaryCache[i];
-        binaryCache[i] = new uint8_t[newBytesPerTrack];
-        cacheValid[i] = false;
-      }
-      bytesPerTrack = newBytesPerTrack;
-    }
-
-    // Invalidate all cache entries since bit depth changed
-    for (int i = 0; i < TRACKS_PER_SCREEN; i++) {
-      cacheValid[i] = false;
     }
   }
 
@@ -299,13 +245,4 @@ public:
                    String(bytesPerTrack * TRACKS_PER_SCREEN) + " bytes");
   }
 
-  /**
-   * @brief Invalidate all cache entries
-   * TODO: should be removed ? I dont think we will need it
-   */
-  void invalidateAll() {
-    for (int i = 0; i < TRACKS_PER_SCREEN; i++) {
-      cacheValid[i] = false;
-    }
-  }
 };
