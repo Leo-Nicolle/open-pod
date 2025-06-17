@@ -1,0 +1,23 @@
+{
+  "name": "indexer",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite-node demo/index.ts",
+    "build": "tsc && vite build",
+    "test": "vitest",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.3",
+    "typescript": "~5.8.3",
+    "vite": "^6.3.5",
+    "vite-node": "^3.2.3",
+    "vitest": "^3.2.3"
+  },
+  "dependencies": {
+    "music-metadata": "^11.3.0",
+    "utrie": "^1.0.2"
+  }
+}
