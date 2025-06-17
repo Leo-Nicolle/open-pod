@@ -42,13 +42,11 @@ export async function crawl(
   return files;
 }
 
-export async function organizeFiles(
-  messyRoot: string,
-  organizedRoot: string,
-){
-  await crawl(root, async (filename, rel, fullPath) => {
+export async function organizeFiles(messyRoot: string, organizedRoot: string) {
+  await crawl(messyRoot, async (filename, rel, fullPath) => {
     const ext = path.extname(filename).toLowerCase();
-    if (![".mp3", ".flac", ".ogg", ".wav", ".m4a", ".aac"].includes(ext)) return;
+    if (![".mp3", ".flac", ".ogg", ".wav", ".m4a", ".aac"].includes(ext))
+      return;
 
     const { common } = await parseFile(fullPath);
     const artist = common.artist || "Unknown Artist";
@@ -61,7 +59,7 @@ export async function organizeFiles(
 
     const newFilePath = path.join(albumDir, `${title}${ext}`);
     await fs.rename(fullPath, newFilePath);
-  }
+  });
 }
 
 export async function readMetadata(root: string): Promise<CrawlIndex> {
@@ -170,6 +168,100 @@ export async function readMetadata(root: string): Promise<CrawlIndex> {
   };
 }
 
+export function serialize(indexes: CrawlIndex): string {
+  const data: Record<string, any> = {
+    indexToTrack: Array.from(indexes.indexToTrack.entries()),
+    indexToArtist: Array.from(indexes.indexToArtist.entries()),
+    indexToAlbum: Array.from(indexes.indexToAlbum.entries()),
+    indexToGenre: Array.from(indexes.indexToGenre.entries()),
+    indexToPath: Array.from(indexes.indexToPath.entries()),
+    artistToAlbums: Array.from(
+      Array.from(indexes.artistToAlbums.entries()).map(([k, v]) => [
+        k,
+        Array.from(v),
+      ])
+    ),
+    albumToTracks: Array.from(
+      Array.from(indexes.albumToTracks.entries()).map(([k, v]) => [
+        k,
+        Array.from(v),
+      ])
+    ),
+    artistToTracks: Array.from(
+      Array.from(indexes.artistToTracks.entries()).map(([k, v]) => [
+        k,
+        Array.from(v),
+      ])
+    ),
+    genreToAlbums: Array.from(
+      Array.from(indexes.genreToAlbums.entries()).map(([k, v]) => [
+        k,
+        Array.from(v),
+      ])
+    ),
+    genreToTracks: Array.from(
+      Array.from(indexes.genreToTracks.entries()).map(([k, v]) => [
+        k,
+        Array.from(v),
+      ])
+    ),
+    metadataByTrackIndex: Array.from(indexes.metadataByTrackIndex.entries()),
+  };
+  return JSON.stringify(data, null, 2);
+}
+
+export function unserialize(data: string): CrawlIndex {
+  const parsed: Record<string, any> = JSON.parse(data);
+  const indexToTrack = new Map<number, string>(parsed.indexToTrack);
+  const indexToArtist = new Map<number, string>(parsed.indexToArtist);
+  const indexToAlbum = new Map<number, string>(parsed.indexToAlbum);
+  const indexToGenre = new Map<number, string>(parsed.indexToGenre);
+  const indexToPath = new Map<number, string>(parsed.indexToPath);
+  const artistToAlbums = new Map<number, Set<number>>(
+    parsed.artistToAlbums.map(([k, v]: [number, number[]]) => [k, new Set(v)])
+  );
+  const albumToTracks = new Map<number, Set<number>>(
+    parsed.albumToTracks.map(([k, v]: [number, number[]]) => [k, new Set(v)])
+  );
+  const artistToTracks = new Map<number, Set<number>>(
+    parsed.artistToTracks.map(([k, v]: [number, number[]]) => [k, new Set(v)])
+  );
+  const genreToAlbums = new Map<number, Set<number>>(
+    parsed.genreToAlbums.map(([k, v]: [number, number[]]) => [k, new Set(v)])
+  );
+  const genreToTracks = new Map<number, Set<number>>(
+    parsed.genreToTracks.map(([k, v]: [number, number[]]) => [k, new Set(v)])
+  );
+  const metadataByTrackIndex = new Map<number, TrackMetadata>(
+    parsed.metadataByTrackIndex.map(
+      ([k, v]: [
+        number,
+        {
+          title: string;
+          artist: string;
+          album: string;
+          genre: string;
+          index: number;
+          year: number;
+          duration: number;
+        }
+      ]) => [k, v]
+    )
+  );
+  return {
+    indexToTrack,
+    indexToArtist,
+    indexToAlbum,
+    indexToGenre,
+    indexToPath,
+    artistToAlbums,
+    albumToTracks,
+    artistToTracks,
+    genreToAlbums,
+    genreToTracks,
+    metadataByTrackIndex,
+  };
+}
 export function printIndexes(indexes: CrawlIndex) {
   console.log("Tracks:");
   for (const [index, track] of indexes.indexToTrack.entries()) {

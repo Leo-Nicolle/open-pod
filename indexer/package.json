@@ -4,11 +4,10 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite-node demo/index.ts",
     "build": "tsc && vite build",
-    "test": "vitest -c test/vitest.config.ts",
-    "preview": "vite preview",
-    "example": "vite-node src/example.ts"
+    "test": "vitest run -c test/vitest.config.ts",
+    "test:watch": "vitest Wait -c test/vitest.config.ts",
+    "generate": "vite-node generate.ts"
   },
   "devDependencies": {
     "@types/node": "^24.0.3",

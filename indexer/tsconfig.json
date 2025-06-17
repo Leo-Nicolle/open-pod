@@ -16,6 +16,6 @@
     "noFallthroughCasesInSwitch": true,
     "noUncheckedSideEffectImports": true
   },
-  "include": ["src"],
+  "include": ["src", "generate.ts"],
   "typeRoots": ["./node_modules/@types"]
 }

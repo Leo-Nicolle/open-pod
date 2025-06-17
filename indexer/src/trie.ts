@@ -1,49 +1,13 @@
+import type { TrieNodeStats } from "./stats";
 import type { CrawlIndex } from "./types";
-
-type TrieNode = {
-  key: string; // segment du préfixe (ex: "beat", "les")
-  children: TrieNode[]; // enfants
-  results?: SearchResult[]; // défini uniquement en feuille
-};
-
-type SearchResult = {
-  type: "track" | "artist" | "album" | "genre";
-  id: number;
-  name: string;
-  relevance: number; // 0-100, higher = more relevant
-};
-
-type SerializedResult = {
-  type: number; // 0=track, 1=artist, 2=album, 3=genre
-  id: number;
-  nameOffset: number;
-  nameLength: number;
-  relevance: number;
-};
-
-type SerializedNode = {
-  keyOffset: number; // dans string pool
-  keyLength: number;
-  childCount: number;
-  firstChildOffset: number; // dans la table de noeuds
-  resultCount: number;
-  firstResultOffset: number; // dans la table de résultats
-};
-
-type SerializedTrie = {
-  stringPool: string;
-  stringOffsets: number[];
-  nodes: SerializedNode[];
-  results: SerializedResult[];
-};
-
-// Configuration for trie building
-type TrieConfig = {
-  includePartialMatches: boolean; // Include partial word matches
-  caseSensitive: boolean;
-  minPrefixLength: number; // Minimum prefix length to index
-  maxResults: number; // Maximum results per node
-};
+import type {
+  TrieNode,
+  SearchResult,
+  SerializedTrie,
+  SerializedNode,
+  SerializedResult,
+  TrieConfig,
+} from "./types";
 
 function insert(node: TrieNode, key: string, result: SearchResult): void {
   for (let i = 0; i < node.children.length; i++) {
@@ -93,9 +57,88 @@ function normalizeString(str: string, caseSensitive: boolean = false): string {
   if (!caseSensitive) {
     normalized = normalized.toLowerCase();
   }
+
+  // Remove accents and convert to ASCII-safe characters
+  normalized = removeAccents(normalized);
+
   // Remove common articles and prepositions for better matching
   normalized = normalized.replace(/^(the|a|an|le|la|les|un|une|des)\s+/i, "");
+
+  // Ensure only ASCII characters remain
+  normalized = normalized.replace(/[^\x00-\x7F]/g, "");
+
   return normalized;
+}
+
+// Function to remove accents and convert to ASCII equivalents
+function removeAccents(str: string): string {
+  const accentMap: { [key: string]: string } = {
+    à: "a",
+    á: "a",
+    â: "a",
+    ã: "a",
+    ä: "a",
+    å: "a",
+    æ: "ae",
+    ç: "c",
+    è: "e",
+    é: "e",
+    ê: "e",
+    ë: "e",
+    ì: "i",
+    í: "i",
+    î: "i",
+    ï: "i",
+    ñ: "n",
+    ò: "o",
+    ó: "o",
+    ô: "o",
+    õ: "o",
+    ö: "o",
+    ø: "o",
+    œ: "oe",
+    ù: "u",
+    ú: "u",
+    û: "u",
+    ü: "u",
+    ý: "y",
+    ÿ: "y",
+    À: "A",
+    Á: "A",
+    Â: "A",
+    Ã: "A",
+    Ä: "A",
+    Å: "A",
+    Æ: "AE",
+    Ç: "C",
+    È: "E",
+    É: "E",
+    Ê: "E",
+    Ë: "E",
+    Ì: "I",
+    Í: "I",
+    Î: "I",
+    Ï: "I",
+    Ñ: "N",
+    Ò: "O",
+    Ó: "O",
+    Ô: "O",
+    Õ: "O",
+    Ö: "O",
+    Ø: "O",
+    Œ: "OE",
+    Ù: "U",
+    Ú: "U",
+    Û: "U",
+    Ü: "U",
+    Ý: "Y",
+    Ÿ: "Y",
+  };
+
+  return str.replace(
+    /[àáâãäåæçèéêëìíîïñòóôõöøœùúûüýÿÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÑÒÓÔÕÖØŒÙÚÛÜÝŸ]/g,
+    (match) => accentMap[match] || match
+  );
 }
 
 // Calculate relevance score based on match type and position
@@ -140,10 +183,15 @@ export function buildTrieFromCrawlIndex(
 
     if (normalizedName.length < config.minPrefixLength) return;
 
+    // Also sanitize the original name to ensure ASCII-only characters in the binary
+    const sanitizedName = removeAccents(name)
+      .replace(/[^\x00-\x7F]/g, "")
+      .toLocaleLowerCase();
+
     const result: SearchResult = {
       type,
       id,
-      name,
+      name: sanitizedName,
       relevance: calculateRelevance(normalizedName, normalizedName, "exact"),
     };
 
@@ -211,12 +259,15 @@ export function serializeTrie(root: TrieNode): SerializedTrie {
   const nodes: SerializedNode[] = [];
   const results: SerializedResult[] = [];
 
+  // Map from TrieNode to its index in the nodes array
+  const nodeIndexMap = new Map<TrieNode, number>();
+
   function intern(str: string): number {
     if (stringTable.has(str)) return stringTable.get(str)!;
     const offset = stringPool.join("").length;
-    stringTable.set(str, offset);
-    stringOffsets.push(offset);
     stringPool.push(str);
+    stringOffsets.push(offset);
+    stringTable.set(str, offset);
     return offset;
   }
 
@@ -235,44 +286,75 @@ export function serializeTrie(root: TrieNode): SerializedTrie {
     }
   }
 
-  function walk(node: TrieNode): number {
-    const keyOffset = intern(node.key);
-    const keyLength = node.key.length;
+  // First pass: assign indices to all nodes in breadth-first order
+  function assignIndices() {
+    const queue: TrieNode[] = [root];
+    let nodeIndex = 0;
 
-    const childOffsets = node.children.map(walk);
+    while (queue.length > 0) {
+      const node = queue.shift()!;
+      nodeIndexMap.set(node, nodeIndex++);
 
-    const resultOffset = results.length;
-    const resultCount = node.results?.length ?? 0;
-
-    if (node.results) {
-      for (const result of node.results) {
-        const nameOffset = intern(result.name);
-        results.push({
-          type: getTypeNumber(result.type),
-          id: result.id,
-          nameOffset,
-          nameLength: result.name.length,
-          relevance: result.relevance,
-        });
+      // Add children to queue
+      for (const child of node.children) {
+        queue.push(child);
       }
     }
-
-    const serialized: SerializedNode = {
-      keyOffset,
-      keyLength,
-      childCount: childOffsets.length,
-      firstChildOffset: childOffsets.length > 0 ? nodes.length + 1 : 0,
-      resultCount,
-      firstResultOffset: resultCount > 0 ? resultOffset : 0,
-    };
-
-    const currentOffset = nodes.length;
-    nodes.push(serialized);
-
-    return currentOffset;
   }
 
-  walk(root);
+  // Second pass: serialize nodes in the assigned order
+  function serializeNodes() {
+    const queue: TrieNode[] = [root];
+
+    while (queue.length > 0) {
+      const node = queue.shift()!;
+
+      const keyOffset = intern(node.key);
+      const keyLength = node.key.length;
+
+      const resultOffset = results.length;
+      const resultCount = node.results?.length ?? 0;
+
+      // Add results for this node
+      if (node.results) {
+        for (const result of node.results) {
+          const nameOffset = intern(result.name);
+          results.push({
+            type: getTypeNumber(result.type),
+            id: result.id,
+            nameOffset,
+            nameLength: result.name.length,
+            relevance: result.relevance,
+          });
+        }
+      }
+
+      // Calculate child information
+      const childCount = node.children.length;
+      const firstChildOffset =
+        childCount > 0 ? nodeIndexMap.get(node.children[0])! : 0;
+
+      const serialized: SerializedNode = {
+        keyOffset,
+        keyLength,
+        childCount,
+        firstChildOffset,
+        resultCount,
+        firstResultOffset: resultCount > 0 ? resultOffset : 0,
+      };
+
+      nodes.push(serialized);
+
+      // Add children to queue for processing
+      for (const child of node.children) {
+        queue.push(child);
+      }
+    }
+  }
+
+  // Execute the two-pass serialization
+  assignIndices();
+  serializeNodes();
 
   return {
     stringPool: stringPool.join(""),
@@ -280,21 +362,6 @@ export function serializeTrie(root: TrieNode): SerializedTrie {
     nodes,
     results,
   };
-}
-
-// Legacy function for backward compatibility
-export function buildRadixTree(entries: [string, number][]): TrieNode {
-  const root: TrieNode = { key: "", children: [] };
-  for (const [name, id] of entries) {
-    const result: SearchResult = {
-      type: "track",
-      id,
-      name,
-      relevance: 100,
-    };
-    insert(root, name.toLowerCase(), result);
-  }
-  return root;
 }
 
 // Query functions for the trie
@@ -344,12 +411,7 @@ export function searchTrie(
 }
 
 // Utility functions for working with serialized trie (for STM32)
-export function getSerializedTrieStats(serialized: SerializedTrie): {
-  stringPoolSize: number;
-  nodeCount: number;
-  resultCount: number;
-  totalSize: number;
-} {
+export function getSerializedTrieStats(serialized: SerializedTrie) {
   const stringPoolSize = serialized.stringPool.length;
   const nodeCount = serialized.nodes.length;
   const resultCount = serialized.results.length;
@@ -359,7 +421,7 @@ export function getSerializedTrieStats(serialized: SerializedTrie): {
   const encoder = new TextEncoder();
   const stringPoolBytes = encoder.encode(serialized.stringPool).length;
   // Add padding for 4-byte alignment after string pool
-  const stringPoolPadding = (4 - (stringPoolBytes % 4)) % 4;
+  const stringPoolPadding = 0; //(4 - (stringPoolBytes % 4)) % 4;
   const stringOffsetsBytes = serialized.stringOffsets.length * 4; // 4 bytes per offset
   const nodesBytes = nodeCount * (4 * 6); // 6 fields * 4 bytes each
   const resultsBytes = resultCount * (4 * 5); // 5 fields * 4 bytes each
@@ -373,6 +435,7 @@ export function getSerializedTrieStats(serialized: SerializedTrie): {
 
   return {
     stringPoolSize,
+    stringOffsetCount: serialized.stringOffsets.length,
     nodeCount,
     resultCount,
     totalSize,
@@ -392,25 +455,24 @@ export function exportToBinary(serialized: SerializedTrie): Uint8Array {
   let offset = 0;
 
   // Write header
-  view.setUint32(offset, serialized.stringPool.length, true);
+  view.setUint32(offset, stats.stringPoolSize, true);
   offset += 4;
-  view.setUint32(offset, serialized.nodes.length, true);
+  view.setUint32(offset, stats.nodeCount, true);
   offset += 4;
-  view.setUint32(offset, serialized.results.length, true);
+  view.setUint32(offset, stats.resultCount, true);
   offset += 4;
-  view.setUint32(offset, serialized.stringOffsets.length, true);
+  view.setUint32(offset, stats.stringOffsetCount, true);
   offset += 4;
-
   // Write string pool
   const encoder = new TextEncoder();
   const stringBytes = encoder.encode(serialized.stringPool);
-  new Uint8Array(buffer, offset, stringBytes.length).set(stringBytes);
-  offset += stringBytes.length;
 
-  // Align to 4-byte boundary
-  while (offset % 4 !== 0) {
-    view.setUint8(offset++, 0);
-  }
+  // const stringPool = new TextDecoder().decode(stringBytes);
+  // console.log("test", stringPool === serialized.stringPool);
+  // console.log("test2", stringBytes.length, serialized.stringPool.length);
+
+  new Uint8Array(buffer, offset, stats.stringPoolSize).set(stringBytes);
+  offset += stats.stringPoolSize;
 
   // Write string offsets
   for (let i = 0; i < serialized.stringOffsets.length; i++) {
@@ -455,107 +517,184 @@ export function exportToBinary(serialized: SerializedTrie): Uint8Array {
   return new Uint8Array(buffer);
 }
 
-// Generate C header file for STM32 (for reference only - use binary files instead)
-export function generateCHeader(
-  serialized: SerializedTrie,
-  variableName: string = "music_index"
-): string {
-  const binaryData = exportToBinary(serialized);
-  const stats = getSerializedTrieStats(serialized);
+export function importFromBinary(buffer: Uint8Array): SerializedTrie {
+  // read header:
+  const view = new DataView(
+    buffer.buffer,
+    buffer.byteOffset,
+    buffer.byteLength
+  );
+  let offset = 0;
+  const stringPoolSize = view.getUint32(offset, true);
+  offset += 4;
+  const nodeCount = view.getUint32(offset, true);
+  offset += 4;
+  const resultCount = view.getUint32(offset, true);
+  offset += 4;
+  const stringOffsetCount = view.getUint32(offset, true);
+  offset += 4;
 
-  let header = `// Auto-generated music index for STM32\n`;
-  header += `// Generated on ${new Date().toISOString()}\n`;
-  header += `// NOTE: This header is for reference only.\n`;
-  header += `// Use the .bin file with MusicIndex::init() instead.\n\n`;
-  header += `#ifndef MUSIC_INDEX_H\n`;
-  header += `#define MUSIC_INDEX_H\n\n`;
-  header += `#include <stdint.h>\n\n`;
+  // read string pool
+  const stringPoolBytes = buffer.slice(offset, offset + stringPoolSize);
+  offset += stringPoolSize;
+  const stringPool = new TextDecoder().decode(stringPoolBytes);
+  // read string offsets
+  const stringOffsets: number[] = [];
+  for (let i = 0; i < stringOffsetCount; i++) {
+    const stringOffset = view.getUint32(offset, true);
+    stringOffsets.push(stringOffset);
+    offset += 4;
+  }
+  // read nodes
+  const nodes: SerializedNode[] = [];
+  for (let i = 0; i < nodeCount; i++) {
+    const keyOffset = view.getUint32(offset, true);
+    offset += 4;
+    const keyLength = view.getUint32(offset, true);
+    offset += 4;
+    const childCount = view.getUint32(offset, true);
+    offset += 4;
+    const firstChildOffset = view.getUint32(offset, true);
+    offset += 4;
+    const resultCount = view.getUint32(offset, true);
+    offset += 4;
+    const firstResultOffset = view.getUint32(offset, true);
+    offset += 4;
 
-  // Add statistics as comments
-  header += `// Index Statistics:\n`;
-  header += `// - String pool size: ${stats.stringPoolSize} bytes\n`;
-  header += `// - Node count: ${stats.nodeCount}\n`;
-  header += `// - Result count: ${stats.resultCount}\n`;
-  header += `// - Total size: ${stats.totalSize} bytes\n`;
-  header += `// - Binary file size: ${binaryData.length} bytes\n\n`;
+    nodes.push({
+      keyOffset,
+      keyLength,
+      childCount,
+      firstChildOffset,
+      resultCount,
+      firstResultOffset,
+    });
+  }
+  console.log(`  Read ${nodes.length} nodes`);
+  // read results
+  const results: SerializedResult[] = [];
+  for (let i = 0; i < resultCount; i++) {
+    const type = view.getUint32(offset, true);
+    offset += 4;
+    const id = view.getUint32(offset, true);
+    offset += 4;
+    const nameOffset = view.getUint32(offset, true);
+    offset += 4;
+    const nameLength = view.getUint32(offset, true);
+    offset += 4;
+    const relevance = view.getUint32(offset, true);
+    offset += 4;
 
-  // Add data structures (matching Music_index.hpp)
-  header += `typedef struct {\n`;
-  header += `    uint32_t key_offset;\n`;
-  header += `    uint32_t key_length;\n`;
-  header += `    uint32_t child_count;\n`;
-  header += `    uint32_t first_child_offset;\n`;
-  header += `    uint32_t result_count;\n`;
-  header += `    uint32_t first_result_offset;\n`;
-  header += `} trie_node_t;\n\n`;
+    results.push({
+      type,
+      id,
+      nameOffset,
+      nameLength,
+      relevance,
+    });
+  }
+  console.log(`  Read ${results.length} results`);
+  // Reconstruct the trie from the serialized data
+  const root: TrieNode = { key: "", children: [] };
+  const nodeMap = new Map<number, TrieNode>();
+  nodeMap.set(0, root); // Root node at index 0
+  for (let i = 0; i < nodes.length; i++) {
+    const nodeData = nodes[i];
+    const key = stringPool.slice(
+      stringOffsets[nodeData.keyOffset],
+      stringOffsets[nodeData.keyOffset] + nodeData.keyLength
+    );
+    const node: TrieNode = {
+      key,
+      children: [],
+      results: [],
+    };
+    nodeMap.set(i, node);
 
-  header += `typedef struct {\n`;
-  header += `    uint32_t type;  // 0=track, 1=artist, 2=album, 3=genre\n`;
-  header += `    uint32_t id;\n`;
-  header += `    uint32_t name_offset;\n`;
-  header += `    uint32_t name_length;\n`;
-  header += `    uint32_t relevance;\n`;
-  header += `} search_result_t;\n\n`;
+    const indexToType: {
+      [key: number]: "track" | "artist" | "album" | "genre";
+    } = {
+      0: "track",
+      1: "artist",
+      2: "album",
+      3: "genre",
+    };
+    // Add results to the node
+    if (nodeData.resultCount > 0) {
+      for (let j = 0; j < nodeData.resultCount; j++) {
+        const resultIndex = nodeData.firstResultOffset + j;
+        const resultData = results[resultIndex];
+        const name = stringPool.slice(
+          stringOffsets[resultData.nameOffset],
+          stringOffsets[resultData.nameOffset] + resultData.nameLength
+        );
+        const result: SearchResult = {
+          type: indexToType[resultData.type],
+          id: resultData.id,
+          name,
+          relevance: resultData.relevance,
+        };
+        node.results!.push(result);
+      }
+    }
 
-  header += `typedef struct {\n`;
-  header += `    uint32_t string_pool_size;\n`;
-  header += `    uint32_t node_count;\n`;
-  header += `    uint32_t result_count;\n`;
-  header += `    uint32_t string_offset_count;\n`;
-  header += `} trie_header_t;\n\n`;
-
-  header += `// Binary file format:\n`;
-  header += `// 1. trie_header_t (16 bytes)\n`;
-  header += `// 2. String pool (${stats.stringPoolSize} bytes, padded to 4-byte alignment)\n`;
-  header += `// 3. String offsets (${serialized.stringOffsets.length} * 4 bytes)\n`;
-  header += `// 4. Nodes (${stats.nodeCount} * 24 bytes)\n`;
-  header += `// 5. Results (${stats.resultCount} * 20 bytes)\n\n`;
-
-  header += `#endif // MUSIC_INDEX_H\n`;
-
-  return header;
+    // Add children
+    if (nodeData.childCount > 0) {
+      for (let j = 0; j < nodeData.childCount; j++) {
+        const childIndex = nodeData.firstChildOffset + j;
+        const childNode = nodeMap.get(childIndex);
+        if (childNode) {
+          node.children.push(childNode);
+        }
+      }
+    }
+  }
+  // Reconstruct the root node's children
+  for (let i = 1; i < nodes.length; i++) {
+    const nodeData = nodes[i];
+    const parentNode = nodeMap.get(nodeData.firstChildOffset);
+    if (parentNode) {
+      const childNode = nodeMap.get(i);
+      if (childNode) {
+        parentNode.children.push(childNode);
+      }
+    }
+  }
+  console.log(`Reconstructed trie with ${nodeMap.size} nodes`);
+  return {
+    stringPool: stringPool,
+    stringOffsets,
+    nodes,
+    results,
+  };
 }
 
-// Demo function to show usage
-export function createMusicIndexDemo(crawlIndex: CrawlIndex): {
-  trie: TrieNode;
-  serialized: SerializedTrie;
-  stats: ReturnType<typeof getSerializedTrieStats>;
-  binaryData: Uint8Array;
-  cHeader: string;
-} {
-  console.log("Building trie from crawl index...");
-  const trie = buildTrieFromCrawlIndex(crawlIndex, {
-    includePartialMatches: true,
-    caseSensitive: false,
-    minPrefixLength: 2,
-    maxResults: 20,
-  });
+export function findNodesWithPattern(
+  root: TrieNode,
+  pattern: RegExp
+): TrieNodeStats[] {
+  const matches: TrieNodeStats[] = [];
 
-  console.log("Serializing trie...");
-  const serialized = serializeTrie(trie);
+  function traverse(node: TrieNode, depth: number, path: string) {
+    const fullPath = path + (path ? "/" : "") + node.key;
 
-  console.log("Calculating stats...");
-  const stats = getSerializedTrieStats(serialized);
+    if (pattern.test(node.key) || pattern.test(fullPath)) {
+      matches.push({
+        key: node.key,
+        depth,
+        childCount: node.children.length,
+        resultCount: node.results?.length || 0,
+        path: fullPath,
+        children: node.children.map((child) => child.key),
+        hasResults: !!node.results,
+      });
+    }
 
-  console.log("Exporting to binary...");
-  const binaryData = exportToBinary(serialized);
+    for (const child of node.children) {
+      traverse(child, depth + 1, fullPath);
+    }
+  }
 
-  console.log("Generating C header...");
-  const cHeader = generateCHeader(serialized);
-
-  console.log(`Trie built successfully!`);
-  console.log(`- String pool: ${stats.stringPoolSize} bytes`);
-  console.log(`- Nodes: ${stats.nodeCount}`);
-  console.log(`- Results: ${stats.resultCount}`);
-  console.log(`- Total size: ${stats.totalSize} bytes`);
-  console.log(`- Binary size: ${binaryData.length} bytes`);
-
-  return {
-    trie,
-    serialized,
-    stats,
-    binaryData,
-    cHeader,
-  };
+  traverse(root, 0, "");
+  return matches;
 }

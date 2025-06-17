@@ -1,13 +1,48 @@
-export type Config = {
-  maxDistance?: number; // Maximum Levenshtein distance for fuzzy search
-  prefixBoost?: number; // Boost for prefix matches
-  phonetic?: boolean; // Enable phonetic matching
-  caseSensitive?: boolean; // Case sensitivity
-  minQueryLength?: number; // Minimum query length for fuzzy search
-  maxResults?: number; // Maximum results to return
+export type TrieNode = {
+  key: string; // segment du préfixe (ex: "beat", "les")
+  children: TrieNode[]; // enfants
+  results?: SearchResult[]; // défini uniquement en feuille
 };
 
-export type PhoneticMap = Record<string, string>; // Maps phonetic codes to words
+export type SearchResult = {
+  type: "track" | "artist" | "album" | "genre";
+  id: number;
+  name: string;
+  relevance: number; // 0-100, higher = more relevant
+};
+
+export type SerializedResult = {
+  type: number; // 0=track, 1=artist, 2=album, 3=genre
+  id: number;
+  nameOffset: number;
+  nameLength: number;
+  relevance: number;
+};
+
+export type SerializedNode = {
+  keyOffset: number; // dans string pool
+  keyLength: number;
+  childCount: number;
+  firstChildOffset: number; // dans la table de noeuds
+  resultCount: number;
+  firstResultOffset: number; // dans la table de résultats
+};
+
+export type SerializedTrie = {
+  stringPool: string;
+  stringOffsets: number[];
+  nodes: SerializedNode[];
+  results: SerializedResult[];
+};
+
+// Configuration for trie building
+export type TrieConfig = {
+  includePartialMatches: boolean; // Include partial word matches
+  caseSensitive: boolean;
+  minPrefixLength: number; // Minimum prefix length to index
+  maxResults: number; // Maximum results per node
+};
+
 export type CrawlCallback = (
   filename: string,
   relative: string,
