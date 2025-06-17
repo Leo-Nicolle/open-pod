@@ -32,6 +32,11 @@ private:
   SPIClass *spi;
   SPISettings spiSettings;
 
+  /**
+   * @brief Size of the PSRAM chip in megabytes
+   */
+  static const uint8_t CAPACITYMB = 64;
+
   // APS6404L Commands
   static const uint8_t CMD_RESET_ENABLE = 0x66;
   static const uint8_t CMD_RESET = 0x99;

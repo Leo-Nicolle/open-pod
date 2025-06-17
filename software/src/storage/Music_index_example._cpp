@@ -1,12 +1,116 @@
-#include "storage/PSRAM_controller.hpp"
+#include "Music_index.hpp"
+#include "PSRAM_controller.hpp"
 #include <SD.h>
-#include "storage/Music_index.h"
-#include <Arduino.h>
+
+// Example usage of the MusicIndex class
+// This demonstrates how to initialize and use the music search functionality
 
 SPI_PSRAM psram;
 MusicIndex musicIndex(&psram);
 
+void setup() {
+    Serial.begin(115200);
+    while (!Serial) {
+        delay(10);
+    }
+    
+    Serial.println("=== MUSIC INDEX EXAMPLE ===");
+    
+    // Initialize PSRAM
+    Serial.println("Initializing PSRAM...");
+    if (!psram.init()) {
+        Serial.println("PSRAM initialization failed!");
+        return;
+    }
+    
+    // Initialize SD card
+    Serial.println("Initializing SD card...");
+    if (!SD.begin()) {
+        Serial.println("SD card initialization failed!");
+        return;
+    }
+    
+    // Initialize music index (loads from SD card to PSRAM)
+    Serial.println("Initializing music index...");
+    if (!musicIndex.init("/music_index.bin")) {
+        Serial.println("Music index initialization failed!");
+        return;
+    }
+    
+    Serial.println("All systems initialized successfully!");
+    Serial.println();
+    
+    // Demonstrate search functionality
+    demonstrateSearch();
+}
 
+void loop() {
+    // Interactive search demo
+    if (Serial.available()) {
+        String input = Serial.readStringUntil('\n');
+        input.trim();
+        
+        if (input.length() > 0) {
+            performSearch(input.c_str());
+        }
+    }
+    
+    delay(100);
+}
+
+void demonstrateSearch() {
+    Serial.println("=== SEARCH DEMONSTRATION ===");
+    
+    // Test searches with common prefixes
+    const char* test_queries[] = {
+        "the",
+        "rock",
+        "love",
+        "beat",
+        "john",
+        "a"
+    };
+    
+    for (int i = 0; i < 6; i++) {
+        performSearch(test_queries[i]);
+        Serial.println();
+    }
+    
+    Serial.println("=== INTERACTIVE MODE ===");
+    Serial.println("Type a search query and press Enter:");
+}
+
+void performSearch(const char* query) {
+    Serial.print("Searching for: \"");
+    Serial.print(query);
+    Serial.println("\"");
+    
+    search_result_t results[20];
+    
+    // General search
+    uint32_t total_results = musicIndex.searchByPrefix(query, results, 20);
+    Serial.print("Total results: ");
+    Serial.println(total_results);
+    
+    if (total_results > 0) {
+        Serial.println("Results:");
+        for (uint32_t i = 0; i < total_results; i++) {
+            Serial.print("  ");
+            Serial.print(i + 1);
+            Serial.print(". ");
+            musicIndex.printSearchResult(results[i]);
+        }
+    } else {
+        Serial.println("  No results found");
+    }
+    
+    // Type-specific searches
+    Serial.println();
+    searchByType(query, "Artists", SEARCH_ARTIST);
+    searchByType(query, "Albums", SEARCH_ALBUM);
+    searchByType(query, "Tracks", SEARCH_TRACK);
+    searchByType(query, "Genres", SEARCH_GENRE);
+}
 
 void searchByType(const char* query, const char* type_name, SearchType type) {
     search_result_t results[10];
@@ -43,60 +147,6 @@ void searchByType(const char* query, const char* type_name, SearchType type) {
     } else {
         Serial.println("None");
     }
-}
-
-void performSearch(const char* query) {
-    Serial.print("Searching for: \"");
-    Serial.print(query);
-    Serial.println("\"");
-    
-    search_result_t results[20];
-    
-    // General search
-    uint32_t total_results = musicIndex.searchByPrefix(query, results, 20);
-    Serial.print("Total results: ");
-    Serial.println(total_results);
-    
-    if (total_results > 0) {
-        Serial.println("Results:");
-        for (uint32_t i = 0; i < total_results; i++) {
-            Serial.print("  ");
-            Serial.print(i + 1);
-            Serial.print(". ");
-            musicIndex.printSearchResult(results[i]);
-        }
-    } else {
-        Serial.println("  No results found");
-    }
-    
-    // Type-specific searches
-    Serial.println();
-    searchByType(query, "Artists", SEARCH_ARTIST);
-    searchByType(query, "Albums", SEARCH_ALBUM);
-    searchByType(query, "Tracks", SEARCH_TRACK);
-    searchByType(query, "Genres", SEARCH_GENRE);
-}
-
-void demonstrateSearch() {
-    Serial.println("=== SEARCH DEMONSTRATION ===");
-    
-    // Test searches with common prefixes
-    const char* test_queries[] = {
-        "Pourquoi",
-        "pourquoi",
-        "blue",
-        "low",
-        "dream",
-        "sto"
-    };
-    
-    for (int i = 0; i < 6; i++) {
-        performSearch(test_queries[i]);
-        Serial.println();
-    }
-    
-    Serial.println("=== INTERACTIVE MODE ===");
-    Serial.println("Type a search query and press Enter:");
 }
 
 // Additional utility functions for testing
@@ -151,7 +201,7 @@ void testPSRAMPerformance() {
 void printMemoryUsage() {
     Serial.println("=== MEMORY USAGE ===");
     Serial.print("Free heap: ");
-    // Serial.print(ESP.getFreeHeap());
+    Serial.print(ESP.getFreeHeap());
     Serial.println(" bytes");
     Serial.print("PSRAM capacity: ");
     Serial.print(psram.getCapacity());
@@ -163,55 +213,3 @@ void printMemoryUsage() {
         Serial.println("Music index: Not loaded");
     }
 }
-
-
-void setup() {
-    Serial.begin(115200);
-    while (!Serial) {
-        delay(10);
-    }
-    
-    Serial.println("=== MUSIC INDEX EXAMPLE ===");
-    
-    // Initialize PSRAM
-    Serial.println("Initializing PSRAM...");
-    if (!psram.init()) {
-        Serial.println("PSRAM initialization failed!");
-        return;
-    }
-    
-    // Initialize SD card
-    // Serial.println("Initializing SD card...");
-    // if (!SD.begin(SDCS)) {
-    //     Serial.println("SD card initialization failed!");
-    //     return;
-    // }
-    
-    // Initialize music index (loads from SD card to PSRAM)
-    Serial.println("Initializing music index...");
-    if (!musicIndex.init("/MUSIC_~1.BIN")) {
-        Serial.println("Music index initialization failed!");
-        return;
-    }
-    
-    Serial.println("All systems initialized successfully!");
-    Serial.println();
-    
-    // Demonstrate search functionality
-    demonstrateSearch();
-}
-
-void loop() {
-    // Interactive search demo
-    if (Serial.available()) {
-        String input = Serial.readStringUntil('\n');
-        input.trim();
-        
-        if (input.length() > 0) {
-            performSearch(input.c_str());
-        }
-    }
-    
-    delay(100);
-}
-
