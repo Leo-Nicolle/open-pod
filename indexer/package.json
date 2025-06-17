@@ -6,8 +6,9 @@
   "scripts": {
     "dev": "vite-node demo/index.ts",
     "build": "tsc && vite build",
-    "test": "vitest",
-    "preview": "vite preview"
+    "test": "vitest -c test/vitest.config.ts",
+    "preview": "vite preview",
+    "example": "vite-node src/example.ts"
   },
   "devDependencies": {
     "@types/node": "^24.0.3",

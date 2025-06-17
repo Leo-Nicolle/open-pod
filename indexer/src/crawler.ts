@@ -71,7 +71,7 @@ export async function readMetadata(root: string): Promise<CrawlIndex> {
     const ext = path.extname(filename).toLowerCase();
     if (!audioExts.has(ext)) return;
 
-    console.log(`Reading metadata for ${rel}/${filename}`);
+    // console.log(`Reading metadata for ${rel}/${filename}`);
     const { common, format } = await parseFile(fullPath);
 
     const title = common.title || path.basename(filename);
