@@ -354,14 +354,22 @@ export function getSerializedTrieStats(serialized: SerializedTrie): {
   const nodeCount = serialized.nodes.length;
   const resultCount = serialized.results.length;
 
-  // Calculate approximate memory usage
-  const stringPoolBytes = stringPoolSize;
+  // Calculate exact memory usage including alignment
+  // Use TextEncoder to get the actual byte length of the string pool
+  const encoder = new TextEncoder();
+  const stringPoolBytes = encoder.encode(serialized.stringPool).length;
+  // Add padding for 4-byte alignment after string pool
+  const stringPoolPadding = (4 - (stringPoolBytes % 4)) % 4;
   const stringOffsetsBytes = serialized.stringOffsets.length * 4; // 4 bytes per offset
   const nodesBytes = nodeCount * (4 * 6); // 6 fields * 4 bytes each
   const resultsBytes = resultCount * (4 * 5); // 5 fields * 4 bytes each
 
   const totalSize =
-    stringPoolBytes + stringOffsetsBytes + nodesBytes + resultsBytes;
+    stringPoolBytes +
+    stringPoolPadding +
+    stringOffsetsBytes +
+    nodesBytes +
+    resultsBytes;
 
   return {
     stringPoolSize,
@@ -405,13 +413,15 @@ export function exportToBinary(serialized: SerializedTrie): Uint8Array {
   }
 
   // Write string offsets
-  for (const stringOffset of serialized.stringOffsets) {
-    view.setUint32(offset, stringOffset, true);
+  for (let i = 0; i < serialized.stringOffsets.length; i++) {
+    view.setUint32(offset, serialized.stringOffsets[i], true);
     offset += 4;
   }
 
   // Write nodes
-  for (const node of serialized.nodes) {
+  for (let i = 0; i < serialized.nodes.length; i++) {
+    const node = serialized.nodes[i];
+
     view.setUint32(offset, node.keyOffset, true);
     offset += 4;
     view.setUint32(offset, node.keyLength, true);
@@ -427,7 +437,9 @@ export function exportToBinary(serialized: SerializedTrie): Uint8Array {
   }
 
   // Write results
-  for (const result of serialized.results) {
+  for (let i = 0; i < serialized.results.length; i++) {
+    const result = serialized.results[i];
+
     view.setUint32(offset, result.type, true);
     offset += 4;
     view.setUint32(offset, result.id, true);
@@ -443,7 +455,7 @@ export function exportToBinary(serialized: SerializedTrie): Uint8Array {
   return new Uint8Array(buffer);
 }
 
-// Generate C header file for STM32
+// Generate C header file for STM32 (for reference only - use binary files instead)
 export function generateCHeader(
   serialized: SerializedTrie,
   variableName: string = "music_index"
@@ -452,7 +464,9 @@ export function generateCHeader(
   const stats = getSerializedTrieStats(serialized);
 
   let header = `// Auto-generated music index for STM32\n`;
-  header += `// Generated on ${new Date().toISOString()}\n\n`;
+  header += `// Generated on ${new Date().toISOString()}\n`;
+  header += `// NOTE: This header is for reference only.\n`;
+  header += `// Use the .bin file with MusicIndex::init() instead.\n\n`;
   header += `#ifndef MUSIC_INDEX_H\n`;
   header += `#define MUSIC_INDEX_H\n\n`;
   header += `#include <stdint.h>\n\n`;
@@ -462,9 +476,10 @@ export function generateCHeader(
   header += `// - String pool size: ${stats.stringPoolSize} bytes\n`;
   header += `// - Node count: ${stats.nodeCount}\n`;
   header += `// - Result count: ${stats.resultCount}\n`;
-  header += `// - Total size: ${stats.totalSize} bytes\n\n`;
+  header += `// - Total size: ${stats.totalSize} bytes\n`;
+  header += `// - Binary file size: ${binaryData.length} bytes\n\n`;
 
-  // Add data structures
+  // Add data structures (matching Music_index.hpp)
   header += `typedef struct {\n`;
   header += `    uint32_t key_offset;\n`;
   header += `    uint32_t key_length;\n`;
@@ -482,9 +497,19 @@ export function generateCHeader(
   header += `    uint32_t relevance;\n`;
   header += `} search_result_t;\n\n`;
 
-  // Add binary data
-  header += `extern const uint8_t ${variableName}_data[${binaryData.length}];\n`;
-  header += `extern const uint32_t ${variableName}_size;\n\n`;
+  header += `typedef struct {\n`;
+  header += `    uint32_t string_pool_size;\n`;
+  header += `    uint32_t node_count;\n`;
+  header += `    uint32_t result_count;\n`;
+  header += `    uint32_t string_offset_count;\n`;
+  header += `} trie_header_t;\n\n`;
+
+  header += `// Binary file format:\n`;
+  header += `// 1. trie_header_t (16 bytes)\n`;
+  header += `// 2. String pool (${stats.stringPoolSize} bytes, padded to 4-byte alignment)\n`;
+  header += `// 3. String offsets (${serialized.stringOffsets.length} * 4 bytes)\n`;
+  header += `// 4. Nodes (${stats.nodeCount} * 24 bytes)\n`;
+  header += `// 5. Results (${stats.resultCount} * 20 bytes)\n\n`;
 
   header += `#endif // MUSIC_INDEX_H\n`;
 

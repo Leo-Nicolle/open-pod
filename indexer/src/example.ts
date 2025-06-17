@@ -66,27 +66,25 @@ async function demonstrateTrie(crawlIndex: any) {
   // Step 4: Save files for STM32
   console.log("\n=== Saving STM32 Files ===");
 
-  // Save binary data
+  // Save binary data (main file for STM32)
   const binaryPath = "./music_index.bin";
   await fs.writeFile(binaryPath, demo.binaryData);
   console.log(`Binary data saved to: ${binaryPath}`);
 
-  // Save C header
+  // Save C header (for reference only)
   const headerPath = "./music_index.h";
   await fs.writeFile(headerPath, demo.cHeader);
-  console.log(`C header saved to: ${headerPath}`);
-
-  // Save C source file with the binary data
-  const sourcePath = "./music_index.c";
-  const sourceContent = generateCSource(demo.binaryData);
-  await fs.writeFile(sourcePath, sourceContent);
-  console.log(`C source saved to: ${sourcePath}`);
+  console.log(`C header saved to: ${headerPath} (reference only)`);
 
   console.log("\n=== STM32 Integration Ready! ===");
   console.log("Files generated for your STM32 project:");
-  console.log(`- ${headerPath} (include in your project)`);
-  console.log(`- ${sourcePath} (compile with your project)`);
-  console.log(`- ${binaryPath} (for reference/debugging)`);
+  console.log(`- ${binaryPath} (copy to SD card as /music_index.bin)`);
+  console.log(`- ${headerPath} (reference for data structures)`);
+  console.log("");
+  console.log("Usage in STM32:");
+  console.log("1. Copy music_index.bin to your SD card root");
+  console.log('2. Use MusicIndex::init("/music_index.bin") to load');
+  console.log("3. Use search functions like searchByPrefix()");
 }
 
 function createMockCrawlIndex() {
@@ -191,29 +189,6 @@ function createMockCrawlIndex() {
     genreToAlbums,
     metadataByTrackIndex,
   };
-}
-
-function generateCSource(binaryData: Uint8Array): string {
-  let source = `// Auto-generated music index data for STM32\n`;
-  source += `// Generated on ${new Date().toISOString()}\n\n`;
-  source += `#include "music_index.h"\n\n`;
-
-  // Write binary data as C array
-  source += `const uint8_t music_index_data[${binaryData.length}] = {\n`;
-
-  for (let i = 0; i < binaryData.length; i += 16) {
-    source += "    ";
-    for (let j = 0; j < 16 && i + j < binaryData.length; j++) {
-      source += `0x${binaryData[i + j].toString(16).padStart(2, "0")}`;
-      if (i + j < binaryData.length - 1) source += ", ";
-    }
-    source += "\n";
-  }
-
-  source += `};\n\n`;
-  source += `const uint32_t music_index_size = ${binaryData.length};\n`;
-
-  return source;
 }
 
 // if (require.main === module) {

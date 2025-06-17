@@ -42,6 +42,28 @@ export async function crawl(
   return files;
 }
 
+export async function organizeFiles(
+  messyRoot: string,
+  organizedRoot: string,
+){
+  await crawl(root, async (filename, rel, fullPath) => {
+    const ext = path.extname(filename).toLowerCase();
+    if (![".mp3", ".flac", ".ogg", ".wav", ".m4a", ".aac"].includes(ext)) return;
+
+    const { common } = await parseFile(fullPath);
+    const artist = common.artist || "Unknown Artist";
+    const album = common.album || "Unknown Album";
+    const title = common.title || path.basename(filename, ext);
+
+    const artistDir = path.join(organizedRoot, artist);
+    const albumDir = path.join(artistDir, album);
+    await fs.mkdir(albumDir, { recursive: true });
+
+    const newFilePath = path.join(albumDir, `${title}${ext}`);
+    await fs.rename(fullPath, newFilePath);
+  }
+}
+
 export async function readMetadata(root: string): Promise<CrawlIndex> {
   const audioExts = new Set([".mp3", ".flac", ".ogg", ".wav", ".m4a", ".aac"]);
 
