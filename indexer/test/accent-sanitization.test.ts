@@ -54,35 +54,26 @@ describe("Accent Sanitization", () => {
   };
 
   it("should remove accents and convert to ASCII", () => {
-    console.log("\n=== ACCENT SANITIZATION TEST ===");
-
     // Step 1: Create test data with accents
     const crawlIndex = createAccentedTestData();
-    console.log("✓ Created test data with accented characters");
 
     // Step 2: Build trie
     const trie = buildTrieFromCrawlIndex(crawlIndex);
-    console.log("✓ Built trie from crawl index");
 
     // Step 3: Serialize trie
     const serialized = serializeTrie(trie);
-    console.log("✓ Serialized trie");
-    console.log(`  - String pool: "${serialized.stringPool}"`);
 
     // Step 4: Check that string pool contains only ASCII characters
     const hasNonAscii = /[^\x00-\x7F]/.test(serialized.stringPool);
     expect(hasNonAscii).toBe(false);
-    console.log("✓ String pool contains only ASCII characters");
 
     // Step 5: Export to binary and import back
     const binaryData = exportToBinary(serialized);
     const imported = importFromBinary(binaryData);
-    console.log("✓ Binary round-trip successful");
 
     // Step 6: Verify that imported data also has no non-ASCII characters
     const importedHasNonAscii = /[^\x00-\x7F]/.test(imported.stringPool);
     expect(importedHasNonAscii).toBe(false);
-    console.log("✓ Imported string pool contains only ASCII characters");
 
     // Step 7: Verify specific transformations
     expect(serialized.stringPool).toContain("cafe"); // "Café" -> "cafe"
@@ -93,14 +84,9 @@ describe("Accent Sanitization", () => {
     expect(serialized.stringPool).toContain("celine"); // "Céline" -> "celine"
     expect(serialized.stringPool).toContain("muller"); // "Müller" -> "muller"
     expect(serialized.stringPool).toContain("dion"); // "Dión" -> "dion"
-
-    console.log("✓ All accent transformations verified");
-    console.log("\n✅ Accent sanitization test PASSED!");
   });
 
   it("should handle UTF-8 encoding correctly", () => {
-    console.log("\n=== UTF-8 ENCODING TEST ===");
-
     const crawlIndex = createAccentedTestData();
     const trie = buildTrieFromCrawlIndex(crawlIndex);
     const serialized = serializeTrie(trie);
@@ -109,16 +95,8 @@ describe("Accent Sanitization", () => {
     const encoder = new TextEncoder();
     const stringPoolBytes = encoder.encode(serialized.stringPool);
 
-    console.log(
-      `String pool character length: ${serialized.stringPool.length}`
-    );
-    console.log(`String pool byte length: ${stringPoolBytes.length}`);
-
     // For ASCII-only strings, byte length should equal character length
     expect(stringPoolBytes.length).toBe(serialized.stringPool.length);
-    console.log(
-      "✓ String pool byte length equals character length (ASCII confirmed)"
-    );
 
     // Test binary serialization
     const binaryData = exportToBinary(serialized);
@@ -127,7 +105,5 @@ describe("Accent Sanitization", () => {
     // Verify round-trip integrity
     expect(imported.stringPool).toBe(serialized.stringPool);
     expect(imported.stringOffsets).toEqual(serialized.stringOffsets);
-
-    console.log("✓ UTF-8 encoding test PASSED!");
   });
 });

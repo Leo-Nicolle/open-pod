@@ -2,9 +2,11 @@
 
 MusicIndex::MusicIndex(SPI_PSRAM *psram_controller, uint32_t psram_base_addr)
     : psram(psram_controller), base_address(psram_base_addr),
-      initialized(false), node_cache_count(0), access_counter(0) {
+      initialized(false), path_index_initialized(false), node_cache_count(0), access_counter(0) {
   memset(&header, 0, sizeof(header));
+  memset(&path_header, 0, sizeof(path_header));
   memset(&node_batch, 0, sizeof(node_batch));
+  path_index_base_address = psram_base_addr + 0x200000; // Offset path index by 2MB
   initCache();
 }
 
@@ -47,6 +49,64 @@ bool MusicIndex::init(const char *index_filename) {
 
   return true;
 }
+
+bool MusicIndex::initPathIndex(const char *path_index_filename) {
+  if (!psram) {
+    Serial.println("ERROR: PSRAM controller not provided for path index");
+    return false;
+  }
+  
+  Serial.println("=== PATH INDEX INIT ===");
+  Serial.print("Loading path index from: ");
+  Serial.println(path_index_filename);
+
+  // Load the binary path index data from SD card to PSRAM
+  if (!loadPathIndexFromSDCard(path_index_filename)) {
+    Serial.println("ERROR: Failed to load path index from SD card");
+    return false;
+  }
+
+  path_index_initialized = true;
+  Serial.println("Path index loaded successfully!");
+  
+  return true;
+}
+
+bool MusicIndex::getTrackPath(uint32_t track_id, char *buffer, uint32_t buffer_size) {
+  if (!path_index_initialized || !buffer || buffer_size == 0) {
+    return false;
+  }
+
+  // Binary search for track ID
+  int32_t index = binarySearchTrackId(track_id);
+  if (index < 0) {
+    return false; // Track ID not found
+  }
+
+  // Read path offset for this track
+  uint32_t path_offset;
+  uint32_t offset_addr = path_offsets_offset + (index * 4);
+  psram->readData(offset_addr, (uint8_t *)&path_offset, 4);
+
+  // Calculate path length
+  uint32_t path_length;
+  if (index + 1 < path_header.track_count) {
+    // Read next offset to calculate length
+    uint32_t next_offset;
+    uint32_t next_offset_addr = path_offsets_offset + ((index + 1) * 4);
+    psram->readData(next_offset_addr, (uint8_t *)&next_offset, 4);
+    path_length = next_offset - path_offset - 1; // -1 for null terminator
+  } else {
+    // Last entry, calculate from total path data size
+    path_length = path_header.path_data_size - path_offset - 1;
+  }
+
+  // Read the path string
+  readPathString(path_offset, path_length, buffer, buffer_size);
+  
+  return true;
+}
+
 uint32_t MusicIndex::readLittleEndian32(File &file) {
   uint8_t bytes[4];
   file.readBytes((char *)bytes, 4);
@@ -59,6 +119,16 @@ bool MusicIndex::loadFromSDCard(const char *filename) {
     Serial.println("ERROR: SD card initialization failed");
     return false;
   }
+  // print all files in the root directory
+  // File root = SD.open("/");
+  // Serial.println("Files in root directory:");
+  // while (File file = root.openNextFile()) {
+  //   Serial.print(" - ");
+  //   Serial.println(file.name());
+  //   file.close();
+  // }
+  // root.close(); 
+
 
   File file = SD.open(filename, FILE_READ);
   if (!file) {
@@ -137,11 +207,124 @@ bool MusicIndex::loadFromSDCard(const char *filename) {
   return true;
 }
 
+bool MusicIndex::loadPathIndexFromSDCard(const char *filename) {
+  if (!SD.begin(SDCS)) {
+    Serial.println("ERROR: SD card initialization failed for path index");
+    return false;
+  }
+
+  File file = SD.open(filename, FILE_READ);
+  if (!file) {
+    Serial.print("ERROR: Could not open path index file: ");
+    Serial.println(filename);
+    return false;
+  }
+
+  uint32_t file_size = file.size();
+  Serial.print("Path index file size: ");
+  Serial.print(file_size);
+  Serial.println(" bytes");
+
+  // Read path index header
+  if (file.readBytes((char*)&path_header, sizeof(path_header)) != sizeof(path_header)) {
+    Serial.println("ERROR: Failed to read path index header");
+    file.close();
+    return false;
+  }
+
+  Serial.print("Path Index Header - Track count: ");
+  Serial.print(path_header.track_count);
+  Serial.print(", Path data size: ");
+  Serial.println(path_header.path_data_size);
+
+  // Reset file position to beginning
+  file.seek(0);
+
+  // Read entire path index file to PSRAM
+  const uint32_t CHUNK_SIZE = 4096;
+  uint8_t *buffer = (uint8_t *)malloc(CHUNK_SIZE);
+  if (!buffer) {
+    Serial.println("ERROR: Failed to allocate buffer for path index");
+    file.close();
+    return false;
+  }
+
+  uint32_t bytes_read = 0;
+  uint32_t psram_addr = path_index_base_address;
+
+  while (bytes_read < file_size) {
+    uint32_t to_read = min(CHUNK_SIZE, file_size - bytes_read);
+    uint32_t actual_read = file.readBytes((char *)buffer, to_read);
+
+    if (actual_read == 0) {
+      Serial.println("ERROR: Failed to read from path index file");
+      free(buffer);
+      file.close();
+      return false;
+    }
+
+    psram->writeData(psram_addr, buffer, actual_read);
+    psram_addr += actual_read;
+    bytes_read += actual_read;
+  }
+
+  free(buffer);
+  file.close();
+
+  // Calculate offsets within the loaded path index data
+  track_ids_offset = path_index_base_address + sizeof(path_index_header_t);
+  path_offsets_offset = track_ids_offset + (path_header.track_count * 4);
+  path_data_offset = path_offsets_offset + (path_header.track_count * 4);
+
+  Serial.print("Successfully loaded path index ");
+  Serial.print(bytes_read);
+  Serial.println(" bytes to PSRAM");
+
+  return true;
+}
+
 void MusicIndex::readString(uint32_t offset, uint32_t length, char *buffer,
-                            uint32_t buffer_size) {
+                             uint32_t buffer_size) {
   uint32_t copy_len = min(length, buffer_size - 1);
   psram->readData(string_pool_offset + offset, (uint8_t *)buffer, copy_len);
   buffer[copy_len] = '\0';
+}
+
+void MusicIndex::readPathString(uint32_t offset, uint32_t length, char *buffer,
+                                uint32_t buffer_size) {
+  uint32_t copy_len = min(length, buffer_size - 1);
+  // TODO: Find the origin of this +4 offset
+  psram->readData(path_data_offset + offset+4, (uint8_t *)buffer, copy_len);
+  buffer[copy_len] = '\0';
+}
+
+int32_t MusicIndex::binarySearchTrackId(uint32_t track_id) {
+  if (!path_index_initialized) {
+    return -1;
+  }
+
+  uint32_t left = 0;
+  uint32_t right = path_header.track_count - 1;
+
+  while (left <= right) {
+    uint32_t mid = (left + right) / 2;
+    
+    // Read track ID at mid position
+    uint32_t mid_track_id;
+    uint32_t addr = track_ids_offset + (mid * 4);
+    psram->readData(addr, (uint8_t *)&mid_track_id, 4);
+
+    if (mid_track_id == track_id) {
+      return (int32_t)mid;
+    } else if (mid_track_id < track_id) {
+      left = mid + 1;
+    } else {
+      if (mid == 0) break; // Prevent underflow
+      right = mid - 1;
+    }
+  }
+
+  return -1; // Not found
 }
 
 void MusicIndex::loadNodeBatch(uint32_t start_index, uint32_t count) {
@@ -478,26 +661,6 @@ uint32_t MusicIndex::findNode(const char *query, uint32_t query_len) {
   return current_node;
 }
 
-void MusicIndex::test() {
-  Serial.println("=== MUSIC INDEX TEST ===");
-  int load = 1;
-  loadNodeBatch(0, load); // Load first 10 nodes for testing
-  for (uint32_t i = 0; i < load; i++) {
-    Serial.print("Node ");
-    Serial.print(i);
-    Serial.print(": ");
-    trie_node_t node = readNodeCached(i);
-    char key[64];
-    readStringCached(node.key_offset, node.key_length, key, sizeof(key));
-    Serial.print("Key: ");
-    Serial.print(key);
-    Serial.print(", Children: ");
-    Serial.print(node.child_count);
-    Serial.print(", Results: ");
-    Serial.println(node.result_count);
-  }
-}
-
 void MusicIndex::collectResults(uint32_t node_index, search_result_t *results,
                                 uint32_t *result_count, uint32_t max_results) {
   if (*result_count >= max_results || node_index == UINT32_MAX) {
@@ -691,6 +854,26 @@ void MusicIndex::printStats() {
   Serial.println(nodes_offset, HEX);
   Serial.print("Results offset: 0x");
   Serial.println(results_offset, HEX);
+  
+  if (path_index_initialized) {
+    Serial.println("=== PATH INDEX STATS ===");
+    Serial.print("Track count: ");
+    Serial.println(path_header.track_count);
+    Serial.print("Path data size: ");
+    Serial.print(path_header.path_data_size);
+    Serial.println(" bytes");
+    Serial.print("Path index base address: 0x");
+    Serial.println(path_index_base_address, HEX);
+    Serial.print("Track IDs offset: 0x");
+    Serial.println(track_ids_offset, HEX);
+    Serial.print("Path offsets offset: 0x");
+    Serial.println(path_offsets_offset, HEX);
+    Serial.print("Path data offset: 0x");
+    Serial.println(path_data_offset, HEX);
+  } else {
+    Serial.println("Path index not initialized");
+  }
+  
   Serial.println("========================");
 }
 

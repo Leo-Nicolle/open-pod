@@ -8,6 +8,9 @@ import {
   importFromBinary,
 } from "../src/trie";
 import type { CrawlIndex } from "../src/types";
+import { readFile, readdir } from "fs/promises";
+import path from "path";
+import { __dirname } from "./utils";
 
 describe("Binary Serialization Round-trip", () => {
   // Create a simple test dataset
@@ -61,9 +64,23 @@ describe("Binary Serialization Round-trip", () => {
     );
   };
 
-  it("should serialize and deserialize correctly", async () => {
-    console.log("\n=== BINARY ROUND-TRIP TEST ===");
+  it("should read binary correctly", async () => {
+    const ls = await readdir(".");
+    const binaryData = await readFile(
+      path.join(__dirname, "./stubs/music_index.bin")
+    );
+    const importedSerialized = importFromBinary(binaryData);
 
+    expect(importedSerialized.stringPool.length).toBe(8425);
+    // expect(importedSerialized.stringPool).toBe(encoded);
+    expect(importedSerialized.stringOffsets.length).toBe(885);
+    // expect(importedSerialized.stringOffsets).toEqual(
+    //   originalSerialized.stringOffsets
+    // );
+    expect(importedSerialized.nodes.length).toBe(933);
+  });
+
+  it("should serialize and deserialize correctly", async () => {
     // Step 1: Create test data
     const crawlIndex = await createTestCrawlIndex();
     const trie = buildTrieFromCrawlIndex(crawlIndex);

@@ -33,6 +33,12 @@ typedef struct {
     uint32_t string_offset_count;
 } trie_header_t;
 
+// Path index data structures
+typedef struct {
+    uint32_t track_count;
+    uint32_t path_data_size;
+} path_index_header_t;
+
 // Search result types
 enum SearchType {
     SEARCH_TRACK = 0,
@@ -45,9 +51,9 @@ enum SearchType {
 #define MAX_SEARCH_RESULTS 50
 
 // Cache configuration - optimized for STM32
-#define NODE_CACHE_SIZE 256      // Power of 2 for fast modulo
-#define STRING_CACHE_SIZE 128    // Power of 2 for fast modulo
-#define MAX_CACHED_STRING_LEN 48 // Reduced for memory efficiency
+#define NODE_CACHE_SIZE 32      // Power of 2 for fast modulo
+#define STRING_CACHE_SIZE 64    // Power of 2 for fast modulo
+#define MAX_CACHED_STRING_LEN 12 // Reduced for memory efficiency
 #define NODE_BATCH_SIZE 16       // Nodes to load in one PSRAM read
 #define RESULT_BATCH_SIZE 8      // Results to load in one PSRAM read
 
@@ -94,6 +100,14 @@ private:
     uint32_t nodes_offset;
     uint32_t results_offset;
     
+    // Path index data
+    uint32_t path_index_base_address;
+    uint32_t path_data_offset;
+    uint32_t path_offsets_offset;
+    uint32_t track_ids_offset;
+    path_index_header_t path_header;
+    bool path_index_initialized;
+    
     // Header data
     trie_header_t header;
     
@@ -113,7 +127,10 @@ private:
     uint32_t readLittleEndian32(File& file);
     // Helper methods
     bool loadFromSDCard(const char* filename);
+    bool loadPathIndexFromSDCard(const char* filename);
     void readString(uint32_t offset, uint32_t length, char* buffer, uint32_t buffer_size);
+    void readPathString(uint32_t offset, uint32_t length, char* buffer, uint32_t buffer_size);
+    int32_t binarySearchTrackId(uint32_t track_id);
     
     // Optimized batch loading methods
     void loadNodeBatch(uint32_t start_index, uint32_t count);
@@ -160,10 +177,15 @@ private:
 public:
     MusicIndex(SPI_PSRAM* psram_controller, uint32_t psram_base_addr = 0x100000);
     ~MusicIndex();
-    void test();
     
     // Initialize the music index by loading from SD card
     bool init(const char* index_filename = "/music_index.bin");
+    
+    // Initialize the path index by loading from SD card
+    bool initPathIndex(const char* path_index_filename = "/music_index_paths.bin");
+    
+    // Path lookup function
+    bool getTrackPath(uint32_t track_id, char* buffer, uint32_t buffer_size);
     
     // Search functions
     uint32_t searchByPrefix(const char* prefix, search_result_t* results, uint32_t max_results);
