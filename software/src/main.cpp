@@ -84,9 +84,9 @@ void demonstrateSearch() {
     const char* test_queries[] = {
         "Pourquoi",
         "pourquoi",
-        "blue",
-        "low",
-        "dream",
+        "Swift",
+        "Django",
+        "nuage",
         "sto"
     };
     
@@ -199,6 +199,7 @@ void setup() {
     
     // Demonstrate search functionality
     demonstrateSearch();
+    // musicIndex.test();
 }
 
 void loop() {
