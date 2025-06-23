@@ -26,11 +26,12 @@
 #define PSRAM_MISO PB14
 #define PSRAM_MOSI PB15
 
-#define PSRAM_SIZE                (64 * 1024 * 1024) // 64 Mb PSRAM chip size
+#define PSRAM_SIZE (64 * 1024 * 1024) // 64 Mb PSRAM chip size
 #define AUDIO_BUFFER_BASE_ADDRESS 0x000
-#define AUDIO_BUFFER_SIZE         (6 * 1024 * 1024) // 6 Mb
-#define MUSIC_INDEX_BASE_ADDRESS  (AUDIO_BUFFER_BASE_ADDRESS + AUDIO_BUFFER_SIZE)
-#define MUSIC_INDEX_SIZE           PSRAM_SIZE - AUDIO_BUFFER_SIZE // Remaining PSRAM size for music index
+#define AUDIO_BUFFER_SIZE (6 * 1024 * 1024) // 6 Mb
+#define MUSIC_INDEX_BASE_ADDRESS (AUDIO_BUFFER_BASE_ADDRESS + AUDIO_BUFFER_SIZE)
+#define MUSIC_INDEX_SIZE                                                       \
+  PSRAM_SIZE - AUDIO_BUFFER_SIZE // Remaining PSRAM size for music index
 class SPI_PSRAM {
 private:
   SPIClass *spi;
@@ -40,6 +41,8 @@ private:
    * @brief Size of the PSRAM chip in megabytes
    */
   static const uint8_t CAPACITYMB = 64;
+  static uint8_t dmaWriteBuf[256] __attribute__((aligned(4)));
+  static uint8_t dmaReadBuf[256] __attribute__((aligned(4)));
 
   // APS6404L Commands
   static const uint8_t CMD_RESET_ENABLE = 0x66;
@@ -60,6 +63,7 @@ private:
   static const uint32_t T_CS_PULSE = 1;   // CS pulse width
   static const uint32_t T_CS_SETUP = 1;   // CS setup time
   static const uint32_t T_CS_HOLD = 1;    // CS hold time
+  SPI_HandleTypeDef *hspi;
 
   void setupPins() {
     // Configure CS pin as GPIO output
@@ -71,6 +75,7 @@ private:
 
     // Start SPI with conservative settings
     spi->begin();
+    hspi = spi->getHandle();
   }
 
   inline void chipSelect(bool active) {
@@ -178,6 +183,19 @@ public:
     Serial.println("PSRAM reset complete");
     Serial.flush();
   }
+  bool spiWriteDMA(uint8_t *data, uint32_t size) {
+    SPI_HandleTypeDef *hspi = spi->getHandle();
+    HAL_StatusTypeDef res =
+        HAL_SPI_Transmit(hspi, data, size, 100); // timeout 100ms
+    return res == HAL_OK;
+  }
+
+  bool spiReadDMA(uint8_t *out, uint32_t size) {
+    SPI_HandleTypeDef *hspi = spi->getHandle();
+    HAL_StatusTypeDef res =
+        HAL_SPI_Receive(hspi, out, size, 100); // timeout 100ms
+    return res == HAL_OK;
+  }
 
   bool readDeviceID(uint8_t *id) {
     spi->beginTransaction(spiSettings);
@@ -201,6 +219,36 @@ public:
     return true;
   }
 
+  void writeChunkDMA(uint32_t address, uint8_t *data, uint32_t size) {
+    uint8_t header[4] = {CMD_WRITE, (uint8_t)(address >> 16),
+                         (uint8_t)(address >> 8), (uint8_t)(address)};
+
+    spi->beginTransaction(spiSettings);
+    chipSelect(true);
+    spiWriteDMA(header, 4);  // envoyer l'entête
+    spiWriteDMA(data, size); // envoyer les données
+    chipSelect(false);
+    spi->endTransaction();
+  }
+
+  void readChunkDMA(uint32_t address, uint8_t *data, uint32_t size) {
+    uint8_t header[4] = {
+        CMD_FAST_READ,
+        (uint8_t)(address >> 16),
+        (uint8_t)(address >> 8),
+        (uint8_t)(address),
+    };
+
+    spi->beginTransaction(spiSettings);
+    chipSelect(true);
+    spiWriteDMA(header, 4); // envoyer l'entête
+    uint8_t dummy = 0x00;
+    spiWriteDMA(&dummy, 1); // envoyer dummy pour Fast Read
+    spiReadDMA(data, size); // lire les données
+    chipSelect(false);
+    spi->endTransaction();
+  }
+
   void writeData(uint32_t address, uint8_t *data, uint32_t size) {
     // Split large transfers into page-aligned chunks
     const uint32_t PAGE_SIZE = 1024; // 1KB page size per datasheet
@@ -212,8 +260,10 @@ public:
       uint32_t remainingInPage = PAGE_SIZE - pageOffset;
       uint32_t chunkSize = (size > remainingInPage) ? remainingInPage : size;
 
-      writeChunk(address, data, chunkSize);
+      // writeChunk(address, data, chunkSize);
+      writeChunkDMA(address, data, chunkSize);
 
+      // Update address and data pointers
       address += chunkSize;
       data += chunkSize;
       size -= chunkSize;
@@ -248,7 +298,8 @@ public:
     while (size > 0) {
       uint32_t chunkSize = (size > MAX_CHUNK) ? MAX_CHUNK : size;
 
-      readChunk(address, data, chunkSize);
+      // readChunk(address, data, chunkSize);
+      writeChunkDMA(address, data, chunkSize);
 
       address += chunkSize;
       data += chunkSize;
@@ -278,7 +329,6 @@ public:
 
     chipSelect(false);
     spi->endTransaction();
-
   }
 
   // Simplified test function for debugging
@@ -355,10 +405,10 @@ public:
     return 1024; // 1KB pages
   }
 
- bool testSpeed(){
+  bool testSpeed() {
     Serial.println("=== PSRAM SPEED TEST BEGIN ===");
     delay(50);
-    
+
     const uint32_t capacity = getCapacity();
     const uint32_t pageSize = getPageSize();
     Serial.print("PSRAM Capacity: ");
@@ -367,7 +417,7 @@ public:
     Serial.print("Page Size: ");
     Serial.print(pageSize);
     Serial.println(" bytes");
-    
+
     const int chunkSize = 1024; // 256 bytes per chunk
     static uint8_t buff[chunkSize];
     for (int i = 0; i < chunkSize; i++) {
@@ -379,6 +429,9 @@ public:
     Serial.print("Write 256 bytes took ");
     Serial.print(t1 - t0);
     Serial.println(" us");
+    for (int i = 0; i < chunkSize; i++) {
+      buff[i] = 0;
+    }
 
     t0 = micros();
     readData(0x000000, buff, chunkSize);
@@ -386,8 +439,15 @@ public:
     Serial.print("Read 256 bytes took ");
     Serial.print(t1 - t0);
     Serial.println(" us");
-
- }
+    // check data integrity
+    int badBytes = 0;
+    for (int i = 0; i < chunkSize; i++) {
+      if (buff[i] != (i % 256)) {
+        badBytes++;
+      }
+    }
+    Serial.printf("Data integrity check: %d bad bytes\n", badBytes);
+  }
 
   bool testExtended() {
     const uint32_t capacity = getCapacity();
