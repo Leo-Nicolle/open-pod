@@ -51,36 +51,52 @@ bool AudioPlayer::isPSRAMAvailable() {
 }
 
 bool AudioPlayer::startPlaying(const char *filename, bool preload) {
+  Serial.printf("Starting playback: %s (preload: %s)\n", filename, preload ? "yes" : "no");
   stopPlaying();
 
   // Try PSRAM preload first if requested and available
   if (preload && _buffer.isPSRAMAvailable()) {
+    Serial.println("Attempting PSRAM preload...");
     if (_buffer.preloadFile(filename)) {
+      Serial.println("PSRAM preload successful");
       _playing = true;
       _paused = false;
       
       // Prime the VS1053 buffer
       if (primeBuffer()) {
-        // Enable interrupts after initial feeding
-        useInterrupt(AUDIOPLAYER_PIN_INT);
+        // Use polling mode instead of interrupts for more reliable operation
+        // useInterrupt(AUDIOPLAYER_PIN_INT);
+        Serial.println("Buffer primed successfully (PSRAM mode)");
         return true;
+      } else {
+        Serial.println("Buffer priming failed (PSRAM mode)");
       }
+    } else {
+      Serial.println("PSRAM preload failed, falling back to direct file reading");
     }
   }
 
   // Fallback to direct file reading
+  Serial.println("Opening file for direct reading...");
   if (_buffer.openFile(filename)) {
+    Serial.printf("File opened successfully: %s\n", filename);
     _playing = true;
     _paused = false;
     
     // Prime the buffer
     if (primeBuffer()) {
-      // Enable interrupts after priming
-      useInterrupt(AUDIOPLAYER_PIN_INT);
+      // Use polling mode instead of interrupts for more reliable operation
+      // useInterrupt(AUDIOPLAYER_PIN_INT);
+      Serial.println("Buffer primed successfully (direct file mode)");
       return true;
+    } else {
+      Serial.println("Buffer priming failed (direct file mode)");
     }
+  } else {
+    Serial.printf("Failed to open file: %s\n", filename);
   }
 
+  Serial.println("startPlaying failed");
   return false;
 }
 
@@ -186,6 +202,12 @@ bool AudioPlayer::isMP3File(const char *filename) {
 }
 
 void AudioPlayer::processDeferred() {
+  // In polling mode, actively check and feed the buffer
+  if (_playing && !_paused && _driver.readyForData()) {
+    feedBuffer();
+  }
+  
+  // Legacy interrupt-based feeding
   if (_needsFeeding) {
     _needsFeeding = false;
     if (_playing && !_paused && _driver.readyForData()) {
@@ -220,23 +242,25 @@ void AudioPlayer::feedBuffer() {
 
   size_t bytesRead = _buffer.readData(_feedBuffer, AUDIO_DATABUFFERLEN);
   if (bytesRead > 0) {
-    // Use optimized burst sending for better performance
-    _driver.sendDataBurst(_feedBuffer, bytesRead);
+    // Use simple, reliable data sending (revert from burst mode)
+    _driver.sendData(_feedBuffer, bytesRead);
     
-    // With enhanced clock configuration and 2048-byte FIFO, we can potentially
-    // feed more data if the VS1053 is ready for it
-    if (_driver.readyForData() && bytesRead == AUDIO_DATABUFFERLEN) {
-      // Try to send one more chunk if available and VS1053 is still ready
-      size_t extraBytes = _buffer.readData(_feedBuffer, AUDIO_DATABUFFERLEN);
-      if (extraBytes > 0) {
-        _driver.sendDataBurst(_feedBuffer, extraBytes);
-      }
+    // Debug: Print first few bytes to verify data integrity
+    static int debugCount = 0;
+    if (debugCount < 3) {
+      Serial.printf("Feed %d: %d bytes [%02X %02X %02X %02X...]\n",
+                   debugCount, bytesRead,
+                   _feedBuffer[0], _feedBuffer[1], _feedBuffer[2], _feedBuffer[3]);
+      debugCount++;
     }
   } else {
     // End of data
+    Serial.println("End of audio data reached");
     if (_looping) {
+      Serial.println("Looping back to start");
       _buffer.seekToStart();
     } else {
+      Serial.println("Stopping playback");
       stopPlaying();
     }
   }
@@ -319,4 +343,167 @@ bool AudioPlayer::configureAudioQuality(uint32_t targetSampleRate) {
   }
   
   return success;
+}
+
+bool AudioPlayer::testBasicPlayback() {
+  Serial.println("=== VS1053 Basic Playback Test ===");
+  
+  // Test 1: Check if VS1053 is responsive
+  uint16_t status = _driver.readRegister(VS1053_REG_STATUS);
+  Serial.printf("VS1053 Status: 0x%04X\n", status);
+  
+  if (!(status & 0x0040)) {
+    Serial.println("ERROR: VS1053 not responding!");
+    return false;
+  }
+  
+  // Test 2: Check clock configuration
+  uint16_t clockf = _driver.readRegister(VS1053_REG_CLOCKF);
+  Serial.printf("Clock Config: 0x%04X\n", clockf);
+  
+  // Test 3: Check DREQ pin
+  bool dreqStatus = _driver.readyForData();
+  Serial.printf("DREQ Status: %s\n", dreqStatus ? "HIGH (Ready)" : "LOW (Busy)");
+  
+  // Test 4: Check volume setting
+  uint16_t volume = _driver.readRegister(VS1053_REG_VOLUME);
+  Serial.printf("Volume: 0x%04X\n", volume);
+  
+  // Test 5: Simple sine wave test
+  Serial.println("Testing sine wave generation...");
+  _driver.sineTest(0x44, 500); // 500ms test tone
+  
+  Serial.println("Basic test completed");
+  return true;
+}
+
+bool AudioPlayer::startPlayingSimple(const char *filename) {
+  Serial.printf("Starting SIMPLE playback: %s\n", filename);
+  stopPlaying();
+
+  // Use direct file reading only (no PSRAM, no complex configuration)
+  Serial.println("Opening file for simple direct reading...");
+  if (_buffer.openFile(filename)) {
+    Serial.printf("File opened successfully: %s\n", filename);
+    _playing = true;
+    _paused = false;
+    
+    // Simple buffer priming - just a few feeds
+    for (int i = 0; i < 5; i++) {
+      if (_driver.readyForData()) {
+        size_t bytesRead = _buffer.readData(_feedBuffer, AUDIO_DATABUFFERLEN);
+        if (bytesRead > 0) {
+          _driver.sendData(_feedBuffer, bytesRead);
+        }
+      }
+    }
+    
+    Serial.println("Simple playback started - no interrupts, polling only");
+    return true;
+  } else {
+    Serial.printf("Failed to open file: %s\n", filename);
+    return false;
+  }
+}
+
+bool AudioPlayer::startPlayingEnhanced(const char *filename) {
+  Serial.printf("Starting ENHANCED playback: %s\n", filename);
+  stopPlaying();
+
+  // Check file type and configure accordingly
+  bool isFlac = isFLACFile(filename);
+  if (isFlac) {
+    Serial.println("FLAC file detected - configuring for high-quality playback");
+    
+    // For FLAC, we need better clock configuration
+    _driver.setClockMultiplier(VS1053_SC_MULT_2_5X, VS1053_SC_ADD_1_0X);
+    delay(50); // Allow clock to stabilize
+    
+    // Optimize SPI speed for higher data rates
+    _driver.optimizeSPISpeed();
+  } else {
+    Serial.println("Non-FLAC file - using standard configuration");
+  }
+
+  // Try PSRAM preload for high-quality files
+  if (_buffer.isPSRAMAvailable()) {
+    Serial.println("Attempting PSRAM preload for enhanced quality...");
+    if (_buffer.preloadFile(filename)) {
+      Serial.println("PSRAM preload successful");
+      _playing = true;
+      _paused = false;
+      
+      // Enhanced buffer priming for high-quality audio
+      if (primeBufferEnhanced(isFlac)) {
+        Serial.println("Enhanced buffer primed successfully (PSRAM mode)");
+        return true;
+      } else {
+        Serial.println("Enhanced buffer priming failed (PSRAM mode)");
+      }
+    } else {
+      Serial.println("PSRAM preload failed, falling back to direct file reading");
+    }
+  }
+
+  // Fallback to direct file reading with enhanced feeding
+  Serial.println("Opening file for enhanced direct reading...");
+  if (_buffer.openFile(filename)) {
+    Serial.printf("File opened successfully: %s\n", filename);
+    _playing = true;
+    _paused = false;
+    
+    // Enhanced buffer priming
+    if (primeBufferEnhanced(isFlac)) {
+      Serial.println("Enhanced buffer primed successfully (direct file mode)");
+      return true;
+    } else {
+      Serial.println("Enhanced buffer priming failed (direct file mode)");
+    }
+  } else {
+    Serial.printf("Failed to open file: %s\n", filename);
+  }
+
+  Serial.println("Enhanced playback failed");
+  return false;
+}
+
+bool AudioPlayer::isFLACFile(const char *filename) {
+  const char *ext = strrchr(filename, '.');
+  return ext && (strcasecmp(ext, ".flac") == 0 || strcasecmp(ext, ".fla") == 0);
+}
+
+bool AudioPlayer::primeBufferEnhanced(bool isHighQuality) {
+  // Enhanced buffer priming for high-quality audio (FLAC, high-bitrate MP3)
+  int feedCount = 0;
+  const int maxFeeds = isHighQuality ? 20 : 15; // More feeds for FLAC
+  
+  Serial.printf("Enhanced priming for %s quality audio...\n", isHighQuality ? "high" : "standard");
+  
+  for (int i = 0; i < maxFeeds; i++) {
+    if (_driver.readyForData()) {
+      size_t bytesRead = _buffer.readData(_feedBuffer, AUDIO_DATABUFFERLEN);
+      if (bytesRead > 0) {
+        _driver.sendData(_feedBuffer, bytesRead);
+        feedCount++;
+        
+        // For high-quality audio, feed more aggressively
+        if (isHighQuality && _driver.readyForData() && i < maxFeeds - 1) {
+          size_t extraBytes = _buffer.readData(_feedBuffer, AUDIO_DATABUFFERLEN);
+          if (extraBytes > 0) {
+            _driver.sendData(_feedBuffer, extraBytes);
+            feedCount++;
+            i++; // Account for the extra feed
+          }
+        }
+        
+        // Shorter delay for high-quality to maintain data flow
+        delayMicroseconds(isHighQuality ? 50 : 100);
+      }
+    } else {
+      break;
+    }
+  }
+  
+  Serial.printf("Enhanced priming completed with %d feeds\n", feedCount);
+  return feedCount > 0;
 }

@@ -64,7 +64,11 @@ public:
   // Utility methods
   void sineTest(uint8_t freq, uint16_t duration);
   void dumpRegisters();
+  bool testBasicPlayback();
+  bool startPlayingSimple(const char* filename);  // Minimal configuration test
+  bool startPlayingEnhanced(const char* filename); // Enhanced for FLAC/high-quality
   static bool isMP3File(const char* filename);
+  static bool isFLACFile(const char* filename);
   
   // Access to underlying components
   VS1053_driver& getDriver() { return _driver; }
@@ -97,6 +101,7 @@ protected:
   void handleInterrupt();
   void refill();
   bool primeBuffer();
+  bool primeBufferEnhanced(bool isHighQuality = false);
 };
 
 #endif // AUDIOPLAYER_H

@@ -70,13 +70,8 @@ bool VS1053_driver::begin(uint32_t spiFreq) {
     return false;
   }
 
-  // Configure basic mode first
   writeRegister(VS1053_REG_MODE, VS1053_MODE_SM_SDINEW);
-  
-  // Configure optimal clock settings for high-quality audio
-  if (!configureOptimalClock()) {
-    Serial.println("Warning: Clock configuration may not be optimal");
-  }
+  writeRegister(VS1053_REG_CLOCKF, 0x6000);  // 12.288MHz
   
   setVolume(60, 60);
   
@@ -196,31 +191,14 @@ void VS1053_driver::writeRegister(uint8_t addr, uint16_t data) {
 void VS1053_driver::sendData(const uint8_t *data, size_t len) {
   if (len == 0) return;
   
-  // Send data in optimal 32-byte bursts per VS1053b datasheet
-  size_t offset = 0;
+  waitForDREQ();
+  beginSDITransaction();
   
-  while (offset < len) {
-    waitForDREQ();
-    
-    // Calculate burst size (up to 32 bytes or remaining data)
-    size_t burstSize = min((size_t)VS1053_BURST_SIZE, len - offset);
-    
-    beginSDITransaction();
-    
-    // Send burst
-    for (size_t i = 0; i < burstSize; i++) {
-      spiWrite(data[offset + i]);
-    }
-    
-    endSDITransaction();
-    
-    offset += burstSize;
-    
-    // Small delay between bursts to allow VS1053 processing
-    if (offset < len) {
-      delayMicroseconds(10);
-    }
+  for (size_t i = 0; i < len; i++) {
+    spiWrite(data[i]);
   }
+  
+  endSDITransaction();
 }
 
 bool VS1053_driver::readyForData() { 
@@ -282,9 +260,6 @@ void VS1053_driver::dumpRegisters() {
 bool VS1053_driver::configureOptimalClock(uint32_t xtalFreq) {
   Serial.printf("Configuring VS1053 clock for %lu Hz crystal\n", xtalFreq);
   
-  // Configure clock range for high-frequency crystals (24-26MHz)
-  configureClockRange(xtalFreq);
-  
   // Start with 1.0x multiplier (chip default after reset)
   // This ensures we're in a known state
   setClockMultiplier(VS1053_SC_MULT_1_0X, VS1053_SC_ADD_NONE);
@@ -300,11 +275,11 @@ bool VS1053_driver::configureOptimalClock(uint32_t xtalFreq) {
     delay(10);
   }
   
-  // Configure optimal multiplier for high-quality audio
-  // 3.0x multiplier provides good balance of performance and stability
-  // With 12.288MHz crystal: 3.0x = 36.864MHz internal clock
-  // Max sample rate = 36.864MHz / 256 = 144kHz (more than enough for 48kHz)
-  setClockMultiplier(VS1053_SC_MULT_3_0X, VS1053_SC_ADD_1_0X);
+  // Configure conservative multiplier for reliable audio
+  // 2.0x multiplier provides good balance of performance and stability
+  // With 12.288MHz crystal: 2.0x = 24.576MHz internal clock
+  // Max sample rate = 24.576MHz / 256 = 96kHz (sufficient for 48kHz)
+  setClockMultiplier(VS1053_SC_MULT_2_0X, VS1053_SC_ADD_NONE);
   
   // Critical: Wait for DREQ after clock configuration change
   // The datasheet states the chip may run at 1.0x for a few hundred cycles

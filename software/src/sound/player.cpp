@@ -2,7 +2,7 @@
 
 void PodPlayer::setup() {
   Serial.println("=== OpenPod Audio System Initialization ===");
-  
+
   if (!audioPlayer.begin()) {
     Serial.println("Couldn't find VS1053, check pin definitions");
     return;
@@ -25,12 +25,13 @@ void PodPlayer::setup() {
 
   // Display enhanced audio capabilities
   Serial.println("\n=== Audio System Capabilities ===");
-  Serial.printf("Maximum sample rate: %lu Hz\n", audioPlayer.getDriver().getMaxSampleRate());
+  Serial.printf("Maximum sample rate: %lu Hz\n",
+                audioPlayer.getDriver().getMaxSampleRate());
   Serial.println("Supported formats: MP3, WAV, MIDI, Ogg Vorbis");
   Serial.println("Enhanced features:");
   Serial.println("  - Optimized clock configuration for 48kHz+ audio");
   Serial.println("  - Dynamic SPI speed adjustment");
-  Serial.println("  - 8KB internal FIFO with intelligent feeding");
+  Serial.println("  - 2KB internal FIFO with 32-byte burst feeding");
   Serial.println("  - PSRAM preloading for gapless playback");
 
   // Dump VS1053 registers for debugging
@@ -40,7 +41,7 @@ void PodPlayer::setup() {
   // Test sine wave generation with enhanced clock
   Serial.println("\nPlaying test tone with enhanced audio quality...");
   audioPlayer.sineTest(0x44, 1000); // 1 second test tone
-  
+
   Serial.println("=== Audio System Ready ===\n");
 }
 
