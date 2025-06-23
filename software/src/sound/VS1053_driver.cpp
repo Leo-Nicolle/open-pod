@@ -452,11 +452,8 @@ bool VS1053_driver::loadFLACPlugin() {
     return false;
   }
   
-  // For now, use a minimal FLAC configuration approach
-  // The placeholder plugin data is causing corruption
-  Serial.println("Configuring minimal FLAC support...");
-  
-  // Set clock for FLAC processing
+  // Set clock for FLAC processing first
+  Serial.println("Setting FLAC clock configuration...");
   writeRegister(VS1053_REG_CLOCKF, 0x8800);
   waitForDREQ();
   delay(50);
@@ -469,6 +466,52 @@ bool VS1053_driver::loadFLACPlugin() {
   }
   
   Serial.println("FLAC clock configuration successful");
+  
+  // Now load the actual FLAC plugin data
+  Serial.printf("Loading FLAC plugin data (%d words)...\n", FLAC_PLUGIN_SIZE);
+  
+  // Load plugin using the proper VS1053 plugin loading method
+  // This follows the VLSI Solution plugin loading methodology
+  for (uint16_t i = 0; i < FLAC_PLUGIN_SIZE; i++) {
+    // Wait for DREQ before each register write
+    waitForDREQ();
+    
+    // Read address and data from PROGMEM
+    uint8_t addr = pgm_read_byte(&flacPluginAddresses[i]);
+    uint16_t data = pgm_read_word(&flacPluginData[i]);
+    
+    // Write to the appropriate register
+    if (addr == 0x6) {
+      // Write to WRAM register (most common)
+      writeRegister(VS1053_REG_WRAM, data);
+    } else if (addr == 0x7) {
+      // Write to WRAMADDR register (sets address for subsequent WRAM writes)
+      writeRegister(VS1053_REG_WRAMADDR, data);
+    } else {
+      // Write to other registers as specified
+      writeRegister(addr, data);
+    }
+    
+    // Progress indication for large plugin
+    if ((i % 1000) == 0) {
+      Serial.printf("Plugin loading progress: %d/%d\n", i, FLAC_PLUGIN_SIZE);
+    }
+  }
+  
+  // Final DREQ wait to ensure plugin is fully loaded
+  waitForDREQ();
+  delay(100);
+  
+  Serial.println("FLAC plugin loaded successfully");
+  
+  // Verify the plugin is working by checking chip status
+  uint16_t status = readRegister(VS1053_REG_STATUS);
+  if (!(status & 0x0040)) {
+    Serial.println("FLAC plugin verification failed - chip not responding");
+    return false;
+  }
+  
+  Serial.println("FLAC plugin verification successful");
   return true;
 }
 
