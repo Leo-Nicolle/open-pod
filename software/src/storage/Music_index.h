@@ -179,7 +179,7 @@ private:
     uint16_t findLRUStringCacheSlot();
     
 public:
-    MusicIndex(SPI_PSRAM* psram_controller, uint32_t psram_base_addr = 0x100000);
+    MusicIndex(SPI_PSRAM* psram_controller, uint32_t psram_base_addr = MUSIC_INDEX_BASE_ADDRESS);
     ~MusicIndex();
     
     // Initialize the music index by loading from SD card

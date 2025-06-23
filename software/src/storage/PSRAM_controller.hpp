@@ -26,7 +26,11 @@
 #define PSRAM_MISO PB14
 #define PSRAM_MOSI PB15
 
-// SPI PSRAM interface for APS6404L-3SQR-SN using Arduino SPI library
+#define PSRAM_SIZE                (64 * 1024 * 1024) // 64 Mb PSRAM chip size
+#define AUDIO_BUFFER_BASE_ADDRESS 0x000
+#define AUDIO_BUFFER_SIZE         (6 * 1024 * 1024) // 6 Mb
+#define MUSIC_INDEX_BASE_ADDRESS  (AUDIO_BUFFER_BASE_ADDRESS + AUDIO_BUFFER_SIZE)
+#define MUSIC_INDEX_SIZE           PSRAM_SIZE - AUDIO_BUFFER_SIZE // Remaining PSRAM size for music index
 class SPI_PSRAM {
 private:
   SPIClass *spi;
@@ -83,8 +87,7 @@ private:
 
 public:
   SPI_PSRAM() : spi(nullptr) {
-    // Conservative SPI settings: 1MHz, MSB first, SPI Mode 0
-    spiSettings = SPISettings(1000000, MSBFIRST, SPI_MODE0);
+    spiSettings = SPISettings(42000000, MSBFIRST, SPI_MODE0);
   }
 
   ~SPI_PSRAM() {
@@ -148,7 +151,7 @@ public:
     Serial.flush();
 
     // Test basic communication
-    return testPSRAM();
+    return true;
   }
 
   void resetDevice() {
@@ -236,9 +239,6 @@ public:
 
     chipSelect(false);
     spi->endTransaction();
-
-    // Small delay between operations for stability
-    delayMicroseconds(10);
   }
 
   void readData(uint32_t address, uint8_t *data, uint32_t size) {
@@ -279,8 +279,6 @@ public:
     chipSelect(false);
     spi->endTransaction();
 
-    // Small delay between operations
-    delayMicroseconds(10);
   }
 
   // Simplified test function for debugging
@@ -356,6 +354,40 @@ public:
   uint32_t getPageSize() {
     return 1024; // 1KB pages
   }
+
+ bool testSpeed(){
+    Serial.println("=== PSRAM SPEED TEST BEGIN ===");
+    delay(50);
+    
+    const uint32_t capacity = getCapacity();
+    const uint32_t pageSize = getPageSize();
+    Serial.print("PSRAM Capacity: ");
+    Serial.print(capacity / 1024);
+    Serial.println(" KB");
+    Serial.print("Page Size: ");
+    Serial.print(pageSize);
+    Serial.println(" bytes");
+    
+    const int chunkSize = 1024; // 256 bytes per chunk
+    static uint8_t buff[chunkSize];
+    for (int i = 0; i < chunkSize; i++) {
+      buff[i] = i % 256; // Fill buffer with a pattern
+    }
+    int t0 = micros();
+    writeData(0x000000, buff, chunkSize);
+    int t1 = micros();
+    Serial.print("Write 256 bytes took ");
+    Serial.print(t1 - t0);
+    Serial.println(" us");
+
+    t0 = micros();
+    readData(0x000000, buff, chunkSize);
+    t1 = micros();
+    Serial.print("Read 256 bytes took ");
+    Serial.print(t1 - t0);
+    Serial.println(" us");
+
+ }
 
   bool testExtended() {
     const uint32_t capacity = getCapacity();

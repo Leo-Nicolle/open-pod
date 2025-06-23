@@ -38,6 +38,7 @@ bool Audio_buffer::initializePSRAM() {
 
   Serial.printf("PSRAM OK: %d bytes\n", _psramBufferSize);
   resetRingBuffer();
+  _psram->testSpeed();
   return true;
 }
 
@@ -102,11 +103,14 @@ bool Audio_buffer::SDtoPSRAM() {
   }
   size_t toRead =
       min(remainingFile, min((size_t)AUDIO_PRELOAD_CHUNK_SIZE, freeSpace));
+  unsigned long t0 = micros();
   size_t read = file.read(temp, toRead);
-
+  unsigned long t1 = micros();
+  // Serial.printf("SD read %u bytes in %lu us (%.2f KB/s)\n", read, t1-t0, (read/1024.0)/((t1-t0)/1000000.0));
   bool wraps = (_psramHead + read) > _psramBufferSize;
   size_t writeSize = wraps ? (_psramBufferSize - _psramHead) : read;
   size_t wrapWriteSize = wraps ? (read - writeSize) : 0;
+  t0 = micros();
   noInterrupts();
   _psram->writeData(_psramBaseAddress + _psramHead, temp, writeSize);
   if (wrapWriteSize > 0) {
@@ -114,6 +118,8 @@ bool Audio_buffer::SDtoPSRAM() {
   }
   _psramHead = (_psramHead + read) % _psramBufferSize;
   interrupts();
+  t1 = micros();
+  // Serial.printf("PSRAM write %u bytes in %lu us (%.2f KB/s)\n", read, t1-t0, (read/1024.0)/((t1-t0)/1000000.0));
   // Set buffer full flag if head catches up to tail
   if (_psramHead == _psramTail) {
     closeFile();
