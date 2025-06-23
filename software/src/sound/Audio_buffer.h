@@ -1,6 +1,6 @@
 /*!
  * @file Audio_buffer.h
- * Audio buffer management for PSRAM and SD card file loading
+ * @brief Audio buffer manager using PSRAM and SD card files (optimized for VS1053b)
  */
 
 #ifndef AUDIO_BUFFER_H
@@ -9,72 +9,61 @@
 #include <Arduino.h>
 #include <SdFat.h>
 
-#define HAS_PSRAM_SUPPORT
 #include "../storage/PSRAM_controller.hpp"
 
 // Buffer configuration optimized for VS1053b
-#define AUDIO_DATABUFFERLEN 32        // Matches VS1053_BURST_SIZE for optimal feeding
-#define AUDIO_PSRAM_BUFFER_SIZE (1024 * 1024)  // 1MB for PSRAM
-#define AUDIO_PRELOAD_CHUNK_SIZE 2048          // Matches VS1053b FIFO size
-#define AUDIO_VS1053_FIFO_SIZE 2048            // VS1053b internal FIFO size
+#define AUDIO_DATABUFFERLEN 32                // Matches VS1053_BURST_SIZE for feeding
+#define AUDIO_PRELOAD_CHUNK_SIZE 32         // Chunk size for preloading (VS1053b FIFO)
 
 /*!
- * @brief Audio buffer management class for PSRAM and SD card operations
+ * @class Audio_buffer
+ * @brief Manages audio streaming from SD card using a circular buffer in PSRAM
  */
 class Audio_buffer {
 public:
-  Audio_buffer(uint8_t sdCS);
+  explicit Audio_buffer(uint8_t sdCS);
   ~Audio_buffer();
 
+  // Initialization
   bool begin(uint32_t sdFreq = 25000000);
-  bool enablePSRAM(bool enable = true);
-  bool isPSRAMAvailable();
-  
-  // File operations
-  bool openFile(const char* filename);
-  void closeFile();
-  bool isFileOpen();
-  size_t getFileSize();
-  
-  // PSRAM operations
-  bool preloadFile(const char* filename);
-  void clearPreloadBuffer();
-  bool isFilePreloaded();
-  size_t getPreloadedSize();
-  size_t getPreloadedRemaining();
-  
-  // Data reading
-  size_t readData(uint8_t* buffer, size_t maxLen);
-  void seekToStart();
-  bool isEndOfData();
-  
-  // Utility functions
-  static bool isMP3File(const char* filename);
-  SdFat& getSD() { return _sd; }
+
+  void setFileName(const char *filename);
+  bool load();
+  size_t readData(uint8_t *buffer, size_t maxLen);
+  SdFat &getSD() { return _sd; }
+  void resetRingBuffer();
 
 protected:
+  // SD card
   uint8_t _sdCS;
   SdFat _sd;
-  FsFile _currentFile;
-  
-  // Data buffer for reading
+  File file;
+  size_t fileSize;
+  char _currentFileName[64]; 
   uint8_t _dataBuffer[AUDIO_DATABUFFERLEN];
-  
-#ifdef HAS_PSRAM_SUPPORT
-  bool _psramEnabled;
-  bool _filePreloaded;
-  uint32_t _psramBufferSize;
-  uint32_t _psramDataSize;
-  uint32_t _psramPosition;
-  SPI_PSRAM* _psramController;
-  uint32_t _psramBaseAddress;
-#endif
+  // temp to read from SD card to PSRAM
+  uint8_t temp[AUDIO_PRELOAD_CHUNK_SIZE];
+  int filePos = 0; // Current position in the file
+  SPI_PSRAM* _psram = nullptr;
+  uint32_t _psramBaseAddress = 0;
+  static const uint32_t _psramBufferSize = AUDIO_BUFFER_SIZE;
 
+  // Ring buffer positions
+  size_t _psramHead = 0;   // Next write position
+  size_t _psramTail = 0;   // Next read position
+  bool _bufferFull = false;
+  // Preload tracking
+  uint32_t _psramDataSize = 0; // Total preloaded data size
+  uint32_t _psramPosition = 0; // Current position in preloaded data
+
+  // Internals
   bool initializePSRAM();
-  void freePSRAM();
-  uint32_t skipID3Header(FsFile& file);
-  size_t readFromPSRAM(uint8_t* buffer, size_t maxLen);
-  size_t readFromFile(uint8_t* buffer, size_t maxLen);
+  bool openFile();
+  bool closeFile();
+  bool SDtoPSRAM();
+  uint32_t skipID3Header(FsFile &file);
+  size_t getPSRAMDataSize(); // Returns the size of data in PSRAM buffer 
+  size_t getPSRAMFreeSpace(); // Returns the free space in PSRAM buffer
 };
 
 #endif // AUDIO_BUFFER_H
