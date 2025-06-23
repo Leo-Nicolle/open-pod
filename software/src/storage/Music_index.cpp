@@ -23,6 +23,12 @@ bool MusicIndex::init(const char *index_filename) {
   Serial.print("Loading index from: ");
   Serial.println(index_filename);
 
+  // Initialize SD card with default SPI configuration
+  if (!sd.begin(SdSpiConfig(SDCS, SHARED_SPI, SD_SCK_MHZ(25)))) {
+    Serial.println("ERROR: SD card initialization failed");
+    return false;
+  }
+
   // Load the binary trie data from SD card to PSRAM
   if (!loadFromSDCard(index_filename)) {
     Serial.println("ERROR: Failed to load music index from SD card");
@@ -45,6 +51,43 @@ bool MusicIndex::init(const char *index_filename) {
   clearCache();
 
   Serial.println("Music index loaded successfully!");
+  printStats();
+
+  return true;
+}
+
+bool MusicIndex::initWithSDConfig(SdSpiConfig sdConfig, const char *index_filename) {
+  if (!psram) {
+    Serial.println("ERROR: PSRAM controller not provided");
+    return false;
+  }
+  Serial.println("=== MUSIC INDEX INIT WITH CUSTOM CONFIG ===");
+  Serial.print("Loading index from: ");
+  Serial.println(index_filename);
+
+  // Initialize SD card with custom configuration
+  if (!sd.begin(sdConfig)) {
+    Serial.println("ERROR: SD card initialization failed with custom config");
+    return false;
+  }
+
+  // Load the binary trie data from SD card to PSRAM
+  if (!loadFromSDCard(index_filename)) {
+    Serial.println("ERROR: Failed to load music index from SD card");
+    return false;
+  }
+
+  // Calculate offsets within the loaded data
+  string_pool_offset = base_address + sizeof(trie_header_t);
+  uint32_t string_pool_padded = (header.string_pool_size);
+  string_offsets_offset = string_pool_offset + string_pool_padded;
+  nodes_offset = string_offsets_offset + (header.string_offset_count * 4);
+  results_offset = nodes_offset + (header.node_count * sizeof(trie_node_t));
+
+  initialized = true;
+  clearCache();
+
+  Serial.println("Music index loaded successfully with custom config!");
   printStats();
 
   return true;
@@ -107,31 +150,17 @@ bool MusicIndex::getTrackPath(uint32_t track_id, char *buffer, uint32_t buffer_s
   return true;
 }
 
-uint32_t MusicIndex::readLittleEndian32(File &file) {
+uint32_t MusicIndex::readLittleEndian32(FsFile &file) {
   uint8_t bytes[4];
-  file.readBytes((char *)bytes, 4);
+  file.read(bytes, 4);
   return (uint32_t)bytes[0] | ((uint32_t)bytes[1] << 8) |
          ((uint32_t)bytes[2] << 16) | ((uint32_t)bytes[3] << 24);
 }
 
 bool MusicIndex::loadFromSDCard(const char *filename) {
-  if (!SD.begin(SDCS)) {
-    Serial.println("ERROR: SD card initialization failed");
-    return false;
-  }
-  // print all files in the root directory
-  // File root = SD.open("/");
-  // Serial.println("Files in root directory:");
-  // while (File file = root.openNextFile()) {
-  //   Serial.print(" - ");
-  //   Serial.println(file.name());
-  //   file.close();
-  // }
-  // root.close(); 
-
-
-  File file = SD.open(filename, FILE_READ);
-  if (!file) {
+  // Open file using SDFat
+  FsFile file;
+  if (!file.open(filename, O_RDONLY)) {
     Serial.print("ERROR: Could not open file: ");
     Serial.println(filename);
     return false;
@@ -142,7 +171,7 @@ bool MusicIndex::loadFromSDCard(const char *filename) {
   Serial.print(file_size);
   Serial.println(" bytes");
 
-  if (file.readBytes((char*)&header, sizeof(header)) != sizeof(header)) {
+  if (file.read(&header, sizeof(header)) != sizeof(header)) {
     Serial.println("ERROR: Failed to read header");
     file.close();
     return false;
@@ -158,7 +187,7 @@ bool MusicIndex::loadFromSDCard(const char *filename) {
   Serial.println(header.string_offset_count);
 
   // Reset file position to beginning
-  file.seek(0);
+  file.seekSet(0);
 
   // Read entire file to PSRAM in larger chunks for speed
   const uint32_t CHUNK_SIZE = 4096; // Increased chunk size
@@ -174,7 +203,7 @@ bool MusicIndex::loadFromSDCard(const char *filename) {
 
   while (bytes_read < file_size) {
     uint32_t to_read = min(CHUNK_SIZE, file_size - bytes_read);
-    uint32_t actual_read = file.readBytes((char *)buffer, to_read);
+    uint32_t actual_read = file.read(buffer, to_read);
 
     if (actual_read == 0) {
       Serial.println("ERROR: Failed to read from file");
@@ -208,13 +237,9 @@ bool MusicIndex::loadFromSDCard(const char *filename) {
 }
 
 bool MusicIndex::loadPathIndexFromSDCard(const char *filename) {
-  if (!SD.begin(SDCS)) {
-    Serial.println("ERROR: SD card initialization failed for path index");
-    return false;
-  }
-
-  File file = SD.open(filename, FILE_READ);
-  if (!file) {
+  // Open file using SDFat
+  FsFile file;
+  if (!file.open(filename, O_RDONLY)) {
     Serial.print("ERROR: Could not open path index file: ");
     Serial.println(filename);
     return false;
@@ -226,7 +251,7 @@ bool MusicIndex::loadPathIndexFromSDCard(const char *filename) {
   Serial.println(" bytes");
 
   // Read path index header
-  if (file.readBytes((char*)&path_header, sizeof(path_header)) != sizeof(path_header)) {
+  if (file.read(&path_header, sizeof(path_header)) != sizeof(path_header)) {
     Serial.println("ERROR: Failed to read path index header");
     file.close();
     return false;
@@ -238,7 +263,7 @@ bool MusicIndex::loadPathIndexFromSDCard(const char *filename) {
   Serial.println(path_header.path_data_size);
 
   // Reset file position to beginning
-  file.seek(0);
+  file.seekSet(0);
 
   // Read entire path index file to PSRAM
   const uint32_t CHUNK_SIZE = 4096;
@@ -254,7 +279,7 @@ bool MusicIndex::loadPathIndexFromSDCard(const char *filename) {
 
   while (bytes_read < file_size) {
     uint32_t to_read = min(CHUNK_SIZE, file_size - bytes_read);
-    uint32_t actual_read = file.readBytes((char *)buffer, to_read);
+    uint32_t actual_read = file.read(buffer, to_read);
 
     if (actual_read == 0) {
       Serial.println("ERROR: Failed to read from path index file");
@@ -854,6 +879,18 @@ void MusicIndex::printStats() {
   Serial.println(nodes_offset, HEX);
   Serial.print("Results offset: 0x");
   Serial.println(results_offset, HEX);
+  Serial.print("SD card size: ");
+
+  uint64_t sectors = sd.sectorsPerCluster() * sd.clusterCount();
+
+  // Each sector is 512 bytes
+  uint64_t cardSizeBytes = sectors * 512ULL;
+  float cardSizeMB = cardSizeBytes / (1024.0 * 1024.0);
+  float cardSizeGB = cardSizeMB / 1024.0;
+  Serial.print(cardSizeMB);
+  Serial.print(" MB (");
+  Serial.print(cardSizeGB);
+  Serial.println(" GB)");
   
   if (path_index_initialized) {
     Serial.println("=== PATH INDEX STATS ===");

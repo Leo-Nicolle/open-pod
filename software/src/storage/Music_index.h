@@ -1,7 +1,7 @@
 #pragma once
 #include <stdint.h>
 #include <Arduino.h>
-#include <SD.h>
+#include <SdFat.h>  // Changed from SD.h to SdFat.h
 #include <string.h>
 #include "PSRAM_controller.hpp"
 #define SDCS     PA4
@@ -94,6 +94,9 @@ private:
     uint32_t base_address;
     bool initialized;
     
+    // SDFat objects
+    SdFat sd;               // SDFat object for SD card operations
+    
     // Offsets within the loaded data
     uint32_t string_pool_offset;
     uint32_t string_offsets_offset;
@@ -124,7 +127,8 @@ private:
     
     // Access counter (16-bit to save memory, wraps around)
     uint16_t access_counter;
-    uint32_t readLittleEndian32(File& file);
+    uint32_t readLittleEndian32(FsFile& file);  // Changed from File& to FsFile&
+    
     // Helper methods
     bool loadFromSDCard(const char* filename);
     bool loadPathIndexFromSDCard(const char* filename);
@@ -183,6 +187,12 @@ public:
     
     // Initialize the path index by loading from SD card
     bool initPathIndex(const char* path_index_filename = "/music_index_paths.bin");
+    
+    // Initialize with custom SDFat configuration
+    bool initWithSDConfig(SdSpiConfig sdConfig, const char* index_filename = "/music_index.bin");
+    
+    // Get SDFat object reference for advanced operations
+    SdFat& getSD() { return sd; }
     
     // Path lookup function
     bool getTrackPath(uint32_t track_id, char* buffer, uint32_t buffer_size);

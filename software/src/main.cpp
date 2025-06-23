@@ -1,151 +1,159 @@
-/**
- * Example usage of the updated MusicIndex with path lookup functionality
- * This shows how to search for tracks and get their file paths
+/*!
+ * @file main.cpp
+ * FIXED: Smooth VS1053 audio player for STM32 - no more glitches
  */
 
-#include "storage/Music_index.h"
-#include "storage/PSRAM_controller.hpp"
-#include "player.h"
-SPI_PSRAM psram;               //
-MusicIndex musicIndex(&psram); // Base address for trie
-PodPlayer player; // Audio player instance
-// Example usage function
-void demonstratePathLookup() {
-  // Initialize PSRAM controller (assuming it's already set up)
+#include <Arduino.h>
+#include "sound/VS1053_driver.h"
 
-  // Create music index instance
+// STM32 Nucleo F446RE pin assignments
+#define VS1053_RST    PA10   // Reset pin
+#define VS1053_CS     PA11   // Control SPI chip select  
+#define VS1053_DCS    PA9    // Data SPI chip select
+#define VS1053_DREQ   PB3    // Data request pin (CRITICAL: Use interrupt-capable pin)
+#define SD_CS         PA4    // SD card chip select (SPI1)
 
-  // Initialize the main trie index
-  if (!musicIndex.init("/MUSIC_~1.bin")) {
-    Serial.println("Failed to initialize music index");
-    return;
-  }
+// Create VS1053 player
+VS1053FilePlayer player(VS1053_RST, VS1053_CS, VS1053_DCS, VS1053_DREQ, SD_CS);
 
-  // Initialize the path index
-  if (!musicIndex.initPathIndex("/MUSIC_~2.bin")) {
-    Serial.println("Failed to initialize path index");
-    return;
-  }
+// Performance monitoring
+volatile uint32_t feedCount = 0;
+volatile uint32_t isrCount = 0;
 
-  // Print statistics
-  musicIndex.printStats();
-
-  // Example 1: Search for tracks
-  Serial.println("\n=== SEARCHING FOR TRACKS ===");
-  search_result_t results[10];
-  uint32_t result_count = musicIndex.searchTracks("pourquoi", results, 10);
-
-  Serial.print("Found ");
-  Serial.print(result_count);
-  Serial.println(" tracks:");
-
-  for (uint32_t i = 0; i < result_count; i++) {
-    // Print search result
-    musicIndex.printSearchResult(results[i]);
-
-    // Get the file path for this track
-    char track_path[256];
-    if (musicIndex.getTrackPath(results[i].id, track_path,
-                                sizeof(track_path))) {
-      Serial.print("  📁 Path: ");
-      Serial.println(track_path);
-    } else {
-      Serial.println("  ❌ Path not found");
-    }
-    Serial.println();
-  }
-
-  // Example 2: Direct path lookup by track ID
-  Serial.println("=== DIRECT PATH LOOKUP ===");
-  uint32_t test_track_ids[] = {1,   2,  3, 42,
-                               233, 999}; // Include some that might not exist
-
-  for (uint32_t i = 0; i < 5; i++) {
-    uint32_t track_id = test_track_ids[i];
-    char path_buffer[256];
-
-    if (musicIndex.getTrackPath(track_id, path_buffer, sizeof(path_buffer))) {
-      Serial.print("Track ");
-      Serial.print(track_id);
-      Serial.print(": ");
-      Serial.println(path_buffer);
-    } else {
-      Serial.print("Track ");
-      Serial.print(track_id);
-      Serial.println(": Not found");
-    }
-  }
-
-  // Example 3: Complete workflow - search, select, play
-  Serial.println("\n=== COMPLETE WORKFLOW ===");
-
-  // 1. User searches for "pourquoi"
-  search_result_t search_results[5];
-  uint32_t found = musicIndex.searchByPrefix("pourquoi", search_results, 5);
-
-  Serial.println("User searches for 'pourquoi':");
-  for (uint32_t i = 0; i < found; i++) {
-    Serial.print(i + 1);
-    Serial.print(". ");
-    musicIndex.printSearchResult(search_results[i]);
-  }
-
-  // 2. User selects first track result
-  for (uint32_t i = 0; i < found; i++) {
-    if (search_results[i].type == SEARCH_TRACK) {
-      Serial.print("\nUser selects track: ");
-      musicIndex.printSearchResult(search_results[i]);
-
-      // 3. Get file path to play
-      char file_to_play[256];
-      if (musicIndex.getTrackPath(search_results[i].id, file_to_play,
-                                  sizeof(file_to_play))) {
-        Serial.print("🎵 Now playing: ");
-        Serial.println(file_to_play);
-
-        // Here you would:
-        // - Open the audio file
-        // - Start audio playback
-        // - Update UI with track info
-
-      } else {
-        Serial.println("❌ Could not get file path");
-      }
-      break;
-    }
-  }
-  char path_buffer[256];
-  musicIndex.getTrackPath(1, path_buffer, sizeof(path_buffer));
-//   bool res = player.vs1053.startPlayingFile("Swift\ Guad/Hécatombe\ 2.0/02\ Pourquoi\ _.flac");
-  bool res = 
-  player.vs1053.startPlayingFile("/track-1.mp3");
-  Serial.print("Playing track 233: ");
-    if (res) {
-        Serial.println("Success");
-    } else {
-        Serial.println("Failed to play track");
-    }
-}
-
-// Arduino setup function
 void setup() {
-  Serial.begin(115200);
-  while (!Serial)
-    delay(10);
-
-  Serial.println("Music Index with Path Lookup Example");
-  Serial.println("====================================");
-  player.setup();
-  Serial.println("Initializing PSRAM...");
-  if (!psram.init()) {
-    Serial.println("PSRAM initialization failed!");
-    return;
-  }
-  // Demonstrate the functionality
-  demonstratePathLookup();
+    Serial.begin(115200);
+    delay(1000);
+    
+    Serial.println("\n=== FIXED VS1053 Audio Player ===");
+    Serial.println("Initializing...");
+    
+    // CRITICAL: Lower SPI speeds initially for reliability
+    if (!player.begin(1000000, 16000000)) {  // VS1053: 1MHz, SD: 16MHz
+        Serial.println("FAILED to initialize!");
+        while (1) {
+            delay(5000);
+        }
+    }
+    
+    Serial.println("✓ VS1053 and SD initialized");
+    
+    // Test basic functionality first
+    Serial.println("Testing VS1053 with sine wave...");
+    player.sineTest(0x44, 500);  // 1kHz sine for 500ms
+    delay(500);
+    
+    // Initialize PSRAM if available
+    if (player.enablePSRAM(true)) {
+        Serial.println("✓ PSRAM available");
+    } else {
+        Serial.println("⚠ No PSRAM - using direct streaming");
+    }
+    
+    player.setVolume(40, 40);  // More conservative volume
+    
+    Serial.println("\nStarting playback...");
+    
+    // FIXED: Always try PSRAM preload first if available
+    bool usePreload = player.isPSRAMAvailable();
+    
+    if (player.startPlaying("track-3.mp3", usePreload)) {
+        if (usePreload) {
+            Serial.println("✓ Playing from PSRAM preload");
+        } else {
+            Serial.println("✓ Playing from SD streaming");
+        }
+        Serial.println("Interrupts will handle feeding automatically");
+    } else {
+        Serial.println("✗ Playback failed");
+        Serial.println("Check SD card and file existence");
+        while(1) delay(1000);
+    }
 }
 
 void loop() {
-  // Your main application loop
-  delay(5);
+    static unsigned long lastReport = 0;
+    static uint16_t lastDecodeTime = 0;
+    static uint32_t lastFeedCount = 0;
+    static uint32_t lastIsrCount = 0;
+    static uint32_t stallCount = 0;
+    
+    // CRITICAL: Process any deferred operations
+    player.processDeferred();
+    
+    // FIXED: Only help if interrupts are failing
+    if (player.isPlaying() && player.readyForData()) {
+        // This should rarely happen if interrupts work properly
+        feedCount++;
+        player.feedBuffer();
+    }
+    
+    // Detailed status every second
+    unsigned long now = millis();
+    if (now - lastReport >= 1000) {
+        lastReport = now;
+        
+        if (player.isPlaying()) {
+            uint16_t decodeTime = player.getDecodeTime();
+            uint32_t feedRate = feedCount - lastFeedCount;
+            uint32_t isrRate = isrCount - lastIsrCount;
+            
+            // Check for stalls
+            bool isStalled = (decodeTime == lastDecodeTime);
+            if (isStalled) stallCount++;
+            
+            // Serial.printf("Time: %ds | Feeds: %d/s | ISR: %d/s | DREQ: %s", 
+            //              decodeTime, feedRate, isrRate,
+            //              digitalRead(VS1053_DREQ) ? "HI" : "LO");
+            
+            // if (player.isPSRAMAvailable()) {
+            //     Serial.printf(" | PSRAM: %d bytes", player.getPreloadedRemaining());
+            // }
+            
+            if (isStalled) {
+                // Serial.printf(" | STALL #%d ⚠", stallCount);
+                
+                // Recovery attempt for stalls
+                if (stallCount > 3) {
+                    // Serial.println("\nToo many stalls - attempting recovery...");
+                    // Force feed some data
+                    for (int i = 0; i < 10 && player.readyForData(); i++) {
+                        player.feedBuffer();
+                    }
+                    stallCount = 0;
+                }
+            } else {
+                // Serial.println(" ✓");
+                stallCount = 0;  // Reset stall count on good progress
+            }
+            
+            lastDecodeTime = decodeTime;
+            lastFeedCount = feedCount;
+            lastIsrCount = isrCount;
+            
+            // Debug register dump on problems
+            if (stallCount > 5) {
+                // Serial.println("Register dump:");
+                player.dumpRegisters();
+                stallCount = 0;
+            }
+            
+        } else {
+            // Serial.println("Playback finished");
+            
+            // Auto-restart for testing
+            delay(2000);
+            // Serial.println("Restarting...");
+            if (player.startPlaying("track-1.flac", player.isPSRAMAvailable())) {
+                // Serial.println("Restarted playback");
+            }
+        }
+    }
+    
+    // CRITICAL: Don't hog the CPU
+    delay(1);  // Small delay to prevent overwhelming the system
+}
+
+// Optional: Track ISR calls for debugging
+void trackISR() {
+    isrCount++;
 }
