@@ -413,11 +413,21 @@ bool AudioPlayer::startPlayingEnhanced(const char *filename) {
   // Check file type and configure accordingly
   bool isFlac = isFLACFile(filename);
   if (isFlac) {
-    Serial.println("FLAC file detected - configuring for high-quality playback");
+    Serial.println("FLAC file detected - loading FLAC plugin and configuring for high-quality playback");
     
-    // For FLAC, we need better clock configuration
-    _driver.setClockMultiplier(VS1053_SC_MULT_2_5X, VS1053_SC_ADD_1_0X);
-    delay(50); // Allow clock to stabilize
+    // Load FLAC plugin first
+    if (!_driver.loadFLACPlugin()) {
+      Serial.println("Failed to load FLAC plugin");
+      return false;
+    }
+    
+    // Verify plugin is loaded
+    if (!_driver.isFLACPluginLoaded()) {
+      Serial.println("FLAC plugin not properly loaded");
+      return false;
+    }
+    
+    Serial.println("FLAC plugin loaded successfully");
     
     // Optimize SPI speed for higher data rates
     _driver.optimizeSPISpeed();

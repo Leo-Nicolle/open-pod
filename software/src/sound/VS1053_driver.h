@@ -8,6 +8,7 @@
 
 #include <Arduino.h>
 #include <SPI.h>
+#include "VS1053_FLAC_plugin.h"
 
 // VS1053 Register definitions
 #define VS1053_SCI_READ 0x03
@@ -96,6 +97,11 @@ public:
   void configureClockRange(uint32_t xtalFreq);
   uint32_t getMaxSampleRate();
   void optimizeSPISpeed();
+  
+  // FLAC support methods
+  bool loadFLACPlugin();
+  bool isFLACPluginLoaded();
+  void writeFLACPluginData(const uint16_t* pluginData, size_t length);
   
   // Enhanced data transmission methods
   void sendDataBurst(const uint8_t* data, size_t len);

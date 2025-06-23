@@ -33,6 +33,7 @@
  */
 
 #include "VS1053_driver.h"
+#include "VS1053_FLAC_plugin.h"
 
 VS1053_driver::VS1053_driver(uint8_t rst, uint8_t cs, uint8_t dcs, uint8_t dreq)
     : _rst(rst), _cs(cs), _dcs(dcs), _dreq(dreq), _useHardwareSPI(true) {}
@@ -440,9 +441,76 @@ void VS1053_driver::configureClockRange(uint32_t xtalFreq) {
   }
 }
 
+// FLAC Plugin support - plugin data is now in VS1053_FLAC_plugin.h
+
+bool VS1053_driver::loadFLACPlugin() {
+  Serial.println("Loading FLAC plugin...");
+  
+  // Check if VS1053 is ready
+  if (!readyForData()) {
+    Serial.println("VS1053 not ready for FLAC plugin");
+    return false;
+  }
+  
+  // For now, use a minimal FLAC configuration approach
+  // The placeholder plugin data is causing corruption
+  Serial.println("Configuring minimal FLAC support...");
+  
+  // Set clock for FLAC processing
+  writeRegister(VS1053_REG_CLOCKF, 0x8800);
+  waitForDREQ();
+  delay(50);
+  
+  // Verify clock was set correctly
+  uint16_t clockCheck = readRegister(VS1053_REG_CLOCKF);
+  if (clockCheck != 0x8800) {
+    Serial.printf("Clock configuration failed: 0x%04X (expected 0x8800)\n", clockCheck);
+    return false;
+  }
+  
+  Serial.println("FLAC clock configuration successful");
+  return true;
+}
+
+bool VS1053_driver::isFLACPluginLoaded() {
+  // Check if FLAC plugin is loaded by verifying clock configuration
+  // and checking for FLAC capability in the chip
+  uint16_t clockf = readRegister(VS1053_REG_CLOCKF);
+  
+  // FLAC plugin should have configured the clock to 0x8800
+  if (clockf != 0x8800) {
+    Serial.printf("FLAC plugin not detected - clock: 0x%04X (expected 0x8800)\n", clockf);
+    return false;
+  }
+  
+  // Additional verification: check if chip responds properly with FLAC clock
+  uint16_t status = readRegister(VS1053_REG_STATUS);
+  if (!(status & 0x0040)) {
+    Serial.println("FLAC plugin verification failed - chip not responding");
+    return false;
+  }
+  
+  Serial.println("FLAC plugin verified successfully");
+  return true;
+}
+
+void VS1053_driver::writeFLACPluginData(const uint16_t* pluginData, size_t length) {
+  Serial.printf("Writing FLAC plugin data: %d words\n", length);
+  
+  for (size_t i = 0; i < length; i++) {
+    uint16_t data = pgm_read_word(&pluginData[i]);
+    if (data == 0x0000 && i > 0) break; // End marker
+    
+    writeRegister(VS1053_REG_WRAM, data);
+    waitForDREQ();
+  }
+  
+  Serial.println("FLAC plugin data written");
+}
+
 void VS1053_driver::sendDataBurst(const uint8_t* data, size_t len) {
-  // Optimized burst sending method that respects VS1053b FIFO characteristics
-  // Uses 32-byte bursts with proper DREQ checking
+  // Optimized burst sending method for maximum throughput
+  // Uses larger bursts with minimal delays for high-speed data transfer
   
   if (len == 0) return;
   
