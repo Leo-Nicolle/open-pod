@@ -74,7 +74,7 @@ void setup() {
     }
 
     // Initialize music index (loads from SD card)
-    if (!musicIndex.init("/music_index.bin")) {
+    if (!musicIndex.init("/openpod/music_index.bin")) {
         Serial.println("Music index init failed!");
         return;
     }

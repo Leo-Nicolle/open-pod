@@ -50,10 +50,6 @@ typedef struct {
 } cache_index_entry_t;
 
 
-typedef struct {
-    uint32_t address;
-    uint32_t length;
-} lookup_result_t;
 
 class MusicIndex {
 private:
@@ -106,8 +102,6 @@ private:
     // Core search methods
     uint32_t findNode(const char* query, uint32_t query_len);
     void collectResults(uint32_t node_index, search_result_t* results, uint32_t* result_count, uint32_t max_results);
-    uint32_t relationLookup(uint32_t id, index_header_t index_header);
-    lookup_result_t indexLookup(uint32_t id, index_header_t index_header);
     // String comparison (inline for speed)
     inline int compareStrings(const char* str1, const char* str2, uint32_t len) {
         while (len--) {
@@ -141,10 +135,10 @@ public:
     ~MusicIndex();
     
     // Initialize the music index by loading from SD card
-    bool init(const char* index_filename = "/music_index.bin");
+    bool init(const char* index_filename = "/openpod/music_index.bin");
     
     // Initialize with custom SDFat configuration
-    bool initWithSDConfig(SdSpiConfig sdConfig, const char* index_filename = "/music_index.bin");
+    bool initWithSDConfig(SdSpiConfig sdConfig, const char* index_filename = "/openpod/music_index.bin");
     
     // Get SDFat object reference for advanced operations
     SdFat& getSD() { return sd; }

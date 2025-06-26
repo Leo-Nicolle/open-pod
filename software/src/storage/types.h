@@ -34,22 +34,5 @@ typedef struct {
     uint32_t relevance;
 } search_result_t;
 
-typedef struct {
-  // address of the first source id in the PSRAM
-    uint32_t baseOffset;
-  // number of ids in the index
-    uint32_t ids;
-    // total length of the string data in the index
-    uint32_t data_size;
-} index_header_t;
-
-typedef struct {
-  // address of the first source id in the PSRAM
-    uint32_t baseOffset;
-    // number of sources ids in the index 
-    uint32_t sources;
-    // number of target ids in the index 
-    uint32_t targets;
-} relation_header_t;
 
 
