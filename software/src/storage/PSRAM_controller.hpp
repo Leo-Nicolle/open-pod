@@ -49,6 +49,7 @@ private:
   static volatile bool dmaTransferComplete;
   static volatile HAL_StatusTypeDef lastDmaStatus;
   bool dmaConfigured = false;
+  bool initialized = false;
 
   void setupPins() {
     pinMode(PSRAM_CS, OUTPUT);
@@ -61,6 +62,7 @@ private:
 
   // 🚀 Manual DMA Configuration for SPI2
   bool configureDMA() {
+    return false;
     Serial.println("🔧 Configuring DMA manually...");
 
     // Enable DMA clocks
@@ -142,7 +144,7 @@ private:
   }
 
   // 🚀 Optimized blocking transfer (fallback when DMA fails)
-  bool spiTransferOptimized(uint8_t *txData, uint8_t *rxData, uint32_t size) {
+  bool spiTransfer(uint8_t *txData, uint8_t *rxData, uint32_t size) {
     if (!hspi || size == 0)
       return false;
 
@@ -186,6 +188,7 @@ public:
   }
 
   bool init() {
+    if(initialized)return true;
     Serial.println("=== PSRAM INIT START (Manual DMA) ===");
     Serial.flush();
     delay(100);
@@ -204,6 +207,7 @@ public:
     uint8_t id[2] = {0, 0};
     if (!readDeviceID(id)) {
       Serial.println("Failed to read device ID");
+      initialized = false;
       return false;
     }
 
@@ -217,11 +221,19 @@ public:
       Serial.print(id[0], HEX);
       Serial.print(" 0x");
       Serial.println(id[1], HEX);
-      return false;
+      initialized = false;
+    }else{
+      Serial.println("✅ PSRAM ID verified: 0x0D 0x5D");
+      initialized = true;
     }
+    return initialized;
+  }
 
-    Serial.println("✅ PSRAM ID verified: 0x0D 0x5D");
-    return true;
+  bool isInitialized() const {
+    return initialized;
+  }
+  bool isDMAConfigured() const {
+    return dmaConfigured;
   }
 
   void resetDevice() {
@@ -260,8 +272,7 @@ public:
     return true;
   }
 
-  // 🚀 Smart write with DMA fallback
-  bool writeChunkDMA(uint32_t address, uint8_t *data, uint32_t size) {
+  bool writeChunkDMA(uint32_t address, uint8_t *data, uint32_t size, bool copy) {
     if (!data || size == 0)
       return false;
 
@@ -269,7 +280,7 @@ public:
       const uint32_t CHUNK_SIZE = DMA_BUFFER_SIZE - 4;
       while (size > 0) {
         uint32_t currentChunk = (size > CHUNK_SIZE) ? CHUNK_SIZE : size;
-        if (!writeChunkDMA(address, data, currentChunk)) {
+        if (!writeChunkDMA(address, data, currentChunk, copy)) {
           return false;
         }
         address += currentChunk;
@@ -314,7 +325,7 @@ public:
 
     // Fallback to optimized blocking transfer
     if (!success) {
-      success = spiTransferOptimized(dmaWriteBuf, nullptr, size + 4);
+      success = spiTransfer(dmaWriteBuf, nullptr, size + 4);
       if (success) {
         Serial.println("✅ Blocking write successful");
       }
@@ -324,7 +335,6 @@ public:
     return success;
   }
 
-  // 🚀 Smart read with DMA fallback
   bool readChunkDMA(uint32_t address, uint8_t *data, uint32_t size) {
     if (!data || size == 0)
       return false;
@@ -387,7 +397,7 @@ public:
 
     // Fallback to optimized blocking transfer
     if (!success) {
-      success = spiTransferOptimized(txBuf, rxBuf, totalLen);
+      success = spiTransfer(txBuf, rxBuf, totalLen);
       if (success) {
         Serial.println("✅ Blocking read successful");
       }
@@ -402,7 +412,7 @@ public:
     return success;
   }
 
-  bool writeData(uint32_t address, uint8_t *data, uint32_t size) {
+  bool writeData(uint32_t address, uint8_t *data, uint32_t size, bool copy) {
     if (!data || size == 0)
       return false;
 
@@ -412,7 +422,7 @@ public:
       uint32_t remainingInPage = PAGE_SIZE - pageOffset;
       uint32_t chunkSize = (size > remainingInPage) ? remainingInPage : size;
 
-      if (!writeChunkDMA(address, data, chunkSize)) {
+      if (!writeChunkDMA(address, data, chunkSize, copy)) {
         return false;
       }
 
@@ -441,79 +451,6 @@ public:
     return true;
   }
 
-  // 🧪 Enhanced performance test
-  bool testDMAPerformance() {
-    Serial.println("=== DMA PERFORMANCE TEST (Large Buffers) ===");
-    delay(50);
-
-    // Test with larger buffer size to demonstrate DMA efficiency
-    const uint32_t TEST_SIZE = DMA_BUFFER_SIZE * 2; // 8KB test
-    static uint8_t testBuffer[DMA_BUFFER_SIZE * 2];
-    static uint8_t readBuffer[DMA_BUFFER_SIZE * 2];
-    
-    Serial.printf("🔧 DMA Buffer Size: %d bytes\n", DMA_BUFFER_SIZE);
-    Serial.printf("📊 Test Size: %d bytes\n", TEST_SIZE);
-
-    // Fill test buffer
-    for (uint32_t i = 0; i < TEST_SIZE; i++) {
-      testBuffer[i] = (i ^ (i >> 8) ^ (i >> 4)) & 0xFF;
-    }
-
-    // Write test
-    Serial.println("🚀 Testing Write Performance...");
-    uint32_t startTime = micros();
-
-    if (!writeData(0x200000, testBuffer, TEST_SIZE)) {
-      Serial.println("❌ Write test failed");
-      return false;
-    }
-
-    uint32_t writeTime = micros() - startTime;
-    float writeSpeed = (float)TEST_SIZE / writeTime;
-
-    Serial.printf("📈 Write: %lu bytes in %lu µs (%.2f MB/s)\n", TEST_SIZE,
-                  writeTime, writeSpeed);
-
-    delay(10);
-
-    // Read test
-    Serial.println("🚀 Testing Read Performance...");
-    memset(readBuffer, 0, TEST_SIZE);
-
-    startTime = micros();
-    if (!readData(0x200000, readBuffer, TEST_SIZE)) {
-      Serial.println("❌ Read test failed");
-      return false;
-    }
-    uint32_t readTime = micros() - startTime;
-    float readSpeed = (float)TEST_SIZE / readTime;
-
-    Serial.printf("📈 Read: %lu bytes in %lu µs (%.2f MB/s)\n", TEST_SIZE,
-                  readTime, readSpeed);
-
-    // Verify data
-    bool dataOK = true;
-    for (uint32_t i = 0; i < TEST_SIZE; i++) {
-      if (testBuffer[i] != readBuffer[i]) {
-        Serial.printf("❌ Data error at %lu: %02X != %02X\n", i, testBuffer[i],
-                      readBuffer[i]);
-        dataOK = false;
-        break;
-      }
-    }
-
-    if (dataOK) {
-      Serial.println("✅ Data integrity: PERFECT");
-      Serial.printf("🎯 Mode: %s\n",
-                    dmaConfigured ? "DMA" : "Optimized Blocking");
-      Serial.println("🎉 === PERFORMANCE TEST PASSED ===");
-      return true;
-    } else {
-      Serial.println("❌ Data integrity failed");
-      return false;
-    }
-  }
-
   uint32_t getCapacity() { return 8 * 1024 * 1024; }
   uint32_t getPageSize() { return 1024; }
   
@@ -521,15 +458,10 @@ public:
   uint8_t* getDMAWriteBuffer() { return dmaWriteBuf; }
   uint8_t* getDMAReadBuffer() { return dmaReadBuf; }
   uint32_t getDMABufferSize() { return DMA_BUFFER_SIZE; }
-
-  // Legacy compatibility
-  bool testPSRAM() { return testDMAPerformance(); }
-  bool testSpeed() { return testDMAPerformance(); }
-  bool testExtended() { return testDMAPerformance(); }
-
   // Static callback for DMA completion
   static void dmaCompleteCallback(HAL_StatusTypeDef status) {
     dmaTransferComplete = true;
     lastDmaStatus = status;
   }
 };
+extern SPI_PSRAM psram;

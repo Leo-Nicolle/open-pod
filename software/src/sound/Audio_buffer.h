@@ -11,14 +11,17 @@
 
 #include "../storage/PSRAM_controller.hpp"
 
-// Buffer configuration optimized for VS1053b
+// Buffer configuration optimized for VS1053b and DMA
 #define AUDIO_DATABUFFERLEN 32                // Matches VS1053_BURST_SIZE for feeding
-#define AUDIO_PRELOAD_CHUNK_SIZE 32         // Chunk size for preloading (VS1053b FIFO)
+#define AUDIO_PRELOAD_CHUNK_SIZE (DMA_BUFFER_SIZE - 4)  // Use full DMA buffer minus header
+#define AUDIO_LARGE_READ_SIZE (DMA_BUFFER_SIZE - 5)     // For PSRAM reads minus command
 
 /*!
  * @class Audio_buffer
  * @brief Manages audio streaming from SD card using a circular buffer in PSRAM
  */
+class SDToPSRAMTest; // Forward declaration
+
 class Audio_buffer {
 public:
   explicit Audio_buffer(uint8_t sdCS);
@@ -33,18 +36,19 @@ public:
   SdFat &getSD() { return _sd; }
   void resetRingBuffer();
 
+  friend class SDToPSRAMTest; // Allow SDToPSRAMTest to access private/protected members
+
 protected:
   // SD card
   uint8_t _sdCS;
   SdFat _sd;
   File file;
   size_t fileSize;
-  char _currentFileName[64]; 
+  char _currentFileName[64];
   uint8_t _dataBuffer[AUDIO_DATABUFFERLEN];
-  // temp to read from SD card to PSRAM
-  uint8_t temp[AUDIO_PRELOAD_CHUNK_SIZE];
+  // No more temp buffer - we'll use DMA buffers directly
   int filePos = 0; // Current position in the file
-  SPI_PSRAM* _psram = nullptr;
+  // SPI_PSRAM _psram = nullptr;
   uint32_t _psramBaseAddress = 0;
   static const uint32_t _psramBufferSize = AUDIO_BUFFER_SIZE;
 

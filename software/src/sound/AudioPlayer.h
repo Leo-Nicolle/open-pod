@@ -10,7 +10,7 @@
 #include "Audio_buffer.h"
 #include "VS1053_driver.h"
 #include <Arduino.h>
-
+#include "pinout.h"
 // Interrupt types
 #define AUDIOPLAYER_PIN_INT 1
 #define AUDIOPLAYER_TIMER_INT 2
