@@ -212,7 +212,7 @@ bool MusicIndex::loadFromSDCard(const char *filename) {
       return false;
     }
 
-    psram->writeData(psram_addr, buffer, actual_read, true);
+    psram->writeData(psram_addr, buffer, actual_read);
     psram_addr += actual_read;
     bytes_read += actual_read;
 
@@ -288,7 +288,7 @@ bool MusicIndex::loadPathIndexFromSDCard(const char *filename) {
       return false;
     }
 
-    psram->writeData(psram_addr, buffer, actual_read, true);
+    psram->writeData(psram_addr, buffer, actual_read);
     psram_addr += actual_read;
     bytes_read += actual_read;
   }

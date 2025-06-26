@@ -96,43 +96,27 @@ bool Audio_buffer::SDtoPSRAM() {
     return false; // Buffer is full, can't write more
   }
   
-  // Use large DMA buffer for efficient transfers
-  size_t toRead = min(remainingFile, min((size_t)AUDIO_PRELOAD_CHUNK_SIZE, freeSpace));
-  
-  // Get direct access to DMA write buffer (skip 4 bytes for PSRAM command header)
-  uint8_t* dmaBuffer = psram.getDMAWriteBuffer() + 4;
+  size_t toRead =
+      min(remainingFile, min((size_t)AUDIO_PRELOAD_CHUNK_SIZE, freeSpace));
+  static uint8_t temp[AUDIO_PRELOAD_CHUNK_SIZE];
   
   unsigned long t0 = micros();
-  size_t read = file.read(dmaBuffer, toRead);
+  size_t read = file.read(temp, toRead);
   unsigned long t1 = micros();
-  
-  if (read == 0) {
-    file.close();
-    return false;
-  }
-  
-  // Handle ring buffer wrapping efficiently
+  // Serial.printf("SD read %u bytes in %lu us (%.2f KB/s)\n", read, t1-t0, (read/1024.0)/((t1-t0)/1000000.0));
   bool wraps = (_psramHead + read) > _psramBufferSize;
+  size_t writeSize = wraps ? (_psramBufferSize - _psramHead) : read;
+  size_t wrapWriteSize = wraps ? (read - writeSize) : 0;
+  t0 = micros();
   noInterrupts();
-  if (wraps) {
-    // Split write across buffer boundary
-    size_t writeSize = _psramBufferSize - _psramHead;
-    size_t wrapWriteSize = read - writeSize;
-    
-    // First chunk to end of buffer
-    psram.writeData(_psramBaseAddress + _psramHead, dmaBuffer, writeSize, false);
-    // Second chunk to beginning of buffer
-    if (wrapWriteSize > 0) {
-      psram.writeData(_psramBaseAddress, dmaBuffer + writeSize, wrapWriteSize,false);
-    }
-  } else {
-    // Single contiguous write
-    psram.writeData(_psramBaseAddress + _psramHead, dmaBuffer, read, false);
+  psram.writeData(_psramBaseAddress + _psramHead, temp, writeSize);
+  if (wrapWriteSize > 0) {
+    psram.writeData(_psramBaseAddress, temp + writeSize, wrapWriteSize);
   }
-  
   _psramHead = (_psramHead + read) % _psramBufferSize;
   interrupts();
-  
+  t1 = micros();
+  // Serial.printf("PSRAM write %u bytes in %lu us (%.2f KB/s)\n", read, t1-t0, (read/1024.0)/((t1-t0)/1000000.0));
   // Set buffer full flag if head catches up to tail
   if (_psramHead == _psramTail) {
     closeFile();
@@ -146,9 +130,6 @@ bool Audio_buffer::SDtoPSRAM() {
   return true;
 }
 bool Audio_buffer::load() {
-  if (!psram.isInitialized())
-    return false;
-
   if (_bufferFull && getPSRAMDataSize() > (_psramBufferSize / 10))
     return true;
   SDtoPSRAM();
@@ -156,53 +137,24 @@ bool Audio_buffer::load() {
 }
 
 size_t Audio_buffer::readData(uint8_t *buffer, size_t maxLen) {
-  if (!psram.isInitialized()) 
-    return 0;
-
   if ((_psramTail == _psramHead) && !_bufferFull)
     return 0;
 
   size_t available = getPSRAMDataSize();
-  size_t toRead = min(maxLen, available);
+  size_t toRead = (maxLen < available) ? maxLen : available;
   
   if (toRead == 0)
     return 0;
 
-  // For small reads (typical audio chunks), use direct transfer
-  if (toRead <= AUDIO_DATABUFFERLEN) {
-    size_t firstChunk = min(toRead, (size_t)(_psramBufferSize - _psramTail));
-    size_t secondChunk = toRead - firstChunk;
+  // Handle ring buffer wrapping
+  size_t firstChunk = (toRead < (_psramBufferSize - _psramTail)) ? toRead : (_psramBufferSize - _psramTail);
+  size_t secondChunk = toRead - firstChunk;
 
-    noInterrupts();
-    psram.readData(_psramBaseAddress + _psramTail, buffer, firstChunk);
-    if (secondChunk)
-      psram.readData(_psramBaseAddress, buffer + firstChunk, secondChunk);
-    interrupts();
-  }
-  // For larger reads, use DMA buffer for efficiency
-  else {
-    uint8_t* dmaReadBuf = psram.getDMAReadBuffer();
-    size_t totalRead = 0;
-    
-    while (totalRead < toRead) {
-      size_t chunkSize = min(toRead - totalRead, (size_t)AUDIO_LARGE_READ_SIZE);
-      size_t currentTail = (_psramTail + totalRead) % _psramBufferSize;
-      
-      size_t firstChunk = min(chunkSize, (size_t)(_psramBufferSize - currentTail));
-      size_t secondChunk = chunkSize - firstChunk;
-      
-      noInterrupts();
-      // Read into DMA buffer first
-      psram.readData(_psramBaseAddress + currentTail, dmaReadBuf, firstChunk);
-      if (secondChunk)
-        psram.readData(_psramBaseAddress, dmaReadBuf + firstChunk, secondChunk);
-      interrupts();
-      
-      // Copy from DMA buffer to user buffer
-      memcpy(buffer + totalRead, dmaReadBuf, chunkSize);
-      totalRead += chunkSize;
-    }
-  }
+  noInterrupts();
+  psram.readData(_psramBaseAddress + _psramTail, buffer, firstChunk);
+  if (secondChunk > 0)
+    psram.readData(_psramBaseAddress, buffer + firstChunk, secondChunk);
+  interrupts();
 
   _psramTail = (_psramTail + toRead) % _psramBufferSize;
   _bufferFull = false;

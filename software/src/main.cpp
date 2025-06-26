@@ -7,7 +7,7 @@
 #include "storage/PSRAM_controller.hpp"
 #include "storage/PSRAM_test.hpp"
 #include "sound/test_file_transfert.hpp"
-#include "sound/pinout.h"
+#include "pinout.h"
 #include <Arduino.h>
 
 // PodPlayer player;
@@ -16,14 +16,13 @@ PSRAM_test psramTest;
 void setup() {
   Serial.begin(115200);
   delay(1000);
-// Enable DMA clock (example for STM32F4)
-__HAL_RCC_DMA1_CLK_ENABLE();
-__HAL_RCC_DMA2_CLK_ENABLE();
+
   Serial.println("\n=== FIXED VS1053 Audio Player ===");
   Serial.println("Initializing...");
   // player.setup();
   // psramTest.testTransferSpeed(); // Test SD to PSRAM transfer speed
-  psramTest.testDMAPerformance();
+  psramTest.testExtended();
+  psramTest.testSpeed();
 
   delay(1000);
   Serial.println("Starting playback...");

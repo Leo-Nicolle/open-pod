@@ -8,13 +8,14 @@
 
 #include <Arduino.h>
 #include <SdFat.h>
+#include "../pinout.h"
 
 #include "../storage/PSRAM_controller.hpp"
 
-// Buffer configuration optimized for VS1053b and DMA
+// Buffer configuration optimized for VS1053b
 #define AUDIO_DATABUFFERLEN 32                // Matches VS1053_BURST_SIZE for feeding
-#define AUDIO_PRELOAD_CHUNK_SIZE (DMA_BUFFER_SIZE - 4)  // Use full DMA buffer minus header
-#define AUDIO_LARGE_READ_SIZE (DMA_BUFFER_SIZE - 5)     // For PSRAM reads minus command
+#define AUDIO_PRELOAD_CHUNK_SIZE 4096         // 4KB chunks for efficient transfers
+#define AUDIO_LARGE_READ_SIZE 4096            // For PSRAM reads
 
 /*!
  * @class Audio_buffer
