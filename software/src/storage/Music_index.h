@@ -4,48 +4,9 @@
 #include <SdFat.h>  // Changed from SD.h to SdFat.h
 #include <string.h>
 #include "PSRAM_controller.hpp"
-#define SDCS     PA4
+#include "types.h" 
+#include "../pinout.h"
 
-// Music index data structures (matches the generated trie format)
-// typedef struct __attribute__((packed)) {
-typedef struct {
-    uint32_t key_offset;
-    uint32_t key_length;
-    uint32_t child_count;
-    uint32_t first_child_offset;
-    uint32_t result_count;
-    uint32_t first_result_offset;
-} trie_node_t;
-
-typedef struct {
-    uint32_t type;  // 0=track, 1=artist, 2=album, 3=genre
-    uint32_t id;
-    uint32_t name_offset;
-    uint32_t name_length;
-    uint32_t relevance;
-} search_result_t;
-
-// Header structure for the binary trie data
-typedef struct {
-    uint32_t string_pool_size;
-    uint32_t node_count;
-    uint32_t result_count;
-    uint32_t string_offset_count;
-} trie_header_t;
-
-// Path index data structures
-typedef struct {
-    uint32_t track_count;
-    uint32_t path_data_size;
-} path_index_header_t;
-
-// Search result types
-enum SearchType {
-    SEARCH_TRACK = 0,
-    SEARCH_ARTIST = 1,
-    SEARCH_ALBUM = 2,
-    SEARCH_GENRE = 3
-};
 
 // Maximum results to return from searches
 #define MAX_SEARCH_RESULTS 50
@@ -68,7 +29,7 @@ typedef struct {
 typedef struct {
     uint32_t node_index;
     trie_node_t node;
-    uint16_t access_count;  // Reduced size, use counter instead of timestamp
+    uint16_t access_count;
     uint8_t valid;
     uint8_t _padding;       // Alignment padding
 } node_cache_entry_t;
@@ -79,7 +40,7 @@ typedef struct {
     uint16_t access_count;
     char data[MAX_CACHED_STRING_LEN];
     uint8_t valid;
-    uint8_t _padding[3];    // Alignment padding
+    uint8_t _padding[3];    
 } string_cache_entry_t;
 
 // Sorted index for binary search in cache
@@ -87,6 +48,12 @@ typedef struct {
     uint16_t cache_slot;
     uint32_t node_index;
 } cache_index_entry_t;
+
+
+typedef struct {
+    uint32_t address;
+    uint32_t length;
+} lookup_result_t;
 
 class MusicIndex {
 private:
@@ -103,13 +70,6 @@ private:
     uint32_t nodes_offset;
     uint32_t results_offset;
     
-    // Path index data
-    uint32_t path_index_base_address;
-    uint32_t path_data_offset;
-    uint32_t path_offsets_offset;
-    uint32_t track_ids_offset;
-    path_index_header_t path_header;
-    bool path_index_initialized;
     
     // Header data
     trie_header_t header;
@@ -131,10 +91,7 @@ private:
     
     // Helper methods
     bool loadFromSDCard(const char* filename);
-    bool loadPathIndexFromSDCard(const char* filename);
     void readString(uint32_t offset, uint32_t length, char* buffer, uint32_t buffer_size);
-    void readPathString(uint32_t offset, uint32_t length, char* buffer, uint32_t buffer_size);
-    int32_t binarySearchTrackId(uint32_t track_id);
     
     // Optimized batch loading methods
     void loadNodeBatch(uint32_t start_index, uint32_t count);
@@ -149,7 +106,8 @@ private:
     // Core search methods
     uint32_t findNode(const char* query, uint32_t query_len);
     void collectResults(uint32_t node_index, search_result_t* results, uint32_t* result_count, uint32_t max_results);
-    
+    uint32_t relationLookup(uint32_t id, index_header_t index_header);
+    lookup_result_t indexLookup(uint32_t id, index_header_t index_header);
     // String comparison (inline for speed)
     inline int compareStrings(const char* str1, const char* str2, uint32_t len) {
         while (len--) {
@@ -185,17 +143,11 @@ public:
     // Initialize the music index by loading from SD card
     bool init(const char* index_filename = "/music_index.bin");
     
-    // Initialize the path index by loading from SD card
-    bool initPathIndex(const char* path_index_filename = "/music_index_paths.bin");
-    
     // Initialize with custom SDFat configuration
     bool initWithSDConfig(SdSpiConfig sdConfig, const char* index_filename = "/music_index.bin");
     
     // Get SDFat object reference for advanced operations
     SdFat& getSD() { return sd; }
-    
-    // Path lookup function
-    bool getTrackPath(uint32_t track_id, char* buffer, uint32_t buffer_size);
     
     // Search functions
     uint32_t searchByPrefix(const char* prefix, search_result_t* results, uint32_t max_results);
@@ -203,12 +155,6 @@ public:
     uint32_t searchAlbums(const char* prefix, search_result_t* results, uint32_t max_results);
     uint32_t searchTracks(const char* prefix, search_result_t* results, uint32_t max_results);
     uint32_t searchGenres(const char* prefix, search_result_t* results, uint32_t max_results);
-    
-    // Relationship queries
-    uint32_t getArtistsByGenre(uint32_t genre_id, search_result_t* results, uint32_t max_results);
-    uint32_t getAlbumsByArtist(uint32_t artist_id, search_result_t* results, uint32_t max_results);
-    uint32_t getTracksByArtist(uint32_t artist_id, search_result_t* results, uint32_t max_results);
-    uint32_t getTracksByAlbum(uint32_t album_id, search_result_t* results, uint32_t max_results);
     
     // Utility functions
     void getResultName(const search_result_t& result, char* buffer, uint32_t buffer_size);
