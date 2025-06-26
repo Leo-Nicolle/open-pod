@@ -81,6 +81,8 @@ export async function readMetadata(root: string): Promise<CrawlIndex> {
   const artistToTracks = new Map<number, Set<number>>();
   const genreToTracks = new Map<number, Set<number>>();
   const genreToAlbums = new Map<number, Set<number>>();
+  const genreToArtists = new Map<number, Set<number>>();
+
   const metadataByTrackIndex = new Map<number, TrackMetadata>();
   const trackIndexCounter = { value: 0 };
   const artistIndexCounter = { value: 0 };
@@ -150,6 +152,9 @@ export async function readMetadata(root: string): Promise<CrawlIndex> {
 
     if (!genreToAlbums.has(genreId)) genreToAlbums.set(genreId, new Set());
     genreToAlbums.get(genreId)!.add(albumId);
+
+    if (!genreToArtists.has(genreId)) genreToArtists.set(genreId, new Set());
+    genreToArtists.get(genreId)!.add(artistId);
   });
 
   // Optionally, you can serialize this to a JSON or binary format here
@@ -165,6 +170,7 @@ export async function readMetadata(root: string): Promise<CrawlIndex> {
     artistToTracks,
     genreToAlbums,
     genreToTracks,
+    genreToArtists,
   };
 }
 
@@ -205,6 +211,12 @@ export function serialize(indexes: CrawlIndex): string {
         Array.from(v),
       ])
     ),
+    genreToArtists: Array.from(
+      Array.from(indexes.genreToArtists.entries()).map(([k, v]) => [
+        k,
+        Array.from(v),
+      ])
+    ),
     metadataByTrackIndex: Array.from(indexes.metadataByTrackIndex.entries()),
   };
   return JSON.stringify(data, null, 2);
@@ -231,6 +243,14 @@ export function unserialize(data: string): CrawlIndex {
   );
   const genreToTracks = new Map<number, Set<number>>(
     parsed.genreToTracks.map(([k, v]: [number, number[]]) => [k, new Set(v)])
+  );
+  const genreToArtists = new Map<number, Set<number>>(
+    parsed.genreToArtists
+      ? parsed.genreToArtists.map(([k, v]: [number, number[]]) => [
+          k,
+          new Set(v),
+        ])
+      : []
   );
   const metadataByTrackIndex = new Map<number, TrackMetadata>(
     parsed.metadataByTrackIndex.map(
@@ -259,6 +279,7 @@ export function unserialize(data: string): CrawlIndex {
     artistToTracks,
     genreToAlbums,
     genreToTracks,
+    genreToArtists,
     metadataByTrackIndex,
   };
 }

@@ -70,6 +70,7 @@ export type CrawlIndex = {
   artistToTracks: Map<number, Set<number>>;
   genreToAlbums: Map<number, Set<number>>;
   genreToTracks: Map<number, Set<number>>;
+  genreToArtists: Map<number, Set<number>>;
 };
 
 // Path index types for track path lookup
@@ -77,10 +78,26 @@ export type PathIndex = {
   trackPaths: Map<number, string>; // trackId -> filePath
 };
 
-export type SerializedPathIndex = {
+// Types for serialized data
+export type SerializedStringIndex = {
+  entryCount: number;
+  stringData: string;
+  stringOffsets: number[];
+  ids: number[];
+};
+
+export type SerializedRelationshipMap = {
+  entryCount: number;
+  totalTargetCount: number;
+  sourceIds: number[];
+  targetCounts: number[];
+  targetIds: number[];
+};
+
+// Legacy type for compatibility
+export type SerializedPathIndex = SerializedStringIndex & {
   trackCount: number;
-  offsets: number[]; // byte offsets for each track path
-  trackIds: number[]; // sorted track IDs for binary search
-  paths: Uint8Array[];
-  byteLength: number; // total byte length of all paths
+  pathData: string;
+  pathOffsets: number[];
+  trackIds: number[];
 };

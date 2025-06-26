@@ -6,25 +6,34 @@ import {
   serializeTrie,
   exportToBinary,
   getSerializedTrieStats,
-  importFromBinary,
-  exportPathIndexToBinary,
-  getSerializedPathIndexStats,
-  importPathIndexFromBinary,
-} from "./src/trie";
+  exportIndexesToBinary,
+} from "./src";
 import fs from "fs/promises";
 import path from "path";
 
 async function main() {
   const musicPath = process.argv[2];
-  const outputPath = process.argv[3] || "./music_index.bin";
-  const pathIndexPath = outputPath.replace(".bin", "_paths.bin");
-
+  const outputPath = process.argv[3] || ".";
+  const exists = await fs
+    .access(outputPath)
+    .then(() => true)
+    .catch(() => false);
+  const isDirectory = await fs
+    .lstat(outputPath)
+    .then((stat) => stat.isDirectory())
+    .catch(() => false);
+  if (!exists || !isDirectory) {
+    console.error(
+      `Error: Output folder '${outputPath}' does not exist or is not a directory`
+    );
+    process.exit(1);
+  }
   if (!musicPath) {
     console.error(
       "Usage: tsx generate-index.ts <music-directory> [output-file]"
     );
     console.error(
-      "Example: tsx generate-index.ts /path/to/music ./music_index.bin"
+      "Example: tsx generate-index.ts /path/to/music /media/me/SD_card/openpod"
     );
     process.exit(1);
   }
@@ -40,7 +49,6 @@ async function main() {
   console.log("=== Music Index Generator ===");
   console.log(`Input: ${musicPath}`);
   console.log(`Output: ${outputPath}`);
-  console.log(`Path Index: ${pathIndexPath}`);
   console.log("");
 
   // Step 1: Crawl music directory
@@ -55,7 +63,6 @@ async function main() {
   console.log(`  - ${crawlIndex.indexToGenre.size} genres`);
   console.log("");
 
-  // Step 2: Build trie
   console.log("🌳 Building search trie...");
   const trie = buildTrieFromCrawlIndex(crawlIndex, {
     includePartialMatches: true,
@@ -63,13 +70,9 @@ async function main() {
     minPrefixLength: 2,
     maxResults: 20,
   });
-  debugger;
 
-  // Step 3: Serialize trie
   console.log("📦 Serializing trie...");
   const serialized = serializeTrie(trie);
-
-  // Step 4: Get statistics
   const stats = getSerializedTrieStats(serialized);
   console.log("📊 Index statistics:");
   console.log(`  - String pool: ${stats.stringPoolSize} bytes`);
@@ -77,58 +80,19 @@ async function main() {
   console.log(`  - Results: ${stats.resultCount}`);
   console.log(`  - Total size: ${stats.totalSize} bytes`);
 
-  // Step 5: Export to binary
-  console.log("💾 Exporting to binary...");
   const binaryData = exportToBinary(serialized);
   console.log(`  - Binary size: ${binaryData.length} bytes`);
-
-  // Step 6: Save binary file
-  await fs.writeFile(outputPath, binaryData);
+  await fs.writeFile(path.resolve(outputPath, "music_index.bin"), binaryData);
   console.log(`✅ Binary file saved: ${outputPath}`);
+  const indexes = exportIndexesToBinary(crawlIndex);
+  for (const [key, value] of Object.entries(indexes)) {
+    await fs.writeFile(path.resolve(outputPath, `${key}.bin`), value);
+  }
 
-  // // Step 9: Get path index statistics
-  // const pathStats = getSerializedPathIndexStats(serializedPathIndex);
-  // console.log("📊 Path index statistics:");
-  // console.log(`  - Track count: ${pathStats.trackCount}`);
-  // console.log(`  - Path data: ${pathStats.pathDataSize} bytes`);
-  // console.log(`  - Total size: ${pathStats.totalSize} bytes`);
-
-  // Step 10: Export path index to binary
-  console.log("💾 Exporting path index to binary...");
-  const pathBinaryData = exportPathIndexToBinary(crawlIndex);
-  console.log(`  - Path index binary size: ${pathBinaryData.length} bytes`);
-
-  // Step 11: Save path index binary file
-  await fs.writeFile(pathIndexPath, pathBinaryData);
-  console.log(`✅ Path index binary file saved: ${pathIndexPath}`);
-
-  // Verification: Read back and verify both files
-  const read = await fs.readFile(outputPath);
-  const parsed = importFromBinary(read);
-  const trieStats = getSerializedTrieStats(parsed);
-  console.log("📖 Parsed binary statistics:");
-  console.log(`  - String pool: ${trieStats.stringPoolSize} bytes`);
-  console.log(`  - Nodes: ${trieStats.nodeCount}`);
-  console.log(`  - Results: ${trieStats.resultCount}`);
-  console.log(`  - Total size: ${trieStats.totalSize} bytes`);
-
-  const pathRead = await fs.readFile(pathIndexPath);
-  const parsedPathIndex = importPathIndexFromBinary(pathRead);
-  const verifyPathStats = getSerializedPathIndexStats(parsedPathIndex);
-  console.log("📖 Parsed path index statistics:");
-  console.log(`  - Track count: ${verifyPathStats.trackCount}`);
-  console.log(`  - Path data: ${verifyPathStats.pathDataSize} bytes`);
-  console.log(`  - Total size: ${verifyPathStats.totalSize} bytes`);
-
-  console.log("");
   console.log("🎵 Music index generation complete!");
   console.log("");
   console.log("Next steps:");
-  console.log(
-    `1. Copy ${path.basename(outputPath)} and ${path.basename(
-      pathIndexPath
-    )} to your SD card root`
-  );
+  console.log(`1. Copy the .bin files to your SD card root`);
   console.log("2. Use MusicIndex::init() in your STM32 code");
   console.log("3. Search with MusicIndex::searchByPrefix()");
   console.log("4. Use the path index to get file paths for selected tracks");

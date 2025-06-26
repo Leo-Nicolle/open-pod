@@ -8,7 +8,7 @@ import type {
   SerializedResult,
   TrieConfig,
 } from "./types";
-import { normalizeString } from "./utils";
+import { normalizeString, removeAccents } from "./utils";
 
 function insert(node: TrieNode, key: string, result: SearchResult): void {
   for (let i = 0; i < node.children.length; i++) {
