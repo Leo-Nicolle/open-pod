@@ -13,50 +13,6 @@ import path from "path";
 import { __dirname } from "./utils";
 
 describe("Binary Serialization Round-trip", () => {
-  // Create a simple test dataset
-  const createTestCrawlIndex2 = (): CrawlIndex => {
-    const indexToTrack = new Map<number, string>();
-    const indexToArtist = new Map<number, string>();
-    const indexToAlbum = new Map<number, string>();
-    const indexToGenre = new Map<number, string>();
-    const indexToPath = new Map<number, string>();
-
-    const artistToAlbums = new Map<number, Set<number>>();
-    const albumToTracks = new Map<number, Set<number>>();
-    const artistToTracks = new Map<number, Set<number>>();
-    const genreToTracks = new Map<number, Set<number>>();
-    const genreToAlbums = new Map<number, Set<number>>();
-    const metadataByTrackIndex = new Map();
-
-    // Add test data
-    indexToTrack.set(0, "Hello World");
-    indexToTrack.set(1, "Test Song");
-    indexToTrack.set(2, "Another Track");
-
-    indexToArtist.set(0, "Test Artist");
-    indexToArtist.set(1, "Another Artist");
-
-    indexToAlbum.set(0, "Test Album");
-    indexToAlbum.set(1, "Another Album");
-
-    indexToGenre.set(0, "Rock");
-    indexToGenre.set(1, "Jazz");
-
-    return {
-      indexToTrack,
-      indexToArtist,
-      indexToAlbum,
-      indexToGenre,
-      indexToPath,
-      artistToAlbums,
-      albumToTracks,
-      artistToTracks,
-      genreToTracks,
-      genreToAlbums,
-      metadataByTrackIndex,
-    };
-  };
-
   const createTestCrawlIndex = async (): Promise<CrawlIndex> => {
     // const data = await fs.readFile("./stubs/crawl-index.json", "utf-8");
     return Promise.resolve(
@@ -65,18 +21,13 @@ describe("Binary Serialization Round-trip", () => {
   };
 
   it("should read binary correctly", async () => {
-    const ls = await readdir(".");
     const binaryData = await readFile(
       path.join(__dirname, "./stubs/music_index.bin")
     );
     const importedSerialized = importFromBinary(binaryData);
 
     expect(importedSerialized.stringPool.length).toBe(8425);
-    // expect(importedSerialized.stringPool).toBe(encoded);
     expect(importedSerialized.stringOffsets.length).toBe(885);
-    // expect(importedSerialized.stringOffsets).toEqual(
-    //   originalSerialized.stringOffsets
-    // );
     expect(importedSerialized.nodes.length).toBe(933);
   });
 

@@ -1,4 +1,4 @@
-import type { TrieNode } from "./types";
+import type { SerializedPathIndex, SerializedTrie, TrieNode } from "./types";
 
 // Diagnostic utilities for analyzing trie structure
 export type TrieNodeStats = {
@@ -101,6 +101,38 @@ export function analyzeTrieStructure(
   };
 }
 
+// Utility functions for working with serialized trie (for STM32)
+export function getSerializedTrieStats(serialized: SerializedTrie) {
+  const stringPoolSize = serialized.stringPool.length;
+  const nodeCount = serialized.nodes.length;
+  const resultCount = serialized.results.length;
+
+  // Calculate exact memory usage including alignment
+  // Use TextEncoder to get the actual byte length of the string pool
+  const encoder = new TextEncoder();
+  const stringPoolBytes = encoder.encode(serialized.stringPool).length;
+  // Add padding for 4-byte alignment after string pool
+  const stringPoolPadding = 0; //(4 - (stringPoolBytes % 4)) % 4;
+  const stringOffsetsBytes = serialized.stringOffsets.length * 4; // 4 bytes per offset
+  const nodesBytes = nodeCount * (4 * 6); // 6 fields * 4 bytes each
+  const resultsBytes = resultCount * (4 * 5); // 5 fields * 4 bytes each
+
+  const totalSize =
+    stringPoolBytes +
+    stringPoolPadding +
+    stringOffsetsBytes +
+    nodesBytes +
+    resultsBytes;
+
+  return {
+    stringPoolSize,
+    stringOffsetCount: serialized.stringOffsets.length,
+    nodeCount,
+    resultCount,
+    totalSize,
+  };
+}
+
 export function printTrieAnalysis(analysis: TrieAnalysis): void {
   console.log("=== TRIE STRUCTURE ANALYSIS ===\n");
 
@@ -183,4 +215,23 @@ export function printTrieAnalysis(analysis: TrieAnalysis): void {
     }
     console.log();
   }
+}
+
+export function getSerializedPathIndexStats(serialized: SerializedPathIndex) {
+  const encoder = new TextEncoder();
+  const pathDataBytes = encoder.encode(serialized.pathData).length;
+  const trackIdsBytes = serialized.trackIds.length * 4;
+  const pathOffsetsBytes = serialized.pathOffsets.length * 4;
+  const headerBytes = 8;
+
+  const totalSize =
+    headerBytes + trackIdsBytes + pathOffsetsBytes + pathDataBytes;
+
+  return {
+    trackCount: serialized.trackCount,
+    pathDataSize: pathDataBytes,
+    trackIdsSize: trackIdsBytes,
+    pathOffsetsSize: pathOffsetsBytes,
+    totalSize,
+  };
 }
