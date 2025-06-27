@@ -1,7 +1,7 @@
 #include "Music_index.h"
 
-MusicIndex::MusicIndex(SPI_PSRAM *psram_controller, uint32_t psram_base_addr)
-    : psram(psram_controller), base_address(psram_base_addr),
+MusicIndex::MusicIndex( uint32_t psram_base_addr)
+    : base_address(psram_base_addr),
       initialized(false), node_cache_count(0), access_counter(0) {
   memset(&header, 0, sizeof(header));
   memset(&node_batch, 0, sizeof(node_batch));
@@ -12,11 +12,8 @@ MusicIndex::~MusicIndex() {
   // Nothing to clean up - PSRAM controller is managed externally
 }
 
-bool MusicIndex::init(const char *index_filename) {
-  if (!psram) {
-    Serial.println("ERROR: PSRAM controller not provided");
-    return false;
-  }
+bool MusicIndex::init(uint32_t base_address) {
+  this->base_address = base_address;
   Serial.println("=== MUSIC INDEX INIT ===");
   Serial.print("Loading index from: ");
   Serial.println(index_filename);
@@ -55,10 +52,6 @@ bool MusicIndex::init(const char *index_filename) {
 }
 
 bool MusicIndex::initWithSDConfig(SdSpiConfig sdConfig, const char *index_filename) {
-  if (!psram) {
-    Serial.println("ERROR: PSRAM controller not provided");
-    return false;
-  }
   Serial.println("=== MUSIC INDEX INIT WITH CUSTOM CONFIG ===");
   Serial.print("Loading index from: ");
   Serial.println(index_filename);
@@ -154,7 +147,7 @@ bool MusicIndex::loadFromSDCard(const char *filename) {
       return false;
     }
 
-    psram->writeData(psram_addr, buffer, actual_read);
+    psram.writeData(psram_addr, buffer, actual_read);
     psram_addr += actual_read;
     bytes_read += actual_read;
 
@@ -182,7 +175,7 @@ bool MusicIndex::loadFromSDCard(const char *filename) {
 void MusicIndex::readString(uint32_t offset, uint32_t length, char *buffer,
                              uint32_t buffer_size) {
   uint32_t copy_len = min(length, buffer_size - 1);
-  psram->readData(string_pool_offset + offset, (uint8_t *)buffer, copy_len);
+  psram.readData(string_pool_offset + offset, (uint8_t *)buffer, copy_len);
   buffer[copy_len] = '\0';
 }
 
@@ -197,7 +190,7 @@ void MusicIndex::loadNodeBatch(uint32_t start_index, uint32_t count) {
 
   // Read all nodes in one PSRAM operation
   uint32_t addr = nodes_offset + (start_index * sizeof(trie_node_t));
-  psram->readData(addr, (uint8_t *)node_batch.nodes,
+  psram.readData(addr, (uint8_t *)node_batch.nodes,
                   count * sizeof(trie_node_t));
 }
 
@@ -214,7 +207,7 @@ void MusicIndex::loadResultBatch(uint32_t start_index, search_result_t *results,
                                  uint32_t count) {
   // Read all results in one PSRAM operation
   uint32_t addr = results_offset + (start_index * sizeof(search_result_t));
-  psram->readData(addr, (uint8_t *)results, count * sizeof(search_result_t));
+  psram.readData(addr, (uint8_t *)results, count * sizeof(search_result_t));
 }
 
 int16_t MusicIndex::binarySearchCache(uint32_t node_index) {
@@ -338,7 +331,7 @@ trie_node_t MusicIndex::readNodeCached(uint32_t node_index) {
     // Shouldn't happen, but handle gracefully
     trie_node_t single_node;
     uint32_t addr = nodes_offset + (node_index * sizeof(trie_node_t));
-    psram->readData(addr, (uint8_t *)&single_node, sizeof(trie_node_t));
+    psram.readData(addr, (uint8_t *)&single_node, sizeof(trie_node_t));
     return single_node;
   }
 

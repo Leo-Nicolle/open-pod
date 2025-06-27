@@ -109,9 +109,9 @@ bool Audio_buffer::SDtoPSRAM() {
   size_t wrapWriteSize = wraps ? (read - writeSize) : 0;
   t0 = micros();
   noInterrupts();
-  psram.writeData(_psramBaseAddress + _psramHead, temp, writeSize);
+  // psram.writeData(_psramBaseAddress + _psramHead, temp, writeSize);
   if (wrapWriteSize > 0) {
-    psram.writeData(_psramBaseAddress, temp + writeSize, wrapWriteSize);
+    // psram.writeData(_psramBaseAddress, temp + writeSize, wrapWriteSize);
   }
   _psramHead = (_psramHead + read) % _psramBufferSize;
   interrupts();

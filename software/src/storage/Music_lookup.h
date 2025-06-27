@@ -40,6 +40,7 @@ class MusicLookup {
 private:
   bool initialized;
   uint32_t psram_base_address;
+  uint32_t psram_last_address;
   
   // File paths
   const char *genre_to_tracks_path = "/openpod/genre_to_tracks.bin";
@@ -86,7 +87,7 @@ public:
   ~MusicLookup();
   
   bool init();
-  
+  void test();
   // Utility
   SdFat &getSD() { return sd; }
   bool isInitialized() const { return initialized; }
@@ -107,4 +108,5 @@ public:
   uint32_t getTracksByAlbum(uint32_t album_id, string_results_t *results, uint32_t max_results);
   uint32_t getTracksByGenre(uint32_t genre_id, string_results_t *results, uint32_t max_results);
   uint32_t getAlbumsByGenre(uint32_t genre_id, string_results_t *results, uint32_t max_results);
+  uint32_t getLastPSRAMAddress();
 };

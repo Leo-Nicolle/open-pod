@@ -11,10 +11,28 @@ import type { CrawlIndex } from "../src/types";
 import { readFile, readdir } from "fs/promises";
 import path from "path";
 import { __dirname } from "./utils";
+import {
+  exportIndexesToBinary,
+  importStringIndexFromBinary,
+  importRelationshipMapFromBinary,
+} from "../src/music-indexes";
+
+const keys = [
+  "genre_to_tracks",
+  "genre_to_artists",
+  "genre_to_albums",
+  "artist_to_tracks",
+  "artist_to_albums",
+  "album_to_tracks",
+  "artist_index",
+  "album_index",
+  "genre_index",
+  "track_index",
+  "path_index",
+];
 
 describe("Binary Serialization Round-trip", () => {
   const createTestCrawlIndex = async (): Promise<CrawlIndex> => {
-    // const data = await fs.readFile("./stubs/crawl-index.json", "utf-8");
     return Promise.resolve(
       unserialize(JSON.stringify(CrawlData)) as CrawlIndex
     );
@@ -31,8 +49,40 @@ describe("Binary Serialization Round-trip", () => {
     expect(importedSerialized.nodes.length).toBe(933);
   });
 
+  it.each(keys)("should export and import binary for %s", async (key) => {
+    const crawlIndex = await createTestCrawlIndex();
+    const binaries = exportIndexesToBinary(crawlIndex);
+
+    expect(binaries[key]).toBeInstanceOf(Uint8Array);
+    if (key === "artist_to_tracks") {
+      debugger;
+    }
+    // Relationship maps
+    if (
+      key === "genre_to_tracks" ||
+      key === "genre_to_artists" ||
+      key === "genre_to_albums" ||
+      key === "artist_to_tracks" ||
+      key === "artist_to_albums" ||
+      key === "album_to_tracks"
+    ) {
+      const imported = importRelationshipMapFromBinary(binaries[key]);
+      expect(imported).toHaveProperty("entryCount");
+      expect(imported).toHaveProperty("totalTargetCount");
+      expect(imported).toHaveProperty("sourceIds");
+      expect(imported).toHaveProperty("targetCounts");
+      expect(imported).toHaveProperty("targetIds");
+    } else {
+      // String indexes
+      const imported = importStringIndexFromBinary(binaries[key]);
+      expect(imported).toHaveProperty("entryCount");
+      expect(imported).toHaveProperty("stringData");
+      expect(imported).toHaveProperty("stringOffsets");
+      expect(imported).toHaveProperty("ids");
+    }
+  });
+
   it("should serialize and deserialize correctly", async () => {
-    // Step 1: Create test data
     const crawlIndex = await createTestCrawlIndex();
     const trie = buildTrieFromCrawlIndex(crawlIndex);
     const originalSerialized = serializeTrie(trie);

@@ -53,10 +53,9 @@ typedef struct {
 
 class MusicIndex {
 private:
-    SPI_PSRAM* psram;
     uint32_t base_address;
     bool initialized;
-    
+    const char* index_filename= "/openpod/music_index.bin";
     // SDFat objects
     SdFat sd;               // SDFat object for SD card operations
     
@@ -131,11 +130,11 @@ private:
     uint16_t findLRUStringCacheSlot();
     
 public:
-    MusicIndex(SPI_PSRAM* psram_controller, uint32_t psram_base_addr = MUSIC_INDEX_BASE_ADDRESS);
+    MusicIndex(uint32_t psram_base_addr = MUSIC_INDEX_BASE_ADDRESS);
     ~MusicIndex();
     
     // Initialize the music index by loading from SD card
-    bool init(const char* index_filename = "/openpod/music_index.bin");
+    bool init(uint32_t base_address=MUSIC_INDEX_BASE_ADDRESS);
     
     // Initialize with custom SDFat configuration
     bool initWithSDConfig(SdSpiConfig sdConfig, const char* index_filename = "/openpod/music_index.bin");

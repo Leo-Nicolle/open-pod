@@ -9,7 +9,7 @@
 #include "ui/ui_engine.hpp"
 #include <Arduino.h>
 #include <Wire.h>
-MusicIndex musicIndex(&psram);
+MusicIndex musicIndex;
 MusicLookup musicLookup;
 // Display and UI instances
 ILI9341_GFX display;
@@ -125,18 +125,18 @@ void setup() {
   Serial.println("Keep hands off wheel for baseline...");
   wheel.takeBaseline();
   wheel.setSensitivities(0.896, 1.0, 0.950, 0.913);
-
+  musicLookup.test();
   // --- MusicIndex initialization and artist/track search ---
-  if (!musicIndex.init()) {
+  if (!musicIndex.init(musicLookup.getLastPSRAMAddress())) {
     Serial.println("❌ Failed to initialize MusicIndex!");
     while (1)
       delay(1000);
   }
-
+  musicLookup.test();
   // Search for artist "Django Reinhardt"
   search_result_t artistResults[MAX_SEARCH_RESULTS];
   uint32_t foundArtists = musicIndex.searchArtists(
-      "Django Reinhardt", artistResults, MAX_SEARCH_RESULTS);
+      "Swift Guad", artistResults, MAX_SEARCH_RESULTS);
 
   if (foundArtists == 0) {
     Serial.println("❌ Artist 'Django Reinhardt' not found!");
@@ -156,16 +156,11 @@ void setup() {
     while (1)
       delay(1000);
   }
-
-  // // Prepare track name pointers
-  // static char trackNames[MAX_SEARCH_RESULTS][64];
+  musicLookup.test();
   static const char *trackPtrs[MAX_SEARCH_RESULTS];
-
   for (uint32_t i = 0; i < foundTracks; ++i) {
     trackPtrs[i] = trackResults[i].name; 
   }
-
-  // Initialize UI with Django Reinhardt's tracks
   ui.begin();
   state.setElements(trackPtrs, foundTracks);
 
