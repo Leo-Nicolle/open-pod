@@ -30,11 +30,65 @@ typedef struct {
   uint32_t length;    // Length of data
 } lookup_result_t;
 
-// Structure for search results
-typedef struct {
-  uint32_t id;                    // ID of the result
-  char name[64];                  // Name (optional, can be filled later)
-} string_results_t;
+// Route management for navigation
+struct Route {
+  enum RouteType { ROOT, SEARCH_RESULTS, GENRES, ARTISTS, ALBUMS, TRACKS };
+  RouteType type;
+  uint32_t entityId;        // ID of current entity (genre_id, artist_id, etc.)
+  char entityName[64];      // Display name for breadcrumb
+  uint32_t currentPage;     // For pagination
+  uint32_t totalResults;    // Total items available
+  bool hasMore;             // Whether more pages exist
+};
+
+#define MAX_ROUTE_DEPTH 8
+
+class RouteManager {
+private:
+  Route routeStack[MAX_ROUTE_DEPTH];
+  int stackDepth;
+  
+public:
+  RouteManager() : stackDepth(0) {}
+  
+  void pushRoute(Route::RouteType type, uint32_t entityId = 0, const char* entityName = nullptr) {
+    if (stackDepth < MAX_ROUTE_DEPTH) {
+      routeStack[stackDepth].type = type;
+      routeStack[stackDepth].entityId = entityId;
+      routeStack[stackDepth].currentPage = 0;
+      routeStack[stackDepth].totalResults = 0;
+      routeStack[stackDepth].hasMore = false;
+      
+      if (entityName) {
+        strncpy(routeStack[stackDepth].entityName, entityName, 63);
+        routeStack[stackDepth].entityName[63] = '\0';
+      } else {
+        routeStack[stackDepth].entityName[0] = '\0';
+      }
+      
+      stackDepth++;
+    }
+  }
+  
+  bool popRoute() {
+    if (stackDepth > 0) {
+      stackDepth--;
+      return true;
+    }
+    return false;
+  }
+  
+  Route& getCurrentRoute() {
+    static Route defaultRoute = {Route::ROOT, 0, "", 0, 0, false};
+    if (stackDepth > 0) {
+      return routeStack[stackDepth - 1];
+    }
+    return defaultRoute;
+  }
+  
+  bool canGoBack() { return stackDepth > 1; }
+  int getDepth() { return stackDepth; }
+};
 
 class MusicLookup {
 private:
@@ -82,12 +136,18 @@ private:
   uint32_t getRelatedIds(uint32_t source_id, const relation_header_t &header, uint32_t *results, uint32_t max_results);
   bool getString(uint32_t id, const index_header_t &index_header, char *buffer, uint32_t buffer_size);
 
+  // Generic string loading function
+  uint32_t getLookupStrings(uint32_t source_id, const relation_header_t& relation_header,
+                           const index_header_t& target_index_header,
+                           char* buffer, uint32_t buffer_size,
+                           const char** string_pointers, uint32_t max_results);
+
 public:
   MusicLookup(uint32_t psram_base_addr = MUSIC_INDEX_BASE_ADDRESS);
   ~MusicLookup();
   
   bool init();
-  void test();
+  void test(); 
   // Utility
   SdFat &getSD() { return sd; }
   bool isInitialized() const { return initialized; }
@@ -102,11 +162,25 @@ public:
   bool getGenreName(uint32_t genre_id, char *buffer, uint32_t buffer_size);
   bool getTrackName(uint32_t track_id, char *buffer, uint32_t buffer_size);
   
-  // Relationship lookups
-  uint32_t getAlbumsByArtist(uint32_t artist_id, string_results_t *results, uint32_t max_results);
-  uint32_t getTracksByArtist(uint32_t artist_id, string_results_t *results, uint32_t max_results);
-  uint32_t getTracksByAlbum(uint32_t album_id, string_results_t *results, uint32_t max_results);
-  uint32_t getTracksByGenre(uint32_t genre_id, string_results_t *results, uint32_t max_results);
-  uint32_t getAlbumsByGenre(uint32_t genre_id, string_results_t *results, uint32_t max_results);
+  // Consolidated relationship lookups - new signature
+  uint32_t getTracksByArtist(uint32_t artist_id, char* buffer, uint32_t buffer_size, 
+                            const char** string_pointers, uint32_t max_results);
+  uint32_t getAlbumsByArtist(uint32_t artist_id, char* buffer, uint32_t buffer_size,
+                            const char** string_pointers, uint32_t max_results);
+  uint32_t getTracksByAlbum(uint32_t album_id, char* buffer, uint32_t buffer_size,
+                           const char** string_pointers, uint32_t max_results);
+  uint32_t getTracksByGenre(uint32_t genre_id, char* buffer, uint32_t buffer_size,
+                           const char** string_pointers, uint32_t max_results);
+  uint32_t getAlbumsByGenre(uint32_t genre_id, char* buffer, uint32_t buffer_size,
+                           const char** string_pointers, uint32_t max_results);
+  
+  // Get all items from an index (for browsing)
+  uint32_t getAllArtists(char* buffer, uint32_t buffer_size, 
+                        const char** string_pointers, uint32_t max_results, uint32_t offset = 0);
+  uint32_t getAllAlbums(char* buffer, uint32_t buffer_size,
+                       const char** string_pointers, uint32_t max_results, uint32_t offset = 0);
+  uint32_t getAllGenres(char* buffer, uint32_t buffer_size,
+                       const char** string_pointers, uint32_t max_results, uint32_t offset = 0);
+  
   uint32_t getLastPSRAMAddress();
 };

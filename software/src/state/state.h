@@ -3,15 +3,24 @@
 #include "../ui/ui_types.h"
 #include <Arduino.h>
 #include "event-target.h"
+#include "../storage/Music_lookup.h"
+#include "router.h"
+
+// Buffer sizes for string data
+#define ELEMENTS_BUFFER_SIZE 8192
+#define MAX_ELEMENTS_PER_SCREEN 20
+#define MAX_STRING_POINTERS 200
 
 // UI States
 enum Showing { TRACK_LIST, NOW_PLAYING, ARTISTS, MENU, GENRE, PODCAST, TRANSITIONING };
+
 // Event types for state changes
 enum StateEvent {
   // Navigation events
   EVENT_TRACK_SELECTED = 1000,
   EVENT_SCROLL_CHANGED,
   EVENT_PAGE_CHANGED,
+  EVENT_ROUTE_CHANGED,
   
   // Playback events  
   EVENT_PLAYBACK_STARTED,
@@ -28,7 +37,8 @@ enum StateEvent {
   
   // Data events
   EVENT_TRACK_LIST_UPDATED,
-  EVENT_TRACK_DURATION_CHANGED
+  EVENT_TRACK_DURATION_CHANGED,
+  EVENT_DATA_LOADED
 };
 
 // Event data structures
@@ -73,10 +83,22 @@ struct ListEvent {
   const char** visibleElements;
 };
 
+struct RouteChangedEvent {
+  Route_t::RouteType oldRouteType;
+  Route_t::RouteType newRouteType;
+  uint32_t entityId;
+  const char* entityName;
+  bool canGoBack;
+};
+
 // Application state management with event system
 class State : public EventTarget {
 private:
-  // Track data
+  // String buffer and pointers for current data
+  char elementsBuffer[ELEMENTS_BUFFER_SIZE];
+  const char* stringPointers[MAX_STRING_POINTERS];
+  
+  // Track data (uses stringPointers as backing)
   const char **elements;
   int totalElements;
   const char* visibleElements[ELEMENTS_PER_SCREEN];
@@ -102,6 +124,9 @@ private:
 
   // Rotation state
   bool isRotatedMode;
+
+  // Route_t management
+  Router router;
 
   void updateVisibleTracks();
 
@@ -132,6 +157,21 @@ public:
   void setAnimating(bool animating, uint32_t animId = 0);
   void setRotation(bool rotated);
   
+  // Route_t management
+  void navigateToRoute(Route_t::RouteType type, uint32_t entityId = 0, const char* entityName = nullptr);
+  bool navigateBack();
+  void loadCurrentRouteData(MusicLookup& musicLookup);
+  
+  // Data loading methods
+  void loadArtists(MusicLookup& musicLookup, uint32_t offset = 0);
+  void loadAlbums(MusicLookup& musicLookup, uint32_t offset = 0);
+  void loadGenres(MusicLookup& musicLookup, uint32_t offset = 0);
+  void loadTracksByArtist(MusicLookup& musicLookup, uint32_t artistId);
+  void loadTracksByAlbum(MusicLookup& musicLookup, uint32_t albumId);
+  void loadTracksByGenre(MusicLookup& musicLookup, uint32_t genreId);
+  void loadAlbumsByArtist(MusicLookup& musicLookup, uint32_t artistId);
+  void loadAlbumsByGenre(MusicLookup& musicLookup, uint32_t genreId);
+  
   // Getters
   const char *getCurrentTrackName() const;
   const char *getPlayingTrackName() const;
@@ -153,6 +193,11 @@ public:
   bool getIsRotatedMode() const { return isRotatedMode; }
   uint32_t getScrollAnimId() const { return scrollAnimId; }
   uint32_t getTransitionAnimId() const { return transitionAnimId; }
+  
+  // Route_t accessors
+  Router& getRouteManager() { return router; }
+  Route_t& getCurrentRoute() { return router.getCurrentRoute(); }
+  bool canGoBack() { return router.canGoBack(); }
 };
 
 // Global state instance

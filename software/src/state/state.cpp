@@ -225,5 +225,197 @@ int State::getRelativeSelectedIndex() const {
   return selectedTrackIndex - topVisibleTrackIndex;
 }
 
+// Route_t management implementation
+void State::navigateToRoute(Route_t::RouteType type, uint32_t entityId, const char* entityName) {
+  Route_t::RouteType oldRouteType = router.getCurrentRoute().type;
+  
+  router.pushRoute(type, entityId, entityName);
+  
+  // Emit route changed event
+  RouteChangedEvent event = {oldRouteType, type, entityId, entityName, router.canGoBack()};
+  emitEvent(EVENT_ROUTE_CHANGED, &event);
+  
+  // Reset selection when navigating to new route
+  selectedTrackIndex = 0;
+  topVisibleTrackIndex = 0;
+}
+
+bool State::navigateBack() {
+  if (!router.canGoBack()) {
+    return false;
+  }
+  
+  Route_t::RouteType oldRouteType = router.getCurrentRoute().type;
+  router.popRoute();
+  Route_t& currentRoute = router.getCurrentRoute();
+  
+  // Emit route changed event
+  RouteChangedEvent event = {oldRouteType, currentRoute.type, currentRoute.entityId, 
+                            currentRoute.entityName, router.canGoBack()};
+  emitEvent(EVENT_ROUTE_CHANGED, &event);
+  
+  // Reset selection when going back
+  selectedTrackIndex = 0;
+  topVisibleTrackIndex = 0;
+  
+  return true;
+}
+
+void State::loadCurrentRouteData(MusicLookup& musicLookup) {
+  Route_t& currentRoute = router.getCurrentRoute();
+  
+  switch (currentRoute.type) {
+    case Route_t::ARTISTS:
+      loadArtists(musicLookup, currentRoute.currentPage * MAX_STRING_POINTERS);
+      break;
+    case Route_t::ALBUMS:
+      loadAlbums(musicLookup, currentRoute.currentPage * MAX_STRING_POINTERS);
+      break;
+    case Route_t::GENRES:
+      loadGenres(musicLookup, currentRoute.currentPage * MAX_STRING_POINTERS);
+      break;
+    case Route_t::TRACKS:
+      // Load tracks based on parent entity
+      if (router.getDepth() > 1) {
+        // Get parent route to determine context
+        Route_t& parentRoute = router.routeStack[router.getDepth() - 2];
+        if (parentRoute.type == Route_t::ARTISTS) {
+          loadTracksByArtist(musicLookup, parentRoute.entityId);
+        } else if (parentRoute.type == Route_t::ALBUMS) {
+          loadTracksByAlbum(musicLookup, parentRoute.entityId);
+        } else if (parentRoute.type == Route_t::GENRES) {
+          loadTracksByGenre(musicLookup, parentRoute.entityId);
+        }
+      }
+      break;
+    case Route_t::ROOT:
+    case Route_t::SEARCH_RESULTS:
+    default:
+      // Handle root or search results
+      break;
+  }
+}
+
+// Data loading methods
+void State::loadArtists(MusicLookup& musicLookup, uint32_t offset) {
+  uint32_t count = musicLookup.getAllArtists(elementsBuffer, ELEMENTS_BUFFER_SIZE,
+                                           elements, MAX_STRING_POINTERS, offset);
+  totalElements = count;
+  
+  // Update current route info
+  Route_t& currentRoute = router.getCurrentRoute();
+  currentRoute.totalResults = count;
+  currentRoute.hasMore = (count == MAX_STRING_POINTERS); // Assume more if we got max
+  
+  updateVisibleTracks();
+  
+  ListEvent event = {count, elements, visibleElements};
+  emitEvent(EVENT_TRACK_LIST_UPDATED, &event);
+}
+
+void State::loadAlbums(MusicLookup& musicLookup, uint32_t offset) {
+  uint32_t count = musicLookup.getAllAlbums(elementsBuffer, ELEMENTS_BUFFER_SIZE,
+                                          elements, MAX_STRING_POINTERS, offset);
+  totalElements = count;
+  
+  Route_t& currentRoute = router.getCurrentRoute();
+  currentRoute.totalResults = count;
+  currentRoute.hasMore = (count == MAX_STRING_POINTERS);
+  
+  updateVisibleTracks();
+  
+  ListEvent event = {count, elements, visibleElements};
+  emitEvent(EVENT_TRACK_LIST_UPDATED, &event);
+}
+
+void State::loadGenres(MusicLookup& musicLookup, uint32_t offset) {
+  uint32_t count = musicLookup.getAllGenres(elementsBuffer, ELEMENTS_BUFFER_SIZE,
+                                          elements, MAX_STRING_POINTERS, offset);
+  totalElements = count;
+  
+  Route_t& currentRoute = router.getCurrentRoute();
+  currentRoute.totalResults = count;
+  currentRoute.hasMore = (count == MAX_STRING_POINTERS);
+  
+  updateVisibleTracks();
+  
+  ListEvent event = {count, elements, visibleElements};
+  emitEvent(EVENT_TRACK_LIST_UPDATED, &event);
+}
+
+void State::loadTracksByArtist(MusicLookup& musicLookup, uint32_t artistId) {
+  uint32_t count = musicLookup.getTracksByArtist(artistId, elementsBuffer, ELEMENTS_BUFFER_SIZE,
+                                                elements, MAX_STRING_POINTERS);
+  totalElements = count;
+  Route_t& currentRoute = router.getCurrentRoute();
+  currentRoute.totalResults = count;
+  currentRoute.hasMore = false; // Relationship lookups return all results
+  
+  updateVisibleTracks();
+  
+  ListEvent event = {count, elements, visibleElements};
+  emitEvent(EVENT_TRACK_LIST_UPDATED, &event);
+}
+
+void State::loadTracksByAlbum(MusicLookup& musicLookup, uint32_t albumId) {
+  uint32_t count = musicLookup.getTracksByAlbum(albumId, elementsBuffer, ELEMENTS_BUFFER_SIZE,
+                                               elements, MAX_STRING_POINTERS);
+  totalElements = count;
+  
+  Route_t& currentRoute = router.getCurrentRoute();
+  currentRoute.totalResults = count;
+  currentRoute.hasMore = false;
+  
+  updateVisibleTracks();
+  
+  ListEvent event = {count, elements, visibleElements};
+  emitEvent(EVENT_TRACK_LIST_UPDATED, &event);
+}
+
+void State::loadTracksByGenre(MusicLookup& musicLookup, uint32_t genreId) {
+  uint32_t count = musicLookup.getTracksByGenre(genreId, elementsBuffer, ELEMENTS_BUFFER_SIZE,
+                                               elements, MAX_STRING_POINTERS);
+  totalElements = count;
+  
+  Route_t& currentRoute = router.getCurrentRoute();
+  currentRoute.totalResults = count;
+  currentRoute.hasMore = false;
+  
+  updateVisibleTracks();
+  
+  ListEvent event = {count, elements, visibleElements};
+  emitEvent(EVENT_TRACK_LIST_UPDATED, &event);
+}
+
+void State::loadAlbumsByArtist(MusicLookup& musicLookup, uint32_t artistId) {
+  uint32_t count = musicLookup.getAlbumsByArtist(artistId, elementsBuffer, ELEMENTS_BUFFER_SIZE,
+                                                elements, MAX_STRING_POINTERS);
+  totalElements = count;
+  
+  Route_t& currentRoute = router.getCurrentRoute();
+  currentRoute.totalResults = count;
+  currentRoute.hasMore = false;
+  
+  updateVisibleTracks();
+  
+  ListEvent event = {count, elements, visibleElements};
+  emitEvent(EVENT_TRACK_LIST_UPDATED, &event);
+}
+
+void State::loadAlbumsByGenre(MusicLookup& musicLookup, uint32_t genreId) {
+  uint32_t count = musicLookup.getAlbumsByGenre(genreId, elementsBuffer, ELEMENTS_BUFFER_SIZE,
+                                               elements, MAX_STRING_POINTERS);
+  totalElements = count;
+  
+  Route_t& currentRoute = router.getCurrentRoute();
+  currentRoute.totalResults = count;
+  currentRoute.hasMore = false;
+  
+  updateVisibleTracks();
+  
+  ListEvent event = {count, elements, visibleElements};
+  emitEvent(EVENT_TRACK_LIST_UPDATED, &event);
+}
+
 // Global state instance
 State state;

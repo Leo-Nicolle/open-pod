@@ -37,44 +37,6 @@ const unsigned long RECALIB_HOLD_TIME = 2000; // 2 seconds
 unsigned long lastProgressUpdate = 0;
 const unsigned long PROGRESS_UPDATE_INTERVAL = 1000; // 1 second
 
-// Example track data - replace with your actual tracks
-const char *tracks[] = {
-    "Track 1 - Artist 1",    "Track 2 - Artist 2",   "Track 3 - Artist 3",
-    "Track 4 - Artist 4",    "Track 5 - Artist 5",   "Track 6 - Artist 6",
-    "Track 7 - Artist 7",    "Track 8 - Artist 8",   "Track 9 - Artist 9",
-    "Track 10 - Artist 10",  "Track 11 - Artist 11", "Track 12 - Artist 12",
-    "Track 13 - Artist 13",  "Track 14 - Artist 14", "Track 15 - Artist 15",
-    "Track 16 - Artist 16",  "Track 17 - Artist 17", "Track 18 - Artist 18",
-    "Track 19 - Artist 19",  "Track 20 - Artist 20", "Track 21 - Artist 21",
-    "Track 22 - Artist 22",  "Track 23 - Artist 23", "Track 24 - Artist 24",
-    "Track 25 - Artist 25",  "Track 26 - Artist 26", "Track 27 - Artist 27",
-    "Track 28 - Artist 28",  "Track 29 - Artist 29", "Track 30 - Artist 30",
-    "Track 31 - Artist 31",  "Track 32 - Artist 32", "Track 33 - Artist 33",
-    "Track 34 - Artist 34",  "Track 35 - Artist 35", "Track 36 - Artist 36",
-    "Track 37 - Artist 37",  "Track 38 - Artist 38", "Track 39 - Artist 39",
-    "Track 40 - Artist 40",  "Track 41 - Artist 41", "Track 42 - Artist 42",
-    "Track 43 - Artist 43",  "Track 44 - Artist 44", "Track 45 - Artist 45",
-    "Track 46 - Artist 46",  "Track 47 - Artist 47", "Track 48 - Artist 48",
-    "Track 49 - Artist 49",  "Track 50 - Artist 50", "Track 51 - Artist 51",
-    "Track 52 - Artist 52",  "Track 53 - Artist 53", "Track 54 - Artist 54",
-    "Track 55 - Artist 55",  "Track 56 - Artist 56", "Track 57 - Artist 57",
-    "Track 58 - Artist 58",  "Track 59 - Artist 59", "Track 60 - Artist 60",
-    "Track 61 - Artist 61",  "Track 62 - Artist 62", "Track 63 - Artist 63",
-    "Track 64 - Artist 64",  "Track 65 - Artist 65", "Track 66 - Artist 66",
-    "Track 67 - Artist 67",  "Track 68 - Artist 68", "Track 69 - Artist 69",
-    "Track 70 - Artist 70",  "Track 71 - Artist 71", "Track 72 - Artist 72",
-    "Track 73 - Artist 73",  "Track 74 - Artist 74", "Track 75 - Artist 75",
-    "Track 76 - Artist 76",  "Track 77 - Artist 77", "Track 78 - Artist 78",
-    "Track 79 - Artist 79",  "Track 80 - Artist 80", "Track 81 - Artist 81",
-    "Track 82 - Artist 82",  "Track 83 - Artist 83", "Track 84 - Artist 84",
-    "Track 85 - Artist 85",  "Track 86 - Artist 86", "Track 87 - Artist 87",
-    "Track 88 - Artist 88",  "Track 89 - Artist 89", "Track 90 - Artist 90",
-    "Track 91 - Artist 91",  "Track 92 - Artist 92", "Track 93 - Artist 93",
-    "Track 94 - Artist 94",  "Track 95 - Artist 95", "Track 96 - Artist 96",
-    "Track 97 - Artist 97",  "Track 98 - Artist 98", "Track 99 - Artist 99",
-    "Track 100 - Artist 100"};
-const int trackCount = sizeof(tracks) / sizeof(tracks[0]);
-
 // Function declarations
 void handleWheelInput();
 void checkRecalibration();
@@ -145,27 +107,11 @@ void setup() {
   }
 
   uint32_t djangoArtistId = artistResults[0].id;
-
-  // Get tracks by this artist
-  string_results_t trackResults[MAX_SEARCH_RESULTS];
-  uint32_t foundTracks = musicLookup.getTracksByArtist(
-      djangoArtistId, trackResults, MAX_SEARCH_RESULTS);
-
-  if (foundTracks == 0) {
-    Serial.println("❌ No tracks found for Django Reinhardt!");
-    while (1)
-      delay(1000);
-  }
-  musicLookup.test();
-  static const char *trackPtrs[MAX_SEARCH_RESULTS];
-  for (uint32_t i = 0; i < foundTracks; ++i) {
-    trackPtrs[i] = trackResults[i].name; 
-  }
+  state.loadTracksByArtist(musicLookup, 0);
   ui.begin();
-  state.setElements(trackPtrs, foundTracks);
-
+  
   // Optional demo animations
-  demoAnimations();
+  // demoAnimations();
 
   Serial.println("🎮 Ready! Controls:");
   Serial.println("- Scroll: Navigate tracks");
