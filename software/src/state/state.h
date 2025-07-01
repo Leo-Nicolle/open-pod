@@ -1,18 +1,15 @@
 #pragma once
+#include "../storage/Music_lookup.h"
 #include "../ui/theme.h"
 #include "../ui/ui_types.h"
-#include <Arduino.h>
 #include "event-target.h"
-#include "../storage/Music_lookup.h"
 #include "router.h"
+#include <Arduino.h>
 
 // Buffer sizes for string data
 #define ELEMENTS_BUFFER_SIZE 8192
 #define MAX_ELEMENTS_PER_SCREEN 20
 #define MAX_STRING_POINTERS 200
-
-// UI States
-enum Showing { TRACK_LIST, NOW_PLAYING, ARTISTS, MENU, GENRE, PODCAST, TRANSITIONING };
 
 // Event types for state changes
 enum StateEvent {
@@ -21,20 +18,19 @@ enum StateEvent {
   EVENT_SCROLL_CHANGED,
   EVENT_PAGE_CHANGED,
   EVENT_ROUTE_CHANGED,
-  
-  // Playback events  
+
+  // Playback events
   EVENT_PLAYBACK_STARTED,
   EVENT_PLAYBACK_PAUSED,
   EVENT_PLAYBACK_RESUMED,
   EVENT_PLAYBACK_STOPPED,
   EVENT_PROGRESS_UPDATED,
   EVENT_TRACK_ENDED,
-  
+
   // UI events
-  EVENT_UI_STATE_CHANGED,
   EVENT_ANIMATION_STARTED,
   EVENT_ANIMATION_FINISHED,
-  
+
   // Data events
   EVENT_TRACK_LIST_UPDATED,
   EVENT_TRACK_DURATION_CHANGED,
@@ -44,7 +40,7 @@ enum StateEvent {
 // Event data structures
 struct TrackSelectedEvent {
   int trackIndex;
-  const char* trackName;
+  const char *trackName;
 };
 
 struct ScrollChangedEvent {
@@ -52,24 +48,19 @@ struct ScrollChangedEvent {
   int topVisibleIndex;
   int oldSelectedIndex;
   int oldTopVisibleIndex;
-  const char** visibleElements; // Current visible elements after scroll
+  const char **visibleElements; // Current visible elements after scroll
 };
 
 struct PlaybackEvent {
   int trackIndex;
-  const char* trackName;
+  const char *trackName;
   bool isPlaying;
 };
 
 struct ProgressEvent {
-  int position;        // in seconds
-  int duration;        // in seconds
-  float percentage;    // 0.0 to 1.0
-};
-
-struct ShowingEvent {
-  Showing oldState;
-  Showing newState;
+  int position;     // in seconds
+  int duration;     // in seconds
+  float percentage; // 0.0 to 1.0
 };
 
 struct AnimationEvent {
@@ -79,19 +70,20 @@ struct AnimationEvent {
 
 struct ListEvent {
   int totalElements;
-  const char** elements;
-  const char** visibleElements;
+  const char **elements;
+  const char **visibleElements;
 };
 
 struct RouteChangedEvent {
   Route_t::RouteType oldRouteType;
   Route_t::RouteType newRouteType;
   uint32_t entityId;
-  const char* entityName;
+  uint32_t topVisibleIndex; 
+  uint32_t selectedIndex;
+  const char *entityName;
   bool canGoBack;
 };
 
-// Application state management with event system
 class State : public EventTarget {
 private:
   // String buffer and pointers for current data
@@ -109,15 +101,9 @@ private:
   int playbackPosition; // in seconds
   int trackDuration;    // in seconds
 
-  // Navigation state
-  int selectedTrackIndex;
-  int topVisibleTrackIndex;
-
-  // UI state
-  Showing currentShowing;
-  Showing targetShowing;
-
-  // Animation state
+  // Navigation state - RENAMED for generalization
+  int selectedIndex;        // Currently selected item (was selectedTrackIndex)
+  int topVisibleIndex;      // Top visible item (was topVisibleTrackIndex)  // Animation state
   bool isAnimating;
   uint32_t scrollAnimId;
   uint32_t transitionAnimId;
@@ -125,11 +111,11 @@ private:
   // Rotation state
   bool isRotatedMode;
 
-  // Route_t management
+  // Route management
   Router router;
 
-  void updateVisibleTracks();
-
+  void updateVisibleElements();
+  void restoreSelectionState();
 public:
   // Constructor with defaults
   State();
@@ -137,8 +123,12 @@ public:
   // Track management
   void setElements(const char **elementList, int count);
   
-  // Navigation
-  void selectTrack(int index);
+  // SIMPLIFIED NAVIGATION - only 3 core methods
+  void goToSelected(MusicLookup& musicLookup);  // Navigate into selected item
+  bool back(MusicLookup& musicLookup);          // Go back one level
+  void backToMain(MusicLookup& musicLookup);    // Go back to root menu
+  
+  // Scroll navigation (still needed for UI)
   void scrollUp();
   void scrollDown();
   void pageUp();
@@ -153,24 +143,14 @@ public:
   void notifyTrackEnded();
   
   // UI state management
-  void setShowing(Showing newState);
   void setAnimating(bool animating, uint32_t animId = 0);
   void setRotation(bool rotated);
   
-  // Route_t management
-  void navigateToRoute(Route_t::RouteType type, uint32_t entityId = 0, const char* entityName = nullptr);
-  bool navigateBack();
+  // Data loading (internal use)
   void loadCurrentRouteData(MusicLookup& musicLookup);
   
-  // Data loading methods
-  void loadArtists(MusicLookup& musicLookup, uint32_t offset = 0);
-  void loadAlbums(MusicLookup& musicLookup, uint32_t offset = 0);
-  void loadGenres(MusicLookup& musicLookup, uint32_t offset = 0);
-  void loadTracksByArtist(MusicLookup& musicLookup, uint32_t artistId);
-  void loadTracksByAlbum(MusicLookup& musicLookup, uint32_t albumId);
-  void loadTracksByGenre(MusicLookup& musicLookup, uint32_t genreId);
-  void loadAlbumsByArtist(MusicLookup& musicLookup, uint32_t artistId);
-  void loadAlbumsByGenre(MusicLookup& musicLookup, uint32_t genreId);
+  // Helper methods for goToSelected
+  uint32_t getSelectedEntityId(MusicLookup& musicLookup);
   
   // Getters
   const char *getCurrentTrackName() const;
@@ -179,25 +159,23 @@ public:
   void getVisibleTrackIndices(int &startIndex, int &endIndex) const;
   int getRelativeSelectedIndex() const;
   
-  // Public accessors for UI components
-  int getTotalTracks() const { return totalElements; }
-  int getSelectedTrackIndex() const { return selectedTrackIndex; }
-  int getTopVisibleTrackIndex() const { return topVisibleTrackIndex; }
+  // Public accessors for UI components - UPDATED NAMES
+  int getTotalElements() const { return totalElements; }
+  int getSelectedIndex() const { return selectedIndex; }
+  int getTopVisibleIndex() const { return topVisibleIndex; }
   int getPlayingTrackIndex() const { return playingTrackIndex; }
   bool getIsPlaying() const { return isPlaying; }
   int getPlaybackPosition() const { return playbackPosition; }
   int getTrackDuration() const { return trackDuration; }
-  Showing getCurrentShowing() const { return currentShowing; }
-  Showing getTargetShowing() const { return targetShowing; }
   bool getIsAnimating() const { return isAnimating; }
   bool getIsRotatedMode() const { return isRotatedMode; }
   uint32_t getScrollAnimId() const { return scrollAnimId; }
   uint32_t getTransitionAnimId() const { return transitionAnimId; }
-  // Route_t accessors
+  
+  // Route accessors
   Router& getRouteManager() { return router; }
   Route_t& getCurrentRoute() { return router.getCurrentRoute(); }
   bool canGoBack() { return router.canGoBack(); }
 };
 
-// Global state instance
 extern State state;

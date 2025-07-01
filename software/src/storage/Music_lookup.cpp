@@ -535,6 +535,98 @@ bool MusicLookup::getTrackName(uint32_t track_id, char *buffer,
 }
 uint32_t MusicLookup::getLastPSRAMAddress() { return psram_last_address; }
 
+uint32_t MusicLookup::getRelatedIdAtIndex(uint32_t source_id,
+                                          const relation_header_t &header,
+                                          uint32_t index) {
+  if (!initialized || source_id == 0) {
+    return 0;
+  }
+
+  // Binary search for source ID
+  uint32_t source_ids_base = header.baseOffset + 8; // Skip header
+  int32_t source_index =
+      binarySearch(source_id, source_ids_base, header.entry_count);
+  if (source_index < 0) {
+    return 0; // Source ID not found
+  }
+
+  // Get target count for this source
+  uint32_t target_counts_base = source_ids_base + (header.entry_count * 4);
+  uint32_t target_count;
+  psram.readData(target_counts_base + (source_index * 4),
+                 (uint8_t *)&target_count, 4);
+
+  if (index >= target_count) {
+    return 0; // Index out of range
+  }
+
+  // Calculate offset into target IDs array
+  uint32_t target_offset = 0;
+  for (int32_t i = 0; i < source_index; i++) {
+    uint32_t count;
+    psram.readData(target_counts_base + (i * 4), (uint8_t *)&count, 4);
+    target_offset += count;
+  }
+
+  // Read the specific target ID at the requested index
+  uint32_t target_ids_base = target_counts_base + (header.entry_count * 4);
+  uint32_t target_id;
+  psram.readData(target_ids_base + ((target_offset + index) * 4),
+                 (uint8_t *)&target_id, 4);
+
+  return target_id;
+}
+
+uint32_t MusicLookup::getIdAtIndex(const index_header_t &header,
+                                   uint32_t index) {
+  if (!initialized || index >= header.entry_count) {
+    return 0;
+  }
+
+  uint32_t entity_id;
+  uint32_t ids_base = header.baseOffset + 8; // Skip header
+  psram.readData(ids_base + (index * 4), (uint8_t *)&entity_id, 4);
+  return entity_id;
+}
+
+// Convenience functions - just call the core functions
+uint32_t MusicLookup::getArtistIdAtIndex(uint32_t index) {
+  return getIdAtIndex(artist_index_h, index);
+}
+
+uint32_t MusicLookup::getAlbumIdAtIndex(uint32_t index) {
+  return getIdAtIndex(album_index_h, index);
+}
+
+uint32_t MusicLookup::getGenreIdAtIndex(uint32_t index) {
+  return getIdAtIndex(genre_index_h, index);
+}
+
+uint32_t MusicLookup::getTrackIdByArtistAtIndex(uint32_t artistId,
+                                                uint32_t index) {
+  return getRelatedIdAtIndex(artistId, artist_to_tracks_h, index);
+}
+
+uint32_t MusicLookup::getTrackIdByAlbumAtIndex(uint32_t albumId,
+                                               uint32_t index) {
+  return getRelatedIdAtIndex(albumId, album_to_tracks_h, index);
+}
+
+uint32_t MusicLookup::getTrackIdByGenreAtIndex(uint32_t genreId,
+                                               uint32_t index) {
+  return getRelatedIdAtIndex(genreId, genre_to_tracks_h, index);
+}
+
+uint32_t MusicLookup::getAlbumIdByArtistAtIndex(uint32_t artistId,
+                                                uint32_t index) {
+  return getRelatedIdAtIndex(artistId, artist_to_albums_h, index);
+}
+
+uint32_t MusicLookup::getAlbumIdByGenreAtIndex(uint32_t genreId,
+                                               uint32_t index) {
+  return getRelatedIdAtIndex(genreId, genre_to_albums_h, index);
+}
+
 void MusicLookup::printStats() {
   if (!initialized) {
     Serial.println("Music lookup not initialized");

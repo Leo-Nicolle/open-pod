@@ -94,14 +94,16 @@ void setup() {
       delay(1000);
   }
   ui.begin();
-  state.navigateToRoute(Route_t::ROOT);
+  // state.navigateToRoute(Route_t::ROOT);
   state.loadCurrentRouteData(musicLookup);
+  state.scrollDown();
   delay(1000);
-  state.navigateToRoute(Route_t::ARTISTS);
-  state.loadCurrentRouteData(musicLookup);
+  state.goToSelected(musicLookup);
+  delay(1000);
+  state.goToSelected(musicLookup);
 
   // state.loadTracksByArtist(musicLookup, 0);
-  
+
   // Optional demo animations
   // demoAnimations();
 
@@ -150,12 +152,13 @@ void handleWheelInput() {
   if (wheel.wasCenterJustPressed()) {
     Serial.println("🔘 Center pressed");
     return;
-    if (state.getCurrentShowing() == TRACK_LIST) {
+    if (state.getCurrentRoute().type != Route_t::RouteType::NOW_PLAYING) {
       // In track list: select track (could start playback or go to now playing)
-      ui.handleSelectInput();
-    } else if (state.getCurrentShowing() == NOW_PLAYING) {
+      state.goToSelected(musicLookup);
+    } else if (state.getCurrentRoute().type ==
+               Route_t::RouteType::NOW_PLAYING) {
       // In now playing: toggle play/pause
-      ui.handlePlayPauseInput();
+      state.togglePlayback();
     }
   }
 
@@ -163,14 +166,15 @@ void handleWheelInput() {
   static unsigned long centerPressStart = 0;
   static bool centerLongPressHandled = false;
 
-  if (wheel.isCenterPressed() && state.getCurrentShowing() == NOW_PLAYING) {
+  if (wheel.isCenterPressed() &&
+      state.getCurrentRoute().type == Route_t::RouteType::NOW_PLAYING) {
     if (centerPressStart == 0) {
       centerPressStart = millis();
       centerLongPressHandled = false;
     } else if (!centerLongPressHandled && (millis() - centerPressStart > 500)) {
       // Long press: go back to track list
       Serial.println("🔙 Back to track list");
-      ui.handleBackInput();
+      state.back(musicLookup);
       centerLongPressHandled = true;
     }
   } else {
@@ -195,9 +199,9 @@ void handleWheelInput() {
       // Handle multiple clicks at once for smooth scrolling
       for (int i = 0; i < abs(scrollClicks); i++) {
         if (scrollClicks < 0) {
-          ui.handleScrollDownInput();
+          state.scrollDown();
         } else {
-          ui.handleScrollUpInput();
+          state.scrollUp();
         }
       }
     }
@@ -339,33 +343,18 @@ void sendTelemetry() {
   Serial.println(wheel.getScrollDegrees());
 
   // Add state telemetry
-  Serial.print(">selected_track:");
-  Serial.println(state.getSelectedTrackIndex());
+  // Serial.print(">selected_track:");
+  // Serial.println(state.getSelectedIndex());
   Serial.print(">playing_track:");
   Serial.println(state.getPlayingTrackIndex());
   Serial.print(">is_playing:");
   Serial.println(state.getIsPlaying() ? 100 : 0);
   Serial.print(">ui_state:");
-  Serial.println(state.getCurrentShowing());
+  // Serial.println(state.getCurrentShowing());
 }
 
 void demoAnimations() {
   Serial.println("🎬 Demo: Event-driven transitions...");
-
-  // Demonstrate state-driven transitions
-  state.setShowing(NOW_PLAYING); // This triggers transition
-  while (state.getIsAnimating()) {
-    ui.update();
-    delay(10);
-  }
-
-  delay(1000);
-
-  state.setShowing(TRACK_LIST); // This triggers return transition
-  while (state.getIsAnimating()) {
-    ui.update();
-    delay(10);
-  }
 
   Serial.println("✅ Demo complete - UI is now event-driven!");
 }

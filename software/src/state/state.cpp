@@ -7,118 +7,12 @@
 State::State()
     : EventTarget(), elements(nullptr), totalElements(0), playingTrackIndex(-1),
       isPlaying(false), playbackPosition(0), trackDuration(0),
-      selectedTrackIndex(0), topVisibleTrackIndex(0),
-      currentShowing(TRACK_LIST), targetShowing(TRACK_LIST), isAnimating(false),
-      scrollAnimId(0), transitionAnimId(0), isRotatedMode(false) {}
-
-void State::updateVisibleTracks() {
-  for (int i = 0; i < ELEMENTS_PER_SCREEN; i++) {
-    if (i + topVisibleTrackIndex < totalElements) {
-      visibleElements[i] = elements[i + topVisibleTrackIndex];
-    } else {
-      visibleElements[i] = nullptr;
-    }
-  }
-}
-
-void State::setElements(const char **elementList, int count) {
-  elements = elementList;
-  totalElements = count;
-
-  if (selectedTrackIndex >= count) {
-    selectedTrackIndex = count > 0 ? count - 1 : 0;
-  }
-  for (int i = 0; i < ELEMENTS_PER_SCREEN; i++) {
-    if (i < count) {
-      visibleElements[i] = elementList[i];
-    } else {
-      visibleElements[i] = nullptr;
-    }
-  }
-  ListEvent event = {count, elementList, visibleElements};
-  emitEvent(EVENT_TRACK_LIST_UPDATED, &event);
-}
-
-void State::selectTrack(int index) {
-  if (index >= 0 && index < totalElements && index != selectedTrackIndex) {
-    int oldIndex = selectedTrackIndex;
-    selectedTrackIndex = index;
-    if (selectedTrackIndex < topVisibleTrackIndex) {
-      topVisibleTrackIndex = selectedTrackIndex;
-    } else if (selectedTrackIndex >=
-               topVisibleTrackIndex + ELEMENTS_PER_SCREEN) {
-      topVisibleTrackIndex = selectedTrackIndex - ELEMENTS_PER_SCREEN + 1;
-    }
-    TrackSelectedEvent event = {index, getCurrentTrackName()};
-    emitEvent(EVENT_TRACK_SELECTED, &event);
-  }
-}
-
-void State::scrollUp() {
-  int oldSelected = selectedTrackIndex;
-  int oldTopVisible = topVisibleTrackIndex;
-  if (selectedTrackIndex > 0) {
-    selectedTrackIndex--;
-    if (selectedTrackIndex < topVisibleTrackIndex) {
-      topVisibleTrackIndex = selectedTrackIndex;
-    }
-    if (needsScrollUpdate(oldSelected, oldTopVisible)) {
-      updateVisibleTracks();
-      ScrollChangedEvent event = {selectedTrackIndex, topVisibleTrackIndex,
-                                  oldSelected, oldTopVisible, visibleElements};
-      emitEvent(EVENT_SCROLL_CHANGED, &event);
-    }
-  }
-}
-
-void State::scrollDown() {
-  int oldSelected = selectedTrackIndex;
-  int oldTopVisible = topVisibleTrackIndex;
-  if (selectedTrackIndex < totalElements - 1) {
-    selectedTrackIndex++;
-    if (selectedTrackIndex >= topVisibleTrackIndex + ELEMENTS_PER_SCREEN) {
-      topVisibleTrackIndex = selectedTrackIndex - ELEMENTS_PER_SCREEN + 1;
-    }
-    if (needsScrollUpdate(oldSelected, oldTopVisible)) {
-      updateVisibleTracks();
-      ScrollChangedEvent event = {selectedTrackIndex, topVisibleTrackIndex,
-                                  oldSelected, oldTopVisible, visibleElements};
-      emitEvent(EVENT_SCROLL_CHANGED, &event);
-    }
-  }
-}
-
-void State::pageUp() {
-  int oldSelected = selectedTrackIndex;
-  int oldTopVisible = topVisibleTrackIndex;
-  selectedTrackIndex = max(0, selectedTrackIndex - ELEMENTS_PER_SCREEN);
-  topVisibleTrackIndex = max(0, topVisibleTrackIndex - ELEMENTS_PER_SCREEN);
-  if (needsScrollUpdate(oldSelected, oldTopVisible)) {
-    updateVisibleTracks();
-    ScrollChangedEvent event = {selectedTrackIndex, topVisibleTrackIndex,
-                                oldSelected, oldTopVisible, visibleElements};
-    emitEvent(EVENT_PAGE_CHANGED, &event);
-  }
-}
-
-void State::pageDown() {
-  int oldSelected = selectedTrackIndex;
-  int oldTopVisible = topVisibleTrackIndex;
-  selectedTrackIndex =
-      min(totalElements - 1, selectedTrackIndex + ELEMENTS_PER_SCREEN);
-  topVisibleTrackIndex = min(max(0, totalElements - ELEMENTS_PER_SCREEN),
-                             topVisibleTrackIndex + ELEMENTS_PER_SCREEN);
-  if (needsScrollUpdate(oldSelected, oldTopVisible)) {
-    updateVisibleTracks();
-    ScrollChangedEvent event = {selectedTrackIndex, topVisibleTrackIndex,
-                                oldSelected, oldTopVisible, visibleElements};
-    emitEvent(EVENT_PAGE_CHANGED, &event);
-  }
-}
+      isAnimating(false), scrollAnimId(0), transitionAnimId(0),
+      isRotatedMode(false) {}
 
 void State::startPlayback(int trackIndex) {
   if (trackIndex == -1) {
-    trackIndex = selectedTrackIndex;
+    trackIndex = selectedIndex;
   }
   if (trackIndex >= 0 && trackIndex < totalElements) {
     playingTrackIndex = trackIndex;
@@ -179,15 +73,6 @@ void State::notifyTrackEnded() {
   }
 }
 
-void State::setShowing(Showing newState) {
-  if (newState != currentShowing) {
-    Showing oldState = currentShowing;
-    currentShowing = newState;
-    ShowingEvent event = {oldState, newState};
-    emitEvent(EVENT_UI_STATE_CHANGED, &event);
-  }
-}
-
 void State::setAnimating(bool animating, uint32_t animId) {
   if (animating != isAnimating) {
     isAnimating = animating;
@@ -200,8 +85,8 @@ void State::setAnimating(bool animating, uint32_t animId) {
 void State::setRotation(bool rotated) { isRotatedMode = rotated; }
 
 const char *State::getCurrentTrackName() const {
-  if (selectedTrackIndex >= 0 && selectedTrackIndex < totalElements) {
-    return elements[selectedTrackIndex];
+  if (selectedIndex >= 0 && selectedIndex < totalElements) {
+    return elements[selectedIndex];
   }
   return nullptr;
 }
@@ -211,60 +96,6 @@ const char *State::getPlayingTrackName() const {
     return elements[playingTrackIndex];
   }
   return nullptr;
-}
-
-bool State::needsScrollUpdate(int oldSelected, int oldTopVisible) const {
-  return (selectedTrackIndex != oldSelected) ||
-         (topVisibleTrackIndex != oldTopVisible);
-}
-
-void State::getVisibleTrackIndices(int &startIndex, int &endIndex) const {
-  startIndex = topVisibleTrackIndex;
-  endIndex =
-      min(topVisibleTrackIndex + ELEMENTS_PER_SCREEN - 1, totalElements - 1);
-}
-
-int State::getRelativeSelectedIndex() const {
-  return selectedTrackIndex - topVisibleTrackIndex;
-}
-
-// Route_t management implementation
-void State::navigateToRoute(Route_t::RouteType type, uint32_t entityId,
-                            const char *entityName) {
-  Route_t::RouteType oldRouteType = router.getCurrentRoute().type;
-
-  router.pushRoute(type, entityId, entityName);
-
-  // Emit route changed event
-  RouteChangedEvent event = {oldRouteType, type, entityId, entityName,
-                             router.canGoBack()};
-  emitEvent(EVENT_ROUTE_CHANGED, &event);
-
-  // Reset selection when navigating to new route
-  selectedTrackIndex = 0;
-  topVisibleTrackIndex = 0;
-}
-
-bool State::navigateBack() {
-  if (!router.canGoBack()) {
-    return false;
-  }
-
-  Route_t::RouteType oldRouteType = router.getCurrentRoute().type;
-  router.popRoute();
-  Route_t &currentRoute = router.getCurrentRoute();
-
-  // Emit route changed event
-  RouteChangedEvent event = {oldRouteType, currentRoute.type,
-                             currentRoute.entityId, currentRoute.entityName,
-                             router.canGoBack()};
-  emitEvent(EVENT_ROUTE_CHANGED, &event);
-
-  // Reset selection when going back
-  selectedTrackIndex = 0;
-  topVisibleTrackIndex = 0;
-
-  return true;
 }
 
 void State::loadCurrentRouteData(MusicLookup &musicLookup) {
@@ -343,85 +174,332 @@ void State::loadCurrentRouteData(MusicLookup &musicLookup) {
     // Copy root menu elements to our elements array
     int offset = 0;
     for (uint32_t i = 0; i < count && i < MAX_STRING_POINTERS; i++) {
-      const MenuItem& item = rootMenu.getItem(i);
+      const MenuItem &item = rootMenu.getItem(i);
       elements[i] = elementsBuffer + offset;
       strcpy(elementsBuffer + offset, item.label);
       offset += strlen(item.label) + 1; // +1 for null terminator
     }
     currentRoute.hasMore = false; // Static menus don't have pagination
     break;
-  // case Route_t::SEARCH_RESULTS:
-  // Handle root or search results
-  // default:
+    // case Route_t::SEARCH_RESULTS:
+    // Handle root or search results
+    // default:
     // return;
   }
 
   // Update route info and set elements
   currentRoute.totalResults = count;
-  topVisibleTrackIndex = 0;
+  topVisibleIndex = 0;
   setElements((const char **)elements, count);
-  updateVisibleTracks();
+  updateVisibleElements();
 }
 
-// Data loading methods - convenience functions that delegate to
-// loadCurrentRouteData
-void State::loadArtists(MusicLookup &musicLookup, uint32_t offset) {
+void State::scrollUp() {
+  int oldSelected = selectedIndex;
+  int oldTopVisible = topVisibleIndex;
+  if (selectedIndex > 0) {
+    selectedIndex--;
+    if (selectedIndex < topVisibleIndex) {
+      topVisibleIndex = selectedIndex;
+    }
+    if (needsScrollUpdate(oldSelected, oldTopVisible)) {
+      updateVisibleElements();
+      ScrollChangedEvent event = {selectedIndex, topVisibleIndex, oldSelected,
+                                  oldTopVisible, visibleElements};
+      emitEvent(EVENT_SCROLL_CHANGED, &event);
+    }
+  }
+}
+
+void State::scrollDown() {
+  int oldSelected = selectedIndex;
+  int oldTopVisible = topVisibleIndex;
+  if (selectedIndex < totalElements - 1) {
+    selectedIndex++;
+    if (selectedIndex >= topVisibleIndex + ELEMENTS_PER_SCREEN) {
+      topVisibleIndex = selectedIndex - ELEMENTS_PER_SCREEN + 1;
+    }
+    if (needsScrollUpdate(oldSelected, oldTopVisible)) {
+      updateVisibleElements();
+      ScrollChangedEvent event = {selectedIndex, topVisibleIndex, oldSelected,
+                                  oldTopVisible, visibleElements};
+
+      emitEvent(EVENT_SCROLL_CHANGED, &event);
+    }
+  }
+}
+
+void State::pageUp() {
+  int oldSelected = selectedIndex;
+  int oldTopVisible = topVisibleIndex;
+  selectedIndex = max(0, selectedIndex - ELEMENTS_PER_SCREEN);
+  topVisibleIndex = max(0, topVisibleIndex - ELEMENTS_PER_SCREEN);
+  if (needsScrollUpdate(oldSelected, oldTopVisible)) {
+    updateVisibleElements();
+    ScrollChangedEvent event = {selectedIndex, topVisibleIndex, oldSelected,
+                                oldTopVisible, visibleElements};
+    emitEvent(EVENT_PAGE_CHANGED, &event);
+  }
+}
+
+void State::pageDown() {
+  int oldSelected = selectedIndex;
+  int oldTopVisible = topVisibleIndex;
+  selectedIndex = min(totalElements - 1, selectedIndex + ELEMENTS_PER_SCREEN);
+  topVisibleIndex = min(max(0, totalElements - ELEMENTS_PER_SCREEN),
+                        topVisibleIndex + ELEMENTS_PER_SCREEN);
+  if (needsScrollUpdate(oldSelected, oldTopVisible)) {
+    updateVisibleElements();
+    ScrollChangedEvent event = {selectedIndex, topVisibleIndex, oldSelected,
+                                oldTopVisible, visibleElements};
+    emitEvent(EVENT_PAGE_CHANGED, &event);
+  }
+}
+
+void State::updateVisibleElements() {
+  for (int i = 0; i < ELEMENTS_PER_SCREEN; i++) {
+    if (i + topVisibleIndex < totalElements) {
+      visibleElements[i] = elements[i + topVisibleIndex];
+    } else {
+      visibleElements[i] = nullptr;
+    }
+  }
+}
+
+void State::setElements(const char **elementList, int count) {
+  elements = elementList;
+  totalElements = count;
+
+  if (selectedIndex >= count) {
+    selectedIndex = count > 0 ? count - 1 : 0;
+  }
+  for (int i = 0; i < ELEMENTS_PER_SCREEN; i++) {
+    if (i < count) {
+      visibleElements[i] = elementList[i];
+    } else {
+      visibleElements[i] = nullptr;
+    }
+  }
+  ListEvent event = {count, elementList, visibleElements};
+  emitEvent(EVENT_TRACK_LIST_UPDATED, &event);
+}
+
+bool State::needsScrollUpdate(int oldSelected, int oldTopVisible) const {
+  return (selectedIndex != oldSelected) || (topVisibleIndex != oldTopVisible);
+}
+
+void State::getVisibleTrackIndices(int &startIndex, int &endIndex) const {
+  startIndex = topVisibleIndex;
+  endIndex = min(topVisibleIndex + ELEMENTS_PER_SCREEN - 1, totalElements - 1);
+}
+
+int State::getRelativeSelectedIndex() const {
+  return selectedIndex - topVisibleIndex;
+}
+
+void State::goToSelected(MusicLookup &musicLookup) {
   Route_t &currentRoute = router.getCurrentRoute();
-  currentRoute.currentPage = offset / MAX_STRING_POINTERS;
+  Route_t::RouteType oldRouteType = currentRoute.type;
+  router.saveCurrentSelection(selectedIndex, topVisibleIndex);
+  Route_t::RouteType newRouteType = currentRoute.type;
+  uint32_t entityId = 0;
+  const char *entityName = nullptr;
+
+  switch (currentRoute.type) {
+  case Route_t::ROOT: {
+    const MenuItem &selectedItem = rootMenu.getItem(selectedIndex);
+    selectedIndex = 0;
+    topVisibleIndex = 0;
+    switch (selectedItem.id) {
+    case 1: // Tracks - go to all tracks view
+      // TODO: Implement all tracks browsing
+      break;
+    case 2: // Artists
+      newRouteType = Route_t::ARTISTS;
+      break;
+    case 3: // Albums
+      newRouteType = Route_t::ALBUMS;
+      break;
+    case 4: // Genres
+      newRouteType = Route_t::GENRES;
+      break;
+    case 5: // Search
+      // TODO: Implement search interface
+      break;
+    case 6: // Settings
+      // TODO: Implement settings menu
+      break;
+    case 7: // Now Playing
+      newRouteType = Route_t::NOW_PLAYING;
+      break;
+    }
+    break;
+  }
+  case Route_t::ARTISTS: {
+    uint32_t artistId = getSelectedEntityId(musicLookup);
+    if (artistId > 0) {
+      char artistName[64];
+      musicLookup.getArtistName(artistId, artistName, sizeof(artistName));
+      entityId = artistId;
+      entityName = artistName;
+      newRouteType = Route_t::ALBUMS;
+    }
+    break;
+  }
+
+  case Route_t::ALBUMS: {
+    uint32_t albumId = getSelectedEntityId(musicLookup);
+    if (albumId > 0) {
+      char albumName[64];
+      musicLookup.getAlbumName(albumId, albumName, sizeof(albumName));
+      entityId = albumId;
+      entityName = albumName;
+      newRouteType = Route_t::TRACKS;
+    }
+    break;
+  }
+
+  case Route_t::GENRES: {
+    uint32_t genreId = getSelectedEntityId(musicLookup);
+    if (genreId > 0) {
+      char genreName[64];
+      musicLookup.getGenreName(genreId, genreName, sizeof(genreName));
+      entityId = genreId;
+      entityName = genreName;
+      newRouteType = Route_t::ARTISTS;
+    }
+    break;
+  }
+
+  case Route_t::TRACKS: {
+    // Start playback of selected track
+    startPlayback(selectedIndex);
+    newRouteType = Route_t::NOW_PLAYING;
+    break;
+  }
+
+    // case Route_t::SEARCH_RESULTS:
+    // Handle search result selection based on result type
+    // TODO: Implement search result navigation
+    // break;
+  }
+  router.pushRoute(newRouteType, entityId, entityName);
+  RouteChangedEvent event = {oldRouteType, newRouteType,      entityId, 0, 0,
+                             entityName,   router.canGoBack()};
   loadCurrentRouteData(musicLookup);
+  emitEvent(EVENT_ROUTE_CHANGED, &event);
 }
 
-void State::loadAlbums(MusicLookup &musicLookup, uint32_t offset) {
+bool State::back(MusicLookup &musicLookup) {
+  if (!router.canGoBack()) {
+    return false;
+  }
+
+  Route_t::RouteType oldRouteType = router.getCurrentRoute().type;
+  router.popRoute();
+  loadCurrentRouteData(musicLookup);
+  restoreSelectionState();
   Route_t &currentRoute = router.getCurrentRoute();
-  currentRoute.currentPage = offset / MAX_STRING_POINTERS;
-  loadCurrentRouteData(musicLookup);
+  RouteChangedEvent event = {oldRouteType,
+                             currentRoute.type,
+                             currentRoute.entityId,
+                             currentRoute.topVisibleIndex,
+                             currentRoute.selectedIndex,
+                             currentRoute.entityName,
+                             router.canGoBack()};
+  emitEvent(EVENT_ROUTE_CHANGED, &event);
+
+  return true;
 }
 
-void State::loadGenres(MusicLookup &musicLookup, uint32_t offset) {
+void State::backToMain(MusicLookup &musicLookup) {
+  // Clear the route stack and go back to root
+  Route_t::RouteType oldRouteType = router.getCurrentRoute().type;
+
+  while (router.canGoBack()) {
+    router.popRoute();
+  }
+
+  // Ensure we're at root
+  if (router.getCurrentRoute().type != Route_t::ROOT) {
+    router.pushRoute(Route_t::ROOT);
+  }
+  selectedIndex = 0;
+  topVisibleIndex = 0;
+  Route_t currentRoute = router.getCurrentRoute();
+  loadCurrentRouteData(musicLookup);
+  RouteChangedEvent event = {oldRouteType,
+                             currentRoute.type,
+                             0,
+                             0,
+                             currentRoute.entityId,
+                             currentRoute.entityName,
+                             router.canGoBack()};
+  emitEvent(EVENT_ROUTE_CHANGED, &event);
+}
+
+uint32_t State::getSelectedEntityId(MusicLookup &musicLookup) {
   Route_t &currentRoute = router.getCurrentRoute();
-  currentRoute.currentPage = offset / MAX_STRING_POINTERS;
-  loadCurrentRouteData(musicLookup);
+
+  switch (currentRoute.type) {
+  case Route_t::ARTISTS:
+    return musicLookup.getArtistIdAtIndex(selectedIndex);
+
+  case Route_t::ALBUMS:
+    // Check if we're in a parent context (albums by artist/genre)
+    if (router.getDepth() > 1) {
+      Route_t &parentRoute = router.routeStack[router.getDepth() - 2];
+      if (parentRoute.type == Route_t::ARTISTS) {
+        return musicLookup.getAlbumIdByArtistAtIndex(parentRoute.entityId,
+                                                     selectedIndex);
+      } else if (parentRoute.type == Route_t::GENRES) {
+        return musicLookup.getAlbumIdByGenreAtIndex(parentRoute.entityId,
+                                                    selectedIndex);
+      }
+    }
+    // Browsing all albums
+    return musicLookup.getAlbumIdAtIndex(selectedIndex);
+
+  case Route_t::GENRES:
+    return musicLookup.getGenreIdAtIndex(selectedIndex);
+
+  case Route_t::TRACKS:
+    // Tracks always have parent context
+    if (router.getDepth() > 1) {
+      Route_t &parentRoute = router.routeStack[router.getDepth() - 2];
+      if (parentRoute.type == Route_t::ARTISTS) {
+        return musicLookup.getTrackIdByArtistAtIndex(parentRoute.entityId,
+                                                     selectedIndex);
+      } else if (parentRoute.type == Route_t::ALBUMS) {
+        return musicLookup.getTrackIdByAlbumAtIndex(parentRoute.entityId,
+                                                    selectedIndex);
+      } else if (parentRoute.type == Route_t::GENRES) {
+        return musicLookup.getTrackIdByGenreAtIndex(parentRoute.entityId,
+                                                    selectedIndex);
+      }
+    }
+    break;
+
+  case Route_t::ROOT:
+  case Route_t::SEARCH_RESULTS:
+  default:
+    break;
+  }
+
+  return 0;
 }
 
-void State::loadTracksByArtist(MusicLookup &musicLookup, uint32_t artistId) {
-  // Set up route context for tracks by artist
+void State::restoreSelectionState() {
   Route_t &currentRoute = router.getCurrentRoute();
-  currentRoute.type = Route_t::TRACKS;
-  currentRoute.entityId = artistId;
-  loadCurrentRouteData(musicLookup);
-}
+  selectedIndex = currentRoute.selectedIndex;
+  topVisibleIndex = currentRoute.topVisibleIndex;
 
-void State::loadTracksByAlbum(MusicLookup &musicLookup, uint32_t albumId) {
-  // Set up route context for tracks by album
-  Route_t &currentRoute = router.getCurrentRoute();
-  currentRoute.type = Route_t::TRACKS;
-  currentRoute.entityId = albumId;
-  loadCurrentRouteData(musicLookup);
-}
+  // Clamp to valid ranges
+  selectedIndex = constrain(selectedIndex, 0, max(0, totalElements - 1));
+  topVisibleIndex = constrain(topVisibleIndex, 0,
+                              max(0, totalElements - ELEMENTS_PER_SCREEN));
 
-void State::loadTracksByGenre(MusicLookup &musicLookup, uint32_t genreId) {
-  // Set up route context for tracks by genre
-  Route_t &currentRoute = router.getCurrentRoute();
-  currentRoute.type = Route_t::TRACKS;
-  currentRoute.entityId = genreId;
-  loadCurrentRouteData(musicLookup);
+  updateVisibleElements();
 }
-
-void State::loadAlbumsByArtist(MusicLookup &musicLookup, uint32_t artistId) {
-  // Set up route context for albums by artist
-  Route_t &currentRoute = router.getCurrentRoute();
-  currentRoute.type = Route_t::ALBUMS;
-  currentRoute.entityId = artistId;
-  loadCurrentRouteData(musicLookup);
-}
-
-void State::loadAlbumsByGenre(MusicLookup &musicLookup, uint32_t genreId) {
-  // Set up route context for albums by genre
-  Route_t &currentRoute = router.getCurrentRoute();
-  currentRoute.type = Route_t::ALBUMS;
-  currentRoute.entityId = genreId;
-  loadCurrentRouteData(musicLookup);
-}
-
 // Global state instance
 State state;

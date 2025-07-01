@@ -41,7 +41,7 @@ private:
   void handlePlaybackStopped(const PlaybackEvent *event);
   void handleProgressUpdated(const ProgressEvent *event);
   void handleTrackEnded(const PlaybackEvent *event);
-  void handleShowingChanged(const ShowingEvent *event);
+  void handleNavigationChanged(const RouteChangedEvent *event);
   void handleAnimationStarted(const AnimationEvent *event);
   void handleAnimationFinished(const AnimationEvent *event);
   void handleTrackListUpdated(const ListEvent *event);
@@ -55,16 +55,6 @@ public:
   void begin();
   bool update();
   void hookToEvents(); // Connect to state events
-
-  // User input handlers (these call state methods, not UI methods directly)
-  void handleScrollUpInput();
-  void handleScrollDownInput();
-  void handlePageUpInput();
-  void handlePageDownInput();
-  void handleSelectInput();
-  void handleBackInput();
-  void handlePlayPauseInput();
-  void handleStopInput();
 
   // Rendering methods (called by event handlers)
   void renderCurrentState();
@@ -187,8 +177,8 @@ void OpenPodUIEngine::onStateEvent(int eventType, void *eventData,
     instance->handleTrackEnded((PlaybackEvent *)eventData);
     break;
 
-  case EVENT_UI_STATE_CHANGED:
-    instance->handleShowingChanged((ShowingEvent *)eventData);
+  case EVENT_ROUTE_CHANGED:
+    instance->handleNavigationChanged((RouteChangedEvent *)eventData);
     break;
 
   case EVENT_ANIMATION_STARTED:
@@ -222,7 +212,7 @@ void OpenPodUIEngine::handleTrackSelected(const TrackSelectedEvent *event) {
   updateTrackListScroll();
 
   // Re-render if we're in track list view
-  if (state.getCurrentShowing() == TRACK_LIST) {
+  if (state.getCurrentRoute().type != Route_t::RouteType::NOW_PLAYING) {
     renderTrackListArea();
   }
 }
@@ -232,8 +222,14 @@ void OpenPodUIEngine::handleScrollChanged(const ScrollChangedEvent *event) {
   Serial.print(event->selectedIndex);
   Serial.print(", top visible: ");
   Serial.println(event->topVisibleIndex);
+  Serial.print("State selected: ");
+  int selectedIndex = state.getSelectedIndex();
+  int topVisibleIndex = state.getTopVisibleIndex();
+  Serial.print(selectedIndex);
+  Serial.print(", top visible: ");
+  Serial.println(topVisibleIndex);
+  elementList.setScroll(event->selectedIndex, event->topVisibleIndex);
 
-  updateTrackListScroll();
   updateScrollbar();
 
   // Handle cache updates for track list
@@ -274,7 +270,7 @@ void OpenPodUIEngine::handlePlaybackStarted(const PlaybackEvent *event) {
   nowPlaying.setPlayState(true);
 
   // If we're in now playing view, update display
-  if (state.getCurrentShowing() == NOW_PLAYING) {
+  if (state.getCurrentRoute().type == Route_t::RouteType::NOW_PLAYING) {
     renderNowPlaying();
   }
 
@@ -287,7 +283,7 @@ void OpenPodUIEngine::handlePlaybackPaused(const PlaybackEvent *event) {
 
   nowPlaying.setPlayState(false);
 
-  if (state.getCurrentShowing() == NOW_PLAYING) {
+  if (state.getCurrentRoute().type == Route_t::RouteType::NOW_PLAYING) {
     renderNowPlaying();
   }
 }
@@ -297,7 +293,7 @@ void OpenPodUIEngine::handlePlaybackResumed(const PlaybackEvent *event) {
 
   nowPlaying.setPlayState(true);
 
-  if (state.getCurrentShowing() == NOW_PLAYING) {
+  if (state.getCurrentRoute().type == Route_t::RouteType::NOW_PLAYING) {
     renderNowPlaying();
   }
 }
@@ -308,14 +304,14 @@ void OpenPodUIEngine::handlePlaybackStopped(const PlaybackEvent *event) {
   nowPlaying.setPlayState(false);
   nowPlaying.setProgress(0);
 
-  if (state.getCurrentShowing() == NOW_PLAYING) {
+  if (state.getCurrentRoute().type == Route_t::RouteType::NOW_PLAYING) {
     renderNowPlaying();
   }
 }
 
 void OpenPodUIEngine::handleProgressUpdated(const ProgressEvent *event) {
   // Only update if we're showing the now playing screen
-  if (state.getCurrentShowing() == NOW_PLAYING) {
+  if (state.getCurrentRoute().type == Route_t::RouteType::NOW_PLAYING) {
     nowPlaying.setProgress(event->position);
     nowPlaying.setTrackLength(event->duration);
 
@@ -331,16 +327,20 @@ void OpenPodUIEngine::handleTrackEnded(const PlaybackEvent *event) {
   // Visual feedback for track end (could show brief message, etc.)
 }
 
-void OpenPodUIEngine::handleShowingChanged(const ShowingEvent *event) {
+void OpenPodUIEngine::handleNavigationChanged(const RouteChangedEvent *event) {
   Serial.print("UI: State changed from ");
-  Serial.print(event->oldState);
+  Serial.print(event->oldRouteType);
   Serial.print(" to ");
-  Serial.println(event->newState);
-
+  Serial.println(event->newRouteType);
+// return;
   // Handle transitions between states
-  if (event->oldState == TRACK_LIST && event->newState == NOW_PLAYING) {
+  if (event->oldRouteType != Route_t::RouteType::NOW_PLAYING &&
+      event->newRouteType == Route_t::RouteType::NOW_PLAYING) {
     transitionToNowPlaying();
-  } else if (event->oldState == NOW_PLAYING && event->newState == TRACK_LIST) {
+  } else if (event->oldRouteType == Route_t::RouteType::NOW_PLAYING &&
+             event->newRouteType != Route_t::RouteType::NOW_PLAYING) {
+    transitionToTrackList();
+  } else if (event->oldRouteType != event->newRouteType) {
     transitionToTrackList();
   } else {
     // Direct state change without transition
@@ -368,7 +368,7 @@ void OpenPodUIEngine::handleTrackListUpdated(const ListEvent *event) {
   elementList.setElements(event->elements, event->totalElements);
   updateScrollbar();
   // Re-render if we're showing the track list
-  if (state.getCurrentShowing() == TRACK_LIST) {
+  if (state.getCurrentRoute().type != Route_t::RouteType::NOW_PLAYING) {
     renderTrackList();
   }
 }
@@ -380,72 +380,18 @@ void OpenPodUIEngine::handleTrackDurationChanged(int *duration) {
 
   nowPlaying.setTrackLength(*duration);
 
-  if (state.getCurrentShowing() == NOW_PLAYING) {
+  if (state.getCurrentRoute().type == Route_t::RouteType::NOW_PLAYING) {
     renderNowPlaying();
   }
 }
-
-// User input handlers - these call state methods instead of UI methods
-void OpenPodUIEngine::handleScrollUpInput() {
-  state.scrollUp(); // This will trigger EVENT_SCROLL_CHANGED
-}
-
-void OpenPodUIEngine::handleScrollDownInput() {
-  state.scrollDown(); // This will trigger EVENT_SCROLL_CHANGED
-}
-
-void OpenPodUIEngine::handlePageUpInput() {
-  state.pageUp(); // This will trigger EVENT_PAGE_CHANGED
-}
-
-void OpenPodUIEngine::handlePageDownInput() {
-  state.pageDown(); // This will trigger EVENT_PAGE_CHANGED
-}
-
-void OpenPodUIEngine::handleSelectInput() {
-  if (state.getCurrentShowing() == TRACK_LIST && !isAnimating()) {
-    // This could either start playback or transition to now playing
-    state.setShowing(NOW_PLAYING); // This will trigger EVENT_UI_STATE_CHANGED
-  }
-}
-
-void OpenPodUIEngine::handleBackInput() {
-  if (state.getCurrentShowing() == NOW_PLAYING && !isAnimating()) {
-    state.setShowing(TRACK_LIST); // This will trigger EVENT_UI_STATE_CHANGED
-  }
-}
-
-void OpenPodUIEngine::handlePlayPauseInput() {
-  if (state.getPlayingTrackIndex() == -1) {
-    // No track playing, start playback
-    state.startPlayback(); // This will trigger EVENT_PLAYBACK_STARTED
-  } else {
-    // Toggle current playback
-    state.togglePlayback(); // This will trigger EVENT_PLAYBACK_PAUSED/RESUMED
-  }
-}
-
-void OpenPodUIEngine::handleStopInput() {
-  state.stopPlayback(); // This will trigger EVENT_PLAYBACK_STOPPED
-}
-
 // Rendering methods (mostly unchanged, but now use state getters)
 void OpenPodUIEngine::renderCurrentState() {
-  Serial.println("Rendering current state: " +
-                 String(state.getCurrentShowing() == TRACK_LIST
-                            ? "Track List"
-                            : "Now Playing"));
-
-  switch (state.getCurrentShowing()) {
-  case TRACK_LIST:
-    renderTrackList();
-    break;
-  case NOW_PLAYING:
+  if (state.getIsAnimating()) {
+    return; // Don't render if animating
+  } else if (state.getCurrentRoute().type == Route_t::RouteType::NOW_PLAYING) {
     renderNowPlaying();
-    break;
-  case TRANSITIONING:
-    // Don't render during transitions - handled by animation
-    break;
+  } else {
+    renderTrackList();
   }
 }
 
@@ -475,19 +421,19 @@ void OpenPodUIEngine::renderNowPlaying(int xOffset, int width) {
 
 void OpenPodUIEngine::renderTrackListArea() {
   // Only re-render the track list portion (not header or scrollbar)
-  elementList.renderAllElements(display, 0, BODY_Y, SCREEN_WIDTH - SCROLLBAR_WIDTH);
+  elementList.renderAllElements(display, 0, BODY_Y,
+                                SCREEN_WIDTH - SCROLLBAR_WIDTH);
   // Update scrollbar to reflect new position
   scrollbar.render(display);
 }
 
 void OpenPodUIEngine::updateScrollbar() {
-  scrollbar.setScrollData(state.getTotalTracks(), ELEMENTS_PER_SCREEN,
-                          state.getTopVisibleTrackIndex());
+  scrollbar.setScrollData(state.getTotalElements(), ELEMENTS_PER_SCREEN,
+                          state.getTopVisibleIndex());
 }
 
 void OpenPodUIEngine::updateTrackListScroll() {
-  elementList.setScroll(state.getSelectedTrackIndex(),
-                      state.getTopVisibleTrackIndex());
+  elementList.setScroll(state.getTotalElements(), state.getTopVisibleIndex());
 }
 
 // Transition methods (triggered by UI state change events)
@@ -508,11 +454,7 @@ void OpenPodUIEngine::transitionToNowPlaying() {
         display->setScrollOffset(SCREEN_WIDTH - currentOffset);
         lastDrawnOffset = currentOffset;
       },
-      [this]() {
-        state.setShowing(NOW_PLAYING);
-        state.setAnimating(false);     
-      },
-      Easing::easeInOutCubic);
+      [this]() { state.setAnimating(false); }, Easing::easeInOutCubic);
 }
 
 void OpenPodUIEngine::transitionToTrackList() {
@@ -526,21 +468,17 @@ void OpenPodUIEngine::transitionToTrackList() {
         if (!width)
           return;
         int startX = SCREEN_WIDTH - currentOffset;
-        if(startX + width > SCROLLBAR_X && startX + width < SCREEN_WIDTH) {
+        if (startX + width > SCROLLBAR_X && startX + width < SCREEN_WIDTH) {
           scrollbar.render(display, startX);
         }
 
-        elementList.renderRect(display, SCREEN_WIDTH - lastDrawnOffset, 0, width,
-                             SCREEN_HEIGHT - BODY_Y,
-                             SCREEN_WIDTH - currentOffset);
+        elementList.renderRect(display, SCREEN_WIDTH - lastDrawnOffset, 0,
+                               width, SCREEN_HEIGHT - BODY_Y,
+                               SCREEN_WIDTH - currentOffset);
         display->setScrollOffset(currentOffset);
         lastDrawnOffset = currentOffset;
       },
-      [this]() {
-        state.setShowing(TRACK_LIST); 
-        state.setAnimating(false);
-      },
-      Easing::easeInOutCubic);
+      [this]() { state.setAnimating(false); }, Easing::easeInOutCubic);
 }
 
 void OpenPodUIEngine::measurePerformance() {
