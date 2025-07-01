@@ -24,6 +24,7 @@ private:
   NowPlayingComponent nowPlaying;
 
   int lastDrawnOffset;
+  bool animatingLeftToRight; // Track direction of last transition
 
   // Event handler - must be static to use as callback
   static void onStateEvent(int eventType, void *eventData, EventTarget *source);
@@ -64,7 +65,7 @@ public:
 
   // Transitions (triggered by events)
   void transitionToNowPlaying();
-  void transitionToTrackList();
+  void transitionToTrackList(bool leftToRight = true);
 
   // Utility
   float getFPS() const { return animManager.getFPS(); }
@@ -332,16 +333,16 @@ void OpenPodUIEngine::handleNavigationChanged(const RouteChangedEvent *event) {
   Serial.print(event->oldRouteType);
   Serial.print(" to ");
   Serial.println(event->newRouteType);
-// return;
+  // return;
   // Handle transitions between states
   if (event->oldRouteType != Route_t::RouteType::NOW_PLAYING &&
       event->newRouteType == Route_t::RouteType::NOW_PLAYING) {
     transitionToNowPlaying();
   } else if (event->oldRouteType == Route_t::RouteType::NOW_PLAYING &&
              event->newRouteType != Route_t::RouteType::NOW_PLAYING) {
-    transitionToTrackList();
+    transitionToTrackList(!event->isForward);
   } else if (event->oldRouteType != event->newRouteType) {
-    transitionToTrackList();
+    transitionToTrackList(!event->isForward);
   } else {
     // Direct state change without transition
     renderCurrentState();
@@ -368,7 +369,7 @@ void OpenPodUIEngine::handleTrackListUpdated(const ListEvent *event) {
   elementList.setElements(event->elements, event->totalElements);
   updateScrollbar();
   // Re-render if we're showing the track list
-  if (state.getCurrentRoute().type != Route_t::RouteType::NOW_PLAYING) {
+  if (!state.getIsAnimating()) {
     renderTrackList();
   }
 }
@@ -457,30 +458,38 @@ void OpenPodUIEngine::transitionToNowPlaying() {
       [this]() { state.setAnimating(false); }, Easing::easeInOutCubic);
 }
 
-void OpenPodUIEngine::transitionToTrackList() {
+void OpenPodUIEngine::transitionToTrackList(bool leftToRight) {
   lastDrawnOffset = 0;
-  state.setAnimating(true); // Set animating state
+  animatingLeftToRight = leftToRight;
+  state.setAnimating(true);
+  
   uint32_t animId = animManager.animate(
       ANIM_CUSTOM, 0, SCREEN_WIDTH, 800,
       [this](float offset) {
         int currentOffset = (int)offset;
         int width = currentOffset - lastDrawnOffset;
-        if (!width)
-          return;
+        if (!width) return;
+
+        // Scrollbar rendering (this looks correct)
         int startX = SCREEN_WIDTH - currentOffset;
         if (startX + width > SCROLLBAR_X && startX + width < SCREEN_WIDTH) {
           scrollbar.render(display, startX);
         }
 
-        elementList.renderRect(display, SCREEN_WIDTH - lastDrawnOffset, 0,
-                               width, SCREEN_HEIGHT - BODY_Y,
-                               SCREEN_WIDTH - currentOffset);
-        display->setScrollOffset(currentOffset);
+        // Fixed coordinate calculations
+        int x = animatingLeftToRight ? SCREEN_WIDTH - currentOffset : lastDrawnOffset;
+        elementList.renderRect(display, x, 0, width, SCREEN_HEIGHT - BODY_Y, x);
+
+        // Fixed scroll offset
+        display->setScrollOffset(
+          animatingLeftToRight ? currentOffset : SCREEN_WIDTH-currentOffset
+        );
+        
         lastDrawnOffset = currentOffset;
       },
-      [this]() { state.setAnimating(false); }, Easing::easeInOutCubic);
+      [this]() { state.setAnimating(false); }, 
+      Easing::easeInOutCubic);
 }
-
 void OpenPodUIEngine::measurePerformance() {
   Serial.println("\n=== UI Performance Metrics ===");
   Serial.print("Current FPS: ");

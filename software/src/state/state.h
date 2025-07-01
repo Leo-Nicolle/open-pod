@@ -81,6 +81,7 @@ struct RouteChangedEvent {
   uint32_t topVisibleIndex; 
   uint32_t selectedIndex;
   const char *entityName;
+  bool isForward;
   bool canGoBack;
 };
 

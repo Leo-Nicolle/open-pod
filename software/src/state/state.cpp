@@ -385,7 +385,8 @@ void State::goToSelected(MusicLookup &musicLookup) {
   }
   router.pushRoute(newRouteType, entityId, entityName);
   RouteChangedEvent event = {oldRouteType, newRouteType,      entityId, 0, 0,
-                             entityName,   router.canGoBack()};
+                             entityName, true,  router.canGoBack()};
+  setAnimating(true);
   loadCurrentRouteData(musicLookup);
   emitEvent(EVENT_ROUTE_CHANGED, &event);
 }
@@ -406,6 +407,7 @@ bool State::back(MusicLookup &musicLookup) {
                              currentRoute.topVisibleIndex,
                              currentRoute.selectedIndex,
                              currentRoute.entityName,
+                             false,
                              router.canGoBack()};
   emitEvent(EVENT_ROUTE_CHANGED, &event);
 
@@ -434,6 +436,7 @@ void State::backToMain(MusicLookup &musicLookup) {
                              0,
                              currentRoute.entityId,
                              currentRoute.entityName,
+                             false,
                              router.canGoBack()};
   emitEvent(EVENT_ROUTE_CHANGED, &event);
 }

@@ -97,10 +97,10 @@ void setup() {
   // state.navigateToRoute(Route_t::ROOT);
   state.loadCurrentRouteData(musicLookup);
   state.scrollDown();
-  delay(1000);
+  // delay(1000);
   state.goToSelected(musicLookup);
-  delay(1000);
-  state.goToSelected(musicLookup);
+  // delay(1000);
+  // state.goToSelected(musicLookup);
 
   // state.loadTracksByArtist(musicLookup, 0);
 
