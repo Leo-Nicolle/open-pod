@@ -298,123 +298,100 @@ void State::loadCurrentRouteData(MusicLookup& musicLookup) {
 
 // Data loading methods
 void State::loadArtists(MusicLookup& musicLookup, uint32_t offset) {
+  const char* elements[MAX_STRING_POINTERS];
   uint32_t count = musicLookup.getAllArtists(elementsBuffer, ELEMENTS_BUFFER_SIZE,
-                                           elements, MAX_STRING_POINTERS, offset);
-  totalElements = count;
-  
+                                           (const char**)elements, MAX_STRING_POINTERS, offset);
   // Update current route info
   Route_t& currentRoute = router.getCurrentRoute();
   currentRoute.totalResults = count;
   currentRoute.hasMore = (count == MAX_STRING_POINTERS); // Assume more if we got max
   
   updateVisibleTracks();
-  
-  ListEvent event = {count, elements, visibleElements};
-  emitEvent(EVENT_TRACK_LIST_UPDATED, &event);
+  setElements((const char**)elements, count);
 }
 
 void State::loadAlbums(MusicLookup& musicLookup, uint32_t offset) {
+  const char* elements[MAX_STRING_POINTERS];
   uint32_t count = musicLookup.getAllAlbums(elementsBuffer, ELEMENTS_BUFFER_SIZE,
-                                          elements, MAX_STRING_POINTERS, offset);
-  totalElements = count;
-  
+                                          (const char**)elements, MAX_STRING_POINTERS, offset);
   Route_t& currentRoute = router.getCurrentRoute();
   currentRoute.totalResults = count;
   currentRoute.hasMore = (count == MAX_STRING_POINTERS);
-  
   updateVisibleTracks();
-  
-  ListEvent event = {count, elements, visibleElements};
-  emitEvent(EVENT_TRACK_LIST_UPDATED, &event);
+  setElements((const char**)elements, count);
 }
 
 void State::loadGenres(MusicLookup& musicLookup, uint32_t offset) {
+  const char* elements[MAX_STRING_POINTERS];
   uint32_t count = musicLookup.getAllGenres(elementsBuffer, ELEMENTS_BUFFER_SIZE,
-                                          elements, MAX_STRING_POINTERS, offset);
-  totalElements = count;
-  
+                                          (const char**)elements, MAX_STRING_POINTERS, offset);
   Route_t& currentRoute = router.getCurrentRoute();
   currentRoute.totalResults = count;
   currentRoute.hasMore = (count == MAX_STRING_POINTERS);
   
   updateVisibleTracks();
-  
-  ListEvent event = {count, elements, visibleElements};
-  emitEvent(EVENT_TRACK_LIST_UPDATED, &event);
+  setElements((const char**)elements, count);
 }
 
 void State::loadTracksByArtist(MusicLookup& musicLookup, uint32_t artistId) {
+  const char* elements[MAX_STRING_POINTERS];
   uint32_t count = musicLookup.getTracksByArtist(artistId, elementsBuffer, ELEMENTS_BUFFER_SIZE,
-                                                elements, MAX_STRING_POINTERS);
-  totalElements = count;
+                                                (const char**)elements, MAX_STRING_POINTERS);
+  // totalElements = count;
   Route_t& currentRoute = router.getCurrentRoute();
   currentRoute.totalResults = count;
   currentRoute.hasMore = false; // Relationship lookups return all results
-  
+  topVisibleTrackIndex = 0;
+  setElements((const char**)elements, count);
   updateVisibleTracks();
-  
-  ListEvent event = {count, elements, visibleElements};
-  emitEvent(EVENT_TRACK_LIST_UPDATED, &event);
 }
 
 void State::loadTracksByAlbum(MusicLookup& musicLookup, uint32_t albumId) {
+  const char* elements[MAX_STRING_POINTERS];
   uint32_t count = musicLookup.getTracksByAlbum(albumId, elementsBuffer, ELEMENTS_BUFFER_SIZE,
-                                               elements, MAX_STRING_POINTERS);
-  totalElements = count;
-  
+                                               (const char**)elements, MAX_STRING_POINTERS);
+  // totalElements = count;
   Route_t& currentRoute = router.getCurrentRoute();
   currentRoute.totalResults = count;
   currentRoute.hasMore = false;
-  
+  setElements((const char**)elements, count);
   updateVisibleTracks();
-  
-  ListEvent event = {count, elements, visibleElements};
-  emitEvent(EVENT_TRACK_LIST_UPDATED, &event);
 }
 
 void State::loadTracksByGenre(MusicLookup& musicLookup, uint32_t genreId) {
+  const char* elements[MAX_STRING_POINTERS];
   uint32_t count = musicLookup.getTracksByGenre(genreId, elementsBuffer, ELEMENTS_BUFFER_SIZE,
-                                               elements, MAX_STRING_POINTERS);
-  totalElements = count;
-  
+                                               (const char**)elements, MAX_STRING_POINTERS);
+  // totalElements = count;
   Route_t& currentRoute = router.getCurrentRoute();
   currentRoute.totalResults = count;
   currentRoute.hasMore = false;
-  
+  setElements((const char**)elements, count);
   updateVisibleTracks();
-  
-  ListEvent event = {count, elements, visibleElements};
-  emitEvent(EVENT_TRACK_LIST_UPDATED, &event);
 }
 
 void State::loadAlbumsByArtist(MusicLookup& musicLookup, uint32_t artistId) {
+  const char* elements[MAX_STRING_POINTERS];
   uint32_t count = musicLookup.getAlbumsByArtist(artistId, elementsBuffer, ELEMENTS_BUFFER_SIZE,
-                                                elements, MAX_STRING_POINTERS);
-  totalElements = count;
-  
+                                                (const char**)elements, MAX_STRING_POINTERS);
   Route_t& currentRoute = router.getCurrentRoute();
   currentRoute.totalResults = count;
   currentRoute.hasMore = false;
   
   updateVisibleTracks();
-  
-  ListEvent event = {count, elements, visibleElements};
-  emitEvent(EVENT_TRACK_LIST_UPDATED, &event);
+  setElements((const char**)elements, count);
 }
 
 void State::loadAlbumsByGenre(MusicLookup& musicLookup, uint32_t genreId) {
+  const char* elements[MAX_STRING_POINTERS];
   uint32_t count = musicLookup.getAlbumsByGenre(genreId, elementsBuffer, ELEMENTS_BUFFER_SIZE,
-                                               elements, MAX_STRING_POINTERS);
-  totalElements = count;
-  
+                                               (const char**)elements, MAX_STRING_POINTERS);
   Route_t& currentRoute = router.getCurrentRoute();
   currentRoute.totalResults = count;
   currentRoute.hasMore = false;
   
   updateVisibleTracks();
-  
-  ListEvent event = {count, elements, visibleElements};
-  emitEvent(EVENT_TRACK_LIST_UPDATED, &event);
+  setElements((const char**)elements, count);
 }
 
 // Global state instance

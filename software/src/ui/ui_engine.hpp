@@ -214,7 +214,6 @@ void OpenPodUIEngine::onStateEvent(int eventType, void *eventData,
   }
 }
 
-// Event handler implementations
 void OpenPodUIEngine::handleTrackSelected(const TrackSelectedEvent *event) {
   Serial.print("UI: Track selected - ");
   Serial.println(event->trackName);

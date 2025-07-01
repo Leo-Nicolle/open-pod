@@ -193,7 +193,6 @@ public:
   bool getIsRotatedMode() const { return isRotatedMode; }
   uint32_t getScrollAnimId() const { return scrollAnimId; }
   uint32_t getTransitionAnimId() const { return transitionAnimId; }
-  
   // Route_t accessors
   Router& getRouteManager() { return router; }
   Route_t& getCurrentRoute() { return router.getCurrentRoute(); }

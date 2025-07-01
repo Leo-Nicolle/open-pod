@@ -107,8 +107,8 @@ void setup() {
   }
 
   uint32_t djangoArtistId = artistResults[0].id;
-  state.loadTracksByArtist(musicLookup, 0);
   ui.begin();
+  state.loadTracksByArtist(musicLookup, 0);
   
   // Optional demo animations
   // demoAnimations();
