@@ -8,7 +8,6 @@
 
 // Buffer sizes for string data
 #define ELEMENTS_BUFFER_SIZE 8192
-#define MAX_ELEMENTS_PER_SCREEN 20
 #define MAX_STRING_POINTERS 200
 
 // Event types for state changes
@@ -70,6 +69,8 @@ struct AnimationEvent {
 
 struct ListEvent {
   int totalElements;
+  int selectedIndex;
+  int topVisibleIndex;
   const char **elements;
   const char **visibleElements;
 };
@@ -156,6 +157,8 @@ public:
   // Getters
   const char *getCurrentTrackName() const;
   const char *getPlayingTrackName() const;
+  // getter for visible elements
+  const char* const* getVisibleElements() const { return visibleElements; }
   bool needsScrollUpdate(int oldSelected, int oldTopVisible) const;
   void getVisibleTrackIndices(int &startIndex, int &endIndex) const;
   int getRelativeSelectedIndex() const;

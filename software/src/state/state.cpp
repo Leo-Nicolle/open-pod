@@ -150,7 +150,7 @@ void State::loadCurrentRouteData(MusicLookup &musicLookup) {
   case Route_t::TRACKS:
     // Load tracks based on parent entity
     if (router.getDepth() > 1) {
-      Route_t &parentRoute = router.routeStack[router.getDepth() - 2];
+      Route_t &parentRoute = router.routeStack[router.getDepth() - 1];
       if (parentRoute.type == Route_t::ARTISTS) {
         count = musicLookup.getTracksByArtist(
             parentRoute.entityId, elementsBuffer, ELEMENTS_BUFFER_SIZE,
@@ -280,7 +280,8 @@ void State::setElements(const char **elementList, int count) {
       visibleElements[i] = nullptr;
     }
   }
-  ListEvent event = {count, elementList, visibleElements};
+  ListEvent event = {count, selectedIndex, topVisibleIndex, elementList,
+                     visibleElements};
   emitEvent(EVENT_TRACK_LIST_UPDATED, &event);
 }
 
@@ -304,12 +305,11 @@ void State::goToSelected(MusicLookup &musicLookup) {
   Route_t::RouteType newRouteType = currentRoute.type;
   uint32_t entityId = 0;
   const char *entityName = nullptr;
+  char name[64];
 
   switch (currentRoute.type) {
   case Route_t::ROOT: {
     const MenuItem &selectedItem = rootMenu.getItem(selectedIndex);
-    selectedIndex = 0;
-    topVisibleIndex = 0;
     switch (selectedItem.id) {
     case 1: // Tracks - go to all tracks view
       // TODO: Implement all tracks browsing
@@ -337,37 +337,35 @@ void State::goToSelected(MusicLookup &musicLookup) {
   }
   case Route_t::ARTISTS: {
     uint32_t artistId = getSelectedEntityId(musicLookup);
-    if (artistId > 0) {
-      char artistName[64];
-      musicLookup.getArtistName(artistId, artistName, sizeof(artistName));
-      entityId = artistId;
-      entityName = artistName;
-      newRouteType = Route_t::ALBUMS;
-    }
+    if (artistId == -1)
+      break;
+    musicLookup.getArtistName(artistId, name, sizeof(name));
+    entityId = artistId;
+    entityName = name;
+    newRouteType = Route_t::ALBUMS;
     break;
   }
 
   case Route_t::ALBUMS: {
     uint32_t albumId = getSelectedEntityId(musicLookup);
-    if (albumId > 0) {
-      char albumName[64];
-      musicLookup.getAlbumName(albumId, albumName, sizeof(albumName));
-      entityId = albumId;
-      entityName = albumName;
-      newRouteType = Route_t::TRACKS;
-    }
+    if (albumId == -1)
+      break;
+
+    musicLookup.getAlbumName(albumId, name, sizeof(name));
+    entityId = albumId;
+    entityName = name;
+    newRouteType = Route_t::TRACKS;
     break;
   }
 
   case Route_t::GENRES: {
     uint32_t genreId = getSelectedEntityId(musicLookup);
-    if (genreId > 0) {
-      char genreName[64];
-      musicLookup.getGenreName(genreId, genreName, sizeof(genreName));
-      entityId = genreId;
-      entityName = genreName;
-      newRouteType = Route_t::ARTISTS;
-    }
+    if (genreId == -1)
+      break;
+    musicLookup.getGenreName(genreId, name, sizeof(name));
+    entityId = genreId;
+    entityName = name;
+    newRouteType = Route_t::ARTISTS;
     break;
   }
 
@@ -377,17 +375,19 @@ void State::goToSelected(MusicLookup &musicLookup) {
     newRouteType = Route_t::NOW_PLAYING;
     break;
   }
-
-    // case Route_t::SEARCH_RESULTS:
-    // Handle search result selection based on result type
-    // TODO: Implement search result navigation
-    // break;
+  }
+  if (newRouteType != Route_t::NOW_PLAYING) {
+    selectedIndex = 0;
+    topVisibleIndex = 0;
   }
   router.pushRoute(newRouteType, entityId, entityName);
-  RouteChangedEvent event = {oldRouteType, newRouteType,      entityId, 0, 0,
-                             entityName, true,  router.canGoBack()};
+  RouteChangedEvent event = {
+      oldRouteType, newRouteType, entityId,          0, 0,
+      entityName,   true,         router.canGoBack()};
   setAnimating(true);
-  loadCurrentRouteData(musicLookup);
+  if (newRouteType != Route_t::NOW_PLAYING) {
+    loadCurrentRouteData(musicLookup);
+  }
   emitEvent(EVENT_ROUTE_CHANGED, &event);
 }
 
@@ -398,8 +398,11 @@ bool State::back(MusicLookup &musicLookup) {
 
   Route_t::RouteType oldRouteType = router.getCurrentRoute().type;
   router.popRoute();
-  loadCurrentRouteData(musicLookup);
-  restoreSelectionState();
+  setAnimating(true);
+  if(oldRouteType != Route_t::NOW_PLAYING) {
+    loadCurrentRouteData(musicLookup);
+    restoreSelectionState();
+  }
   Route_t &currentRoute = router.getCurrentRoute();
   RouteChangedEvent event = {oldRouteType,
                              currentRoute.type,
@@ -429,6 +432,7 @@ void State::backToMain(MusicLookup &musicLookup) {
   selectedIndex = 0;
   topVisibleIndex = 0;
   Route_t currentRoute = router.getCurrentRoute();
+  setAnimating(true);
   loadCurrentRouteData(musicLookup);
   RouteChangedEvent event = {oldRouteType,
                              currentRoute.type,

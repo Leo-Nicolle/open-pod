@@ -65,6 +65,7 @@ void setup() {
   setupAudioCallbacks();
   musicLookup.init();
   display.begin();
+  Serial.println("✅ Display initialized!");
   delay(100);
   display.setupScroll(0, SCREEN_WIDTH, 0);
 
@@ -90,15 +91,60 @@ void setup() {
   // --- MusicIndex initialization and artist/track search ---
   if (!musicIndex.init(musicLookup.getLastPSRAMAddress())) {
     Serial.println("❌ Failed to initialize MusicIndex!");
-    while (1)
-      delay(1000);
   }
+  delay(100);
   ui.begin();
+  Serial.println("HERE");
   // state.navigateToRoute(Route_t::ROOT);
   state.loadCurrentRouteData(musicLookup);
   state.scrollDown();
-  // delay(1000);
   state.goToSelected(musicLookup);
+  while (state.getIsAnimating()) {
+    delay(20);
+    ui.update();
+  }
+  state.scrollDown();
+  delay(20);
+  state.goToSelected(musicLookup);
+  // state.back(musicLookup);
+  while (state.getIsAnimating()) {
+    delay(20);
+    ui.update();
+  }
+  state.goToSelected(musicLookup);
+  while (state.getIsAnimating()) {
+    delay(20);
+    ui.update();
+  }
+  state.scrollDown();
+  state.scrollDown();
+  delay(20);
+
+  state.goToSelected(musicLookup);
+  while (state.getIsAnimating()) {
+    delay(20);
+    ui.update();
+  }
+  state.back(musicLookup);
+  while (state.getIsAnimating()) {
+    delay(20);
+    ui.update();
+  }
+  // state.back(musicLookup);
+  // while (state.getIsAnimating()) {
+  //   delay(20);
+  //   ui.update();
+  // }
+  // state.back(musicLookup);
+  // while (state.getIsAnimating()) {
+  //   delay(20);
+  //   ui.update();
+  // }
+  // state.back(musicLookup);
+  // while (state.getIsAnimating()) {
+  //   delay(20);
+  //   ui.update();
+  // }
   // delay(1000);
   // state.goToSelected(musicLookup);
 

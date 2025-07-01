@@ -46,7 +46,7 @@ bool MusicIndex::init(uint32_t base_address) {
   clearCache();
 
   Serial.println("Music index loaded successfully!");
-  printStats();
+  // printStats();
 
   return true;
 }
@@ -691,17 +691,6 @@ void MusicIndex::printStats() {
   Serial.print(" MB (");
   Serial.print(cardSizeGB);
   Serial.println(" GB)");
-  
-  Serial.println("tracks:");
-  search_result_t artistResults[MAX_SEARCH_RESULTS];
-  uint32_t foundArtists = searchArtists("Swift Guad", artistResults, MAX_SEARCH_RESULTS);
-  Serial.print("Found ");
-  Serial.print(foundArtists);
-  Serial.println(" artists with prefix 'Swift Guad':");
-  for (uint32_t i = 0; i < foundArtists; i++) {
-    printSearchResult(artistResults[i]);
-  }
-  
   Serial.println("========================");
 }
 

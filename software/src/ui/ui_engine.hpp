@@ -101,16 +101,21 @@ OpenPodUIEngine::~OpenPodUIEngine() {
 
 void OpenPodUIEngine::begin() {
   display->fillScreen(COLOR_BACKGROUND);
-  // Hook up to state events first
+  Serial.println("OpenPod UI Engine initializing...");
+  delay(500);
   hookToEvents();
-  // Initialize components
+  Serial.println("2");
+  delay(500);
   elementList.begin();
+  Serial.println("3");
+  delay(500);
   updateTrackListScroll();
+  Serial.println("4");
+  delay(500);
   updateScrollbar();
-
-  // Render initial state
+  Serial.println("5");
+  delay(500);
   renderCurrentState();
-
   Serial.println(
       "OpenPod UI Engine initialized with event-driven architecture");
 }
@@ -366,6 +371,7 @@ void OpenPodUIEngine::handleTrackListUpdated(const ListEvent *event) {
   Serial.print("UI: Track list updated - ");
   Serial.print(event->totalElements);
   Serial.println(" tracks");
+  elementList.setScroll(event->selectedIndex, event->topVisibleIndex);
   elementList.setElements(event->elements, event->totalElements);
   updateScrollbar();
   // Re-render if we're showing the track list
@@ -462,13 +468,14 @@ void OpenPodUIEngine::transitionToTrackList(bool leftToRight) {
   lastDrawnOffset = 0;
   animatingLeftToRight = leftToRight;
   state.setAnimating(true);
-  
+
   uint32_t animId = animManager.animate(
       ANIM_CUSTOM, 0, SCREEN_WIDTH, 800,
       [this](float offset) {
         int currentOffset = (int)offset;
         int width = currentOffset - lastDrawnOffset;
-        if (!width) return;
+        if (!width)
+          return;
 
         // Scrollbar rendering (this looks correct)
         int startX = SCREEN_WIDTH - currentOffset;
@@ -477,18 +484,18 @@ void OpenPodUIEngine::transitionToTrackList(bool leftToRight) {
         }
 
         // Fixed coordinate calculations
-        int x = animatingLeftToRight ? SCREEN_WIDTH - currentOffset : lastDrawnOffset;
+        int x = animatingLeftToRight ? SCREEN_WIDTH - currentOffset
+                                     : lastDrawnOffset;
         elementList.renderRect(display, x, 0, width, SCREEN_HEIGHT - BODY_Y, x);
 
         // Fixed scroll offset
-        display->setScrollOffset(
-          animatingLeftToRight ? currentOffset : SCREEN_WIDTH-currentOffset
-        );
-        
+        display->setScrollOffset(animatingLeftToRight
+                                     ? currentOffset
+                                     : SCREEN_WIDTH - currentOffset);
+
         lastDrawnOffset = currentOffset;
       },
-      [this]() { state.setAnimating(false); }, 
-      Easing::easeInOutCubic);
+      [this]() { state.setAnimating(false); }, Easing::easeInOutCubic);
 }
 void OpenPodUIEngine::measurePerformance() {
   Serial.println("\n=== UI Performance Metrics ===");

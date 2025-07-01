@@ -28,10 +28,10 @@ public:
         renderer(cache) {}
 
   void begin() {
-    // Build initial cache with visible elements
     const char *visibleElements[ELEMENTS_PER_SCREEN];
-    for (int i = 0; i < ELEMENTS_PER_SCREEN && i < numElements; i++) {
-      visibleElements[i] = elements[i];
+    for(int i = 0; i < ELEMENTS_PER_SCREEN; i++) {
+      visibleElements[i] = nullptr;
+      cache.cacheValid[i] = false;
     }
     cache.build(visibleElements);
   }
