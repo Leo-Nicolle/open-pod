@@ -1,7 +1,6 @@
 #pragma once
 #include <Arduino.h>
 
-// Route_t management for navigation
 struct Route_t {
   enum RouteType { ROOT, SEARCH_RESULTS, GENRES, ARTISTS, ALBUMS, TRACKS };
   RouteType type;

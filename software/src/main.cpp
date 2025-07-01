@@ -87,28 +87,20 @@ void setup() {
   Serial.println("Keep hands off wheel for baseline...");
   wheel.takeBaseline();
   wheel.setSensitivities(0.896, 1.0, 0.950, 0.913);
-  musicLookup.test();
   // --- MusicIndex initialization and artist/track search ---
   if (!musicIndex.init(musicLookup.getLastPSRAMAddress())) {
     Serial.println("❌ Failed to initialize MusicIndex!");
     while (1)
       delay(1000);
   }
-  musicLookup.test();
-  // Search for artist "Django Reinhardt"
-  search_result_t artistResults[MAX_SEARCH_RESULTS];
-  uint32_t foundArtists = musicIndex.searchArtists(
-      "Swift Guad", artistResults, MAX_SEARCH_RESULTS);
-
-  if (foundArtists == 0) {
-    Serial.println("❌ Artist 'Django Reinhardt' not found!");
-    while (1)
-      delay(1000);
-  }
-
-  uint32_t djangoArtistId = artistResults[0].id;
   ui.begin();
-  state.loadTracksByArtist(musicLookup, 0);
+  state.navigateToRoute(Route_t::ROOT);
+  state.loadCurrentRouteData(musicLookup);
+  delay(1000);
+  state.navigateToRoute(Route_t::ARTISTS);
+  state.loadCurrentRouteData(musicLookup);
+
+  // state.loadTracksByArtist(musicLookup, 0);
   
   // Optional demo animations
   // demoAnimations();

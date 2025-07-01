@@ -1,5 +1,6 @@
 #pragma once
 #include "state.h"
+#include "static_menu.h"
 
 // Application state management
 
@@ -44,7 +45,8 @@ void State::selectTrack(int index) {
     selectedTrackIndex = index;
     if (selectedTrackIndex < topVisibleTrackIndex) {
       topVisibleTrackIndex = selectedTrackIndex;
-    } else if (selectedTrackIndex >= topVisibleTrackIndex + ELEMENTS_PER_SCREEN) {
+    } else if (selectedTrackIndex >=
+               topVisibleTrackIndex + ELEMENTS_PER_SCREEN) {
       topVisibleTrackIndex = selectedTrackIndex - ELEMENTS_PER_SCREEN + 1;
     }
     TrackSelectedEvent event = {index, getCurrentTrackName()};
@@ -218,7 +220,8 @@ bool State::needsScrollUpdate(int oldSelected, int oldTopVisible) const {
 
 void State::getVisibleTrackIndices(int &startIndex, int &endIndex) const {
   startIndex = topVisibleTrackIndex;
-  endIndex = min(topVisibleTrackIndex + ELEMENTS_PER_SCREEN - 1, totalElements - 1);
+  endIndex =
+      min(topVisibleTrackIndex + ELEMENTS_PER_SCREEN - 1, totalElements - 1);
 }
 
 int State::getRelativeSelectedIndex() const {
@@ -226,15 +229,17 @@ int State::getRelativeSelectedIndex() const {
 }
 
 // Route_t management implementation
-void State::navigateToRoute(Route_t::RouteType type, uint32_t entityId, const char* entityName) {
+void State::navigateToRoute(Route_t::RouteType type, uint32_t entityId,
+                            const char *entityName) {
   Route_t::RouteType oldRouteType = router.getCurrentRoute().type;
-  
+
   router.pushRoute(type, entityId, entityName);
-  
+
   // Emit route changed event
-  RouteChangedEvent event = {oldRouteType, type, entityId, entityName, router.canGoBack()};
+  RouteChangedEvent event = {oldRouteType, type, entityId, entityName,
+                             router.canGoBack()};
   emitEvent(EVENT_ROUTE_CHANGED, &event);
-  
+
   // Reset selection when navigating to new route
   selectedTrackIndex = 0;
   topVisibleTrackIndex = 0;
@@ -244,154 +249,178 @@ bool State::navigateBack() {
   if (!router.canGoBack()) {
     return false;
   }
-  
+
   Route_t::RouteType oldRouteType = router.getCurrentRoute().type;
   router.popRoute();
-  Route_t& currentRoute = router.getCurrentRoute();
-  
+  Route_t &currentRoute = router.getCurrentRoute();
+
   // Emit route changed event
-  RouteChangedEvent event = {oldRouteType, currentRoute.type, currentRoute.entityId, 
-                            currentRoute.entityName, router.canGoBack()};
+  RouteChangedEvent event = {oldRouteType, currentRoute.type,
+                             currentRoute.entityId, currentRoute.entityName,
+                             router.canGoBack()};
   emitEvent(EVENT_ROUTE_CHANGED, &event);
-  
+
   // Reset selection when going back
   selectedTrackIndex = 0;
   topVisibleTrackIndex = 0;
-  
+
   return true;
 }
 
-void State::loadCurrentRouteData(MusicLookup& musicLookup) {
-  Route_t& currentRoute = router.getCurrentRoute();
-  
+void State::loadCurrentRouteData(MusicLookup &musicLookup) {
+  Route_t &currentRoute = router.getCurrentRoute();
+  const char *elements[MAX_STRING_POINTERS];
+  uint32_t count = 0;
+
   switch (currentRoute.type) {
-    case Route_t::ARTISTS:
-      loadArtists(musicLookup, currentRoute.currentPage * MAX_STRING_POINTERS);
-      break;
-    case Route_t::ALBUMS:
-      loadAlbums(musicLookup, currentRoute.currentPage * MAX_STRING_POINTERS);
-      break;
-    case Route_t::GENRES:
-      loadGenres(musicLookup, currentRoute.currentPage * MAX_STRING_POINTERS);
-      break;
-    case Route_t::TRACKS:
-      // Load tracks based on parent entity
-      if (router.getDepth() > 1) {
-        // Get parent route to determine context
-        Route_t& parentRoute = router.routeStack[router.getDepth() - 2];
-        if (parentRoute.type == Route_t::ARTISTS) {
-          loadTracksByArtist(musicLookup, parentRoute.entityId);
-        } else if (parentRoute.type == Route_t::ALBUMS) {
-          loadTracksByAlbum(musicLookup, parentRoute.entityId);
-        } else if (parentRoute.type == Route_t::GENRES) {
-          loadTracksByGenre(musicLookup, parentRoute.entityId);
-        }
+  case Route_t::ARTISTS:
+    count = musicLookup.getAllArtists(
+        elementsBuffer, ELEMENTS_BUFFER_SIZE, (const char **)elements,
+        MAX_STRING_POINTERS, currentRoute.currentPage * MAX_STRING_POINTERS);
+    currentRoute.hasMore = (count == MAX_STRING_POINTERS);
+    break;
+
+  case Route_t::ALBUMS:
+    // Check if we're loading albums by artist or genre
+    if (router.getDepth() > 1) {
+      Route_t &parentRoute = router.routeStack[router.getDepth() - 2];
+      if (parentRoute.type == Route_t::ARTISTS) {
+        count = musicLookup.getAlbumsByArtist(
+            parentRoute.entityId, elementsBuffer, ELEMENTS_BUFFER_SIZE,
+            (const char **)elements, MAX_STRING_POINTERS);
+        currentRoute.hasMore = false; // Relationship lookups return all results
+      } else if (parentRoute.type == Route_t::GENRES) {
+        count = musicLookup.getAlbumsByGenre(
+            parentRoute.entityId, elementsBuffer, ELEMENTS_BUFFER_SIZE,
+            (const char **)elements, MAX_STRING_POINTERS);
+        currentRoute.hasMore = false;
+      } else {
+        count = musicLookup.getAllAlbums(
+            elementsBuffer, ELEMENTS_BUFFER_SIZE, (const char **)elements,
+            MAX_STRING_POINTERS,
+            currentRoute.currentPage * MAX_STRING_POINTERS);
+        currentRoute.hasMore = (count == MAX_STRING_POINTERS);
       }
-      break;
-    case Route_t::ROOT:
-    case Route_t::SEARCH_RESULTS:
-    default:
-      // Handle root or search results
-      break;
+    } else {
+      count = musicLookup.getAllAlbums(
+          elementsBuffer, ELEMENTS_BUFFER_SIZE, (const char **)elements,
+          MAX_STRING_POINTERS, currentRoute.currentPage * MAX_STRING_POINTERS);
+      currentRoute.hasMore = (count == MAX_STRING_POINTERS);
+    }
+    break;
+
+  case Route_t::GENRES:
+    count = musicLookup.getAllGenres(
+        elementsBuffer, ELEMENTS_BUFFER_SIZE, (const char **)elements,
+        MAX_STRING_POINTERS, currentRoute.currentPage * MAX_STRING_POINTERS);
+    currentRoute.hasMore = (count == MAX_STRING_POINTERS);
+    break;
+
+  case Route_t::TRACKS:
+    // Load tracks based on parent entity
+    if (router.getDepth() > 1) {
+      Route_t &parentRoute = router.routeStack[router.getDepth() - 2];
+      if (parentRoute.type == Route_t::ARTISTS) {
+        count = musicLookup.getTracksByArtist(
+            parentRoute.entityId, elementsBuffer, ELEMENTS_BUFFER_SIZE,
+            (const char **)elements, MAX_STRING_POINTERS);
+      } else if (parentRoute.type == Route_t::ALBUMS) {
+        count = musicLookup.getTracksByAlbum(
+            parentRoute.entityId, elementsBuffer, ELEMENTS_BUFFER_SIZE,
+            (const char **)elements, MAX_STRING_POINTERS);
+      } else if (parentRoute.type == Route_t::GENRES) {
+        count = musicLookup.getTracksByGenre(
+            parentRoute.entityId, elementsBuffer, ELEMENTS_BUFFER_SIZE,
+            (const char **)elements, MAX_STRING_POINTERS);
+      }
+      currentRoute.hasMore = false; // Relationship lookups return all results
+    }
+    break;
+
+  case Route_t::ROOT:
+    // Use the structured StaticMenu for root menu
+    count = rootMenu.getItemCount();
+    // Copy root menu elements to our elements array
+    int offset = 0;
+    for (uint32_t i = 0; i < count && i < MAX_STRING_POINTERS; i++) {
+      const MenuItem& item = rootMenu.getItem(i);
+      elements[i] = elementsBuffer + offset;
+      strcpy(elementsBuffer + offset, item.label);
+      offset += strlen(item.label) + 1; // +1 for null terminator
+    }
+    currentRoute.hasMore = false; // Static menus don't have pagination
+    break;
+  // case Route_t::SEARCH_RESULTS:
+  // Handle root or search results
+  // default:
+    // return;
   }
-}
 
-// Data loading methods
-void State::loadArtists(MusicLookup& musicLookup, uint32_t offset) {
-  const char* elements[MAX_STRING_POINTERS];
-  uint32_t count = musicLookup.getAllArtists(elementsBuffer, ELEMENTS_BUFFER_SIZE,
-                                           (const char**)elements, MAX_STRING_POINTERS, offset);
-  // Update current route info
-  Route_t& currentRoute = router.getCurrentRoute();
+  // Update route info and set elements
   currentRoute.totalResults = count;
-  currentRoute.hasMore = (count == MAX_STRING_POINTERS); // Assume more if we got max
-  
-  updateVisibleTracks();
-  setElements((const char**)elements, count);
-}
-
-void State::loadAlbums(MusicLookup& musicLookup, uint32_t offset) {
-  const char* elements[MAX_STRING_POINTERS];
-  uint32_t count = musicLookup.getAllAlbums(elementsBuffer, ELEMENTS_BUFFER_SIZE,
-                                          (const char**)elements, MAX_STRING_POINTERS, offset);
-  Route_t& currentRoute = router.getCurrentRoute();
-  currentRoute.totalResults = count;
-  currentRoute.hasMore = (count == MAX_STRING_POINTERS);
-  updateVisibleTracks();
-  setElements((const char**)elements, count);
-}
-
-void State::loadGenres(MusicLookup& musicLookup, uint32_t offset) {
-  const char* elements[MAX_STRING_POINTERS];
-  uint32_t count = musicLookup.getAllGenres(elementsBuffer, ELEMENTS_BUFFER_SIZE,
-                                          (const char**)elements, MAX_STRING_POINTERS, offset);
-  Route_t& currentRoute = router.getCurrentRoute();
-  currentRoute.totalResults = count;
-  currentRoute.hasMore = (count == MAX_STRING_POINTERS);
-  
-  updateVisibleTracks();
-  setElements((const char**)elements, count);
-}
-
-void State::loadTracksByArtist(MusicLookup& musicLookup, uint32_t artistId) {
-  const char* elements[MAX_STRING_POINTERS];
-  uint32_t count = musicLookup.getTracksByArtist(artistId, elementsBuffer, ELEMENTS_BUFFER_SIZE,
-                                                (const char**)elements, MAX_STRING_POINTERS);
-  // totalElements = count;
-  Route_t& currentRoute = router.getCurrentRoute();
-  currentRoute.totalResults = count;
-  currentRoute.hasMore = false; // Relationship lookups return all results
   topVisibleTrackIndex = 0;
-  setElements((const char**)elements, count);
+  setElements((const char **)elements, count);
   updateVisibleTracks();
 }
 
-void State::loadTracksByAlbum(MusicLookup& musicLookup, uint32_t albumId) {
-  const char* elements[MAX_STRING_POINTERS];
-  uint32_t count = musicLookup.getTracksByAlbum(albumId, elementsBuffer, ELEMENTS_BUFFER_SIZE,
-                                               (const char**)elements, MAX_STRING_POINTERS);
-  // totalElements = count;
-  Route_t& currentRoute = router.getCurrentRoute();
-  currentRoute.totalResults = count;
-  currentRoute.hasMore = false;
-  setElements((const char**)elements, count);
-  updateVisibleTracks();
+// Data loading methods - convenience functions that delegate to
+// loadCurrentRouteData
+void State::loadArtists(MusicLookup &musicLookup, uint32_t offset) {
+  Route_t &currentRoute = router.getCurrentRoute();
+  currentRoute.currentPage = offset / MAX_STRING_POINTERS;
+  loadCurrentRouteData(musicLookup);
 }
 
-void State::loadTracksByGenre(MusicLookup& musicLookup, uint32_t genreId) {
-  const char* elements[MAX_STRING_POINTERS];
-  uint32_t count = musicLookup.getTracksByGenre(genreId, elementsBuffer, ELEMENTS_BUFFER_SIZE,
-                                               (const char**)elements, MAX_STRING_POINTERS);
-  // totalElements = count;
-  Route_t& currentRoute = router.getCurrentRoute();
-  currentRoute.totalResults = count;
-  currentRoute.hasMore = false;
-  setElements((const char**)elements, count);
-  updateVisibleTracks();
+void State::loadAlbums(MusicLookup &musicLookup, uint32_t offset) {
+  Route_t &currentRoute = router.getCurrentRoute();
+  currentRoute.currentPage = offset / MAX_STRING_POINTERS;
+  loadCurrentRouteData(musicLookup);
 }
 
-void State::loadAlbumsByArtist(MusicLookup& musicLookup, uint32_t artistId) {
-  const char* elements[MAX_STRING_POINTERS];
-  uint32_t count = musicLookup.getAlbumsByArtist(artistId, elementsBuffer, ELEMENTS_BUFFER_SIZE,
-                                                (const char**)elements, MAX_STRING_POINTERS);
-  Route_t& currentRoute = router.getCurrentRoute();
-  currentRoute.totalResults = count;
-  currentRoute.hasMore = false;
-  
-  updateVisibleTracks();
-  setElements((const char**)elements, count);
+void State::loadGenres(MusicLookup &musicLookup, uint32_t offset) {
+  Route_t &currentRoute = router.getCurrentRoute();
+  currentRoute.currentPage = offset / MAX_STRING_POINTERS;
+  loadCurrentRouteData(musicLookup);
 }
 
-void State::loadAlbumsByGenre(MusicLookup& musicLookup, uint32_t genreId) {
-  const char* elements[MAX_STRING_POINTERS];
-  uint32_t count = musicLookup.getAlbumsByGenre(genreId, elementsBuffer, ELEMENTS_BUFFER_SIZE,
-                                               (const char**)elements, MAX_STRING_POINTERS);
-  Route_t& currentRoute = router.getCurrentRoute();
-  currentRoute.totalResults = count;
-  currentRoute.hasMore = false;
-  
-  updateVisibleTracks();
-  setElements((const char**)elements, count);
+void State::loadTracksByArtist(MusicLookup &musicLookup, uint32_t artistId) {
+  // Set up route context for tracks by artist
+  Route_t &currentRoute = router.getCurrentRoute();
+  currentRoute.type = Route_t::TRACKS;
+  currentRoute.entityId = artistId;
+  loadCurrentRouteData(musicLookup);
+}
+
+void State::loadTracksByAlbum(MusicLookup &musicLookup, uint32_t albumId) {
+  // Set up route context for tracks by album
+  Route_t &currentRoute = router.getCurrentRoute();
+  currentRoute.type = Route_t::TRACKS;
+  currentRoute.entityId = albumId;
+  loadCurrentRouteData(musicLookup);
+}
+
+void State::loadTracksByGenre(MusicLookup &musicLookup, uint32_t genreId) {
+  // Set up route context for tracks by genre
+  Route_t &currentRoute = router.getCurrentRoute();
+  currentRoute.type = Route_t::TRACKS;
+  currentRoute.entityId = genreId;
+  loadCurrentRouteData(musicLookup);
+}
+
+void State::loadAlbumsByArtist(MusicLookup &musicLookup, uint32_t artistId) {
+  // Set up route context for albums by artist
+  Route_t &currentRoute = router.getCurrentRoute();
+  currentRoute.type = Route_t::ALBUMS;
+  currentRoute.entityId = artistId;
+  loadCurrentRouteData(musicLookup);
+}
+
+void State::loadAlbumsByGenre(MusicLookup &musicLookup, uint32_t genreId) {
+  // Set up route context for albums by genre
+  Route_t &currentRoute = router.getCurrentRoute();
+  currentRoute.type = Route_t::ALBUMS;
+  currentRoute.entityId = genreId;
+  loadCurrentRouteData(musicLookup);
 }
 
 // Global state instance

@@ -3,7 +3,8 @@
 
 #define MAX_ROUTE_DEPTH 8
 
-  Router::Router() : stackDepth(0) {}
+  Router::Router() : stackDepth(0) {
+  }
   
   void Router::pushRoute(Route_t::RouteType type, uint32_t entityId, const char* entityName) {
     if (stackDepth < MAX_ROUTE_DEPTH) {

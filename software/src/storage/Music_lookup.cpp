@@ -442,8 +442,7 @@ uint32_t MusicLookup::getAllArtists(char *buffer, uint32_t buffer_size,
       buffer_pos[result.length] = '\0';
 
       buffer_pos += result.length + 1;
-      // buffer_remaining -= result.length + 1;
-      // strings_loaded++;
+      strings_loaded++;
     }
   }
 
@@ -475,8 +474,7 @@ uint32_t MusicLookup::getAllAlbums(char *buffer, uint32_t buffer_size,
       buffer_pos[result.length] = '\0';
 
       buffer_pos += result.length + 1;
-      // buffer_remaining -= result.length + 1;
-      // strings_loaded++;
+      strings_loaded++;
     }
   }
 
@@ -508,8 +506,7 @@ uint32_t MusicLookup::getAllGenres(char *buffer, uint32_t buffer_size,
       buffer_pos[result.length] = '\0';
 
       buffer_pos += result.length + 1;
-      // buffer_remaining -= result.length + 1;
-      // strings_loaded++;
+      strings_loaded++;
     }
   }
 
