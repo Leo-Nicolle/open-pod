@@ -1,4 +1,4 @@
-23047177652343547
+23055914617468945
 Audio_Module
 Reverb_BTDR-1H
 Digital Reverberation Unit, http://www.belton.co.kr/inc/downfile.php?seq=17&file=pdf (footprint from http://www.uk-electronic.de/PDF/BTDR-1.pdf)
@@ -94395,6 +94395,13 @@ CUI_SJ-43515TS-SMT-TR
 5
 5
 openpod
+CUI_SJ1-3524NG
+
+
+0
+4
+4
+openpod
 ESP32-S3-WROOM-2
 2.4 GHz Wi­-Fi and Bluetooth 5 (LE) module: https://www.espressif.com/sites/default/files/documentation/esp32-s3-wroom-2_datasheet_en.pdf
 Bluetooth WiFi Wi-Fi ESP WROOM
@@ -94420,8 +94427,36 @@ clickwheel
 
 
 0
+26
+20
+openpod
+clickwheel_1
+
+
+0
+4
+4
+openpod
+fsc-bt1035
+
+
 0
 0
+0
+openpod
+fsc-bt1046
+
+
+0
+44
+44
+openpod
+mpr121qr2
+
+
+0
+20
+20
 openpod
 nhd-2.4-240320cf-ctxif
 

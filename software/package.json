@@ -1,0 +1,24 @@
+{
+  "name": "openpod-sofware",
+  "version": "1.0.0",
+  "description": "",
+  "main": "main.cpp",
+  "bin": {
+    "cli": "../scripts/cli.js"
+  },
+  "directories": {
+    "lib": "lib",
+    "test": "test"
+  },
+  "scripts": {
+    "clean": "../scripts/pio.sh run -t clean ",
+    "build": "../scripts/pio.sh run -e nucleo_f446re",
+    "upload": "../scripts/pio.sh run -e nucleo_f446re -t upload",
+    "monitor": "../scripts/pio.sh device monitor",
+    "test": "../scripts/pio.sh test -e test_native -v ",
+    "test:report": "../scripts/pio.sh test -e test_native -v | ../scripts/reporter.js"
+  },
+  "author": "Leo Nicolle",
+  "license": "MIT",
+  "devDependencies": {}
+}

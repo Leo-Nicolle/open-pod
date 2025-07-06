@@ -1,0 +1,8383 @@
+{
+  "indexToTrack": [
+    [
+      0,
+      "Bombe à retardement"
+    ],
+    [
+      1,
+      "Le point"
+    ],
+    [
+      2,
+      "Mon calvaire"
+    ],
+    [
+      3,
+      "Dernière lettre"
+    ],
+    [
+      4,
+      "Phone Call"
+    ],
+    [
+      5,
+      "Mise à jour"
+    ],
+    [
+      6,
+      "Révolution"
+    ],
+    [
+      7,
+      "Paradox"
+    ],
+    [
+      8,
+      "Pour les p'tits"
+    ],
+    [
+      9,
+      "I Try"
+    ],
+    [
+      10,
+      "Enfant soldat"
+    ],
+    [
+      11,
+      "Maman pleure pas"
+    ],
+    [
+      12,
+      "Enervé"
+    ],
+    [
+      13,
+      "L'ogre et l'enfant"
+    ],
+    [
+      14,
+      "Jour de pluie"
+    ],
+    [
+      15,
+      "Skyzophrène"
+    ],
+    [
+      16,
+      "Besoin de clarté"
+    ],
+    [
+      17,
+      "Hip Hop Fat"
+    ],
+    [
+      18,
+      "Pourquoi"
+    ],
+    [
+      19,
+      "La montreuilloise"
+    ],
+    [
+      20,
+      "Narvalo"
+    ],
+    [
+      21,
+      "Profundo"
+    ],
+    [
+      22,
+      "Les voix du mal"
+    ],
+    [
+      23,
+      "En temps de crise"
+    ],
+    [
+      24,
+      "Dans mes artères"
+    ],
+    [
+      25,
+      "J'arrive"
+    ],
+    [
+      26,
+      "Freestyle latino"
+    ],
+    [
+      27,
+      "Partition nébuleuse"
+    ],
+    [
+      28,
+      "Nono"
+    ],
+    [
+      29,
+      "Juste un couplet"
+    ],
+    [
+      30,
+      "Là n'est pas la question"
+    ],
+    [
+      31,
+      "Le sens du partage"
+    ],
+    [
+      32,
+      "Deuxième cicatrice"
+    ],
+    [
+      33,
+      "Le suite"
+    ],
+    [
+      34,
+      "Ma génération"
+    ],
+    [
+      35,
+      "Majeur et vacciné"
+    ],
+    [
+      36,
+      "Nous contre eux"
+    ],
+    [
+      37,
+      "J'annonce"
+    ],
+    [
+      38,
+      "A Pretty Girl Is Like A Melody"
+    ],
+    [
+      39,
+      "Sugar"
+    ],
+    [
+      40,
+      "Rosetta"
+    ],
+    [
+      41,
+      "Stomp"
+    ],
+    [
+      42,
+      "Blue Skies"
+    ],
+    [
+      43,
+      "Boogie-Woogie part.2"
+    ],
+    [
+      44,
+      "Boogie-Woogie part.1"
+    ],
+    [
+      45,
+      "Jumpin' At The Woodside"
+    ],
+    [
+      46,
+      "Scatterbrain"
+    ],
+    [
+      47,
+      "Naguine"
+    ],
+    [
+      48,
+      "Baby"
+    ],
+    [
+      49,
+      "Out Of Nowhere"
+    ],
+    [
+      50,
+      "Echoes Of Spain"
+    ],
+    [
+      51,
+      "I'll See You In My Dreams"
+    ],
+    [
+      52,
+      "Younger Generation"
+    ],
+    [
+      53,
+      "Stockholm"
+    ],
+    [
+      54,
+      "I Can't Believe That You're In Love With Me"
+    ],
+    [
+      55,
+      "Dream Ship"
+    ],
+    [
+      56,
+      "Solid Old Man"
+    ],
+    [
+      57,
+      "I Know That You Know"
+    ],
+    [
+      58,
+      "Finesse"
+    ],
+    [
+      59,
+      "Low Cotton"
+    ],
+    [
+      60,
+      "Montmartre"
+    ],
+    [
+      61,
+      "I Got Rhythm"
+    ],
+    [
+      62,
+      "My Melancholy Baby"
+    ],
+    [
+      63,
+      "Lover Come Back To Me"
+    ],
+    [
+      64,
+      "Body And Soul"
+    ],
+    [
+      65,
+      "Blues Light Blues"
+    ],
+    [
+      66,
+      "Farewell Blues"
+    ],
+    [
+      67,
+      "I'm Coming Virginia"
+    ],
+    [
+      68,
+      "Sweet Sue"
+    ],
+    [
+      69,
+      "Harlem Swing"
+    ],
+    [
+      70,
+      "Easy Going"
+    ],
+    [
+      71,
+      "Blues"
+    ],
+    [
+      72,
+      "Tea For Two"
+    ],
+    [
+      73,
+      "Sweet Georgia Brown"
+    ],
+    [
+      74,
+      "Sugar"
+    ],
+    [
+      75,
+      "Stephen's Blues"
+    ],
+    [
+      76,
+      "Christmas Swing"
+    ],
+    [
+      77,
+      "Tea For Two"
+    ],
+    [
+      78,
+      "You Rascal You"
+    ],
+    [
+      79,
+      "Organ Grinder's Swing"
+    ],
+    [
+      80,
+      "Bill Coleman Blues"
+    ],
+    [
+      81,
+      "Swing Guitars"
+    ],
+    [
+      82,
+      "Big Boy Blues"
+    ],
+    [
+      83,
+      "Baby Won't You Please Come Home"
+    ],
+    [
+      84,
+      "I Ain't Got Nobody"
+    ],
+    [
+      85,
+      "I've Found A New Baby"
+    ],
+    [
+      86,
+      "You Took Advantage Of Me"
+    ],
+    [
+      87,
+      "Daphne"
+    ],
+    [
+      88,
+      "Dinah"
+    ],
+    [
+      89,
+      "Lady Be Good"
+    ],
+    [
+      90,
+      "Sweet Georgia Brown"
+    ],
+    [
+      91,
+      "Eddie's Blues (Eddie South Blues)"
+    ],
+    [
+      92,
+      "Bouncin' Around"
+    ],
+    [
+      93,
+      "Saint Louis Blues"
+    ],
+    [
+      94,
+      "Tiger Rag"
+    ],
+    [
+      95,
+      "Pennies From Heaven"
+    ],
+    [
+      96,
+      "Japanese Sandman"
+    ],
+    [
+      97,
+      "Hangin' Around Boudon"
+    ],
+    [
+      98,
+      "Sweet Sue"
+    ],
+    [
+      99,
+      "I Got Rhythm"
+    ],
+    [
+      100,
+      "Between The Devil And The Deep Blue Sea"
+    ],
+    [
+      101,
+      "Bugle Call Rag"
+    ],
+    [
+      102,
+      "Sweet Georgia Brown"
+    ],
+    [
+      103,
+      "Out Of Nowhere"
+    ],
+    [
+      104,
+      "Crazy Rythm"
+    ],
+    [
+      105,
+      "Honey Suckle Rose"
+    ],
+    [
+      106,
+      "Alabamy Sound"
+    ],
+    [
+      107,
+      "Parfum"
+    ],
+    [
+      108,
+      "Improvisation"
+    ],
+    [
+      109,
+      "The Sheik Of Araby"
+    ],
+    [
+      110,
+      "In A Sentimental Mood"
+    ],
+    [
+      111,
+      "Mistery Pacific"
+    ],
+    [
+      112,
+      "A Little Love, A Little Kiss"
+    ],
+    [
+      113,
+      "Miss Annabelle Lee"
+    ],
+    [
+      114,
+      "Liebestraum, N°3"
+    ],
+    [
+      115,
+      "Chicago"
+    ],
+    [
+      116,
+      "Runnin' Wild (Course mouvementee)"
+    ],
+    [
+      117,
+      "When Day Is Done"
+    ],
+    [
+      118,
+      "Body And Soul"
+    ],
+    [
+      119,
+      "Rose Room"
+    ],
+    [
+      120,
+      "Ain't Misbehavin"
+    ],
+    [
+      121,
+      "Hot Lips"
+    ],
+    [
+      122,
+      "Pigalle"
+    ],
+    [
+      123,
+      "What A Difference A Day Made"
+    ],
+    [
+      124,
+      "Micro (Mike)"
+    ],
+    [
+      125,
+      "To Each His Own"
+    ],
+    [
+      126,
+      "Night And Day"
+    ],
+    [
+      127,
+      "Time On My Hands"
+    ],
+    [
+      128,
+      "Undecided"
+    ],
+    [
+      129,
+      "Improvisation N°4"
+    ],
+    [
+      130,
+      "Webster"
+    ],
+    [
+      131,
+      "For Sentimental Reasons"
+    ],
+    [
+      132,
+      "Brazil"
+    ],
+    [
+      133,
+      "I'll Never Be The Same"
+    ],
+    [
+      134,
+      "Blue Lou"
+    ],
+    [
+      135,
+      "Nature Boy"
+    ],
+    [
+      136,
+      "Solitude"
+    ],
+    [
+      137,
+      "Tears"
+    ],
+    [
+      138,
+      "You're Driving Me Crazy"
+    ],
+    [
+      139,
+      "Charleston"
+    ],
+    [
+      140,
+      "Exactly Like You"
+    ],
+    [
+      141,
+      "Sweet Chorus"
+    ],
+    [
+      142,
+      "In The Still Of The Night"
+    ],
+    [
+      143,
+      "Shine"
+    ],
+    [
+      144,
+      "Georgia On My Mind"
+    ],
+    [
+      145,
+      "Swing Guitars"
+    ],
+    [
+      146,
+      "Nagasaki"
+    ],
+    [
+      147,
+      "Limehouse Blues"
+    ],
+    [
+      148,
+      "Are You In The Mood"
+    ],
+    [
+      149,
+      "After You Gone"
+    ],
+    [
+      150,
+      "Boogie-Woogie"
+    ],
+    [
+      151,
+      "Black Night"
+    ],
+    [
+      152,
+      "Place de Brouckere"
+    ],
+    [
+      153,
+      "Reverie"
+    ],
+    [
+      154,
+      "Dinette"
+    ],
+    [
+      155,
+      "Danse Norvegienne"
+    ],
+    [
+      156,
+      "Micro (Mike)"
+    ],
+    [
+      157,
+      "It Might As Well Be Spring"
+    ],
+    [
+      158,
+      "The Peanut Vendor"
+    ],
+    [
+      159,
+      "The Man I Love"
+    ],
+    [
+      160,
+      "Blue Skies"
+    ],
+    [
+      161,
+      "Stormy Weather"
+    ],
+    [
+      162,
+      "Micro (Mike)"
+    ],
+    [
+      163,
+      "Nuages"
+    ],
+    [
+      164,
+      "Belleville"
+    ],
+    [
+      165,
+      "Honeysuckle Rose"
+    ],
+    [
+      166,
+      "C Jam Blues"
+    ],
+    [
+      167,
+      "Saint James Infirmary"
+    ],
+    [
+      168,
+      "Artillerie Lourde"
+    ],
+    [
+      169,
+      "Double Scotch"
+    ],
+    [
+      170,
+      "Minor Swing"
+    ],
+    [
+      171,
+      "Sweet Georgia Brown"
+    ],
+    [
+      172,
+      "Manoir De Mes Rêves"
+    ],
+    [
+      173,
+      "I Can't Give You Anything But Love"
+    ],
+    [
+      174,
+      "I Can't Get Started"
+    ],
+    [
+      175,
+      "Nuages"
+    ],
+    [
+      176,
+      "How High The Moon"
+    ],
+    [
+      177,
+      "Begin The Beguine"
+    ],
+    [
+      178,
+      "Dream Of You"
+    ],
+    [
+      179,
+      "Rosetta"
+    ],
+    [
+      180,
+      "Troublant Bolero (Boléro de Django)"
+    ],
+    [
+      181,
+      "Just A Gigolo"
+    ],
+    [
+      182,
+      "My Melancholy Baby"
+    ],
+    [
+      183,
+      "My Blue Heaven"
+    ],
+    [
+      184,
+      "What Is The Thing Called Love?"
+    ],
+    [
+      185,
+      "Sweet Georgia Brown"
+    ],
+    [
+      186,
+      "Liza"
+    ],
+    [
+      187,
+      "Clopin-Clopant"
+    ],
+    [
+      188,
+      "Swing 39"
+    ],
+    [
+      189,
+      "Nagasaki"
+    ],
+    [
+      190,
+      "Vous Qui Passez Sans Me Voir"
+    ],
+    [
+      191,
+      "Minor Blues"
+    ],
+    [
+      192,
+      "Over The Rainbow"
+    ],
+    [
+      193,
+      "To Each His Own - Symphonie"
+    ],
+    [
+      194,
+      "Just For Fun"
+    ],
+    [
+      195,
+      "Brick Top"
+    ],
+    [
+      196,
+      "Fantaisie"
+    ],
+    [
+      197,
+      "Festival 48"
+    ],
+    [
+      198,
+      "Lady Be Good"
+    ],
+    [
+      199,
+      "Mike"
+    ],
+    [
+      200,
+      "Diminushing"
+    ],
+    [
+      201,
+      "Eveline"
+    ],
+    [
+      202,
+      "Si Tu Savais"
+    ],
+    [
+      203,
+      "Ol' Man River"
+    ],
+    [
+      204,
+      "What Is This Thing Call Love?"
+    ],
+    [
+      205,
+      "Blues"
+    ],
+    [
+      206,
+      "Blue Lou"
+    ],
+    [
+      207,
+      "Lover Man"
+    ],
+    [
+      208,
+      "How High The Moon"
+    ],
+    [
+      209,
+      "R-Vingt Six"
+    ],
+    [
+      210,
+      "I Won't Dance"
+    ],
+    [
+      211,
+      "On The Sunny Side Of The Street"
+    ],
+    [
+      212,
+      "Yours And Mine"
+    ],
+    [
+      213,
+      "Echoes Of France"
+    ],
+    [
+      214,
+      "Embraceable You"
+    ],
+    [
+      215,
+      "Django's Tiger"
+    ],
+    [
+      216,
+      "Coquette"
+    ],
+    [
+      217,
+      "Swingtime In Springtime"
+    ],
+    [
+      218,
+      "Are You In The Mood?"
+    ],
+    [
+      219,
+      "Manoir De Mes Rêves"
+    ],
+    [
+      220,
+      "Swing Guitars"
+    ],
+    [
+      221,
+      "Djangology"
+    ],
+    [
+      222,
+      "Artillerie Lourde"
+    ],
+    [
+      223,
+      "I Can't Give You Anything But Love"
+    ],
+    [
+      224,
+      "Place de Brouckere"
+    ],
+    [
+      225,
+      "Blues D'Autrefois"
+    ],
+    [
+      226,
+      "Melodie Au Crepuscule (extrait)"
+    ],
+    [
+      227,
+      "Gaiement"
+    ],
+    [
+      228,
+      "ABC"
+    ],
+    [
+      229,
+      "Zuiderzee Blues"
+    ],
+    [
+      230,
+      "Oubli"
+    ],
+    [
+      231,
+      "Belleville"
+    ],
+    [
+      232,
+      "Improvisation N°3 - Part 2"
+    ],
+    [
+      233,
+      "Improvisation N°3 - Part 1"
+    ],
+    [
+      234,
+      "Blues Clair"
+    ],
+    [
+      235,
+      "Fleur D' Ennui"
+    ],
+    [
+      236,
+      "Cavalerie"
+    ],
+    [
+      237,
+      "Oui (Si tu me dis oui)"
+    ],
+    [
+      238,
+      "Manoir De Mes Rêves"
+    ],
+    [
+      239,
+      "Douce Ambiance"
+    ],
+    [
+      240,
+      "Lentement Demoiselle"
+    ],
+    [
+      241,
+      "Belleville"
+    ],
+    [
+      242,
+      "Feerie"
+    ],
+    [
+      243,
+      "Nympheas"
+    ],
+    [
+      244,
+      "Premiere Idee D'Eddie"
+    ],
+    [
+      245,
+      "Festival Swing 1942 (extrait)"
+    ],
+    [
+      246,
+      "Swing 42"
+    ],
+    [
+      247,
+      "Crepuscule"
+    ],
+    [
+      248,
+      "Dinette"
+    ],
+    [
+      249,
+      "Hungaria"
+    ],
+    [
+      250,
+      "De Nulle Part"
+    ],
+    [
+      251,
+      "Stockholm"
+    ],
+    [
+      252,
+      "Festival Swing"
+    ],
+    [
+      253,
+      "Ninouche"
+    ],
+    [
+      254,
+      "Petite Lili"
+    ],
+    [
+      255,
+      "Pour Terminer"
+    ],
+    [
+      256,
+      "Sur Les Bords De L' Alamo"
+    ],
+    [
+      257,
+      "All Of Me"
+    ],
+    [
+      258,
+      "Oiseaux Des Iles"
+    ],
+    [
+      259,
+      "Swing De Paris"
+    ],
+    [
+      260,
+      "Sweet Sue"
+    ],
+    [
+      261,
+      "Les Yeux Noirs"
+    ],
+    [
+      262,
+      "Petits Mensonges (Three White Lies)"
+    ],
+    [
+      263,
+      "Mabel"
+    ],
+    [
+      264,
+      "Liebesfreud"
+    ],
+    [
+      265,
+      "Vendredi 13"
+    ],
+    [
+      266,
+      "Fantaisie Sur Une Danse Norvegienne"
+    ],
+    [
+      267,
+      "Pour Vous (Exactly Like You)"
+    ],
+    [
+      268,
+      "Nuages"
+    ],
+    [
+      269,
+      "Swing 41"
+    ],
+    [
+      270,
+      "Oui, C'est Ca"
+    ],
+    [
+      271,
+      "Indecision"
+    ],
+    [
+      272,
+      "Margie"
+    ],
+    [
+      273,
+      "Noel Blues"
+    ],
+    [
+      274,
+      "Le Sheik"
+    ],
+    [
+      275,
+      "Quatre Tickets"
+    ],
+    [
+      276,
+      "Tiger Rag"
+    ],
+    [
+      277,
+      "Indecision"
+    ],
+    [
+      278,
+      "Coucou (extrait)"
+    ],
+    [
+      279,
+      "Blues"
+    ],
+    [
+      280,
+      "Begin The Beguine"
+    ],
+    [
+      281,
+      "Rhythm Futur"
+    ],
+    [
+      282,
+      "Jimmy's Bar"
+    ],
+    [
+      283,
+      "Daphne"
+    ],
+    [
+      284,
+      "Limehouse Blues"
+    ],
+    [
+      285,
+      "Tears"
+    ],
+    [
+      286,
+      "Margie"
+    ],
+    [
+      287,
+      "Oriental Shuffle"
+    ],
+    [
+      288,
+      "I Can't Give You Anything But Love"
+    ],
+    [
+      289,
+      "I'se Muggin'"
+    ],
+    [
+      290,
+      "The Object Of My Affection"
+    ],
+    [
+      291,
+      "Stardust"
+    ],
+    [
+      292,
+      "Rosetta"
+    ],
+    [
+      293,
+      "Stardust"
+    ],
+    [
+      294,
+      "What A Difference A Day Made"
+    ],
+    [
+      295,
+      "Avalon"
+    ],
+    [
+      296,
+      "Blue Moon"
+    ],
+    [
+      297,
+      "Presentation Stomp"
+    ],
+    [
+      298,
+      "Si J'aime Suzy"
+    ],
+    [
+      299,
+      "Carinosa"
+    ],
+    [
+      300,
+      "Griserie"
+    ],
+    [
+      301,
+      "blues for ike"
+    ],
+    [
+      302,
+      "anouman"
+    ],
+    [
+      303,
+      "nuit de st germain des pres"
+    ],
+    [
+      304,
+      "vamp"
+    ],
+    [
+      305,
+      "impromptu"
+    ],
+    [
+      306,
+      "mano"
+    ],
+    [
+      307,
+      "djangos blues"
+    ],
+    [
+      308,
+      "swing 48"
+    ],
+    [
+      309,
+      "folie a amphion"
+    ],
+    [
+      310,
+      "del salle"
+    ],
+    [
+      311,
+      "swingtime in springtime"
+    ],
+    [
+      312,
+      "melodie au crepuscule"
+    ],
+    [
+      313,
+      "djangos tiger"
+    ],
+    [
+      314,
+      "blues clair"
+    ],
+    [
+      315,
+      "manoir de mes reves"
+    ],
+    [
+      316,
+      "douce ambiance"
+    ],
+    [
+      317,
+      "blues in mineur"
+    ],
+    [
+      318,
+      "swing 42"
+    ],
+    [
+      319,
+      "stockholm"
+    ],
+    [
+      320,
+      "sweet sue just you"
+    ],
+    [
+      321,
+      "les yeux noirs"
+    ],
+    [
+      322,
+      "mabel"
+    ],
+    [
+      323,
+      "vendredi 13"
+    ],
+    [
+      324,
+      "pour vous"
+    ],
+    [
+      325,
+      "Nuages"
+    ],
+    [
+      326,
+      "swing 41"
+    ],
+    [
+      327,
+      "blues en mineur"
+    ],
+    [
+      328,
+      "rythme futur"
+    ],
+    [
+      329,
+      "at the jimmys bar"
+    ],
+    [
+      330,
+      "daphne"
+    ],
+    [
+      331,
+      "tears"
+    ],
+    [
+      332,
+      "hcq strut"
+    ],
+    [
+      333,
+      "undecided"
+    ],
+    [
+      334,
+      "naguine"
+    ],
+    [
+      335,
+      "ill see you in my dreams"
+    ],
+    [
+      336,
+      "younger generation"
+    ],
+    [
+      337,
+      "i wonder where is my baby tonight"
+    ],
+    [
+      338,
+      "japanese sandman"
+    ],
+    [
+      339,
+      "my melancholy baby"
+    ],
+    [
+      340,
+      "twelfth year"
+    ],
+    [
+      341,
+      "swing"
+    ],
+    [
+      342,
+      "jeepers creepers"
+    ],
+    [
+      343,
+      "hungaria"
+    ],
+    [
+      344,
+      "deccaphonie"
+    ],
+    [
+      345,
+      "chez moi"
+    ],
+    [
+      346,
+      "le soir"
+    ],
+    [
+      347,
+      "confessin"
+    ],
+    [
+      348,
+      "Brazil"
+    ]
+  ],
+  "indexToArtist": [
+    [
+      0,
+      "Swift Guad"
+    ],
+    [
+      1,
+      "Django Reinhardt"
+    ]
+  ],
+  "indexToAlbum": [
+    [
+      0,
+      "Hécatombe 2.0"
+    ],
+    [
+      1,
+      "C.P.C.D.M.C"
+    ],
+    [
+      2,
+      "Djangologie 1928-1950 (Disc 09)"
+    ],
+    [
+      3,
+      "Djangologie 1928-1950 (Disc 08)"
+    ],
+    [
+      4,
+      "Djangologie 1928-1950 (Disc 07)"
+    ],
+    [
+      5,
+      "Djangologie 1928-1950 (Disc 05)"
+    ],
+    [
+      6,
+      "Djangologie 1928-1950 (Disc 04)"
+    ],
+    [
+      7,
+      "Djangologie 1928-1950 (Disc 03)"
+    ],
+    [
+      8,
+      "Djangologie 1928-1950 (Disc 20)"
+    ],
+    [
+      9,
+      "Djangologie 1928-1950 (Disc 02)"
+    ],
+    [
+      10,
+      "Djangologie 1928-1950 (Disc 19)"
+    ],
+    [
+      11,
+      "Djangologie 1928-1950 (Disc 18)"
+    ],
+    [
+      12,
+      "Djangologie 1928-1950 (Disc 17)"
+    ],
+    [
+      13,
+      "Djangologie 1928-1950 (Disc 16)"
+    ],
+    [
+      14,
+      "Djangologie 1928-1950 (Disc 15)"
+    ],
+    [
+      15,
+      "Djangologie 1928-1950 (Disc 14)"
+    ],
+    [
+      16,
+      "Djangologie 1928-1950 (Disc 13)"
+    ],
+    [
+      17,
+      "Djangologie 1928-1950 (Disc 12)"
+    ],
+    [
+      18,
+      "Djangologie 1928-1950 (Disc 11)"
+    ],
+    [
+      19,
+      "Djangologie 1928-1950 (Disc 10)"
+    ],
+    [
+      20,
+      "Djangologie 1928-1950 (Disc 01)"
+    ],
+    [
+      21,
+      "Djangologie"
+    ]
+  ],
+  "indexToGenre": [
+    [
+      0,
+      "Unknown Genre"
+    ],
+    [
+      1,
+      "Gypsy Jazz"
+    ],
+    [
+      2,
+      "Jazz"
+    ]
+  ],
+  "indexToPath": [
+    [
+      0,
+      "Swift Guad/Hécatombe 2.0/20 Bombe à retardement.flac"
+    ],
+    [
+      1,
+      "Swift Guad/Hécatombe 2.0/19 Le Point.flac"
+    ],
+    [
+      2,
+      "Swift Guad/Hécatombe 2.0/18 Mon calvaire.flac"
+    ],
+    [
+      3,
+      "Swift Guad/Hécatombe 2.0/17 Dernière lettre.flac"
+    ],
+    [
+      4,
+      "Swift Guad/Hécatombe 2.0/16 Phone Call.flac"
+    ],
+    [
+      5,
+      "Swift Guad/Hécatombe 2.0/15 Mise à jour.flac"
+    ],
+    [
+      6,
+      "Swift Guad/Hécatombe 2.0/14 Révolution.flac"
+    ],
+    [
+      7,
+      "Swift Guad/Hécatombe 2.0/13 Paradox.flac"
+    ],
+    [
+      8,
+      "Swift Guad/Hécatombe 2.0/12 Pour les p'tits.flac"
+    ],
+    [
+      9,
+      "Swift Guad/Hécatombe 2.0/11 I Try.flac"
+    ],
+    [
+      10,
+      "Swift Guad/Hécatombe 2.0/10 Enfant soldat (2ème rafale).flac"
+    ],
+    [
+      11,
+      "Swift Guad/Hécatombe 2.0/09 Maman pleure pas.flac"
+    ],
+    [
+      12,
+      "Swift Guad/Hécatombe 2.0/08 Énervé.flac"
+    ],
+    [
+      13,
+      "Swift Guad/Hécatombe 2.0/07 L'Ogre et l'Enfant.flac"
+    ],
+    [
+      14,
+      "Swift Guad/Hécatombe 2.0/06 Jour de pluie.flac"
+    ],
+    [
+      15,
+      "Swift Guad/Hécatombe 2.0/05 Skyzophrène.flac"
+    ],
+    [
+      16,
+      "Swift Guad/Hécatombe 2.0/04 Besoin de clarté.flac"
+    ],
+    [
+      17,
+      "Swift Guad/Hécatombe 2.0/03 Hip Hop Fat.flac"
+    ],
+    [
+      18,
+      "Swift Guad/Hécatombe 2.0/02 Pourquoi _.flac"
+    ],
+    [
+      19,
+      "Swift Guad/Hécatombe 2.0/01 La Montreuilloise.flac"
+    ],
+    [
+      20,
+      "Swift Guad/C.P.C.D.M.C/18 Narvalo.flac"
+    ],
+    [
+      21,
+      "Swift Guad/C.P.C.D.M.C/17 Profundo (feat. Gatogordo).flac"
+    ],
+    [
+      22,
+      "Swift Guad/C.P.C.D.M.C/16 Les Voix du mal (feat. Al Tarba).flac"
+    ],
+    [
+      23,
+      "Swift Guad/C.P.C.D.M.C/15 En temps de crise (feat. Paco).flac"
+    ],
+    [
+      24,
+      "Swift Guad/C.P.C.D.M.C/14 Dans mes artères (feat. Obi, Impro, Djib & Arko).flac"
+    ],
+    [
+      25,
+      "Swift Guad/C.P.C.D.M.C/13 J'arrive.flac"
+    ],
+    [
+      26,
+      "Swift Guad/C.P.C.D.M.C/12 Freestyle latino (feat. Don Ksen, Charles, Neftys & Sicksillabes).flac"
+    ],
+    [
+      27,
+      "Swift Guad/C.P.C.D.M.C/11 Partition nébuleuse.flac"
+    ],
+    [
+      28,
+      "Swift Guad/C.P.C.D.M.C/10 Nono.flac"
+    ],
+    [
+      29,
+      "Swift Guad/C.P.C.D.M.C/09 Juste un couplet.flac"
+    ],
+    [
+      30,
+      "Swift Guad/C.P.C.D.M.C/08 Là n'est pas la question (feat. Azrock).flac"
+    ],
+    [
+      31,
+      "Swift Guad/C.P.C.D.M.C/07 Le Sens du partage (feat. Yazou).flac"
+    ],
+    [
+      32,
+      "Swift Guad/C.P.C.D.M.C/06 Deuxième Cicatrice.flac"
+    ],
+    [
+      33,
+      "Swift Guad/C.P.C.D.M.C/05 Le Suite.flac"
+    ],
+    [
+      34,
+      "Swift Guad/C.P.C.D.M.C/04 Ma génération (feat. Cassidy).flac"
+    ],
+    [
+      35,
+      "Swift Guad/C.P.C.D.M.C/03 Majeur et vacciné.flac"
+    ],
+    [
+      36,
+      "Swift Guad/C.P.C.D.M.C/02 Nous contre eux (feat. Droogz Brigade).flac"
+    ],
+    [
+      37,
+      "Swift Guad/C.P.C.D.M.C/01 J'annonce.flac"
+    ],
+    [
+      38,
+      "Django Reinhardt/Djangologie 9 (1939-1940)/14 A Pretty Girl Is Like A Melody.flac"
+    ],
+    [
+      39,
+      "Django Reinhardt/Djangologie 9 (1939-1940)/13 Sugar.flac"
+    ],
+    [
+      40,
+      "Django Reinhardt/Djangologie 9 (1939-1940)/12 Rosetta.flac"
+    ],
+    [
+      41,
+      "Django Reinhardt/Djangologie 9 (1939-1940)/11 Stomp.flac"
+    ],
+    [
+      42,
+      "Django Reinhardt/Djangologie 9 (1939-1940)/10 Blue Skies.flac"
+    ],
+    [
+      43,
+      "Django Reinhardt/Djangologie 9 (1939-1940)/09 Boogie-Woogie, Part 2.flac"
+    ],
+    [
+      44,
+      "Django Reinhardt/Djangologie 9 (1939-1940)/08 Boogie-Woogie, Part 1.flac"
+    ],
+    [
+      45,
+      "Django Reinhardt/Djangologie 9 (1939-1940)/07 Jumpin' At The Woodside.flac"
+    ],
+    [
+      46,
+      "Django Reinhardt/Djangologie 9 (1939-1940)/06 Scatterbrain.flac"
+    ],
+    [
+      47,
+      "Django Reinhardt/Djangologie 9 (1939-1940)/05 Naguine.flac"
+    ],
+    [
+      48,
+      "Django Reinhardt/Djangologie 9 (1939-1940)/04 Baby.flac"
+    ],
+    [
+      49,
+      "Django Reinhardt/Djangologie 9 (1939-1940)/03 Out Of Nowhere.mp3"
+    ],
+    [
+      50,
+      "Django Reinhardt/Djangologie 9 (1939-1940)/02 Echoes Of Spain.flac"
+    ],
+    [
+      51,
+      "Django Reinhardt/Djangologie 9 (1939-1940)/01 I'll See You In My Dreams.flac"
+    ],
+    [
+      52,
+      "Django Reinhardt/Djangologie 8 (1938-1939)/14 Younger Generation.mp3"
+    ],
+    [
+      53,
+      "Django Reinhardt/Djangologie 8 (1938-1939)/13 Stockholm.mp3"
+    ],
+    [
+      54,
+      "Django Reinhardt/Djangologie 8 (1938-1939)/12 I Can't Believe That You're In Love With Me.mp3"
+    ],
+    [
+      55,
+      "Django Reinhardt/Djangologie 8 (1938-1939)/11 Dream Ship.mp3"
+    ],
+    [
+      56,
+      "Django Reinhardt/Djangologie 8 (1938-1939)/10 Solid Old Man.mp3"
+    ],
+    [
+      57,
+      "Django Reinhardt/Djangologie 8 (1938-1939)/09 I Know That You Know.mp3"
+    ],
+    [
+      58,
+      "Django Reinhardt/Djangologie 8 (1938-1939)/08 Finesse.mp3"
+    ],
+    [
+      59,
+      "Django Reinhardt/Djangologie 8 (1938-1939)/07 Low Cotton.mp3"
+    ],
+    [
+      60,
+      "Django Reinhardt/Djangologie 8 (1938-1939)/06 Montmartre.mp3"
+    ],
+    [
+      61,
+      "Django Reinhardt/Djangologie 8 (1938-1939)/05 I Got Rhythm.mp3"
+    ],
+    [
+      62,
+      "Django Reinhardt/Djangologie 8 (1938-1939)/04 My Melancholy Baby.mp3"
+    ],
+    [
+      63,
+      "Django Reinhardt/Djangologie 8 (1938-1939)/03 Lover Come Back To Me.mp3"
+    ],
+    [
+      64,
+      "Django Reinhardt/Djangologie 8 (1938-1939)/02 Body And Soul.mp3"
+    ],
+    [
+      65,
+      "Django Reinhardt/Djangologie 8 (1938-1939)/01 Blue Light Blues.mp3"
+    ],
+    [
+      66,
+      "Django Reinhardt/Djangologie 7 (1937-1938)/14 Farewell Blues.flac"
+    ],
+    [
+      67,
+      "Django Reinhardt/Djangologie 7 (1937-1938)/13 I'm Coming Virginia.flac"
+    ],
+    [
+      68,
+      "Django Reinhardt/Djangologie 7 (1937-1938)/12 Sweet Sue.flac"
+    ],
+    [
+      69,
+      "Django Reinhardt/Djangologie 7 (1937-1938)/11 Harlem Swing.flac"
+    ],
+    [
+      70,
+      "Django Reinhardt/Djangologie 7 (1937-1938)/10 Easy Going.flac"
+    ],
+    [
+      71,
+      "Django Reinhardt/Djangologie 7 (1937-1938)/09 Blues.flac"
+    ],
+    [
+      72,
+      "Django Reinhardt/Djangologie 7 (1937-1938)/08 Tea For Two.flac"
+    ],
+    [
+      73,
+      "Django Reinhardt/Djangologie 7 (1937-1938)/07 Sweet Georgia Brown.flac"
+    ],
+    [
+      74,
+      "Django Reinhardt/Djangologie 7 (1937-1938)/06 Sugar.flac"
+    ],
+    [
+      75,
+      "Django Reinhardt/Djangologie 7 (1937-1938)/05 Stephen's Blues.flac"
+    ],
+    [
+      76,
+      "Django Reinhardt/Djangologie 7 (1937-1938)/04 Christmas Swing.flac"
+    ],
+    [
+      77,
+      "Django Reinhardt/Djangologie 7 (1937-1938)/03 Tea For Two.flac"
+    ],
+    [
+      78,
+      "Django Reinhardt/Djangologie 7 (1937-1938)/02 You Rascal You.flac"
+    ],
+    [
+      79,
+      "Django Reinhardt/Djangologie 7 (1937-1938)/01 Organ Grinder's Swing.flac"
+    ],
+    [
+      80,
+      "Django Reinhardt/Djangologie 5 (1937)/14 Bill Coleman Blues.mp3"
+    ],
+    [
+      81,
+      "Django Reinhardt/Djangologie 5 (1937)/13 Swing Guitars.mp3"
+    ],
+    [
+      82,
+      "Django Reinhardt/Djangologie 5 (1937)/12 Big Boy Blues.mp3"
+    ],
+    [
+      83,
+      "Django Reinhardt/Djangologie 5 (1937)/11 Baby Won’t You Please Come Home.mp3"
+    ],
+    [
+      84,
+      "Django Reinhardt/Djangologie 5 (1937)/10 I Ain’t Got Nobody.mp3"
+    ],
+    [
+      85,
+      "Django Reinhardt/Djangologie 5 (1937)/09 I’ve Found a New Baby.mp3"
+    ],
+    [
+      86,
+      "Django Reinhardt/Djangologie 5 (1937)/08 You Took Advantage of Me.mp3"
+    ],
+    [
+      87,
+      "Django Reinhardt/Djangologie 5 (1937)/07 Daphne.mp3"
+    ],
+    [
+      88,
+      "Django Reinhardt/Djangologie 5 (1937)/06 Dinah.mp3"
+    ],
+    [
+      89,
+      "Django Reinhardt/Djangologie 5 (1937)/05 Lady Be Good.mp3"
+    ],
+    [
+      90,
+      "Django Reinhardt/Djangologie 5 (1937)/04 Sweet Georgia Brown.mp3"
+    ],
+    [
+      91,
+      "Django Reinhardt/Djangologie 5 (1937)/03 Eddie’s Blues (Eddie South Blues).mp3"
+    ],
+    [
+      92,
+      "Django Reinhardt/Djangologie 5 (1937)/02 Bouncin’ Around.mp3"
+    ],
+    [
+      93,
+      "Django Reinhardt/Djangologie 5 (1937)/01 Saint‐Louis Blues.mp3"
+    ],
+    [
+      94,
+      "Django Reinhardt/Djangologie 4 (1937)/14 Tiger Rag.mp3"
+    ],
+    [
+      95,
+      "Django Reinhardt/Djangologie 4 (1937)/13 Pennies From Heaven.mp3"
+    ],
+    [
+      96,
+      "Django Reinhardt/Djangologie 4 (1937)/12 Japanese Sandman.mp3"
+    ],
+    [
+      97,
+      "Django Reinhardt/Djangologie 4 (1937)/11 Hangin' Around Boudon.mp3"
+    ],
+    [
+      98,
+      "Django Reinhardt/Djangologie 4 (1937)/10 Sweet Sue.mp3"
+    ],
+    [
+      99,
+      "Django Reinhardt/Djangologie 4 (1937)/09 I Got Rhythm.mp3"
+    ],
+    [
+      100,
+      "Django Reinhardt/Djangologie 4 (1937)/08 Between The Devil And The Deep Blue Sea.mp3"
+    ],
+    [
+      101,
+      "Django Reinhardt/Djangologie 4 (1937)/07 Bugle Call Rag.mp3"
+    ],
+    [
+      102,
+      "Django Reinhardt/Djangologie 4 (1937)/06 Sweet Georgia Brown.mp3"
+    ],
+    [
+      103,
+      "Django Reinhardt/Djangologie 4 (1937)/05 Out Of Nowhere.mp3"
+    ],
+    [
+      104,
+      "Django Reinhardt/Djangologie 4 (1937)/04 Crazy Rhythm.mp3"
+    ],
+    [
+      105,
+      "Django Reinhardt/Djangologie 4 (1937)/03 Honeysuckle Rose.mp3"
+    ],
+    [
+      106,
+      "Django Reinhardt/Djangologie 4 (1937)/02 labamy Bound.mp3"
+    ],
+    [
+      107,
+      "Django Reinhardt/Djangologie 4 (1937)/01 Parfum.mp3"
+    ],
+    [
+      108,
+      "Django Reinhardt/Djangologie 3 (1937)/14 Improvisation.mp3"
+    ],
+    [
+      109,
+      "Django Reinhardt/Djangologie 3 (1937)/13 The Sheik Of Araby.mp3"
+    ],
+    [
+      110,
+      "Django Reinhardt/Djangologie 3 (1937)/12 In A Sentimental Mood.mp3"
+    ],
+    [
+      111,
+      "Django Reinhardt/Djangologie 3 (1937)/11 Mistery Pacific.mp3"
+    ],
+    [
+      112,
+      "Django Reinhardt/Djangologie 3 (1937)/10 A Little Love, A Little Kiss.mp3"
+    ],
+    [
+      113,
+      "Django Reinhardt/Djangologie 3 (1937)/09 Miss Annabell Lee.mp3"
+    ],
+    [
+      114,
+      "Django Reinhardt/Djangologie 3 (1937)/08 Liebestraum, N°3.mp3"
+    ],
+    [
+      115,
+      "Django Reinhardt/Djangologie 3 (1937)/07 Chicago.mp3"
+    ],
+    [
+      116,
+      "Django Reinhardt/Djangologie 3 (1937)/06 Runnin' Wild (Course Mouvementée).mp3"
+    ],
+    [
+      117,
+      "Django Reinhardt/Djangologie 3 (1937)/05 When Day Is Done.mp3"
+    ],
+    [
+      118,
+      "Django Reinhardt/Djangologie 3 (1937)/04 Body And Soul.mp3"
+    ],
+    [
+      119,
+      "Django Reinhardt/Djangologie 3 (1937)/03 Rose Room.mp3"
+    ],
+    [
+      120,
+      "Django Reinhardt/Djangologie 3 (1937)/02 Ain't Misbehavin'.mp3"
+    ],
+    [
+      121,
+      "Django Reinhardt/Djangologie 3 (1937)/01 Hot Lips.mp3"
+    ],
+    [
+      122,
+      "Django Reinhardt/Djangologie 20 (1949)/14 Pigalle.flac"
+    ],
+    [
+      123,
+      "Django Reinhardt/Djangologie 20 (1949)/13 What A Difference A Day Made.flac"
+    ],
+    [
+      124,
+      "Django Reinhardt/Djangologie 20 (1949)/12 Micro (Mike).flac"
+    ],
+    [
+      125,
+      "Django Reinhardt/Djangologie 20 (1949)/11 To Each His Own.flac"
+    ],
+    [
+      126,
+      "Django Reinhardt/Djangologie 20 (1949)/10 Night And Day.flac"
+    ],
+    [
+      127,
+      "Django Reinhardt/Djangologie 20 (1949)/09 Time On My Hands.flac"
+    ],
+    [
+      128,
+      "Django Reinhardt/Djangologie 20 (1949)/08 Undecided.flac"
+    ],
+    [
+      129,
+      "Django Reinhardt/Djangologie 20 (1949)/07 Improvisation No 4.mp3"
+    ],
+    [
+      130,
+      "Django Reinhardt/Djangologie 20 (1949)/06 Webster.flac"
+    ],
+    [
+      131,
+      "Django Reinhardt/Djangologie 20 (1949)/05 For Sentimental Reasons.flac"
+    ],
+    [
+      132,
+      "Django Reinhardt/Djangologie 20 (1949)/04 Brazil.flac"
+    ],
+    [
+      133,
+      "Django Reinhardt/Djangologie 20 (1949)/03 I'll Never Be The Same.flac"
+    ],
+    [
+      134,
+      "Django Reinhardt/Djangologie 20 (1949)/02 Blue Loue.mp3"
+    ],
+    [
+      135,
+      "Django Reinhardt/Djangologie 20 (1949)/01 Nature Boy.flac"
+    ],
+    [
+      136,
+      "Django Reinhardt/Djangologie 2/14 Solitude.mp3"
+    ],
+    [
+      137,
+      "Django Reinhardt/Djangologie 2/13 Tears.mp3"
+    ],
+    [
+      138,
+      "Django Reinhardt/Djangologie 2/12 You're Driving Me Crazy.mp3"
+    ],
+    [
+      139,
+      "Django Reinhardt/Djangologie 2/11 Charleston.mp3"
+    ],
+    [
+      140,
+      "Django Reinhardt/Djangologie 2/10 Exactly Like You.mp3"
+    ],
+    [
+      141,
+      "Django Reinhardt/Djangologie 2/09 Sweet Chorus.mp3"
+    ],
+    [
+      142,
+      "Django Reinhardt/Djangologie 2/08 In The Still Of The Night.mp3"
+    ],
+    [
+      143,
+      "Django Reinhardt/Djangologie 2/07 Shine.mp3"
+    ],
+    [
+      144,
+      "Django Reinhardt/Djangologie 2/06 Georgia On My Mind.mp3"
+    ],
+    [
+      145,
+      "Django Reinhardt/Djangologie 2/05 Swing Guitars.mp3"
+    ],
+    [
+      146,
+      "Django Reinhardt/Djangologie 2/04 Nagasaki.mp3"
+    ],
+    [
+      147,
+      "Django Reinhardt/Djangologie 2/03 Limehouse Blues.mp3"
+    ],
+    [
+      148,
+      "Django Reinhardt/Djangologie 2/02 Are You In The Mood.mp3"
+    ],
+    [
+      149,
+      "Django Reinhardt/Djangologie 2/01 After You' Gone.mp3"
+    ],
+    [
+      150,
+      "Django Reinhardt/Djangologie 19/13 Boogie-Woogie.flac"
+    ],
+    [
+      151,
+      "Django Reinhardt/Djangologie 19/12 Black Night.flac"
+    ],
+    [
+      152,
+      "Django Reinhardt/Djangologie 19/11 Place De Brouckere.flac"
+    ],
+    [
+      153,
+      "Django Reinhardt/Djangologie 19/10 Reverie.flac"
+    ],
+    [
+      154,
+      "Django Reinhardt/Djangologie 19/09 Dinette.flac"
+    ],
+    [
+      155,
+      "Django Reinhardt/Djangologie 19/08 Danse Norvegienne.flac"
+    ],
+    [
+      156,
+      "Django Reinhardt/Djangologie 19/07 Micro.mp3"
+    ],
+    [
+      157,
+      "Django Reinhardt/Djangologie 19/06 It Might As Well Be Spring.flac"
+    ],
+    [
+      158,
+      "Django Reinhardt/Djangologie 19/05 The Peanut Vendor.flac"
+    ],
+    [
+      159,
+      "Django Reinhardt/Djangologie 19/04 The Man I Love.flac"
+    ],
+    [
+      160,
+      "Django Reinhardt/Djangologie 19/03 Blue Skies.flac"
+    ],
+    [
+      161,
+      "Django Reinhardt/Djangologie 19/02 Stormy Weather.mp3"
+    ],
+    [
+      162,
+      "Django Reinhardt/Djangologie 19/01 Micro.flac"
+    ],
+    [
+      163,
+      "Django Reinhardt/Djangologie 18 (1949-1950)/12 Nuages.flac"
+    ],
+    [
+      164,
+      "Django Reinhardt/Djangologie 18 (1949-1950)/11 Belleville.flac"
+    ],
+    [
+      165,
+      "Django Reinhardt/Djangologie 18 (1949-1950)/10 Honeysuckle Rose.mp3"
+    ],
+    [
+      166,
+      "Django Reinhardt/Djangologie 18 (1949-1950)/09 _C_ Jam Blues.flac"
+    ],
+    [
+      167,
+      "Django Reinhardt/Djangologie 18 (1949-1950)/08 Saint James Infirmary.flac"
+    ],
+    [
+      168,
+      "Django Reinhardt/Djangologie 18 (1949-1950)/07 Artillerie Lourde.flac"
+    ],
+    [
+      169,
+      "Django Reinhardt/Djangologie 18 (1949-1950)/06 Double Scotch.flac"
+    ],
+    [
+      170,
+      "Django Reinhardt/Djangologie 18 (1949-1950)/05 Minor Swing.flac"
+    ],
+    [
+      171,
+      "Django Reinhardt/Djangologie 18 (1949-1950)/04 Sweet Georgia Brown.flac"
+    ],
+    [
+      172,
+      "Django Reinhardt/Djangologie 18 (1949-1950)/03 Manoir De Mes Rêves.flac"
+    ],
+    [
+      173,
+      "Django Reinhardt/Djangologie 18 (1949-1950)/02 I Can't Give You Anything But Love.flac"
+    ],
+    [
+      174,
+      "Django Reinhardt/Djangologie 18 (1949-1950)/01 I Can't Get Started.flac"
+    ],
+    [
+      175,
+      "Django Reinhardt/Djangologie 17 (1949)/14 Nuages.flac"
+    ],
+    [
+      176,
+      "Django Reinhardt/Djangologie 17 (1949)/13 How High the Moon.flac"
+    ],
+    [
+      177,
+      "Django Reinhardt/Djangologie 17 (1949)/12 Begin the Beguine.flac"
+    ],
+    [
+      178,
+      "Django Reinhardt/Djangologie 17 (1949)/11 Dream of You.flac"
+    ],
+    [
+      179,
+      "Django Reinhardt/Djangologie 17 (1949)/10 Rosetta.flac"
+    ],
+    [
+      180,
+      "Django Reinhardt/Djangologie 17 (1949)/09 Troublant Bolero (Boléro de Django).flac"
+    ],
+    [
+      181,
+      "Django Reinhardt/Djangologie 17 (1949)/08 Just a Gigolo.flac"
+    ],
+    [
+      182,
+      "Django Reinhardt/Djangologie 17 (1949)/07 My Melancholy Baby.flac"
+    ],
+    [
+      183,
+      "Django Reinhardt/Djangologie 17 (1949)/06 My Blue Heaven.flac"
+    ],
+    [
+      184,
+      "Django Reinhardt/Djangologie 17 (1949)/05 What Is This Thing Called Love_.mp3"
+    ],
+    [
+      185,
+      "Django Reinhardt/Djangologie 17 (1949)/04 Sweet Georgia Brown.flac"
+    ],
+    [
+      186,
+      "Django Reinhardt/Djangologie 17 (1949)/03 Liza.flac"
+    ],
+    [
+      187,
+      "Django Reinhardt/Djangologie 17 (1949)/02 Clopin‐Clopant.flac"
+    ],
+    [
+      188,
+      "Django Reinhardt/Djangologie 17 (1949)/01 Swing 39.flac"
+    ],
+    [
+      189,
+      "Django Reinhardt/Djangologie 16 (1947-1949)/14 Nagasaki.flac"
+    ],
+    [
+      190,
+      "Django Reinhardt/Djangologie 16 (1947-1949)/13 Vous Qui Passez Sans Me Voir.flac"
+    ],
+    [
+      191,
+      "Django Reinhardt/Djangologie 16 (1947-1949)/12 Minor Blues.flac"
+    ],
+    [
+      192,
+      "Django Reinhardt/Djangologie 16 (1947-1949)/11 Over The Rainbow.flac"
+    ],
+    [
+      193,
+      "Django Reinhardt/Djangologie 16 (1947-1949)/10 To Each His Own - Symphonie.flac"
+    ],
+    [
+      194,
+      "Django Reinhardt/Djangologie 16 (1947-1949)/09 Just For Fun.flac"
+    ],
+    [
+      195,
+      "Django Reinhardt/Djangologie 16 (1947-1949)/08 Brick Top.flac"
+    ],
+    [
+      196,
+      "Django Reinhardt/Djangologie 16 (1947-1949)/07 Fantaisie.flac"
+    ],
+    [
+      197,
+      "Django Reinhardt/Djangologie 16 (1947-1949)/06 Festival 48.flac"
+    ],
+    [
+      198,
+      "Django Reinhardt/Djangologie 16 (1947-1949)/05 Lady Be Good.flac"
+    ],
+    [
+      199,
+      "Django Reinhardt/Djangologie 16 (1947-1949)/04 Mike.flac"
+    ],
+    [
+      200,
+      "Django Reinhardt/Djangologie 16 (1947-1949)/03 Diminushing.flac"
+    ],
+    [
+      201,
+      "Django Reinhardt/Djangologie 16 (1947-1949)/02 Eveline.flac"
+    ],
+    [
+      202,
+      "Django Reinhardt/Djangologie 16 (1947-1949)/01 Si Tu Savais.flac"
+    ],
+    [
+      203,
+      "Django Reinhardt/Djangologie 15 (1946-1947)/14 Ol' Man River.flac"
+    ],
+    [
+      204,
+      "Django Reinhardt/Djangologie 15 (1946-1947)/13 What Is This Thing Called Love_.mp3"
+    ],
+    [
+      205,
+      "Django Reinhardt/Djangologie 15 (1946-1947)/12 Blues.flac"
+    ],
+    [
+      206,
+      "Django Reinhardt/Djangologie 15 (1946-1947)/11 Blue Lou.flac"
+    ],
+    [
+      207,
+      "Django Reinhardt/Djangologie 15 (1946-1947)/10 Lover Man.flac"
+    ],
+    [
+      208,
+      "Django Reinhardt/Djangologie 15 (1946-1947)/09 How High The Moon.flac"
+    ],
+    [
+      209,
+      "Django Reinhardt/Djangologie 15 (1946-1947)/08 R-Vingt-Six.flac"
+    ],
+    [
+      210,
+      "Django Reinhardt/Djangologie 15 (1946-1947)/07 I Won't Dance.flac"
+    ],
+    [
+      211,
+      "Django Reinhardt/Djangologie 15 (1946-1947)/06 On The Sunny Side Of The Street.flac"
+    ],
+    [
+      212,
+      "Django Reinhardt/Djangologie 15 (1946-1947)/05 Yours And Mine.flac"
+    ],
+    [
+      213,
+      "Django Reinhardt/Djangologie 15 (1946-1947)/04 Echoes Of France.flac"
+    ],
+    [
+      214,
+      "Django Reinhardt/Djangologie 15 (1946-1947)/03 Embraceable You.flac"
+    ],
+    [
+      215,
+      "Django Reinhardt/Djangologie 15 (1946-1947)/02 Django's Tiger.flac"
+    ],
+    [
+      216,
+      "Django Reinhardt/Djangologie 15 (1946-1947)/01 Coquette.flac"
+    ],
+    [
+      217,
+      "Django Reinhardt/Djangologie 14 (1943-1946)/14 Swingtime In Springtime.flac"
+    ],
+    [
+      218,
+      "Django Reinhardt/Djangologie 14 (1943-1946)/13 Are You In The Mood_.flac"
+    ],
+    [
+      219,
+      "Django Reinhardt/Djangologie 14 (1943-1946)/12 Manoir De Mes Rêves.flac"
+    ],
+    [
+      220,
+      "Django Reinhardt/Djangologie 14 (1943-1946)/11 Swing Guitars.flac"
+    ],
+    [
+      221,
+      "Django Reinhardt/Djangologie 14 (1943-1946)/10 Djangology.flac"
+    ],
+    [
+      222,
+      "Django Reinhardt/Djangologie 14 (1943-1946)/09 Artillerie Lourde.mp3"
+    ],
+    [
+      223,
+      "Django Reinhardt/Djangologie 14 (1943-1946)/08 I Can't Give You Anything But Love.flac"
+    ],
+    [
+      224,
+      "Django Reinhardt/Djangologie 14 (1943-1946)/07 Place De Brouckere.flac"
+    ],
+    [
+      225,
+      "Django Reinhardt/Djangologie 14 (1943-1946)/06 Blues D'Autrefois.flac"
+    ],
+    [
+      226,
+      "Django Reinhardt/Djangologie 14 (1943-1946)/05 Mélodie Au Crepuscule (Extrait).flac"
+    ],
+    [
+      227,
+      "Django Reinhardt/Djangologie 14 (1943-1946)/04 Gaiement.flac"
+    ],
+    [
+      228,
+      "Django Reinhardt/Djangologie 14 (1943-1946)/03 ABC.flac"
+    ],
+    [
+      229,
+      "Django Reinhardt/Djangologie 14 (1943-1946)/02 Zuiderzee Blues.flac"
+    ],
+    [
+      230,
+      "Django Reinhardt/Djangologie 14 (1943-1946)/01 Oubli.flac"
+    ],
+    [
+      231,
+      "Django Reinhardt/Djangologie 13 (1942-1943)/14 Belleville.flac"
+    ],
+    [
+      232,
+      "Django Reinhardt/Djangologie 13 (1942-1943)/13 Improvisation No3 - Part 2.flac"
+    ],
+    [
+      233,
+      "Django Reinhardt/Djangologie 13 (1942-1943)/12 Improvisation No3 - Part 1.mp3"
+    ],
+    [
+      234,
+      "Django Reinhardt/Djangologie 13 (1942-1943)/11 Blues Clair.flac"
+    ],
+    [
+      235,
+      "Django Reinhardt/Djangologie 13 (1942-1943)/10 Fleur D'Ennui.flac"
+    ],
+    [
+      236,
+      "Django Reinhardt/Djangologie 13 (1942-1943)/09 Cavalerie.flac"
+    ],
+    [
+      237,
+      "Django Reinhardt/Djangologie 13 (1942-1943)/08 Oui (Si Tu Me Dis Oui).flac"
+    ],
+    [
+      238,
+      "Django Reinhardt/Djangologie 13 (1942-1943)/07 Manoir De Mes Reves.flac"
+    ],
+    [
+      239,
+      "Django Reinhardt/Djangologie 13 (1942-1943)/06 Douce Ambiance.flac"
+    ],
+    [
+      240,
+      "Django Reinhardt/Djangologie 13 (1942-1943)/05 Lentement Mademoiselle.flac"
+    ],
+    [
+      241,
+      "Django Reinhardt/Djangologie 13 (1942-1943)/04 Belleville.flac"
+    ],
+    [
+      242,
+      "Django Reinhardt/Djangologie 13 (1942-1943)/03 Feerie.flac"
+    ],
+    [
+      243,
+      "Django Reinhardt/Djangologie 13 (1942-1943)/02 Nympheas.mp3"
+    ],
+    [
+      244,
+      "Django Reinhardt/Djangologie 13 (1942-1943)/01 Premiere Idée D'Eddie.flac"
+    ],
+    [
+      245,
+      "Django Reinhardt/Djangologie 12 (1940-1941)/14 Festival Swing 1942 (Extrait).flac"
+    ],
+    [
+      246,
+      "Django Reinhardt/Djangologie 12 (1940-1941)/13 Swing 42.flac"
+    ],
+    [
+      247,
+      "Django Reinhardt/Djangologie 12 (1940-1941)/12 Crepuscule.flac"
+    ],
+    [
+      248,
+      "Django Reinhardt/Djangologie 12 (1940-1941)/11 Dinette.flac"
+    ],
+    [
+      249,
+      "Django Reinhardt/Djangologie 12 (1940-1941)/10 Hungaria.flac"
+    ],
+    [
+      250,
+      "Django Reinhardt/Djangologie 12 (1940-1941)/09 De Nulle Part.flac"
+    ],
+    [
+      251,
+      "Django Reinhardt/Djangologie 12 (1940-1941)/08 Stockholm.flac"
+    ],
+    [
+      252,
+      "Django Reinhardt/Djangologie 12 (1940-1941)/07 Festival Swing.flac"
+    ],
+    [
+      253,
+      "Django Reinhardt/Djangologie 12 (1940-1941)/06 Ninouche.flac"
+    ],
+    [
+      254,
+      "Django Reinhardt/Djangologie 12 (1940-1941)/05 Petite Lili.flac"
+    ],
+    [
+      255,
+      "Django Reinhardt/Djangologie 12 (1940-1941)/04 Pour Terminer.flac"
+    ],
+    [
+      256,
+      "Django Reinhardt/Djangologie 12 (1940-1941)/03 Sur Les Bords De L'Alamo.flac"
+    ],
+    [
+      257,
+      "Django Reinhardt/Djangologie 12 (1940-1941)/02 All Of Me.flac"
+    ],
+    [
+      258,
+      "Django Reinhardt/Djangologie 12 (1940-1941)/01 Oiseaux Des Iles.flac"
+    ],
+    [
+      259,
+      "Django Reinhardt/Djangologie 11 (1940)/14 Swing de Paris.flac"
+    ],
+    [
+      260,
+      "Django Reinhardt/Djangologie 11 (1940)/13 Sweet Sue.flac"
+    ],
+    [
+      261,
+      "Django Reinhardt/Djangologie 11 (1940)/12 Les Yeux noirs.mp3"
+    ],
+    [
+      262,
+      "Django Reinhardt/Djangologie 11 (1940)/11 Petits Mensonges (Three White Lies).flac"
+    ],
+    [
+      263,
+      "Django Reinhardt/Djangologie 11 (1940)/10 Mabel.flac"
+    ],
+    [
+      264,
+      "Django Reinhardt/Djangologie 11 (1940)/09 Liebesfreud.flac"
+    ],
+    [
+      265,
+      "Django Reinhardt/Djangologie 11 (1940)/08 Vendredi 13.flac"
+    ],
+    [
+      266,
+      "Django Reinhardt/Djangologie 11 (1940)/07 Fantaisie sur une danse norvégienne.flac"
+    ],
+    [
+      267,
+      "Django Reinhardt/Djangologie 11 (1940)/06 Pour vous (Exactly Like You).flac"
+    ],
+    [
+      268,
+      "Django Reinhardt/Djangologie 11 (1940)/05 Nuages.flac"
+    ],
+    [
+      269,
+      "Django Reinhardt/Djangologie 11 (1940)/04 Swing 41.flac"
+    ],
+    [
+      270,
+      "Django Reinhardt/Djangologie 11 (1940)/03 Oui, c’est ça.flac"
+    ],
+    [
+      271,
+      "Django Reinhardt/Djangologie 11 (1940)/02 Indécision.flac"
+    ],
+    [
+      272,
+      "Django Reinhardt/Djangologie 11 (1940)/01 Margie.flac"
+    ],
+    [
+      273,
+      "Django Reinhardt/Djangologie 10 (1940)/14 Noel Blues.flac"
+    ],
+    [
+      274,
+      "Django Reinhardt/Djangologie 10 (1940)/13 Le Sheik.flac"
+    ],
+    [
+      275,
+      "Django Reinhardt/Djangologie 10 (1940)/12 Quatre Tickets.flac"
+    ],
+    [
+      276,
+      "Django Reinhardt/Djangologie 10 (1940)/11 Tiger Rag.flac"
+    ],
+    [
+      277,
+      "Django Reinhardt/Djangologie 10 (1940)/10 Indecision.flac"
+    ],
+    [
+      278,
+      "Django Reinhardt/Djangologie 10 (1940)/09 Coucou (Extrait).flac"
+    ],
+    [
+      279,
+      "Django Reinhardt/Djangologie 10 (1940)/08 Blues.flac"
+    ],
+    [
+      280,
+      "Django Reinhardt/Djangologie 10 (1940)/07 Begin The Beguine.flac"
+    ],
+    [
+      281,
+      "Django Reinhardt/Djangologie 10 (1940)/06 Rhythm Futur.flac"
+    ],
+    [
+      282,
+      "Django Reinhardt/Djangologie 10 (1940)/05 Jimmy's Bar.flac"
+    ],
+    [
+      283,
+      "Django Reinhardt/Djangologie 10 (1940)/04 Daphne.flac"
+    ],
+    [
+      284,
+      "Django Reinhardt/Djangologie 10 (1940)/03 Limehouse Blues.flac"
+    ],
+    [
+      285,
+      "Django Reinhardt/Djangologie 10 (1940)/02 Tears.flac"
+    ],
+    [
+      286,
+      "Django Reinhardt/Djangologie 10 (1940)/01 Margie.flac"
+    ],
+    [
+      287,
+      "Django Reinhardt/Djangologie 1/14 Oriental Shuffle.mp3"
+    ],
+    [
+      288,
+      "Django Reinhardt/Djangologie 1/13 I Can't Give You Anything But Love.mp3"
+    ],
+    [
+      289,
+      "Django Reinhardt/Djangologie 1/12 I'se A Muggin'.mp3"
+    ],
+    [
+      290,
+      "Django Reinhardt/Djangologie 1/11 The Object Of My Affection.mp3"
+    ],
+    [
+      291,
+      "Django Reinhardt/Djangologie 1/10 Stardust.mp3"
+    ],
+    [
+      292,
+      "Django Reinhardt/Djangologie 1/09 Rosetta.mp3"
+    ],
+    [
+      293,
+      "Django Reinhardt/Djangologie 1/08 Stardust.mp3"
+    ],
+    [
+      294,
+      "Django Reinhardt/Djangologie 1/07 What A Difference A Day Made.mp3"
+    ],
+    [
+      295,
+      "Django Reinhardt/Djangologie 1/06 Avalon.mp3"
+    ],
+    [
+      296,
+      "Django Reinhardt/Djangologie 1/05 Blue Moon.mp3"
+    ],
+    [
+      297,
+      "Django Reinhardt/Djangologie 1/04 Presentation Stomp.mp3"
+    ],
+    [
+      298,
+      "Django Reinhardt/Djangologie 1/03 Si J'aime Suzy.mp3"
+    ],
+    [
+      299,
+      "Django Reinhardt/Djangologie 1/02 Carinosa.mp3"
+    ],
+    [
+      300,
+      "Django Reinhardt/Djangologie 1/01 Griserie.mp3"
+    ],
+    [
+      301,
+      "Django Reinhardt/Djangologie/98 Blues for Ike.mp3"
+    ],
+    [
+      302,
+      "Django Reinhardt/Djangologie/97 Anouman.mp3"
+    ],
+    [
+      303,
+      "Django Reinhardt/Djangologie/96 Nuits de Saint-Germain-Des-Pres.mp3"
+    ],
+    [
+      304,
+      "Django Reinhardt/Djangologie/95 Vamp.mp3"
+    ],
+    [
+      305,
+      "Django Reinhardt/Djangologie/94 Impromptu.mp3"
+    ],
+    [
+      306,
+      "Django Reinhardt/Djangologie/93 Mano.mp3"
+    ],
+    [
+      307,
+      "Django Reinhardt/Djangologie/92 Django's Blues.mp3"
+    ],
+    [
+      308,
+      "Django Reinhardt/Djangologie/91 Swing 48.mp3"
+    ],
+    [
+      309,
+      "Django Reinhardt/Djangologie/90 Folie À Amphion.mp3"
+    ],
+    [
+      310,
+      "Django Reinhardt/Djangologie/89 Del Salle.mp3"
+    ],
+    [
+      311,
+      "Django Reinhardt/Djangologie/88 Swingtime in Springtime.mp3"
+    ],
+    [
+      312,
+      "Django Reinhardt/Djangologie/87 Melodie Au Crepuscule.mp3"
+    ],
+    [
+      313,
+      "Django Reinhardt/Djangologie/86 Django's Tiger.mp3"
+    ],
+    [
+      314,
+      "Django Reinhardt/Djangologie/84 Blues Clair.mp3"
+    ],
+    [
+      315,
+      "Django Reinhardt/Djangologie/83 Manoir de Mes Rêves.mp3"
+    ],
+    [
+      316,
+      "Django Reinhardt/Djangologie/82 Douce Ambiance.mp3"
+    ],
+    [
+      317,
+      "Django Reinhardt/Djangologie/81 Blues En Mineur.mp3"
+    ],
+    [
+      318,
+      "Django Reinhardt/Djangologie/79 Swing 42.mp3"
+    ],
+    [
+      319,
+      "Django Reinhardt/Djangologie/78 Stockholm.mp3"
+    ],
+    [
+      320,
+      "Django Reinhardt/Djangologie/77 Sweet Sue, Just You.mp3"
+    ],
+    [
+      321,
+      "Django Reinhardt/Djangologie/76 Les Yeux Noirs.mp3"
+    ],
+    [
+      322,
+      "Django Reinhardt/Djangologie/75 Mabel.mp3"
+    ],
+    [
+      323,
+      "Django Reinhardt/Djangologie/74 Vendredi 13.mp3"
+    ],
+    [
+      324,
+      "Django Reinhardt/Djangologie/73 Pour Vous (Exactly Like You).mp3"
+    ],
+    [
+      325,
+      "Django Reinhardt/Djangologie/72 Nuages.mp3"
+    ],
+    [
+      326,
+      "Django Reinhardt/Djangologie/71 Swing.mp3"
+    ],
+    [
+      327,
+      "Django Reinhardt/Djangologie/70 Blues En Mineur.mp3"
+    ],
+    [
+      328,
+      "Django Reinhardt/Djangologie/69 Rhythme Futur.mp3"
+    ],
+    [
+      329,
+      "Django Reinhardt/Djangologie/68 At the Jimmy's Bar.mp3"
+    ],
+    [
+      330,
+      "Django Reinhardt/Djangologie/67 Daphne.mp3"
+    ],
+    [
+      331,
+      "Django Reinhardt/Djangologie/66 Tears.mp3"
+    ],
+    [
+      332,
+      "Django Reinhardt/Djangologie/65 H.C.Q. Strut.mp3"
+    ],
+    [
+      333,
+      "Django Reinhardt/Djangologie/64 Undecided.mp3"
+    ],
+    [
+      334,
+      "Django Reinhardt/Djangologie/63 Naguine.mp3"
+    ],
+    [
+      335,
+      "Django Reinhardt/Djangologie/61 I'll See You in My Dreams.mp3"
+    ],
+    [
+      336,
+      "Django Reinhardt/Djangologie/60 Younger Generation.mp3"
+    ],
+    [
+      337,
+      "Django Reinhardt/Djangologie/59 I Wonder Where Is My Baby Tonight.mp3"
+    ],
+    [
+      338,
+      "Django Reinhardt/Djangologie/58 Japanese Sandman.mp3"
+    ],
+    [
+      339,
+      "Django Reinhardt/Djangologie/57 My Melancholy Baby.mp3"
+    ],
+    [
+      340,
+      "Django Reinhardt/Djangologie/56 Twelfth Year.mp3"
+    ],
+    [
+      341,
+      "Django Reinhardt/Djangologie/55 Swing 39.mp3"
+    ],
+    [
+      342,
+      "Django Reinhardt/Djangologie/54 Jeepers Creepers.mp3"
+    ],
+    [
+      343,
+      "Django Reinhardt/Djangologie/53 Hungaria.mp3"
+    ],
+    [
+      344,
+      "Django Reinhardt/Djangologie/104 Deccaphonie.mp3"
+    ],
+    [
+      345,
+      "Django Reinhardt/Djangologie/103 Chez Moi.mp3"
+    ],
+    [
+      346,
+      "Django Reinhardt/Djangologie/102 Le Soir.mp3"
+    ],
+    [
+      347,
+      "Django Reinhardt/Djangologie/101 Confessin'.mp3"
+    ],
+    [
+      348,
+      "Django Reinhardt/Djangologie/100 Brazil.mp3"
+    ]
+  ],
+  "artistToAlbums": [
+    [
+      0,
+      [
+        0,
+        1
+      ]
+    ],
+    [
+      1,
+      [
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21
+      ]
+    ]
+  ],
+  "albumToTracks": [
+    [
+      0,
+      [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19
+      ]
+    ],
+    [
+      1,
+      [
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29,
+        30,
+        31,
+        32,
+        33,
+        34,
+        35,
+        36,
+        37
+      ]
+    ],
+    [
+      2,
+      [
+        38,
+        39,
+        40,
+        41,
+        42,
+        43,
+        44,
+        45,
+        46,
+        47,
+        48,
+        49,
+        50,
+        51
+      ]
+    ],
+    [
+      3,
+      [
+        52,
+        53,
+        54,
+        55,
+        56,
+        57,
+        58,
+        59,
+        60,
+        61,
+        62,
+        63,
+        64,
+        65
+      ]
+    ],
+    [
+      4,
+      [
+        66,
+        67,
+        68,
+        69,
+        70,
+        71,
+        72,
+        73,
+        74,
+        75,
+        76,
+        77,
+        78,
+        79
+      ]
+    ],
+    [
+      5,
+      [
+        80,
+        81,
+        82,
+        83,
+        84,
+        85,
+        86,
+        87,
+        88,
+        89,
+        90,
+        91,
+        92,
+        93
+      ]
+    ],
+    [
+      6,
+      [
+        94,
+        95,
+        96,
+        97,
+        98,
+        99,
+        100,
+        101,
+        102,
+        103,
+        104,
+        105,
+        106,
+        107
+      ]
+    ],
+    [
+      7,
+      [
+        108,
+        109,
+        110,
+        111,
+        112,
+        113,
+        114,
+        115,
+        116,
+        117,
+        118,
+        119,
+        120,
+        121
+      ]
+    ],
+    [
+      8,
+      [
+        122,
+        123,
+        124,
+        125,
+        126,
+        127,
+        128,
+        129,
+        130,
+        131,
+        132,
+        133,
+        134,
+        135
+      ]
+    ],
+    [
+      9,
+      [
+        136,
+        137,
+        138,
+        139,
+        140,
+        141,
+        142,
+        143,
+        144,
+        145,
+        146,
+        147,
+        148,
+        149
+      ]
+    ],
+    [
+      10,
+      [
+        150,
+        151,
+        152,
+        153,
+        154,
+        155,
+        156,
+        157,
+        158,
+        159,
+        160,
+        161,
+        162
+      ]
+    ],
+    [
+      11,
+      [
+        163,
+        164,
+        165,
+        166,
+        167,
+        168,
+        169,
+        170,
+        171,
+        172,
+        173,
+        174
+      ]
+    ],
+    [
+      12,
+      [
+        175,
+        176,
+        177,
+        178,
+        179,
+        180,
+        181,
+        182,
+        183,
+        184,
+        185,
+        186,
+        187,
+        188
+      ]
+    ],
+    [
+      13,
+      [
+        189,
+        190,
+        191,
+        192,
+        193,
+        194,
+        195,
+        196,
+        197,
+        198,
+        199,
+        200,
+        201,
+        202
+      ]
+    ],
+    [
+      14,
+      [
+        203,
+        204,
+        205,
+        206,
+        207,
+        208,
+        209,
+        210,
+        211,
+        212,
+        213,
+        214,
+        215,
+        216
+      ]
+    ],
+    [
+      15,
+      [
+        217,
+        218,
+        219,
+        220,
+        221,
+        222,
+        223,
+        224,
+        225,
+        226,
+        227,
+        228,
+        229,
+        230
+      ]
+    ],
+    [
+      16,
+      [
+        231,
+        232,
+        233,
+        234,
+        235,
+        236,
+        237,
+        238,
+        239,
+        240,
+        241,
+        242,
+        243,
+        244
+      ]
+    ],
+    [
+      17,
+      [
+        245,
+        246,
+        247,
+        248,
+        249,
+        250,
+        251,
+        252,
+        253,
+        254,
+        255,
+        256,
+        257,
+        258
+      ]
+    ],
+    [
+      18,
+      [
+        259,
+        260,
+        261,
+        262,
+        263,
+        264,
+        265,
+        266,
+        267,
+        268,
+        269,
+        270,
+        271,
+        272
+      ]
+    ],
+    [
+      19,
+      [
+        273,
+        274,
+        275,
+        276,
+        277,
+        278,
+        279,
+        280,
+        281,
+        282,
+        283,
+        284,
+        285,
+        286
+      ]
+    ],
+    [
+      20,
+      [
+        287,
+        288,
+        289,
+        290,
+        291,
+        292,
+        293,
+        294,
+        295,
+        296,
+        297,
+        298,
+        299,
+        300
+      ]
+    ],
+    [
+      21,
+      [
+        301,
+        302,
+        303,
+        304,
+        305,
+        306,
+        307,
+        308,
+        309,
+        310,
+        311,
+        312,
+        313,
+        314,
+        315,
+        316,
+        317,
+        318,
+        319,
+        320,
+        321,
+        322,
+        323,
+        324,
+        325,
+        326,
+        327,
+        328,
+        329,
+        330,
+        331,
+        332,
+        333,
+        334,
+        335,
+        336,
+        337,
+        338,
+        339,
+        340,
+        341,
+        342,
+        343,
+        344,
+        345,
+        346,
+        347,
+        348
+      ]
+    ]
+  ],
+  "artistToTracks": [
+    [
+      0,
+      [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29,
+        30,
+        31,
+        32,
+        33,
+        34,
+        35,
+        36,
+        37
+      ]
+    ],
+    [
+      1,
+      [
+        38,
+        39,
+        40,
+        41,
+        42,
+        43,
+        44,
+        45,
+        46,
+        47,
+        48,
+        49,
+        50,
+        51,
+        52,
+        53,
+        54,
+        55,
+        56,
+        57,
+        58,
+        59,
+        60,
+        61,
+        62,
+        63,
+        64,
+        65,
+        66,
+        67,
+        68,
+        69,
+        70,
+        71,
+        72,
+        73,
+        74,
+        75,
+        76,
+        77,
+        78,
+        79,
+        80,
+        81,
+        82,
+        83,
+        84,
+        85,
+        86,
+        87,
+        88,
+        89,
+        90,
+        91,
+        92,
+        93,
+        94,
+        95,
+        96,
+        97,
+        98,
+        99,
+        100,
+        101,
+        102,
+        103,
+        104,
+        105,
+        106,
+        107,
+        108,
+        109,
+        110,
+        111,
+        112,
+        113,
+        114,
+        115,
+        116,
+        117,
+        118,
+        119,
+        120,
+        121,
+        122,
+        123,
+        124,
+        125,
+        126,
+        127,
+        128,
+        129,
+        130,
+        131,
+        132,
+        133,
+        134,
+        135,
+        136,
+        137,
+        138,
+        139,
+        140,
+        141,
+        142,
+        143,
+        144,
+        145,
+        146,
+        147,
+        148,
+        149,
+        150,
+        151,
+        152,
+        153,
+        154,
+        155,
+        156,
+        157,
+        158,
+        159,
+        160,
+        161,
+        162,
+        163,
+        164,
+        165,
+        166,
+        167,
+        168,
+        169,
+        170,
+        171,
+        172,
+        173,
+        174,
+        175,
+        176,
+        177,
+        178,
+        179,
+        180,
+        181,
+        182,
+        183,
+        184,
+        185,
+        186,
+        187,
+        188,
+        189,
+        190,
+        191,
+        192,
+        193,
+        194,
+        195,
+        196,
+        197,
+        198,
+        199,
+        200,
+        201,
+        202,
+        203,
+        204,
+        205,
+        206,
+        207,
+        208,
+        209,
+        210,
+        211,
+        212,
+        213,
+        214,
+        215,
+        216,
+        217,
+        218,
+        219,
+        220,
+        221,
+        222,
+        223,
+        224,
+        225,
+        226,
+        227,
+        228,
+        229,
+        230,
+        231,
+        232,
+        233,
+        234,
+        235,
+        236,
+        237,
+        238,
+        239,
+        240,
+        241,
+        242,
+        243,
+        244,
+        245,
+        246,
+        247,
+        248,
+        249,
+        250,
+        251,
+        252,
+        253,
+        254,
+        255,
+        256,
+        257,
+        258,
+        259,
+        260,
+        261,
+        262,
+        263,
+        264,
+        265,
+        266,
+        267,
+        268,
+        269,
+        270,
+        271,
+        272,
+        273,
+        274,
+        275,
+        276,
+        277,
+        278,
+        279,
+        280,
+        281,
+        282,
+        283,
+        284,
+        285,
+        286,
+        287,
+        288,
+        289,
+        290,
+        291,
+        292,
+        293,
+        294,
+        295,
+        296,
+        297,
+        298,
+        299,
+        300,
+        301,
+        302,
+        303,
+        304,
+        305,
+        306,
+        307,
+        308,
+        309,
+        310,
+        311,
+        312,
+        313,
+        314,
+        315,
+        316,
+        317,
+        318,
+        319,
+        320,
+        321,
+        322,
+        323,
+        324,
+        325,
+        326,
+        327,
+        328,
+        329,
+        330,
+        331,
+        332,
+        333,
+        334,
+        335,
+        336,
+        337,
+        338,
+        339,
+        340,
+        341,
+        342,
+        343,
+        344,
+        345,
+        346,
+        347,
+        348
+      ]
+    ]
+  ],
+  "genreToAlbums": [
+    [
+      0,
+      [
+        0,
+        1
+      ]
+    ],
+    [
+      1,
+      [
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20
+      ]
+    ],
+    [
+      2,
+      [
+        21
+      ]
+    ]
+  ],
+  "genreToTracks": [
+    [
+      0,
+      [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29,
+        30,
+        31,
+        32,
+        33,
+        34,
+        35,
+        36,
+        37
+      ]
+    ],
+    [
+      1,
+      [
+        38,
+        39,
+        40,
+        41,
+        42,
+        43,
+        44,
+        45,
+        46,
+        47,
+        48,
+        49,
+        50,
+        51,
+        52,
+        53,
+        54,
+        55,
+        56,
+        57,
+        58,
+        59,
+        60,
+        61,
+        62,
+        63,
+        64,
+        65,
+        66,
+        67,
+        68,
+        69,
+        70,
+        71,
+        72,
+        73,
+        74,
+        75,
+        76,
+        77,
+        78,
+        79,
+        80,
+        81,
+        82,
+        83,
+        84,
+        85,
+        86,
+        87,
+        88,
+        89,
+        90,
+        91,
+        92,
+        93,
+        94,
+        95,
+        96,
+        97,
+        98,
+        99,
+        100,
+        101,
+        102,
+        103,
+        104,
+        105,
+        106,
+        107,
+        108,
+        109,
+        110,
+        111,
+        112,
+        113,
+        114,
+        115,
+        116,
+        117,
+        118,
+        119,
+        120,
+        121,
+        122,
+        123,
+        124,
+        125,
+        126,
+        127,
+        128,
+        129,
+        130,
+        131,
+        132,
+        133,
+        134,
+        135,
+        136,
+        137,
+        138,
+        139,
+        140,
+        141,
+        142,
+        143,
+        144,
+        145,
+        146,
+        147,
+        148,
+        149,
+        150,
+        151,
+        152,
+        153,
+        154,
+        155,
+        156,
+        157,
+        158,
+        159,
+        160,
+        161,
+        162,
+        163,
+        164,
+        165,
+        166,
+        167,
+        168,
+        169,
+        170,
+        171,
+        172,
+        173,
+        174,
+        175,
+        176,
+        177,
+        178,
+        179,
+        180,
+        181,
+        182,
+        183,
+        184,
+        185,
+        186,
+        187,
+        188,
+        189,
+        190,
+        191,
+        192,
+        193,
+        194,
+        195,
+        196,
+        197,
+        198,
+        199,
+        200,
+        201,
+        202,
+        203,
+        204,
+        205,
+        206,
+        207,
+        208,
+        209,
+        210,
+        211,
+        212,
+        213,
+        214,
+        215,
+        216,
+        217,
+        218,
+        219,
+        220,
+        221,
+        222,
+        223,
+        224,
+        225,
+        226,
+        227,
+        228,
+        229,
+        230,
+        231,
+        232,
+        233,
+        234,
+        235,
+        236,
+        237,
+        238,
+        239,
+        240,
+        241,
+        242,
+        243,
+        244,
+        245,
+        246,
+        247,
+        248,
+        249,
+        250,
+        251,
+        252,
+        253,
+        254,
+        255,
+        256,
+        257,
+        258,
+        259,
+        260,
+        261,
+        262,
+        263,
+        264,
+        265,
+        266,
+        267,
+        268,
+        269,
+        270,
+        271,
+        272,
+        273,
+        274,
+        275,
+        276,
+        277,
+        278,
+        279,
+        280,
+        281,
+        282,
+        283,
+        284,
+        285,
+        286,
+        287,
+        288,
+        289,
+        290,
+        291,
+        292,
+        293,
+        294,
+        295,
+        296,
+        297,
+        298,
+        299,
+        300
+      ]
+    ],
+    [
+      2,
+      [
+        301,
+        302,
+        303,
+        304,
+        305,
+        306,
+        307,
+        308,
+        309,
+        310,
+        311,
+        312,
+        313,
+        314,
+        315,
+        316,
+        317,
+        318,
+        319,
+        320,
+        321,
+        322,
+        323,
+        324,
+        325,
+        326,
+        327,
+        328,
+        329,
+        330,
+        331,
+        332,
+        333,
+        334,
+        335,
+        336,
+        337,
+        338,
+        339,
+        340,
+        341,
+        342,
+        343,
+        344,
+        345,
+        346,
+        347,
+        348
+      ]
+    ]
+  ],
+  "genreToArtists": [
+    [
+      0,
+      [
+        0
+      ]
+    ],
+    [
+      1,
+      [
+        1
+      ]
+    ],
+    [
+      2,
+      [
+        1
+      ]
+    ]
+  ],
+  "metadataByTrackIndex": [
+    [
+      0,
+      {
+        "title": "Bombe à retardement",
+        "artist": "Swift Guad",
+        "album": "Hécatombe 2.0",
+        "genre": "Unknown Genre",
+        "index": 20,
+        "year": 2014,
+        "duration": 221.52
+      }
+    ],
+    [
+      1,
+      {
+        "title": "Le point",
+        "artist": "Swift Guad",
+        "album": "Hécatombe 2.0",
+        "genre": "Unknown Genre",
+        "index": 19,
+        "year": 2014,
+        "duration": 159.02666666666667
+      }
+    ],
+    [
+      2,
+      {
+        "title": "Mon calvaire",
+        "artist": "Swift Guad",
+        "album": "Hécatombe 2.0",
+        "genre": "Unknown Genre",
+        "index": 18,
+        "year": 2014,
+        "duration": 243.78666666666666
+      }
+    ],
+    [
+      3,
+      {
+        "title": "Dernière lettre",
+        "artist": "Swift Guad",
+        "album": "Hécatombe 2.0",
+        "genre": "Unknown Genre",
+        "index": 17,
+        "year": 2014,
+        "duration": 132.42666666666668
+      }
+    ],
+    [
+      4,
+      {
+        "title": "Phone Call",
+        "artist": "Swift Guad",
+        "album": "Hécatombe 2.0",
+        "genre": "Unknown Genre",
+        "index": 16,
+        "year": 2014,
+        "duration": 280.41333333333336
+      }
+    ],
+    [
+      5,
+      {
+        "title": "Mise à jour",
+        "artist": "Swift Guad",
+        "album": "Hécatombe 2.0",
+        "genre": "Unknown Genre",
+        "index": 15,
+        "year": 2014,
+        "duration": 304.3066666666667
+      }
+    ],
+    [
+      6,
+      {
+        "title": "Révolution",
+        "artist": "Swift Guad",
+        "album": "Hécatombe 2.0",
+        "genre": "Unknown Genre",
+        "index": 14,
+        "year": 2014,
+        "duration": 198.85333333333332
+      }
+    ],
+    [
+      7,
+      {
+        "title": "Paradox",
+        "artist": "Swift Guad",
+        "album": "Hécatombe 2.0",
+        "genre": "Unknown Genre",
+        "index": 13,
+        "year": 2014,
+        "duration": 206.12
+      }
+    ],
+    [
+      8,
+      {
+        "title": "Pour les p'tits",
+        "artist": "Swift Guad",
+        "album": "Hécatombe 2.0",
+        "genre": "Unknown Genre",
+        "index": 12,
+        "year": 2014,
+        "duration": 237.09333333333333
+      }
+    ],
+    [
+      9,
+      {
+        "title": "I Try",
+        "artist": "Swift Guad",
+        "album": "Hécatombe 2.0",
+        "genre": "Unknown Genre",
+        "index": 11,
+        "year": 2014,
+        "duration": 239.45333333333335
+      }
+    ],
+    [
+      10,
+      {
+        "title": "Enfant soldat",
+        "artist": "Swift Guad",
+        "album": "Hécatombe 2.0",
+        "genre": "Unknown Genre",
+        "index": 10,
+        "year": 2014,
+        "duration": 257.6933333333333
+      }
+    ],
+    [
+      11,
+      {
+        "title": "Maman pleure pas",
+        "artist": "Swift Guad",
+        "album": "Hécatombe 2.0",
+        "genre": "Unknown Genre",
+        "index": 9,
+        "year": 2014,
+        "duration": 190.32
+      }
+    ],
+    [
+      12,
+      {
+        "title": "Enervé",
+        "artist": "Swift Guad",
+        "album": "Hécatombe 2.0",
+        "genre": "Unknown Genre",
+        "index": 8,
+        "year": 2014,
+        "duration": 101.85333333333334
+      }
+    ],
+    [
+      13,
+      {
+        "title": "L'ogre et l'enfant",
+        "artist": "Swift Guad",
+        "album": "Hécatombe 2.0",
+        "genre": "Unknown Genre",
+        "index": 7,
+        "year": 2014,
+        "duration": 154.96
+      }
+    ],
+    [
+      14,
+      {
+        "title": "Jour de pluie",
+        "artist": "Swift Guad",
+        "album": "Hécatombe 2.0",
+        "genre": "Unknown Genre",
+        "index": 6,
+        "year": 2014,
+        "duration": 231.96
+      }
+    ],
+    [
+      15,
+      {
+        "title": "Skyzophrène",
+        "artist": "Swift Guad",
+        "album": "Hécatombe 2.0",
+        "genre": "Unknown Genre",
+        "index": 5,
+        "year": 2014,
+        "duration": 261.7733333333333
+      }
+    ],
+    [
+      16,
+      {
+        "title": "Besoin de clarté",
+        "artist": "Swift Guad",
+        "album": "Hécatombe 2.0",
+        "genre": "Unknown Genre",
+        "index": 4,
+        "year": 2014,
+        "duration": 289.9066666666667
+      }
+    ],
+    [
+      17,
+      {
+        "title": "Hip Hop Fat",
+        "artist": "Swift Guad",
+        "album": "Hécatombe 2.0",
+        "genre": "Unknown Genre",
+        "index": 3,
+        "year": 2014,
+        "duration": 213.58666666666667
+      }
+    ],
+    [
+      18,
+      {
+        "title": "Pourquoi",
+        "artist": "Swift Guad",
+        "album": "Hécatombe 2.0",
+        "genre": "Unknown Genre",
+        "index": 2,
+        "year": 2014,
+        "duration": 221.52
+      }
+    ],
+    [
+      19,
+      {
+        "title": "La montreuilloise",
+        "artist": "Swift Guad",
+        "album": "Hécatombe 2.0",
+        "genre": "Unknown Genre",
+        "index": 1,
+        "year": 2014,
+        "duration": 239.05333333333334
+      }
+    ],
+    [
+      20,
+      {
+        "title": "Narvalo",
+        "artist": "Swift Guad",
+        "album": "C.P.C.D.M.C",
+        "genre": "Unknown Genre",
+        "index": 18,
+        "year": 2014,
+        "duration": 321.72
+      }
+    ],
+    [
+      21,
+      {
+        "title": "Profundo",
+        "artist": "Swift Guad",
+        "album": "C.P.C.D.M.C",
+        "genre": "Unknown Genre",
+        "index": 17,
+        "year": 2014,
+        "duration": 157.17333333333335
+      }
+    ],
+    [
+      22,
+      {
+        "title": "Les voix du mal",
+        "artist": "Swift Guad",
+        "album": "C.P.C.D.M.C",
+        "genre": "Unknown Genre",
+        "index": 16,
+        "year": 2014,
+        "duration": 173.76
+      }
+    ],
+    [
+      23,
+      {
+        "title": "En temps de crise",
+        "artist": "Swift Guad",
+        "album": "C.P.C.D.M.C",
+        "genre": "Unknown Genre",
+        "index": 15,
+        "year": 2014,
+        "duration": 154.09333333333333
+      }
+    ],
+    [
+      24,
+      {
+        "title": "Dans mes artères",
+        "artist": "Swift Guad",
+        "album": "C.P.C.D.M.C",
+        "genre": "Unknown Genre",
+        "index": 14,
+        "year": 2014,
+        "duration": 247.32
+      }
+    ],
+    [
+      25,
+      {
+        "title": "J'arrive",
+        "artist": "Swift Guad",
+        "album": "C.P.C.D.M.C",
+        "genre": "Unknown Genre",
+        "index": 13,
+        "year": 2014,
+        "duration": 210.61333333333334
+      }
+    ],
+    [
+      26,
+      {
+        "title": "Freestyle latino",
+        "artist": "Swift Guad",
+        "album": "C.P.C.D.M.C",
+        "genre": "Unknown Genre",
+        "index": 12,
+        "year": 2014,
+        "duration": 260.88
+      }
+    ],
+    [
+      27,
+      {
+        "title": "Partition nébuleuse",
+        "artist": "Swift Guad",
+        "album": "C.P.C.D.M.C",
+        "genre": "Unknown Genre",
+        "index": 11,
+        "year": 2014,
+        "duration": 240.97333333333333
+      }
+    ],
+    [
+      28,
+      {
+        "title": "Nono",
+        "artist": "Swift Guad",
+        "album": "C.P.C.D.M.C",
+        "genre": "Unknown Genre",
+        "index": 10,
+        "year": 2014,
+        "duration": 246.25333333333333
+      }
+    ],
+    [
+      29,
+      {
+        "title": "Juste un couplet",
+        "artist": "Swift Guad",
+        "album": "C.P.C.D.M.C",
+        "genre": "Unknown Genre",
+        "index": 9,
+        "year": 2014,
+        "duration": 127.34666666666666
+      }
+    ],
+    [
+      30,
+      {
+        "title": "Là n'est pas la question",
+        "artist": "Swift Guad",
+        "album": "C.P.C.D.M.C",
+        "genre": "Unknown Genre",
+        "index": 8,
+        "year": 2014,
+        "duration": 233.18666666666667
+      }
+    ],
+    [
+      31,
+      {
+        "title": "Le sens du partage",
+        "artist": "Swift Guad",
+        "album": "C.P.C.D.M.C",
+        "genre": "Unknown Genre",
+        "index": 7,
+        "year": 2014,
+        "duration": 253.30666666666667
+      }
+    ],
+    [
+      32,
+      {
+        "title": "Deuxième cicatrice",
+        "artist": "Swift Guad",
+        "album": "C.P.C.D.M.C",
+        "genre": "Unknown Genre",
+        "index": 6,
+        "year": 2014,
+        "duration": 249.88
+      }
+    ],
+    [
+      33,
+      {
+        "title": "Le suite",
+        "artist": "Swift Guad",
+        "album": "C.P.C.D.M.C",
+        "genre": "Unknown Genre",
+        "index": 5,
+        "year": 2014,
+        "duration": 140.29333333333332
+      }
+    ],
+    [
+      34,
+      {
+        "title": "Ma génération",
+        "artist": "Swift Guad",
+        "album": "C.P.C.D.M.C",
+        "genre": "Unknown Genre",
+        "index": 4,
+        "year": 2014,
+        "duration": 171.61333333333334
+      }
+    ],
+    [
+      35,
+      {
+        "title": "Majeur et vacciné",
+        "artist": "Swift Guad",
+        "album": "C.P.C.D.M.C",
+        "genre": "Unknown Genre",
+        "index": 3,
+        "year": 2014,
+        "duration": 215.64
+      }
+    ],
+    [
+      36,
+      {
+        "title": "Nous contre eux",
+        "artist": "Swift Guad",
+        "album": "C.P.C.D.M.C",
+        "genre": "Unknown Genre",
+        "index": 2,
+        "year": 2014,
+        "duration": 274.82666666666665
+      }
+    ],
+    [
+      37,
+      {
+        "title": "J'annonce",
+        "artist": "Swift Guad",
+        "album": "C.P.C.D.M.C",
+        "genre": "Unknown Genre",
+        "index": 1,
+        "year": 2014,
+        "duration": 215.92
+      }
+    ],
+    [
+      38,
+      {
+        "title": "A Pretty Girl Is Like A Melody",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 09)",
+        "genre": "Gypsy Jazz",
+        "index": 14,
+        "year": 2009,
+        "duration": 157.06666666666666
+      }
+    ],
+    [
+      39,
+      {
+        "title": "Sugar",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 09)",
+        "genre": "Gypsy Jazz",
+        "index": 13,
+        "year": 2009,
+        "duration": 160.72
+      }
+    ],
+    [
+      40,
+      {
+        "title": "Rosetta",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 09)",
+        "genre": "Gypsy Jazz",
+        "index": 12,
+        "year": 2009,
+        "duration": 147.52
+      }
+    ],
+    [
+      41,
+      {
+        "title": "Stomp",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 09)",
+        "genre": "Gypsy Jazz",
+        "index": 11,
+        "year": 2009,
+        "duration": 139.37333333333333
+      }
+    ],
+    [
+      42,
+      {
+        "title": "Blue Skies",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 09)",
+        "genre": "Gypsy Jazz",
+        "index": 10,
+        "year": 2009,
+        "duration": 157.68
+      }
+    ],
+    [
+      43,
+      {
+        "title": "Boogie-Woogie part.2",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 09)",
+        "genre": "Gypsy Jazz",
+        "index": 9,
+        "year": 2009,
+        "duration": 154.66666666666666
+      }
+    ],
+    [
+      44,
+      {
+        "title": "Boogie-Woogie part.1",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 09)",
+        "genre": "Gypsy Jazz",
+        "index": 8,
+        "year": 2009,
+        "duration": 174.32
+      }
+    ],
+    [
+      45,
+      {
+        "title": "Jumpin' At The Woodside",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 09)",
+        "genre": "Gypsy Jazz",
+        "index": 7,
+        "year": 2009,
+        "duration": 177.73333333333332
+      }
+    ],
+    [
+      46,
+      {
+        "title": "Scatterbrain",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 09)",
+        "genre": "Gypsy Jazz",
+        "index": 6,
+        "year": 2009,
+        "duration": 140.78666666666666
+      }
+    ],
+    [
+      47,
+      {
+        "title": "Naguine",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 09)",
+        "genre": "Gypsy Jazz",
+        "index": 5,
+        "year": 2009,
+        "duration": 147.64
+      }
+    ],
+    [
+      48,
+      {
+        "title": "Baby",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 09)",
+        "genre": "Gypsy Jazz",
+        "index": 4,
+        "year": 2009,
+        "duration": 159.25333333333333
+      }
+    ],
+    [
+      49,
+      {
+        "title": "Out Of Nowhere",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 09)",
+        "genre": "Gypsy Jazz",
+        "index": 3,
+        "year": 2009,
+        "duration": 196.72816326530614
+      }
+    ],
+    [
+      50,
+      {
+        "title": "Echoes Of Spain",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 09)",
+        "genre": "Gypsy Jazz",
+        "index": 2,
+        "year": 2009,
+        "duration": 186.34666666666666
+      }
+    ],
+    [
+      51,
+      {
+        "title": "I'll See You In My Dreams",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 09)",
+        "genre": "Gypsy Jazz",
+        "index": 1,
+        "year": 2009,
+        "duration": 151.78666666666666
+      }
+    ],
+    [
+      52,
+      {
+        "title": "Younger Generation",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 08)",
+        "genre": "Gypsy Jazz",
+        "index": 14,
+        "year": 2009,
+        "duration": 142.75918367346938
+      }
+    ],
+    [
+      53,
+      {
+        "title": "Stockholm",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 08)",
+        "genre": "Gypsy Jazz",
+        "index": 13,
+        "year": 2009,
+        "duration": 167.75836734693877
+      }
+    ],
+    [
+      54,
+      {
+        "title": "I Can't Believe That You're In Love With Me",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 08)",
+        "genre": "Gypsy Jazz",
+        "index": 12,
+        "year": 2009,
+        "duration": 140.56489795918367
+      }
+    ],
+    [
+      55,
+      {
+        "title": "Dream Ship",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 08)",
+        "genre": "Gypsy Jazz",
+        "index": 11,
+        "year": 2009,
+        "duration": 170.94530612244898
+      }
+    ],
+    [
+      56,
+      {
+        "title": "Solid Old Man",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 08)",
+        "genre": "Gypsy Jazz",
+        "index": 10,
+        "year": 2009,
+        "duration": 183.24897959183673
+      }
+    ],
+    [
+      57,
+      {
+        "title": "I Know That You Know",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 08)",
+        "genre": "Gypsy Jazz",
+        "index": 9,
+        "year": 2009,
+        "duration": 153.36489795918368
+      }
+    ],
+    [
+      58,
+      {
+        "title": "Finesse",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 08)",
+        "genre": "Gypsy Jazz",
+        "index": 8,
+        "year": 2009,
+        "duration": 141.4530612244898
+      }
+    ],
+    [
+      59,
+      {
+        "title": "Low Cotton",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 08)",
+        "genre": "Gypsy Jazz",
+        "index": 7,
+        "year": 2009,
+        "duration": 181.96897959183673
+      }
+    ],
+    [
+      60,
+      {
+        "title": "Montmartre",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 08)",
+        "genre": "Gypsy Jazz",
+        "index": 6,
+        "year": 2009,
+        "duration": 146.02448979591836
+      }
+    ],
+    [
+      61,
+      {
+        "title": "I Got Rhythm",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 08)",
+        "genre": "Gypsy Jazz",
+        "index": 5,
+        "year": 2009,
+        "duration": 174.4195918367347
+      }
+    ],
+    [
+      62,
+      {
+        "title": "My Melancholy Baby",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 08)",
+        "genre": "Gypsy Jazz",
+        "index": 4,
+        "year": 2009,
+        "duration": 195.8922448979592
+      }
+    ],
+    [
+      63,
+      {
+        "title": "Lover Come Back To Me",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 08)",
+        "genre": "Gypsy Jazz",
+        "index": 3,
+        "year": 2009,
+        "duration": 153.52163265306123
+      }
+    ],
+    [
+      64,
+      {
+        "title": "Body And Soul",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 08)",
+        "genre": "Gypsy Jazz",
+        "index": 2,
+        "year": 2009,
+        "duration": 185.67836734693878
+      }
+    ],
+    [
+      65,
+      {
+        "title": "Blues Light Blues",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 08)",
+        "genre": "Gypsy Jazz",
+        "index": 1,
+        "year": 2009,
+        "duration": 186.43591836734694
+      }
+    ],
+    [
+      66,
+      {
+        "title": "Farewell Blues",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 07)",
+        "genre": "Gypsy Jazz",
+        "index": 14,
+        "year": 2009,
+        "duration": 194.4
+      }
+    ],
+    [
+      67,
+      {
+        "title": "I'm Coming Virginia",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 07)",
+        "genre": "Gypsy Jazz",
+        "index": 13,
+        "year": 2009,
+        "duration": 184.49333333333334
+      }
+    ],
+    [
+      68,
+      {
+        "title": "Sweet Sue",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 07)",
+        "genre": "Gypsy Jazz",
+        "index": 12,
+        "year": 2009,
+        "duration": 150.61333333333334
+      }
+    ],
+    [
+      69,
+      {
+        "title": "Harlem Swing",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 07)",
+        "genre": "Gypsy Jazz",
+        "index": 11,
+        "year": 2009,
+        "duration": 156.08
+      }
+    ],
+    [
+      70,
+      {
+        "title": "Easy Going",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 07)",
+        "genre": "Gypsy Jazz",
+        "index": 10,
+        "year": 2009,
+        "duration": 181.92
+      }
+    ],
+    [
+      71,
+      {
+        "title": "Blues",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 07)",
+        "genre": "Gypsy Jazz",
+        "index": 9,
+        "year": 2009,
+        "duration": 182.93333333333334
+      }
+    ],
+    [
+      72,
+      {
+        "title": "Tea For Two",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 07)",
+        "genre": "Gypsy Jazz",
+        "index": 8,
+        "year": 2009,
+        "duration": 168.81333333333333
+      }
+    ],
+    [
+      73,
+      {
+        "title": "Sweet Georgia Brown",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 07)",
+        "genre": "Gypsy Jazz",
+        "index": 7,
+        "year": 2009,
+        "duration": 195.77333333333334
+      }
+    ],
+    [
+      74,
+      {
+        "title": "Sugar",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 07)",
+        "genre": "Gypsy Jazz",
+        "index": 6,
+        "year": 2009,
+        "duration": 183.73333333333332
+      }
+    ],
+    [
+      75,
+      {
+        "title": "Stephen's Blues",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 07)",
+        "genre": "Gypsy Jazz",
+        "index": 5,
+        "year": 2009,
+        "duration": 196.29333333333332
+      }
+    ],
+    [
+      76,
+      {
+        "title": "Christmas Swing",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 07)",
+        "genre": "Gypsy Jazz",
+        "index": 4,
+        "year": 2009,
+        "duration": 171.16
+      }
+    ],
+    [
+      77,
+      {
+        "title": "Tea For Two",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 07)",
+        "genre": "Gypsy Jazz",
+        "index": 3,
+        "year": 2009,
+        "duration": 195.05333333333334
+      }
+    ],
+    [
+      78,
+      {
+        "title": "You Rascal You",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 07)",
+        "genre": "Gypsy Jazz",
+        "index": 2,
+        "year": 2009,
+        "duration": 185.96
+      }
+    ],
+    [
+      79,
+      {
+        "title": "Organ Grinder's Swing",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 07)",
+        "genre": "Gypsy Jazz",
+        "index": 1,
+        "year": 2009,
+        "duration": 157.21333333333334
+      }
+    ],
+    [
+      80,
+      {
+        "title": "Bill Coleman Blues",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 05)",
+        "genre": "Gypsy Jazz",
+        "index": 14,
+        "year": 2009,
+        "duration": 165.87755102040816
+      }
+    ],
+    [
+      81,
+      {
+        "title": "Swing Guitars",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 05)",
+        "genre": "Gypsy Jazz",
+        "index": 13,
+        "year": 2009,
+        "duration": 186.2791836734694
+      }
+    ],
+    [
+      82,
+      {
+        "title": "Big Boy Blues",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 05)",
+        "genre": "Gypsy Jazz",
+        "index": 12,
+        "year": 2009,
+        "duration": 206.1061224489796
+      }
+    ],
+    [
+      83,
+      {
+        "title": "Baby Won't You Please Come Home",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 05)",
+        "genre": "Gypsy Jazz",
+        "index": 11,
+        "year": 2009,
+        "duration": 178.96489795918367
+      }
+    ],
+    [
+      84,
+      {
+        "title": "I Ain't Got Nobody",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 05)",
+        "genre": "Gypsy Jazz",
+        "index": 10,
+        "year": 2009,
+        "duration": 181.57714285714286
+      }
+    ],
+    [
+      85,
+      {
+        "title": "I've Found A New Baby",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 05)",
+        "genre": "Gypsy Jazz",
+        "index": 9,
+        "year": 2009,
+        "duration": 156.70857142857142
+      }
+    ],
+    [
+      86,
+      {
+        "title": "You Took Advantage Of Me",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 05)",
+        "genre": "Gypsy Jazz",
+        "index": 8,
+        "year": 2009,
+        "duration": 175.36
+      }
+    ],
+    [
+      87,
+      {
+        "title": "Daphne",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 05)",
+        "genre": "Gypsy Jazz",
+        "index": 7,
+        "year": 2009,
+        "duration": 182.12571428571428
+      }
+    ],
+    [
+      88,
+      {
+        "title": "Dinah",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 05)",
+        "genre": "Gypsy Jazz",
+        "index": 6,
+        "year": 2009,
+        "duration": 148.27102040816325
+      }
+    ],
+    [
+      89,
+      {
+        "title": "Lady Be Good",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 05)",
+        "genre": "Gypsy Jazz",
+        "index": 5,
+        "year": 2009,
+        "duration": 198.42612244897958
+      }
+    ],
+    [
+      90,
+      {
+        "title": "Sweet Georgia Brown",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 05)",
+        "genre": "Gypsy Jazz",
+        "index": 4,
+        "year": 2009,
+        "duration": 167.9673469387755
+      }
+    ],
+    [
+      91,
+      {
+        "title": "Eddie's Blues (Eddie South Blues)",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 05)",
+        "genre": "Gypsy Jazz",
+        "index": 3,
+        "year": 2009,
+        "duration": 188.13387755102042
+      }
+    ],
+    [
+      92,
+      {
+        "title": "Bouncin' Around",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 05)",
+        "genre": "Gypsy Jazz",
+        "index": 2,
+        "year": 2009,
+        "duration": 164.96326530612245
+      }
+    ],
+    [
+      93,
+      {
+        "title": "Saint Louis Blues",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 05)",
+        "genre": "Gypsy Jazz",
+        "index": 1,
+        "year": 2009,
+        "duration": 163.94448979591837
+      }
+    ],
+    [
+      94,
+      {
+        "title": "Tiger Rag",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 04)",
+        "genre": "Gypsy Jazz",
+        "index": 14,
+        "year": 2009,
+        "duration": 153.88734693877552
+      }
+    ],
+    [
+      95,
+      {
+        "title": "Pennies From Heaven",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 04)",
+        "genre": "Gypsy Jazz",
+        "index": 13,
+        "year": 2009,
+        "duration": 143.59510204081633
+      }
+    ],
+    [
+      96,
+      {
+        "title": "Japanese Sandman",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 04)",
+        "genre": "Gypsy Jazz",
+        "index": 12,
+        "year": 2009,
+        "duration": 179.48734693877552
+      }
+    ],
+    [
+      97,
+      {
+        "title": "Hangin' Around Boudon",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 04)",
+        "genre": "Gypsy Jazz",
+        "index": 11,
+        "year": 2009,
+        "duration": 175.15102040816328
+      }
+    ],
+    [
+      98,
+      {
+        "title": "Sweet Sue",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 04)",
+        "genre": "Gypsy Jazz",
+        "index": 10,
+        "year": 2009,
+        "duration": 186.33142857142857
+      }
+    ],
+    [
+      99,
+      {
+        "title": "I Got Rhythm",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 04)",
+        "genre": "Gypsy Jazz",
+        "index": 9,
+        "year": 2009,
+        "duration": 134.81795918367348
+      }
+    ],
+    [
+      100,
+      {
+        "title": "Between The Devil And The Deep Blue Sea",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 04)",
+        "genre": "Gypsy Jazz",
+        "index": 8,
+        "year": 2009,
+        "duration": 177.345306122449
+      }
+    ],
+    [
+      101,
+      {
+        "title": "Bugle Call Rag",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 04)",
+        "genre": "Gypsy Jazz",
+        "index": 7,
+        "year": 2009,
+        "duration": 162.2726530612245
+      }
+    ],
+    [
+      102,
+      {
+        "title": "Sweet Georgia Brown",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 04)",
+        "genre": "Gypsy Jazz",
+        "index": 6,
+        "year": 2009,
+        "duration": 182.17795918367347
+      }
+    ],
+    [
+      103,
+      {
+        "title": "Out Of Nowhere",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 04)",
+        "genre": "Gypsy Jazz",
+        "index": 5,
+        "year": 2009,
+        "duration": 198.81795918367348
+      }
+    ],
+    [
+      104,
+      {
+        "title": "Crazy Rythm",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 04)",
+        "genre": "Gypsy Jazz",
+        "index": 4,
+        "year": 2009,
+        "duration": 182.51755102040818
+      }
+    ],
+    [
+      105,
+      {
+        "title": "Honey Suckle Rose",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 04)",
+        "genre": "Gypsy Jazz",
+        "index": 3,
+        "year": 2009,
+        "duration": 166.87020408163266
+      }
+    ],
+    [
+      106,
+      {
+        "title": "Alabamy Sound",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 04)",
+        "genre": "Gypsy Jazz",
+        "index": 2,
+        "year": 2009,
+        "duration": 170.76244897959182
+      }
+    ],
+    [
+      107,
+      {
+        "title": "Parfum",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 04)",
+        "genre": "Gypsy Jazz",
+        "index": 1,
+        "year": 2009,
+        "duration": 179.09551020408162
+      }
+    ],
+    [
+      108,
+      {
+        "title": "Improvisation",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 03)",
+        "genre": "Gypsy Jazz",
+        "index": 14,
+        "year": 2009,
+        "duration": 174.08
+      }
+    ],
+    [
+      109,
+      {
+        "title": "The Sheik Of Araby",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 03)",
+        "genre": "Gypsy Jazz",
+        "index": 13,
+        "year": 2009,
+        "duration": 185.12979591836734
+      }
+    ],
+    [
+      110,
+      {
+        "title": "In A Sentimental Mood",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 03)",
+        "genre": "Gypsy Jazz",
+        "index": 12,
+        "year": 2009,
+        "duration": 181.52489795918368
+      }
+    ],
+    [
+      111,
+      {
+        "title": "Mistery Pacific",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 03)",
+        "genre": "Gypsy Jazz",
+        "index": 11,
+        "year": 2009,
+        "duration": 140.72163265306122
+      }
+    ],
+    [
+      112,
+      {
+        "title": "A Little Love, A Little Kiss",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 03)",
+        "genre": "Gypsy Jazz",
+        "index": 10,
+        "year": 2009,
+        "duration": 199.52326530612245
+      }
+    ],
+    [
+      113,
+      {
+        "title": "Miss Annabelle Lee",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 03)",
+        "genre": "Gypsy Jazz",
+        "index": 9,
+        "year": 2009,
+        "duration": 168.80326530612246
+      }
+    ],
+    [
+      114,
+      {
+        "title": "Liebestraum, N°3",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 03)",
+        "genre": "Gypsy Jazz",
+        "index": 8,
+        "year": 2009,
+        "duration": 200.88163265306122
+      }
+    ],
+    [
+      115,
+      {
+        "title": "Chicago",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 03)",
+        "genre": "Gypsy Jazz",
+        "index": 7,
+        "year": 2009,
+        "duration": 205.29632653061225
+      }
+    ],
+    [
+      116,
+      {
+        "title": "Runnin' Wild (Course mouvementee)",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 03)",
+        "genre": "Gypsy Jazz",
+        "index": 6,
+        "year": 2009,
+        "duration": 175.59510204081633
+      }
+    ],
+    [
+      117,
+      {
+        "title": "When Day Is Done",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 03)",
+        "genre": "Gypsy Jazz",
+        "index": 5,
+        "year": 2009,
+        "duration": 192.9665306122449
+      }
+    ],
+    [
+      118,
+      {
+        "title": "Body And Soul",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 03)",
+        "genre": "Gypsy Jazz",
+        "index": 4,
+        "year": 2009,
+        "duration": 206.7069387755102
+      }
+    ],
+    [
+      119,
+      {
+        "title": "Rose Room",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 03)",
+        "genre": "Gypsy Jazz",
+        "index": 3,
+        "year": 2009,
+        "duration": 164.8065306122449
+      }
+    ],
+    [
+      120,
+      {
+        "title": "Ain't Misbehavin",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 03)",
+        "genre": "Gypsy Jazz",
+        "index": 2,
+        "year": 2009,
+        "duration": 173.63591836734693
+      }
+    ],
+    [
+      121,
+      {
+        "title": "Hot Lips",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 03)",
+        "genre": "Gypsy Jazz",
+        "index": 1,
+        "year": 2009,
+        "duration": 184.76408163265307
+      }
+    ],
+    [
+      122,
+      {
+        "title": "Pigalle",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 20)",
+        "genre": "Gypsy Jazz",
+        "index": 14,
+        "year": 2009,
+        "duration": 165.38666666666666
+      }
+    ],
+    [
+      123,
+      {
+        "title": "What A Difference A Day Made",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 20)",
+        "genre": "Gypsy Jazz",
+        "index": 13,
+        "year": 2009,
+        "duration": 216
+      }
+    ],
+    [
+      124,
+      {
+        "title": "Micro (Mike)",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 20)",
+        "genre": "Gypsy Jazz",
+        "index": 12,
+        "year": 2009,
+        "duration": 142.44
+      }
+    ],
+    [
+      125,
+      {
+        "title": "To Each His Own",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 20)",
+        "genre": "Gypsy Jazz",
+        "index": 11,
+        "year": 2009,
+        "duration": 225.96
+      }
+    ],
+    [
+      126,
+      {
+        "title": "Night And Day",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 20)",
+        "genre": "Gypsy Jazz",
+        "index": 10,
+        "year": 2009,
+        "duration": 185.06666666666666
+      }
+    ],
+    [
+      127,
+      {
+        "title": "Time On My Hands",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 20)",
+        "genre": "Gypsy Jazz",
+        "index": 9,
+        "year": 2009,
+        "duration": 167.74666666666667
+      }
+    ],
+    [
+      128,
+      {
+        "title": "Undecided",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 20)",
+        "genre": "Gypsy Jazz",
+        "index": 8,
+        "year": 2009,
+        "duration": 182.93333333333334
+      }
+    ],
+    [
+      129,
+      {
+        "title": "Improvisation N°4",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 20)",
+        "genre": "Gypsy Jazz",
+        "index": 7,
+        "year": 2009,
+        "duration": 130.01142857142858
+      }
+    ],
+    [
+      130,
+      {
+        "title": "Webster",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 20)",
+        "genre": "Gypsy Jazz",
+        "index": 6,
+        "year": 2009,
+        "duration": 121.05333333333333
+      }
+    ],
+    [
+      131,
+      {
+        "title": "For Sentimental Reasons",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 20)",
+        "genre": "Gypsy Jazz",
+        "index": 5,
+        "year": 2009,
+        "duration": 207.45333333333335
+      }
+    ],
+    [
+      132,
+      {
+        "title": "Brazil",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 20)",
+        "genre": "Gypsy Jazz",
+        "index": 4,
+        "year": 2009,
+        "duration": 174.57333333333332
+      }
+    ],
+    [
+      133,
+      {
+        "title": "I'll Never Be The Same",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 20)",
+        "genre": "Gypsy Jazz",
+        "index": 3,
+        "year": 2009,
+        "duration": 245.72
+      }
+    ],
+    [
+      134,
+      {
+        "title": "Blue Lou",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 20)",
+        "genre": "Gypsy Jazz",
+        "index": 2,
+        "year": 2009,
+        "duration": 195.1608163265306
+      }
+    ],
+    [
+      135,
+      {
+        "title": "Nature Boy",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 20)",
+        "genre": "Gypsy Jazz",
+        "index": 1,
+        "year": 2009,
+        "duration": 214.84
+      }
+    ],
+    [
+      136,
+      {
+        "title": "Solitude",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 02)",
+        "genre": "Gypsy Jazz",
+        "index": 14,
+        "year": 2009,
+        "duration": 188.29061224489797
+      }
+    ],
+    [
+      137,
+      {
+        "title": "Tears",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 02)",
+        "genre": "Gypsy Jazz",
+        "index": 13,
+        "year": 2009,
+        "duration": 159.3730612244898
+      }
+    ],
+    [
+      138,
+      {
+        "title": "You're Driving Me Crazy",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 02)",
+        "genre": "Gypsy Jazz",
+        "index": 12,
+        "year": 2009,
+        "duration": 175.96081632653062
+      }
+    ],
+    [
+      139,
+      {
+        "title": "Charleston",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 02)",
+        "genre": "Gypsy Jazz",
+        "index": 11,
+        "year": 2009,
+        "duration": 173.8187755102041
+      }
+    ],
+    [
+      140,
+      {
+        "title": "Exactly Like You",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 02)",
+        "genre": "Gypsy Jazz",
+        "index": 10,
+        "year": 2009,
+        "duration": 151.3795918367347
+      }
+    ],
+    [
+      141,
+      {
+        "title": "Sweet Chorus",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 02)",
+        "genre": "Gypsy Jazz",
+        "index": 9,
+        "year": 2009,
+        "duration": 166.11265306122448
+      }
+    ],
+    [
+      142,
+      {
+        "title": "In The Still Of The Night",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 02)",
+        "genre": "Gypsy Jazz",
+        "index": 8,
+        "year": 2009,
+        "duration": 186.5142857142857
+      }
+    ],
+    [
+      143,
+      {
+        "title": "Shine",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 02)",
+        "genre": "Gypsy Jazz",
+        "index": 7,
+        "year": 2009,
+        "duration": 177.18857142857144
+      }
+    ],
+    [
+      144,
+      {
+        "title": "Georgia On My Mind",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 02)",
+        "genre": "Gypsy Jazz",
+        "index": 6,
+        "year": 2009,
+        "duration": 195.1869387755102
+      }
+    ],
+    [
+      145,
+      {
+        "title": "Swing Guitars",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 02)",
+        "genre": "Gypsy Jazz",
+        "index": 5,
+        "year": 2009,
+        "duration": 146.70367346938775
+      }
+    ],
+    [
+      146,
+      {
+        "title": "Nagasaki",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 02)",
+        "genre": "Gypsy Jazz",
+        "index": 4,
+        "year": 2009,
+        "duration": 170.814693877551
+      }
+    ],
+    [
+      147,
+      {
+        "title": "Limehouse Blues",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 02)",
+        "genre": "Gypsy Jazz",
+        "index": 3,
+        "year": 2009,
+        "duration": 167.0791836734694
+      }
+    ],
+    [
+      148,
+      {
+        "title": "Are You In The Mood",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 02)",
+        "genre": "Gypsy Jazz",
+        "index": 2,
+        "year": 2009,
+        "duration": 169.9787755102041
+      }
+    ],
+    [
+      149,
+      {
+        "title": "After You Gone",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 02)",
+        "genre": "Gypsy Jazz",
+        "index": 1,
+        "year": 2009,
+        "duration": 187.16734693877552
+      }
+    ],
+    [
+      150,
+      {
+        "title": "Boogie-Woogie",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 19)",
+        "genre": "Gypsy Jazz",
+        "index": 13,
+        "year": 2009,
+        "duration": 205.28
+      }
+    ],
+    [
+      151,
+      {
+        "title": "Black Night",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 19)",
+        "genre": "Gypsy Jazz",
+        "index": 12,
+        "year": 2009,
+        "duration": 215.76
+      }
+    ],
+    [
+      152,
+      {
+        "title": "Place de Brouckere",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 19)",
+        "genre": "Gypsy Jazz",
+        "index": 11,
+        "year": 2009,
+        "duration": 176.62666666666667
+      }
+    ],
+    [
+      153,
+      {
+        "title": "Reverie",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 19)",
+        "genre": "Gypsy Jazz",
+        "index": 10,
+        "year": 2009,
+        "duration": 185.72
+      }
+    ],
+    [
+      154,
+      {
+        "title": "Dinette",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 19)",
+        "genre": "Gypsy Jazz",
+        "index": 9,
+        "year": 2009,
+        "duration": 179.52
+      }
+    ],
+    [
+      155,
+      {
+        "title": "Danse Norvegienne",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 19)",
+        "genre": "Gypsy Jazz",
+        "index": 8,
+        "year": 2009,
+        "duration": 190.37333333333333
+      }
+    ],
+    [
+      156,
+      {
+        "title": "Micro (Mike)",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 19)",
+        "genre": "Gypsy Jazz",
+        "index": 7,
+        "year": 2009,
+        "duration": 162.1942857142857
+      }
+    ],
+    [
+      157,
+      {
+        "title": "It Might As Well Be Spring",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 19)",
+        "genre": "Gypsy Jazz",
+        "index": 6,
+        "year": 2009,
+        "duration": 245.97333333333333
+      }
+    ],
+    [
+      158,
+      {
+        "title": "The Peanut Vendor",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 19)",
+        "genre": "Gypsy Jazz",
+        "index": 5,
+        "year": 2009,
+        "duration": 238.2
+      }
+    ],
+    [
+      159,
+      {
+        "title": "The Man I Love",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 19)",
+        "genre": "Gypsy Jazz",
+        "index": 4,
+        "year": 2009,
+        "duration": 198.12
+      }
+    ],
+    [
+      160,
+      {
+        "title": "Blue Skies",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 19)",
+        "genre": "Gypsy Jazz",
+        "index": 3,
+        "year": 2009,
+        "duration": 252.04
+      }
+    ],
+    [
+      161,
+      {
+        "title": "Stormy Weather",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 19)",
+        "genre": "Gypsy Jazz",
+        "index": 2,
+        "year": 2009,
+        "duration": 210.2595918367347
+      }
+    ],
+    [
+      162,
+      {
+        "title": "Micro (Mike)",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 19)",
+        "genre": "Gypsy Jazz",
+        "index": 1,
+        "year": 2009,
+        "duration": 139.29333333333332
+      }
+    ],
+    [
+      163,
+      {
+        "title": "Nuages",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 18)",
+        "genre": "Gypsy Jazz",
+        "index": 12,
+        "year": 2009,
+        "duration": 380.48
+      }
+    ],
+    [
+      164,
+      {
+        "title": "Belleville",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 18)",
+        "genre": "Gypsy Jazz",
+        "index": 11,
+        "year": 2009,
+        "duration": 327.72
+      }
+    ],
+    [
+      165,
+      {
+        "title": "Honeysuckle Rose",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 18)",
+        "genre": "Gypsy Jazz",
+        "index": 10,
+        "year": 2009,
+        "duration": 217.07755102040815
+      }
+    ],
+    [
+      166,
+      {
+        "title": "C Jam Blues",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 18)",
+        "genre": "Gypsy Jazz",
+        "index": 9,
+        "year": 2009,
+        "duration": 214.22666666666666
+      }
+    ],
+    [
+      167,
+      {
+        "title": "Saint James Infirmary",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 18)",
+        "genre": "Gypsy Jazz",
+        "index": 8,
+        "year": 2009,
+        "duration": 154.76
+      }
+    ],
+    [
+      168,
+      {
+        "title": "Artillerie Lourde",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 18)",
+        "genre": "Gypsy Jazz",
+        "index": 7,
+        "year": 2009,
+        "duration": 224.22666666666666
+      }
+    ],
+    [
+      169,
+      {
+        "title": "Double Scotch",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 18)",
+        "genre": "Gypsy Jazz",
+        "index": 6,
+        "year": 2009,
+        "duration": 173.62666666666667
+      }
+    ],
+    [
+      170,
+      {
+        "title": "Minor Swing",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 18)",
+        "genre": "Gypsy Jazz",
+        "index": 5,
+        "year": 2009,
+        "duration": 146.98666666666668
+      }
+    ],
+    [
+      171,
+      {
+        "title": "Sweet Georgia Brown",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 18)",
+        "genre": "Gypsy Jazz",
+        "index": 4,
+        "year": 2009,
+        "duration": 233.42666666666668
+      }
+    ],
+    [
+      172,
+      {
+        "title": "Manoir De Mes Rêves",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 18)",
+        "genre": "Gypsy Jazz",
+        "index": 3,
+        "year": 2009,
+        "duration": 207.17333333333335
+      }
+    ],
+    [
+      173,
+      {
+        "title": "I Can't Give You Anything But Love",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 18)",
+        "genre": "Gypsy Jazz",
+        "index": 2,
+        "year": 2009,
+        "duration": 220.82666666666665
+      }
+    ],
+    [
+      174,
+      {
+        "title": "I Can't Get Started",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 18)",
+        "genre": "Gypsy Jazz",
+        "index": 1,
+        "year": 2009,
+        "duration": 233.30666666666667
+      }
+    ],
+    [
+      175,
+      {
+        "title": "Nuages",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 17)",
+        "genre": "Gypsy Jazz",
+        "index": 14,
+        "year": 2009,
+        "duration": 206.50666666666666
+      }
+    ],
+    [
+      176,
+      {
+        "title": "How High The Moon",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 17)",
+        "genre": "Gypsy Jazz",
+        "index": 13,
+        "year": 2009,
+        "duration": 220.84
+      }
+    ],
+    [
+      177,
+      {
+        "title": "Begin The Beguine",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 17)",
+        "genre": "Gypsy Jazz",
+        "index": 12,
+        "year": 2009,
+        "duration": 226.66666666666666
+      }
+    ],
+    [
+      178,
+      {
+        "title": "Dream Of You",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 17)",
+        "genre": "Gypsy Jazz",
+        "index": 11,
+        "year": 2009,
+        "duration": 247.52
+      }
+    ],
+    [
+      179,
+      {
+        "title": "Rosetta",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 17)",
+        "genre": "Gypsy Jazz",
+        "index": 10,
+        "year": 2009,
+        "duration": 181.49333333333334
+      }
+    ],
+    [
+      180,
+      {
+        "title": "Troublant Bolero (Boléro de Django)",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 17)",
+        "genre": "Gypsy Jazz",
+        "index": 9,
+        "year": 2009,
+        "duration": 220.76
+      }
+    ],
+    [
+      181,
+      {
+        "title": "Just A Gigolo",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 17)",
+        "genre": "Gypsy Jazz",
+        "index": 8,
+        "year": 2009,
+        "duration": 211.4
+      }
+    ],
+    [
+      182,
+      {
+        "title": "My Melancholy Baby",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 17)",
+        "genre": "Gypsy Jazz",
+        "index": 7,
+        "year": 2009,
+        "duration": 212.16
+      }
+    ],
+    [
+      183,
+      {
+        "title": "My Blue Heaven",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 17)",
+        "genre": "Gypsy Jazz",
+        "index": 6,
+        "year": 2009,
+        "duration": 212
+      }
+    ],
+    [
+      184,
+      {
+        "title": "What Is The Thing Called Love?",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 17)",
+        "genre": "Gypsy Jazz",
+        "index": 5,
+        "year": 2009,
+        "duration": 232.90775510204082
+      }
+    ],
+    [
+      185,
+      {
+        "title": "Sweet Georgia Brown",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 17)",
+        "genre": "Gypsy Jazz",
+        "index": 4,
+        "year": 2009,
+        "duration": 195.29333333333332
+      }
+    ],
+    [
+      186,
+      {
+        "title": "Liza",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 17)",
+        "genre": "Gypsy Jazz",
+        "index": 3,
+        "year": 2009,
+        "duration": 170.76
+      }
+    ],
+    [
+      187,
+      {
+        "title": "Clopin-Clopant",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 17)",
+        "genre": "Gypsy Jazz",
+        "index": 2,
+        "year": 2009,
+        "duration": 186.21333333333334
+      }
+    ],
+    [
+      188,
+      {
+        "title": "Swing 39",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 17)",
+        "genre": "Gypsy Jazz",
+        "index": 1,
+        "year": 2009,
+        "duration": 193.73333333333332
+      }
+    ],
+    [
+      189,
+      {
+        "title": "Nagasaki",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 16)",
+        "genre": "Gypsy Jazz",
+        "index": 14,
+        "year": 2009,
+        "duration": 170.56
+      }
+    ],
+    [
+      190,
+      {
+        "title": "Vous Qui Passez Sans Me Voir",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 16)",
+        "genre": "Gypsy Jazz",
+        "index": 13,
+        "year": 2009,
+        "duration": 170.76
+      }
+    ],
+    [
+      191,
+      {
+        "title": "Minor Blues",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 16)",
+        "genre": "Gypsy Jazz",
+        "index": 12,
+        "year": 2009,
+        "duration": 164.61333333333334
+      }
+    ],
+    [
+      192,
+      {
+        "title": "Over The Rainbow",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 16)",
+        "genre": "Gypsy Jazz",
+        "index": 11,
+        "year": 2009,
+        "duration": 163.8
+      }
+    ],
+    [
+      193,
+      {
+        "title": "To Each His Own - Symphonie",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 16)",
+        "genre": "Gypsy Jazz",
+        "index": 10,
+        "year": 2009,
+        "duration": 184.88
+      }
+    ],
+    [
+      194,
+      {
+        "title": "Just For Fun",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 16)",
+        "genre": "Gypsy Jazz",
+        "index": 9,
+        "year": 2009,
+        "duration": 187.84
+      }
+    ],
+    [
+      195,
+      {
+        "title": "Brick Top",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 16)",
+        "genre": "Gypsy Jazz",
+        "index": 8,
+        "year": 2009,
+        "duration": 186.50666666666666
+      }
+    ],
+    [
+      196,
+      {
+        "title": "Fantaisie",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 16)",
+        "genre": "Gypsy Jazz",
+        "index": 7,
+        "year": 2009,
+        "duration": 174.16
+      }
+    ],
+    [
+      197,
+      {
+        "title": "Festival 48",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 16)",
+        "genre": "Gypsy Jazz",
+        "index": 6,
+        "year": 2009,
+        "duration": 159.85333333333332
+      }
+    ],
+    [
+      198,
+      {
+        "title": "Lady Be Good",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 16)",
+        "genre": "Gypsy Jazz",
+        "index": 5,
+        "year": 2009,
+        "duration": 177.01333333333332
+      }
+    ],
+    [
+      199,
+      {
+        "title": "Mike",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 16)",
+        "genre": "Gypsy Jazz",
+        "index": 4,
+        "year": 2009,
+        "duration": 170.10666666666665
+      }
+    ],
+    [
+      200,
+      {
+        "title": "Diminushing",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 16)",
+        "genre": "Gypsy Jazz",
+        "index": 3,
+        "year": 2009,
+        "duration": 195.29333333333332
+      }
+    ],
+    [
+      201,
+      {
+        "title": "Eveline",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 16)",
+        "genre": "Gypsy Jazz",
+        "index": 2,
+        "year": 2009,
+        "duration": 134.4
+      }
+    ],
+    [
+      202,
+      {
+        "title": "Si Tu Savais",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 16)",
+        "genre": "Gypsy Jazz",
+        "index": 1,
+        "year": 2009,
+        "duration": 165
+      }
+    ],
+    [
+      203,
+      {
+        "title": "Ol' Man River",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 15)",
+        "genre": "Gypsy Jazz",
+        "index": 14,
+        "year": 2009,
+        "duration": 157.84
+      }
+    ],
+    [
+      204,
+      {
+        "title": "What Is This Thing Call Love?",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 15)",
+        "genre": "Gypsy Jazz",
+        "index": 13,
+        "year": 2009,
+        "duration": 129.48897959183674
+      }
+    ],
+    [
+      205,
+      {
+        "title": "Blues",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 15)",
+        "genre": "Gypsy Jazz",
+        "index": 12,
+        "year": 2009,
+        "duration": 158.4
+      }
+    ],
+    [
+      206,
+      {
+        "title": "Blue Lou",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 15)",
+        "genre": "Gypsy Jazz",
+        "index": 11,
+        "year": 2009,
+        "duration": 143.01333333333332
+      }
+    ],
+    [
+      207,
+      {
+        "title": "Lover Man",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 15)",
+        "genre": "Gypsy Jazz",
+        "index": 10,
+        "year": 2009,
+        "duration": 199.34666666666666
+      }
+    ],
+    [
+      208,
+      {
+        "title": "How High The Moon",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 15)",
+        "genre": "Gypsy Jazz",
+        "index": 9,
+        "year": 2009,
+        "duration": 156.76
+      }
+    ],
+    [
+      209,
+      {
+        "title": "R-Vingt Six",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 15)",
+        "genre": "Gypsy Jazz",
+        "index": 8,
+        "year": 2009,
+        "duration": 151.17333333333335
+      }
+    ],
+    [
+      210,
+      {
+        "title": "I Won't Dance",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 15)",
+        "genre": "Gypsy Jazz",
+        "index": 7,
+        "year": 2009,
+        "duration": 172.56
+      }
+    ],
+    [
+      211,
+      {
+        "title": "On The Sunny Side Of The Street",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 15)",
+        "genre": "Gypsy Jazz",
+        "index": 6,
+        "year": 2009,
+        "duration": 168.97333333333333
+      }
+    ],
+    [
+      212,
+      {
+        "title": "Yours And Mine",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 15)",
+        "genre": "Gypsy Jazz",
+        "index": 5,
+        "year": 2009,
+        "duration": 176.25333333333333
+      }
+    ],
+    [
+      213,
+      {
+        "title": "Echoes Of France",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 15)",
+        "genre": "Gypsy Jazz",
+        "index": 4,
+        "year": 2009,
+        "duration": 167.09333333333333
+      }
+    ],
+    [
+      214,
+      {
+        "title": "Embraceable You",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 15)",
+        "genre": "Gypsy Jazz",
+        "index": 3,
+        "year": 2009,
+        "duration": 188.54666666666665
+      }
+    ],
+    [
+      215,
+      {
+        "title": "Django's Tiger",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 15)",
+        "genre": "Gypsy Jazz",
+        "index": 2,
+        "year": 2009,
+        "duration": 158.01333333333332
+      }
+    ],
+    [
+      216,
+      {
+        "title": "Coquette",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 15)",
+        "genre": "Gypsy Jazz",
+        "index": 1,
+        "year": 2009,
+        "duration": 183.02666666666667
+      }
+    ],
+    [
+      217,
+      {
+        "title": "Swingtime In Springtime",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 14)",
+        "genre": "Gypsy Jazz",
+        "index": 14,
+        "year": 2009,
+        "duration": 171.37333333333333
+      }
+    ],
+    [
+      218,
+      {
+        "title": "Are You In The Mood?",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 14)",
+        "genre": "Gypsy Jazz",
+        "index": 13,
+        "year": 2009,
+        "duration": 177.2
+      }
+    ],
+    [
+      219,
+      {
+        "title": "Manoir De Mes Rêves",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 14)",
+        "genre": "Gypsy Jazz",
+        "index": 12,
+        "year": 2009,
+        "duration": 195.61333333333334
+      }
+    ],
+    [
+      220,
+      {
+        "title": "Swing Guitars",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 14)",
+        "genre": "Gypsy Jazz",
+        "index": 11,
+        "year": 2009,
+        "duration": 144.32
+      }
+    ],
+    [
+      221,
+      {
+        "title": "Djangology",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 14)",
+        "genre": "Gypsy Jazz",
+        "index": 10,
+        "year": 2009,
+        "duration": 156.28
+      }
+    ],
+    [
+      222,
+      {
+        "title": "Artillerie Lourde",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 14)",
+        "genre": "Gypsy Jazz",
+        "index": 9,
+        "year": 2009,
+        "duration": 257.3583673469388
+      }
+    ],
+    [
+      223,
+      {
+        "title": "I Can't Give You Anything But Love",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 14)",
+        "genre": "Gypsy Jazz",
+        "index": 8,
+        "year": 2009,
+        "duration": 143.28
+      }
+    ],
+    [
+      224,
+      {
+        "title": "Place de Brouckere",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 14)",
+        "genre": "Gypsy Jazz",
+        "index": 7,
+        "year": 2009,
+        "duration": 175.42666666666668
+      }
+    ],
+    [
+      225,
+      {
+        "title": "Blues D'Autrefois",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 14)",
+        "genre": "Gypsy Jazz",
+        "index": 6,
+        "year": 2009,
+        "duration": 154.58666666666667
+      }
+    ],
+    [
+      226,
+      {
+        "title": "Melodie Au Crepuscule (extrait)",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 14)",
+        "genre": "Gypsy Jazz",
+        "index": 5,
+        "year": 2009,
+        "duration": 40.53333333333333
+      }
+    ],
+    [
+      227,
+      {
+        "title": "Gaiement",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 14)",
+        "genre": "Gypsy Jazz",
+        "index": 4,
+        "year": 2009,
+        "duration": 160.85333333333332
+      }
+    ],
+    [
+      228,
+      {
+        "title": "ABC",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 14)",
+        "genre": "Gypsy Jazz",
+        "index": 3,
+        "year": 2009,
+        "duration": 140.86666666666667
+      }
+    ],
+    [
+      229,
+      {
+        "title": "Zuiderzee Blues",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 14)",
+        "genre": "Gypsy Jazz",
+        "index": 2,
+        "year": 2009,
+        "duration": 159.12
+      }
+    ],
+    [
+      230,
+      {
+        "title": "Oubli",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 14)",
+        "genre": "Gypsy Jazz",
+        "index": 1,
+        "year": 2009,
+        "duration": 163.10666666666665
+      }
+    ],
+    [
+      231,
+      {
+        "title": "Belleville",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 13)",
+        "genre": "Gypsy Jazz",
+        "index": 14,
+        "year": 2009,
+        "duration": 161.70666666666668
+      }
+    ],
+    [
+      232,
+      {
+        "title": "Improvisation N°3 - Part 2",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 13)",
+        "genre": "Gypsy Jazz",
+        "index": 13,
+        "year": 2009,
+        "duration": 168.36
+      }
+    ],
+    [
+      233,
+      {
+        "title": "Improvisation N°3 - Part 1",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 13)",
+        "genre": "Gypsy Jazz",
+        "index": 12,
+        "year": 2009,
+        "duration": 183.53632653061226
+      }
+    ],
+    [
+      234,
+      {
+        "title": "Blues Clair",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 13)",
+        "genre": "Gypsy Jazz",
+        "index": 11,
+        "year": 2009,
+        "duration": 183.84
+      }
+    ],
+    [
+      235,
+      {
+        "title": "Fleur D' Ennui",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 13)",
+        "genre": "Gypsy Jazz",
+        "index": 10,
+        "year": 2009,
+        "duration": 153.25333333333333
+      }
+    ],
+    [
+      236,
+      {
+        "title": "Cavalerie",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 13)",
+        "genre": "Gypsy Jazz",
+        "index": 9,
+        "year": 2009,
+        "duration": 156.2
+      }
+    ],
+    [
+      237,
+      {
+        "title": "Oui (Si tu me dis oui)",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 13)",
+        "genre": "Gypsy Jazz",
+        "index": 8,
+        "year": 2009,
+        "duration": 129.28
+      }
+    ],
+    [
+      238,
+      {
+        "title": "Manoir De Mes Rêves",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 13)",
+        "genre": "Gypsy Jazz",
+        "index": 7,
+        "year": 2009,
+        "duration": 200.77333333333334
+      }
+    ],
+    [
+      239,
+      {
+        "title": "Douce Ambiance",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 13)",
+        "genre": "Gypsy Jazz",
+        "index": 6,
+        "year": 2009,
+        "duration": 140.90666666666667
+      }
+    ],
+    [
+      240,
+      {
+        "title": "Lentement Demoiselle",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 13)",
+        "genre": "Gypsy Jazz",
+        "index": 5,
+        "year": 2009,
+        "duration": 197.82666666666665
+      }
+    ],
+    [
+      241,
+      {
+        "title": "Belleville",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 13)",
+        "genre": "Gypsy Jazz",
+        "index": 4,
+        "year": 2009,
+        "duration": 152.41333333333333
+      }
+    ],
+    [
+      242,
+      {
+        "title": "Feerie",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 13)",
+        "genre": "Gypsy Jazz",
+        "index": 3,
+        "year": 2009,
+        "duration": 223.36
+      }
+    ],
+    [
+      243,
+      {
+        "title": "Nympheas",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 13)",
+        "genre": "Gypsy Jazz",
+        "index": 2,
+        "year": 2009,
+        "duration": 254.3542857142857
+      }
+    ],
+    [
+      244,
+      {
+        "title": "Premiere Idee D'Eddie",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 13)",
+        "genre": "Gypsy Jazz",
+        "index": 1,
+        "year": 2009,
+        "duration": 201.28
+      }
+    ],
+    [
+      245,
+      {
+        "title": "Festival Swing 1942 (extrait)",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 12)",
+        "genre": "Gypsy Jazz",
+        "index": 14,
+        "year": 2009,
+        "duration": 75.89333333333333
+      }
+    ],
+    [
+      246,
+      {
+        "title": "Swing 42",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 12)",
+        "genre": "Gypsy Jazz",
+        "index": 13,
+        "year": 2009,
+        "duration": 168.4
+      }
+    ],
+    [
+      247,
+      {
+        "title": "Crepuscule",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 12)",
+        "genre": "Gypsy Jazz",
+        "index": 12,
+        "year": 2009,
+        "duration": 181.13333333333333
+      }
+    ],
+    [
+      248,
+      {
+        "title": "Dinette",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 12)",
+        "genre": "Gypsy Jazz",
+        "index": 11,
+        "year": 2009,
+        "duration": 170.8
+      }
+    ],
+    [
+      249,
+      {
+        "title": "Hungaria",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 12)",
+        "genre": "Gypsy Jazz",
+        "index": 10,
+        "year": 2009,
+        "duration": 146.98666666666668
+      }
+    ],
+    [
+      250,
+      {
+        "title": "De Nulle Part",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 12)",
+        "genre": "Gypsy Jazz",
+        "index": 9,
+        "year": 2009,
+        "duration": 179.12
+      }
+    ],
+    [
+      251,
+      {
+        "title": "Stockholm",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 12)",
+        "genre": "Gypsy Jazz",
+        "index": 8,
+        "year": 2009,
+        "duration": 191.93333333333334
+      }
+    ],
+    [
+      252,
+      {
+        "title": "Festival Swing",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 12)",
+        "genre": "Gypsy Jazz",
+        "index": 7,
+        "year": 2009,
+        "duration": 250.18666666666667
+      }
+    ],
+    [
+      253,
+      {
+        "title": "Ninouche",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 12)",
+        "genre": "Gypsy Jazz",
+        "index": 6,
+        "year": 2009,
+        "duration": 202.8
+      }
+    ],
+    [
+      254,
+      {
+        "title": "Petite Lili",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 12)",
+        "genre": "Gypsy Jazz",
+        "index": 5,
+        "year": 2009,
+        "duration": 206.09333333333333
+      }
+    ],
+    [
+      255,
+      {
+        "title": "Pour Terminer",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 12)",
+        "genre": "Gypsy Jazz",
+        "index": 4,
+        "year": 2009,
+        "duration": 185.34666666666666
+      }
+    ],
+    [
+      256,
+      {
+        "title": "Sur Les Bords De L' Alamo",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 12)",
+        "genre": "Gypsy Jazz",
+        "index": 3,
+        "year": 2009,
+        "duration": 193.04
+      }
+    ],
+    [
+      257,
+      {
+        "title": "All Of Me",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 12)",
+        "genre": "Gypsy Jazz",
+        "index": 2,
+        "year": 2009,
+        "duration": 168.72
+      }
+    ],
+    [
+      258,
+      {
+        "title": "Oiseaux Des Iles",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 12)",
+        "genre": "Gypsy Jazz",
+        "index": 1,
+        "year": 2009,
+        "duration": 170.93333333333334
+      }
+    ],
+    [
+      259,
+      {
+        "title": "Swing De Paris",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 11)",
+        "genre": "Gypsy Jazz",
+        "index": 14,
+        "year": 2009,
+        "duration": 180.76
+      }
+    ],
+    [
+      260,
+      {
+        "title": "Sweet Sue",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 11)",
+        "genre": "Gypsy Jazz",
+        "index": 13,
+        "year": 2009,
+        "duration": 170.76
+      }
+    ],
+    [
+      261,
+      {
+        "title": "Les Yeux Noirs",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 11)",
+        "genre": "Gypsy Jazz",
+        "index": 12,
+        "year": 2009,
+        "duration": 134.94857142857143
+      }
+    ],
+    [
+      262,
+      {
+        "title": "Petits Mensonges (Three White Lies)",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 11)",
+        "genre": "Gypsy Jazz",
+        "index": 11,
+        "year": 2009,
+        "duration": 197.61333333333334
+      }
+    ],
+    [
+      263,
+      {
+        "title": "Mabel",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 11)",
+        "genre": "Gypsy Jazz",
+        "index": 10,
+        "year": 2009,
+        "duration": 198.64
+      }
+    ],
+    [
+      264,
+      {
+        "title": "Liebesfreud",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 11)",
+        "genre": "Gypsy Jazz",
+        "index": 9,
+        "year": 2009,
+        "duration": 160.49333333333334
+      }
+    ],
+    [
+      265,
+      {
+        "title": "Vendredi 13",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 11)",
+        "genre": "Gypsy Jazz",
+        "index": 8,
+        "year": 2009,
+        "duration": 184.16
+      }
+    ],
+    [
+      266,
+      {
+        "title": "Fantaisie Sur Une Danse Norvegienne",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 11)",
+        "genre": "Gypsy Jazz",
+        "index": 7,
+        "year": 2009,
+        "duration": 153.36
+      }
+    ],
+    [
+      267,
+      {
+        "title": "Pour Vous (Exactly Like You)",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 11)",
+        "genre": "Gypsy Jazz",
+        "index": 6,
+        "year": 2009,
+        "duration": 188.32
+      }
+    ],
+    [
+      268,
+      {
+        "title": "Nuages",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 11)",
+        "genre": "Gypsy Jazz",
+        "index": 5,
+        "year": 2009,
+        "duration": 197.28
+      }
+    ],
+    [
+      269,
+      {
+        "title": "Swing 41",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 11)",
+        "genre": "Gypsy Jazz",
+        "index": 4,
+        "year": 2009,
+        "duration": 188.98666666666668
+      }
+    ],
+    [
+      270,
+      {
+        "title": "Oui, C'est Ca",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 11)",
+        "genre": "Gypsy Jazz",
+        "index": 3,
+        "year": 2009,
+        "duration": 159.73333333333332
+      }
+    ],
+    [
+      271,
+      {
+        "title": "Indecision",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 11)",
+        "genre": "Gypsy Jazz",
+        "index": 2,
+        "year": 2009,
+        "duration": 199.64
+      }
+    ],
+    [
+      272,
+      {
+        "title": "Margie",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 11)",
+        "genre": "Gypsy Jazz",
+        "index": 1,
+        "year": 2009,
+        "duration": 141.25333333333333
+      }
+    ],
+    [
+      273,
+      {
+        "title": "Noel Blues",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 10)",
+        "genre": "Gypsy Jazz",
+        "index": 14,
+        "year": 2009,
+        "duration": 176.34666666666666
+      }
+    ],
+    [
+      274,
+      {
+        "title": "Le Sheik",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 10)",
+        "genre": "Gypsy Jazz",
+        "index": 13,
+        "year": 2009,
+        "duration": 138.53333333333333
+      }
+    ],
+    [
+      275,
+      {
+        "title": "Quatre Tickets",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 10)",
+        "genre": "Gypsy Jazz",
+        "index": 12,
+        "year": 2009,
+        "duration": 155.13333333333333
+      }
+    ],
+    [
+      276,
+      {
+        "title": "Tiger Rag",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 10)",
+        "genre": "Gypsy Jazz",
+        "index": 11,
+        "year": 2009,
+        "duration": 165.61333333333334
+      }
+    ],
+    [
+      277,
+      {
+        "title": "Indecision",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 10)",
+        "genre": "Gypsy Jazz",
+        "index": 10,
+        "year": 2009,
+        "duration": 183.54666666666665
+      }
+    ],
+    [
+      278,
+      {
+        "title": "Coucou (extrait)",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 10)",
+        "genre": "Gypsy Jazz",
+        "index": 9,
+        "year": 2009,
+        "duration": 51.78666666666667
+      }
+    ],
+    [
+      279,
+      {
+        "title": "Blues",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 10)",
+        "genre": "Gypsy Jazz",
+        "index": 8,
+        "year": 2009,
+        "duration": 189.30666666666667
+      }
+    ],
+    [
+      280,
+      {
+        "title": "Begin The Beguine",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 10)",
+        "genre": "Gypsy Jazz",
+        "index": 7,
+        "year": 2009,
+        "duration": 172.52
+      }
+    ],
+    [
+      281,
+      {
+        "title": "Rhythm Futur",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 10)",
+        "genre": "Gypsy Jazz",
+        "index": 6,
+        "year": 2009,
+        "duration": 160.37333333333333
+      }
+    ],
+    [
+      282,
+      {
+        "title": "Jimmy's Bar",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 10)",
+        "genre": "Gypsy Jazz",
+        "index": 5,
+        "year": 2009,
+        "duration": 170.54666666666665
+      }
+    ],
+    [
+      283,
+      {
+        "title": "Daphne",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 10)",
+        "genre": "Gypsy Jazz",
+        "index": 4,
+        "year": 2009,
+        "duration": 170.30666666666667
+      }
+    ],
+    [
+      284,
+      {
+        "title": "Limehouse Blues",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 10)",
+        "genre": "Gypsy Jazz",
+        "index": 3,
+        "year": 2009,
+        "duration": 148.01333333333332
+      }
+    ],
+    [
+      285,
+      {
+        "title": "Tears",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 10)",
+        "genre": "Gypsy Jazz",
+        "index": 2,
+        "year": 2009,
+        "duration": 167.72
+      }
+    ],
+    [
+      286,
+      {
+        "title": "Margie",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 10)",
+        "genre": "Gypsy Jazz",
+        "index": 1,
+        "year": 2009,
+        "duration": 134.70666666666668
+      }
+    ],
+    [
+      287,
+      {
+        "title": "Oriental Shuffle",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 01)",
+        "genre": "Gypsy Jazz",
+        "index": 14,
+        "year": 2009,
+        "duration": 157.98857142857142
+      }
+    ],
+    [
+      288,
+      {
+        "title": "I Can't Give You Anything But Love",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 01)",
+        "genre": "Gypsy Jazz",
+        "index": 13,
+        "year": 2009,
+        "duration": 203.41551020408164
+      }
+    ],
+    [
+      289,
+      {
+        "title": "I'se Muggin'",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 01)",
+        "genre": "Gypsy Jazz",
+        "index": 12,
+        "year": 2009,
+        "duration": 188.16
+      }
+    ],
+    [
+      290,
+      {
+        "title": "The Object Of My Affection",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 01)",
+        "genre": "Gypsy Jazz",
+        "index": 11,
+        "year": 2009,
+        "duration": 168.6465306122449
+      }
+    ],
+    [
+      291,
+      {
+        "title": "Stardust",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 01)",
+        "genre": "Gypsy Jazz",
+        "index": 10,
+        "year": 2009,
+        "duration": 153.9918367346939
+      }
+    ],
+    [
+      292,
+      {
+        "title": "Rosetta",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 01)",
+        "genre": "Gypsy Jazz",
+        "index": 9,
+        "year": 2009,
+        "duration": 161.9330612244898
+      }
+    ],
+    [
+      293,
+      {
+        "title": "Stardust",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 01)",
+        "genre": "Gypsy Jazz",
+        "index": 8,
+        "year": 2009,
+        "duration": 153.9918367346939
+      }
+    ],
+    [
+      294,
+      {
+        "title": "What A Difference A Day Made",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 01)",
+        "genre": "Gypsy Jazz",
+        "index": 7,
+        "year": 2009,
+        "duration": 198.66122448979593
+      }
+    ],
+    [
+      295,
+      {
+        "title": "Avalon",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 01)",
+        "genre": "Gypsy Jazz",
+        "index": 6,
+        "year": 2009,
+        "duration": 181.55102040816325
+      }
+    ],
+    [
+      296,
+      {
+        "title": "Blue Moon",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 01)",
+        "genre": "Gypsy Jazz",
+        "index": 5,
+        "year": 2009,
+        "duration": 193.82857142857142
+      }
+    ],
+    [
+      297,
+      {
+        "title": "Presentation Stomp",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 01)",
+        "genre": "Gypsy Jazz",
+        "index": 4,
+        "year": 2009,
+        "duration": 186.33142857142857
+      }
+    ],
+    [
+      298,
+      {
+        "title": "Si J'aime Suzy",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 01)",
+        "genre": "Gypsy Jazz",
+        "index": 3,
+        "year": 2009,
+        "duration": 142.3673469387755
+      }
+    ],
+    [
+      299,
+      {
+        "title": "Carinosa",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 01)",
+        "genre": "Gypsy Jazz",
+        "index": 2,
+        "year": 2009,
+        "duration": 177.42367346938775
+      }
+    ],
+    [
+      300,
+      {
+        "title": "Griserie",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie 1928-1950 (Disc 01)",
+        "genre": "Gypsy Jazz",
+        "index": 1,
+        "year": 2009,
+        "duration": 166.97469387755103
+      }
+    ],
+    [
+      301,
+      {
+        "title": "blues for ike",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie",
+        "genre": "Jazz",
+        "index": 98,
+        "year": 2010,
+        "duration": 204.04244897959182
+      }
+    ],
+    [
+      302,
+      {
+        "title": "anouman",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie",
+        "genre": "Jazz",
+        "index": 97,
+        "year": 2010,
+        "duration": 165.69469387755103
+      }
+    ],
+    [
+      303,
+      {
+        "title": "nuit de st germain des pres",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie",
+        "genre": "Jazz",
+        "index": 96,
+        "year": 2010,
+        "duration": 187.92489795918368
+      }
+    ],
+    [
+      304,
+      {
+        "title": "vamp",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie",
+        "genre": "Jazz",
+        "index": 95,
+        "year": 2010,
+        "duration": 159.16408163265305
+      }
+    ],
+    [
+      305,
+      {
+        "title": "impromptu",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie",
+        "genre": "Jazz",
+        "index": 94,
+        "year": 2010,
+        "duration": 168.59428571428572
+      }
+    ],
+    [
+      306,
+      {
+        "title": "mano",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie",
+        "genre": "Jazz",
+        "index": 93,
+        "year": 2010,
+        "duration": 177.81551020408162
+      }
+    ],
+    [
+      307,
+      {
+        "title": "djangos blues",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie",
+        "genre": "Jazz",
+        "index": 92,
+        "year": 2010,
+        "duration": 189.93632653061223
+      }
+    ],
+    [
+      308,
+      {
+        "title": "swing 48",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie",
+        "genre": "Jazz",
+        "index": 91,
+        "year": 2010,
+        "duration": 167.20979591836735
+      }
+    ],
+    [
+      309,
+      {
+        "title": "folie a amphion",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie",
+        "genre": "Jazz",
+        "index": 90,
+        "year": 2010,
+        "duration": 175.83020408163264
+      }
+    ],
+    [
+      310,
+      {
+        "title": "del salle",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie",
+        "genre": "Jazz",
+        "index": 89,
+        "year": 2010,
+        "duration": 194.45551020408163
+      }
+    ],
+    [
+      311,
+      {
+        "title": "swingtime in springtime",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie",
+        "genre": "Jazz",
+        "index": 88,
+        "year": 2010,
+        "duration": 174.28897959183672
+      }
+    ],
+    [
+      312,
+      {
+        "title": "melodie au crepuscule",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie",
+        "genre": "Jazz",
+        "index": 87,
+        "year": 2010,
+        "duration": 193.5934693877551
+      }
+    ],
+    [
+      313,
+      {
+        "title": "djangos tiger",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie",
+        "genre": "Jazz",
+        "index": 86,
+        "year": 2010,
+        "duration": 161.51510204081632
+      }
+    ],
+    [
+      314,
+      {
+        "title": "blues clair",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie",
+        "genre": "Jazz",
+        "index": 84,
+        "year": 2010,
+        "duration": 190.51102040816326
+      }
+    ],
+    [
+      315,
+      {
+        "title": "manoir de mes reves",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie",
+        "genre": "Jazz",
+        "index": 83,
+        "year": 2010,
+        "duration": 200.0195918367347
+      }
+    ],
+    [
+      316,
+      {
+        "title": "douce ambiance",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie",
+        "genre": "Jazz",
+        "index": 82,
+        "year": 2010,
+        "duration": 142.68081632653062
+      }
+    ],
+    [
+      317,
+      {
+        "title": "blues in mineur",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie",
+        "genre": "Jazz",
+        "index": 81,
+        "year": 2010,
+        "duration": 170.00489795918367
+      }
+    ],
+    [
+      318,
+      {
+        "title": "swing 42",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie",
+        "genre": "Jazz",
+        "index": 79,
+        "year": 2010,
+        "duration": 168.35918367346937
+      }
+    ],
+    [
+      319,
+      {
+        "title": "stockholm",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie",
+        "genre": "Jazz",
+        "index": 78,
+        "year": 2010,
+        "duration": 191.97387755102042
+      }
+    ],
+    [
+      320,
+      {
+        "title": "sweet sue just you",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie",
+        "genre": "Jazz",
+        "index": 77,
+        "year": 2010,
+        "duration": 170.97142857142856
+      }
+    ],
+    [
+      321,
+      {
+        "title": "les yeux noirs",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie",
+        "genre": "Jazz",
+        "index": 76,
+        "year": 2010,
+        "duration": 134.89632653061224
+      }
+    ],
+    [
+      322,
+      {
+        "title": "mabel",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie",
+        "genre": "Jazz",
+        "index": 75,
+        "year": 2010,
+        "duration": 199.3404081632653
+      }
+    ],
+    [
+      323,
+      {
+        "title": "vendredi 13",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie",
+        "genre": "Jazz",
+        "index": 74,
+        "year": 2010,
+        "duration": 184.39836734693878
+      }
+    ],
+    [
+      324,
+      {
+        "title": "pour vous",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie",
+        "genre": "Jazz",
+        "index": 73,
+        "year": 2010,
+        "duration": 189.04816326530613
+      }
+    ],
+    [
+      325,
+      {
+        "title": "Nuages",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie",
+        "genre": "Jazz",
+        "index": 72,
+        "year": 2010,
+        "duration": 205.53142857142856
+      }
+    ],
+    [
+      326,
+      {
+        "title": "swing 41",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie",
+        "genre": "Jazz",
+        "index": 71,
+        "year": 2010,
+        "duration": 190.72
+      }
+    ],
+    [
+      327,
+      {
+        "title": "blues en mineur",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie",
+        "genre": "Jazz",
+        "index": 70,
+        "year": 2010,
+        "duration": 190.90285714285713
+      }
+    ],
+    [
+      328,
+      {
+        "title": "rythme futur",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie",
+        "genre": "Jazz",
+        "index": 69,
+        "year": 2010,
+        "duration": 161.5934693877551
+      }
+    ],
+    [
+      329,
+      {
+        "title": "at the jimmys bar",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie",
+        "genre": "Jazz",
+        "index": 68,
+        "year": 2010,
+        "duration": 173.1134693877551
+      }
+    ],
+    [
+      330,
+      {
+        "title": "daphne",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie",
+        "genre": "Jazz",
+        "index": 67,
+        "year": 2010,
+        "duration": 172.61714285714285
+      }
+    ],
+    [
+      331,
+      {
+        "title": "tears",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie",
+        "genre": "Jazz",
+        "index": 66,
+        "year": 2010,
+        "duration": 167.26204081632653
+      }
+    ],
+    [
+      332,
+      {
+        "title": "hcq strut",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie",
+        "genre": "Jazz",
+        "index": 65,
+        "year": 2010,
+        "duration": 179.64408163265307
+      }
+    ],
+    [
+      333,
+      {
+        "title": "undecided",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie",
+        "genre": "Jazz",
+        "index": 64,
+        "year": 2010,
+        "duration": 153.5477551020408
+      }
+    ],
+    [
+      334,
+      {
+        "title": "naguine",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie",
+        "genre": "Jazz",
+        "index": 63,
+        "year": 2010,
+        "duration": 150.04734693877552
+      }
+    ],
+    [
+      335,
+      {
+        "title": "ill see you in my dreams",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie",
+        "genre": "Jazz",
+        "index": 61,
+        "year": 2010,
+        "duration": 157.36163265306124
+      }
+    ],
+    [
+      336,
+      {
+        "title": "younger generation",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie",
+        "genre": "Jazz",
+        "index": 60,
+        "year": 2010,
+        "duration": 147.1477551020408
+      }
+    ],
+    [
+      337,
+      {
+        "title": "i wonder where is my baby tonight",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie",
+        "genre": "Jazz",
+        "index": 59,
+        "year": 2010,
+        "duration": 168.2808163265306
+      }
+    ],
+    [
+      338,
+      {
+        "title": "japanese sandman",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie",
+        "genre": "Jazz",
+        "index": 58,
+        "year": 2010,
+        "duration": 188.70857142857142
+      }
+    ],
+    [
+      339,
+      {
+        "title": "my melancholy baby",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie",
+        "genre": "Jazz",
+        "index": 57,
+        "year": 2010,
+        "duration": 169.6130612244898
+      }
+    ],
+    [
+      340,
+      {
+        "title": "twelfth year",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie",
+        "genre": "Jazz",
+        "index": 56,
+        "year": 2010,
+        "duration": 163.8922448979592
+      }
+    ],
+    [
+      341,
+      {
+        "title": "swing",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie",
+        "genre": "Jazz",
+        "index": 55,
+        "year": 2010,
+        "duration": 201.9787755102041
+      }
+    ],
+    [
+      342,
+      {
+        "title": "jeepers creepers",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie",
+        "genre": "Jazz",
+        "index": 54,
+        "year": 2010,
+        "duration": 194.4816326530612
+      }
+    ],
+    [
+      343,
+      {
+        "title": "hungaria",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie",
+        "genre": "Jazz",
+        "index": 53,
+        "year": 2010,
+        "duration": 167.0791836734694
+      }
+    ],
+    [
+      344,
+      {
+        "title": "deccaphonie",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie",
+        "genre": "Jazz",
+        "index": 104,
+        "year": 2010,
+        "duration": 195.5526530612245
+      }
+    ],
+    [
+      345,
+      {
+        "title": "chez moi",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie",
+        "genre": "Jazz",
+        "index": 103,
+        "year": 2010,
+        "duration": 178.20734693877552
+      }
+    ],
+    [
+      346,
+      {
+        "title": "le soir",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie",
+        "genre": "Jazz",
+        "index": 102,
+        "year": 2010,
+        "duration": 178.5469387755102
+      }
+    ],
+    [
+      347,
+      {
+        "title": "confessin",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie",
+        "genre": "Jazz",
+        "index": 101,
+        "year": 2010,
+        "duration": 219.8465306122449
+      }
+    ],
+    [
+      348,
+      {
+        "title": "Brazil",
+        "artist": "Django Reinhardt",
+        "album": "Djangologie",
+        "genre": "Jazz",
+        "index": 100,
+        "year": 2010,
+        "duration": 148.53224489795917
+      }
+    ]
+  ]
+}

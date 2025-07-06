@@ -1,0 +1,345 @@
+#pragma once
+#include <Arduino.h>
+#include "SPI_PSRAM.h"
+
+class ListStorage {
+private:
+    SPI_PSRAM* psram;
+    
+    /**
+     * @brief Number of elements in RAM ( one page above, one page below)
+     */
+    static const uint32_t ELEMENTS_PER_PAGE = 3 * ELEMENTS_PER_SCREEN;
+    /**
+     * Max length of a single element string (including null terminator)
+     */
+    static const uint32_t MAX_ELEMENT_LENGTH = 64;
+    /**
+     * @brief Size of the page buffer in bytes
+     */
+    static const uint32_t PAGE_BUFFER_SIZE = ELEMENTS_PER_PAGE * MAX_ELEMENT_LENGTH;
+    /**
+     * @brief Maximum number of elements that can be stored in PSRAM
+     * 
+     */
+    static const uint32_t MAX_TOTAL_ELEMENTS = 10000;
+    
+    // PSRAM memory layout
+    static const uint32_t PSRAM_DATA_START = 0x1000; 
+    static const uint32_t PSRAM_INDEX_START = 0x0000;
+    
+    /**
+     * @brief Total number of elements currently stored in PSRAM
+     */
+    uint32_t numElements;
+    /**
+     * @brief Current batch information
+     */
+    uint32_t currentBatchStart;    // Starting element index of current batch in PSRAM
+    uint32_t currentBatchSize;     // Number of elements in current batch
+    uint32_t totalBatches;
+    
+    // In-memory buffers
+    char pageBuffer[PAGE_BUFFER_SIZE];  // Buffer for one page of data
+    uint32_t pageStartOffsets[ELEMENTS_PER_PAGE];  // Offsets within pageBuffer for each element
+    char *currentPageElements[ELEMENTS_PER_PAGE];  // Pointers to elements in current page
+    uint32_t currentPageStart;     // Starting element index of current page in RAM
+    bool isPageValid;
+    
+    // Batch management
+    static const uint32_t ELEMENTS_PER_BATCH = 1000;  // How many elements to load into PSRAM at once
+    
+    void generateDummyData() {
+        Serial.println("Generating dummy data...");
+        
+        numElements = 2500;  // Example: 2500 tracks
+        totalBatches = (numElements + ELEMENTS_PER_BATCH - 1) / ELEMENTS_PER_BATCH;
+        
+        // Load first batch
+        loadBatch(0);
+        
+        Serial.print("Generated ");
+        Serial.print(numElements);
+        Serial.print(" elements in ");
+        Serial.print(totalBatches);
+        Serial.println(" batches");
+    }
+    
+    void loadBatch(uint32_t batchIndex) {
+        if (batchIndex >= totalBatches) {
+            Serial.println("Error: Invalid batch index");
+            return;
+        }
+        
+        Serial.print("Loading batch ");
+        Serial.print(batchIndex);
+        Serial.print("/");
+        Serial.println(totalBatches - 1);
+        
+        uint32_t batchStartElement = batchIndex * ELEMENTS_PER_BATCH;
+        uint32_t batchEndElement = min(batchStartElement + ELEMENTS_PER_BATCH, numElements);
+        uint32_t elementsInBatch = batchEndElement - batchStartElement;
+        
+        // Build the batch data as a continuous string
+        String batchData;
+        batchData.reserve(elementsInBatch * MAX_ELEMENT_LENGTH);
+        
+        // Create index array for this batch
+        uint32_t batchIndex_array[ELEMENTS_PER_BATCH];
+        uint32_t currentOffset = 0;
+        
+        for (uint32_t i = 0; i < elementsInBatch; i++) {
+            uint32_t elementNum = batchStartElement + i + 1;  // 1-based numbering
+            
+            batchIndex_array[i] = currentOffset;
+            
+            String element = "Track-" + String(elementNum);
+            batchData += element;
+            batchData += '\0';  // Null terminator
+            
+            currentOffset += element.length() + 1;
+        }
+        
+        // Write index to PSRAM (at the beginning)
+        uint32_t indexAddress = PSRAM_INDEX_START + (batchIndex * ELEMENTS_PER_BATCH * sizeof(uint32_t));
+        psram->writeData(indexAddress, (uint8_t*)batchIndex_array, elementsInBatch * sizeof(uint32_t));
+        
+        // Write data to PSRAM
+        uint32_t dataAddress = PSRAM_DATA_START + (batchIndex * ELEMENTS_PER_BATCH * MAX_ELEMENT_LENGTH);
+        psram->writeData(dataAddress, (uint8_t*)batchData.c_str(), batchData.length());
+        
+        // Update current batch info
+        currentBatchStart = batchStartElement;
+        currentBatchSize = elementsInBatch;
+        
+        // Invalidate current page since we loaded new batch
+        isPageValid = false;
+        
+        Serial.print("Loaded ");
+        Serial.print(elementsInBatch);
+        Serial.print(" elements, total size: ");
+        Serial.print(batchData.length());
+        Serial.println(" bytes");
+    }
+    
+    void loadPage(uint32_t pageIndex) {
+        uint32_t pageStartElement = pageIndex * ELEMENTS_PER_PAGE;
+        
+        if (pageStartElement >= numElements) {
+            Serial.println("Error: Page index out of range");
+            isPageValid = false;
+            return;
+        }
+        
+        // Check if we need to load a different batch
+        uint32_t requiredBatch = pageStartElement / ELEMENTS_PER_BATCH;
+        uint32_t currentBatch = currentBatchStart / ELEMENTS_PER_BATCH;
+        
+        if (requiredBatch != currentBatch) {
+            loadBatch(requiredBatch);
+        }
+        
+        // Calculate elements in this page
+        uint32_t pageEndElement = min(pageStartElement + ELEMENTS_PER_PAGE, numElements);
+        uint32_t elementsInPage = pageEndElement - pageStartElement;
+        
+        // Calculate offset within the current batch
+        uint32_t offsetInBatch = pageStartElement - currentBatchStart;
+        
+        // Read the index data for this page
+        uint32_t indexAddress = PSRAM_INDEX_START + (offsetInBatch * sizeof(uint32_t));
+        uint32_t tempIndex[ELEMENTS_PER_PAGE];
+        psram->readData(indexAddress, (uint8_t*)tempIndex, elementsInPage * sizeof(uint32_t));
+        
+        // Calculate the data range we need to read
+        uint32_t startOffset = tempIndex[0];
+        uint32_t endOffset;
+        if (elementsInPage < ELEMENTS_PER_PAGE && (pageStartElement + elementsInPage) == numElements) {
+            // Last page, calculate end offset differently
+            endOffset = startOffset;
+            for (uint32_t i = 0; i < elementsInPage; i++) {
+                uint32_t nextOffset = (i == elementsInPage - 1) ? 
+                    startOffset + strlen((char*)(pageBuffer + startOffset)) + 1 :
+                    tempIndex[i + 1];
+                endOffset = max(endOffset, nextOffset);
+            }
+        } else {
+            endOffset = (elementsInPage == ELEMENTS_PER_PAGE) ? 
+                tempIndex[ELEMENTS_PER_PAGE - 1] + MAX_ELEMENT_LENGTH :
+                tempIndex[elementsInPage - 1] + MAX_ELEMENT_LENGTH;
+        }
+        
+        // Read the actual string data
+        uint32_t dataAddress = PSRAM_DATA_START + (currentBatch * ELEMENTS_PER_BATCH * MAX_ELEMENT_LENGTH) + startOffset;
+        uint32_t dataSize = min(endOffset - startOffset, (uint32_t)PAGE_BUFFER_SIZE);
+        
+        memset(pageBuffer, 0, PAGE_BUFFER_SIZE);
+        psram->readData(dataAddress, (uint8_t*)pageBuffer, dataSize);
+        
+        // Set up the page start offsets
+        for (uint32_t i = 0; i < elementsInPage; i++) {
+            pageStartOffsets[i] = tempIndex[i] - startOffset;
+        }
+        
+        currentPageStart = pageStartElement;
+        isPageValid = true;
+        
+        Serial.print("Loaded page ");
+        Serial.print(pageIndex);
+        Serial.print(" (elements ");
+        Serial.print(pageStartElement);
+        Serial.print("-");
+        Serial.print(pageEndElement - 1);
+        Serial.println(")");
+    }
+
+public:
+    ListStorage(SPI_PSRAM* psramInstance) : 
+        psram(psramInstance),
+        numElements(0),
+        currentBatchStart(0),
+        currentBatchSize(0),
+        totalBatches(0),
+        currentPageStart(0),
+        isPageValid(false) {
+    }
+    
+    bool init() {
+        if (!psram) {
+            Serial.println("Error: PSRAM instance is null");
+            return false;
+        }
+        
+        Serial.println("Initializing ListStorage...");
+        
+        // Generate and store dummy data
+        generateDummyData();
+        
+        Serial.println("ListStorage initialized successfully");
+        return true;
+    }
+    
+    uint32_t getnumElements() const {
+        return numElements;
+    }
+    
+    uint32_t getTotalPages() const {
+        return (numElements + ELEMENTS_PER_PAGE - 1) / ELEMENTS_PER_PAGE;
+    }
+    
+    uint32_t getElementsPerPage() const {
+        return ELEMENTS_PER_PAGE;
+    }
+    
+    // Get element by absolute index (handles page loading automatically)
+    const char* getElement(uint32_t elementIndex) {
+        if (elementIndex >= numElements) {
+            return nullptr;
+        }
+        
+        uint32_t pageIndex = elementIndex / ELEMENTS_PER_PAGE;
+        uint32_t elementInPage = elementIndex % ELEMENTS_PER_PAGE;
+        
+        // Load page if needed
+        if (!isPageValid || elementIndex < currentPageStart || 
+            elementIndex >= currentPageStart + ELEMENTS_PER_PAGE) {
+            loadPage(pageIndex);
+        }
+        
+        if (!isPageValid) {
+            return nullptr;
+        }
+        
+        return &pageBuffer[pageStartOffsets[elementInPage]];
+    }
+    
+    // Get multiple elements from a page (more efficient for UI display)
+    bool getPage(uint32_t pageIndex, const char* elements[], uint32_t& elementCount) {
+        uint32_t pageStartElement = pageIndex * ELEMENTS_PER_PAGE;
+        
+        if (pageStartElement >= numElements) {
+            elementCount = 0;
+            return false;
+        }
+        
+        // Load the page
+        loadPage(pageIndex);
+        
+        if (!isPageValid) {
+            elementCount = 0;
+            return false;
+        }
+        
+        // Calculate actual elements in this page
+        uint32_t pageEndElement = min(pageStartElement + ELEMENTS_PER_PAGE, numElements);
+        elementCount = pageEndElement - pageStartElement;
+        
+        // Fill the elements array
+        for (uint32_t i = 0; i < elementCount; i++) {
+            elements[i] = &pageBuffer[pageStartOffsets[i]];
+        }
+        
+        return true;
+    }
+    
+    // Utility function for debugging
+    void printStatus() {
+        Serial.println("=== ListStorage Status ===");
+        Serial.print("Total elements: "); Serial.println(numElements);
+        Serial.print("Total pages: "); Serial.println(getTotalPages());
+        Serial.print("Elements per page: "); Serial.println(ELEMENTS_PER_PAGE);
+        Serial.print("Current batch start: "); Serial.println(currentBatchStart);
+        Serial.print("Current batch size: "); Serial.println(currentBatchSize);
+        Serial.print("Current page start: "); Serial.println(currentPageStart);
+        Serial.print("Page valid: "); Serial.println(isPageValid ? "Yes" : "No");
+        Serial.println("========================");
+    }
+    
+    // Test function to verify functionality
+    bool test() {
+        Serial.println("=== ListStorage Test ===");
+        
+        // Test 1: Get first few elements
+        Serial.println("Test 1: First 5 elements");
+        for (uint32_t i = 0; i < 5 && i < numElements; i++) {
+            const char* element = getElement(i);
+            if (element) {
+                Serial.print("Element "); Serial.print(i); Serial.print(": "); Serial.println(element);
+            } else {
+                Serial.print("Failed to get element "); Serial.println(i);
+                return false;
+            }
+        }
+        
+        // Test 2: Get a page near the middle
+        Serial.println("Test 2: Middle page");
+        uint32_t midPage = getTotalPages() / 2;
+        const char* pageElements[ELEMENTS_PER_PAGE];
+        uint32_t elementCount;
+        
+        if (getPage(midPage, pageElements, elementCount)) {
+            Serial.print("Page "); Serial.print(midPage); Serial.print(" has "); Serial.print(elementCount); Serial.println(" elements:");
+            for (uint32_t i = 0; i < elementCount; i++) {
+                Serial.print("  "); Serial.println(pageElements[i]);
+            }
+        } else {
+            Serial.println("Failed to get middle page");
+            return false;
+        }
+        
+        // Test 3: Get last few elements
+        Serial.println("Test 3: Last 3 elements");
+        for (uint32_t i = max(0, (int32_t)numElements - 3); i < numElements; i++) {
+            const char* element = getElement(i);
+            if (element) {
+                Serial.print("Element "); Serial.print(i); Serial.print(": "); Serial.println(element);
+            } else {
+                Serial.print("Failed to get element "); Serial.println(i);
+                return false;
+            }
+        }
+        
+        Serial.println("=== All Tests Passed ===");
+        return true;
+    }
+};

@@ -1,0 +1,232 @@
+#include <doctest.h>
+#include "../src/state/event-target.h"
+#include "../src/state/state.h"
+
+typedef int UIState;
+
+// Test tracks data
+const char *testTracks[] = {"Track 1", "Track 2", "Track 3", "Track 4",
+                            "Track 5", "Track 6", "Track 7", "Track 8",
+                            "Track 9", "Track 10"};
+const int testTrackCount = 10;
+
+// Test event capture system
+struct CapturedEvent {
+  int eventType;
+  void *eventData;
+  EventTarget *source;
+  bool captured;
+
+  CapturedEvent()
+      : eventType(0), eventData(nullptr), source(nullptr), captured(false) {}
+
+  void reset() {
+    eventType = 0;
+    eventData = nullptr;
+    source = nullptr;
+    captured = false;
+  }
+};
+
+CapturedEvent lastEvent;
+int eventCount = 0;
+
+// Test event callback
+void testEventCallback(int eventType, void *eventData, EventTarget *source) {
+  lastEvent.eventType = eventType;
+  lastEvent.eventData = eventData;
+  lastEvent.source = source;
+  lastEvent.captured = true;
+  eventCount++;
+}
+
+// Additional callback for multiple listener tests
+int secondCallbackCount = 0;
+void secondTestCallback(int eventType, void *eventData, EventTarget *source) {
+  secondCallbackCount++;
+}
+
+// Test fixture setup/teardown helpers
+void resetTestState() {
+  lastEvent.reset();
+  eventCount = 0;
+  secondCallbackCount = 0;
+}
+
+TEST_SUITE("EventTarget Tests") {
+  TEST_CASE("EventTarget - Basic Construction") {
+    EventTarget target;
+
+    CHECK(target.getListenerCount() == 0);
+  }
+
+  TEST_CASE("EventTarget - Add Single Listener") {
+    EventTarget target;
+    resetTestState();
+
+    bool result = target.addEventListener(testEventCallback);
+
+    CHECK(result == true);
+    CHECK(target.getListenerCount() == 1);
+  }
+
+  TEST_CASE("EventTarget - Add Multiple Listeners") {
+    EventTarget target;
+    resetTestState();
+
+    bool result1 = target.addEventListener(testEventCallback);
+    bool result2 = target.addEventListener(secondTestCallback);
+
+    CHECK(result1 == true);
+    CHECK(result2 == true);
+    CHECK(target.getListenerCount() == 2);
+  }
+
+  TEST_CASE("EventTarget - Add Duplicate Listener") {
+    EventTarget target;
+    resetTestState();
+
+    bool result1 = target.addEventListener(testEventCallback);
+    bool result2 = target.addEventListener(testEventCallback); // Same callback
+
+    CHECK(result1 == true);
+    CHECK(result2 == false); // Should reject duplicate
+    CHECK(target.getListenerCount() == 1);
+  }
+
+  TEST_CASE("EventTarget - Add Null Listener") {
+    EventTarget target;
+
+    bool result = target.addEventListener(nullptr);
+
+    CHECK(result == false);
+    CHECK(target.getListenerCount() == 0);
+  }
+
+  TEST_CASE("EventTarget - Remove Listener") {
+    EventTarget target;
+    resetTestState();
+
+    target.addEventListener(testEventCallback);
+    target.addEventListener(secondTestCallback);
+
+    CHECK(target.getListenerCount() == 2);
+
+    bool removed = target.removeEventListener(testEventCallback);
+
+    CHECK(removed == true);
+    CHECK(target.getListenerCount() == 1);
+  }
+
+  TEST_CASE("EventTarget - Remove Non-existent Listener") {
+    EventTarget target;
+    resetTestState();
+
+    target.addEventListener(testEventCallback);
+
+    bool removed = target.removeEventListener(secondTestCallback); // Not added
+
+    CHECK(removed == false);
+    CHECK(target.getListenerCount() == 1);
+  }
+
+  TEST_CASE("EventTarget - Clear All Listeners") {
+    EventTarget target;
+    resetTestState();
+
+    target.addEventListener(testEventCallback);
+    target.addEventListener(secondTestCallback);
+
+    CHECK(target.getListenerCount() == 2);
+
+    target.clearAllListeners();
+
+    CHECK(target.getListenerCount() == 0);
+  }
+
+  TEST_CASE("EventTarget - Max Listeners Limit") {
+    EventTarget target;
+    resetTestState();
+
+    // Add listeners up to the limit
+    void (*callbacks[MAX_EVENT_LISTENERS + 2])() = {
+        (void (*)())testEventCallback,
+        (void (*)())secondTestCallback,
+        (void (*)())testEventCallback, // This will be rejected as duplicate
+        nullptr, // Fill remaining slots with unique addresses
+        nullptr,
+        nullptr};
+
+    int successCount = 0;
+    for (int i = 0; i < MAX_EVENT_LISTENERS + 1; i++) {
+      if (target.addEventListener((EventCallback)(callbacks[i] + i))) {
+        successCount++;
+      }
+    }
+
+    CHECK(successCount == MAX_EVENT_LISTENERS);
+    CHECK(target.getListenerCount() == MAX_EVENT_LISTENERS);
+  }
+}
+
+TEST_CASE("Multiple Listeners Receive Events") {
+  State state;
+  resetTestState();
+  state.setTracks(testTracks, testTrackCount);
+  state.addEventListener(testEventCallback);
+  state.addEventListener(secondTestCallback);
+
+  state.startPlayback(2);
+
+  CHECK(lastEvent.captured == true); // First callback triggered
+  CHECK(secondCallbackCount == 1);   // Second callback triggered
+}
+
+TEST_CASE("Event Data Integrity") {
+  State state;
+  resetTestState();
+  state.setTracks(testTracks, testTrackCount);
+  state.addEventListener(testEventCallback);
+
+  state.selectTrack(4);
+
+  CHECK(lastEvent.eventType == EVENT_TRACK_SELECTED);
+  CHECK(lastEvent.source == &state);
+
+  TrackSelectedEvent *event = (TrackSelectedEvent *)lastEvent.eventData;
+  CHECK(event->trackIndex == 4);
+  CHECK(strcmp(event->trackName, "Track 5") == 0);
+}
+
+TEST_CASE("Complex Navigation Sequence") {
+  State state;
+  resetTestState();
+  state.setTracks(testTracks, testTrackCount);
+  state.addEventListener(testEventCallback);
+
+  // Sequence: select -> scroll -> page -> play -> pause -> stop
+  state.selectTrack(3);
+  int eventCount1 = eventCount;
+
+  state.scrollDown();
+  int eventCount2 = eventCount;
+
+  state.pageDown();
+  int eventCount3 = eventCount;
+
+  state.startPlayback();
+  int eventCount4 = eventCount;
+
+  state.togglePlayback();
+  int eventCount5 = eventCount;
+
+  state.stopPlayback();
+  int eventCount6 = eventCount;
+
+  CHECK(eventCount1 >= 1);          // At least selection event
+  CHECK(eventCount2 > eventCount1); // Scroll event added
+  CHECK(eventCount3 > eventCount2); // Page event added
+  CHECK(eventCount4 > eventCount3); // Playback started
+  CHECK(eventCount5 > eventCount4); // Playback paused
+  CHECK(eventCount6 > eventCount5); // Playback stopped
+}

@@ -13,6 +13,7 @@ export default defineConfig({
       { text: "Home", link: "/" },
       { text: "About", link: "/about" },
       { text: "Clickwheel", link: "/clickwheel" },
+      { text: "Blog", link: "/blog" },
     ],
 
     sidebar: [
