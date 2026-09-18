@@ -1,7 +1,7 @@
 #include "Adafruit_MPR121.h"
 #include "ClickWheel.hpp"
 #include "WheelTrace.hpp"
-#include "player.h"
+#include "sound/player.h"
 #include "rendering/ILI9341_GFX.h"
 #include "state/state.h"
 #include "ui/ui_engine.hpp"

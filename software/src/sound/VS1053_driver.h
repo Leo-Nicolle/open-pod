@@ -89,7 +89,7 @@ public:
   ~VS1053_driver();
 
   // Core initialization and control
-  bool begin(uint32_t spiFreq = 4000000UL);
+  bool begin(uint32_t spiFreq = 1000000UL);
   void reset();
   void softReset();
   bool readyForData();

@@ -99,13 +99,12 @@ const char *State::getPlayingTrackName() const {
 
 void State::loadCurrentRouteData(MusicLookup &musicLookup) {
   Route_t &currentRoute = router.getCurrentRoute();
-  const char *elements[MAX_STRING_POINTERS];
   uint32_t count = 0;
 
   switch (currentRoute.type) {
   case Route_t::ARTISTS:
     count = musicLookup.getAllArtists(
-        elementsBuffer, ELEMENTS_BUFFER_SIZE, (const char **)elements,
+        elementsBuffer, ELEMENTS_BUFFER_SIZE, stringPointers,
         MAX_STRING_POINTERS, currentRoute.currentPage * MAX_STRING_POINTERS);
     currentRoute.hasMore = (count == MAX_STRING_POINTERS);
     break;
@@ -117,23 +116,23 @@ void State::loadCurrentRouteData(MusicLookup &musicLookup) {
       if (parentRoute.type == Route_t::ARTISTS) {
         count = musicLookup.getAlbumsByArtist(
             parentRoute.entityId, elementsBuffer, ELEMENTS_BUFFER_SIZE,
-            (const char **)elements, MAX_STRING_POINTERS);
+            stringPointers, MAX_STRING_POINTERS);
         currentRoute.hasMore = false; // Relationship lookups return all results
       } else if (parentRoute.type == Route_t::GENRES) {
         count = musicLookup.getAlbumsByGenre(
             parentRoute.entityId, elementsBuffer, ELEMENTS_BUFFER_SIZE,
-            (const char **)elements, MAX_STRING_POINTERS);
+            stringPointers, MAX_STRING_POINTERS);
         currentRoute.hasMore = false;
       } else {
         count = musicLookup.getAllAlbums(
-            elementsBuffer, ELEMENTS_BUFFER_SIZE, (const char **)elements,
+            elementsBuffer, ELEMENTS_BUFFER_SIZE, stringPointers,
             MAX_STRING_POINTERS,
             currentRoute.currentPage * MAX_STRING_POINTERS);
         currentRoute.hasMore = (count == MAX_STRING_POINTERS);
       }
     } else {
       count = musicLookup.getAllAlbums(
-          elementsBuffer, ELEMENTS_BUFFER_SIZE, (const char **)elements,
+          elementsBuffer, ELEMENTS_BUFFER_SIZE, stringPointers,
           MAX_STRING_POINTERS, currentRoute.currentPage * MAX_STRING_POINTERS);
       currentRoute.hasMore = (count == MAX_STRING_POINTERS);
     }
@@ -141,7 +140,7 @@ void State::loadCurrentRouteData(MusicLookup &musicLookup) {
 
   case Route_t::GENRES:
     count = musicLookup.getAllGenres(
-        elementsBuffer, ELEMENTS_BUFFER_SIZE, (const char **)elements,
+        elementsBuffer, ELEMENTS_BUFFER_SIZE, stringPointers,
         MAX_STRING_POINTERS, currentRoute.currentPage * MAX_STRING_POINTERS);
     currentRoute.hasMore = (count == MAX_STRING_POINTERS);
     break;
@@ -153,15 +152,15 @@ void State::loadCurrentRouteData(MusicLookup &musicLookup) {
       if (parentRoute.type == Route_t::ARTISTS) {
         count = musicLookup.getTracksByArtist(
             parentRoute.entityId, elementsBuffer, ELEMENTS_BUFFER_SIZE,
-            (const char **)elements, MAX_STRING_POINTERS);
+            stringPointers, MAX_STRING_POINTERS);
       } else if (parentRoute.type == Route_t::ALBUMS) {
         count = musicLookup.getTracksByAlbum(
             parentRoute.entityId, elementsBuffer, ELEMENTS_BUFFER_SIZE,
-            (const char **)elements, MAX_STRING_POINTERS);
+            stringPointers, MAX_STRING_POINTERS);
       } else if (parentRoute.type == Route_t::GENRES) {
         count = musicLookup.getTracksByGenre(
             parentRoute.entityId, elementsBuffer, ELEMENTS_BUFFER_SIZE,
-            (const char **)elements, MAX_STRING_POINTERS);
+            stringPointers, MAX_STRING_POINTERS);
       }
       currentRoute.hasMore = false; // Relationship lookups return all results
     }
@@ -174,7 +173,7 @@ void State::loadCurrentRouteData(MusicLookup &musicLookup) {
     int offset = 0;
     for (uint32_t i = 0; i < count && i < MAX_STRING_POINTERS; i++) {
       const MenuItem &item = rootMenu.getItem(i);
-      elements[i] = elementsBuffer + offset;
+      stringPointers[i] = elementsBuffer + offset;
       strcpy(elementsBuffer + offset, item.label);
       offset += strlen(item.label) + 1; // +1 for null terminator
     }
@@ -189,7 +188,7 @@ void State::loadCurrentRouteData(MusicLookup &musicLookup) {
   // Update route info and set elements
   currentRoute.totalResults = count;
   topVisibleIndex = 0;
-  setElements((const char **)elements, count);
+  setElements(stringPointers, count);
   updateVisibleElements();
 }
 

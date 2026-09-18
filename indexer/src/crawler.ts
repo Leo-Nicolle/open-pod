@@ -2,6 +2,7 @@ import fs from "fs/promises";
 import path from "path";
 import type { CrawlCallback, CrawlIndex, TrackMetadata } from "./types";
 import { parseFile } from "music-metadata";
+import { sanitizeName } from "./utils";
 
 function getOrAdd<T>(
   map: Map<string, number>,
@@ -96,10 +97,10 @@ export async function readMetadata(root: string): Promise<CrawlIndex> {
     // console.log(`Reading metadata for ${rel}/${filename}`);
     const { common, format } = await parseFile(fullPath);
 
-    const title = common.title || path.basename(filename);
-    const artist = common.artist || "Unknown Artist";
-    const album = common.album || "Unknown Album";
-    const genre = common.genre?.[0] || "Unknown Genre";
+    const title = sanitizeName(common.title || path.basename(filename));
+    const artist = sanitizeName(common.artist || "Unknown Artist");
+    const album = sanitizeName(common.album || "Unknown Album");
+    const genre = sanitizeName(common.genre?.[0] || "Unknown Genre");
     const index = (common.track && common.track.no) || 0;
     const year = common.year || 0;
     const duration = format.duration || 0;

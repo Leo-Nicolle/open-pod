@@ -45,7 +45,10 @@ private:
 
 public:
   SPI_PSRAM() : spi(nullptr) {
-    spiSettings = SPISettings(42000000, MSBFIRST, SPI_MODE0);
+    // Conservative clock: the APS6404L is rated higher, but a slow SPI bus is
+    // far more reliable over long/breadboard wiring (this fixes intermittent
+    // garbage ID reads like 0xFF/0x1A during init).
+    spiSettings = SPISettings(8000000, MSBFIRST, SPI_MODE0);
   }
 
   ~SPI_PSRAM() {
@@ -56,38 +59,39 @@ public:
   }
 
   bool init() {
-    if(initialized)return true;
+    if (initialized) return true;
     Serial.println("=== PSRAM INIT START ===");
     Serial.flush();
 
     setupPins();
-    delayMicroseconds(150); // T_POWER_UP
-    resetDevice();
+    delay(1); // T_POWER_UP
 
-    uint8_t id[2] = {0, 0};
-    if (!readDeviceID(id)) {
-      Serial.println("Failed to read device ID");
-      return false;
-    }
+    // Reset + read the ID a few times; the chip is unreliable right after
+    // power-up, so do a full reset (not just a re-read) on each attempt.
+    for (int attempt = 0; attempt < 5; attempt++) {
+      resetDevice();
+      delay(1); // reset recovery
 
-    Serial.print("Read ID: 0x");
-    Serial.print(id[0], HEX);
-    Serial.print(" 0x");
-    Serial.println(id[1], HEX);
-
-    if (id[0] != 0x0D || id[1] != 0x5D) {
-      Serial.print("Unexpected ID: 0x");
+      uint8_t id[2] = {0, 0};
+      readDeviceID(id);
+      Serial.print("PSRAM ID attempt ");
+      Serial.print(attempt);
+      Serial.print(": 0x");
       Serial.print(id[0], HEX);
       Serial.print(" 0x");
       Serial.println(id[1], HEX);
-      return false;
+
+      if (id[0] == 0x0D && id[1] == 0x5D) {
+        initialized = true;
+        Serial.println("PSRAM OK");
+        Serial.flush();
+        return true;
+      }
+      delay(5);
     }
 
-    Serial.println("PSRAM OK");
-    Serial.flush();
-
-    // Test basic communication
-    return true;
+    Serial.println("PSRAM init failed");
+    return false;
   }
 
   void resetDevice() {
@@ -106,7 +110,7 @@ public:
     spi->endTransaction();
 
     delayMicroseconds(100); // T_RESET
-    Serial.println("PSRAM reset complete");
+    delay(1); // extra margin: reset recovery
   }
 
   bool readDeviceID(uint8_t *id) {

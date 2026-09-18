@@ -24,7 +24,9 @@ public:
   ~AudioPlayer();
 
   // Core initialization and control
-  bool begin(uint32_t spiFreq = 4000000UL, uint32_t sdFreq = 25000000UL);
+  // NOTE: spiFreq must NOT be 4000000 (Arduino_Core_STM32 3.x default): see
+  // VS1053_driver::initSPI(). 1MHz is safe for VS1053 SCI (max ~ CLKI/7).
+  bool begin(uint32_t spiFreq = 1000000UL, uint32_t sdFreq = 25000000UL);
 
   // PSRAM support
   bool enablePSRAM(bool enable = true);

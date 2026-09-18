@@ -90,3 +90,13 @@ export function removeAccents(str: string): string {
     (match) => accentMap[match] || match
   );
 }
+
+// Convert a display name to ASCII (remove accents, drop non-ASCII) while
+// preserving case. Used for names that will be rendered with the embedded
+// ASCII-only font and for the string indexes loaded by the firmware.
+export function sanitizeName(str: string): string {
+  return removeAccents(str)
+    .replace(/[^\x20-\x7E]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}

@@ -53,6 +53,12 @@ bool VS1053_driver::begin(uint32_t spiFreq) {
 void VS1053_driver::initSPI() {
   if (_useHardwareSPI) {
     SPI.begin();
+    // Arduino_Core_STM32 >= 3.0.0: SPI.begin() with the default 4MHz settings
+    // is a no-op (configSpi() skips spi_init() because _spiSettings already
+    // equals the defaults). Force the peripheral to actually initialize by
+    // issuing a transaction with our (non-default) frequency.
+    SPI.beginTransaction(SPISettings(_spiFreq, MSBFIRST, SPI_MODE0));
+    SPI.endTransaction();
   }
 }
 

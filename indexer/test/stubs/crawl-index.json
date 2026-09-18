@@ -2,7 +2,7 @@
   "indexToTrack": [
     [
       0,
-      "Bombe à retardement"
+      "Bombe a retardement"
     ],
     [
       1,
@@ -14,7 +14,7 @@
     ],
     [
       3,
-      "Dernière lettre"
+      "Derniere lettre"
     ],
     [
       4,
@@ -22,11 +22,11 @@
     ],
     [
       5,
-      "Mise à jour"
+      "Mise a jour"
     ],
     [
       6,
-      "Révolution"
+      "Revolution"
     ],
     [
       7,
@@ -50,7 +50,7 @@
     ],
     [
       12,
-      "Enervé"
+      "Enerve"
     ],
     [
       13,
@@ -62,11 +62,11 @@
     ],
     [
       15,
-      "Skyzophrène"
+      "Skyzophrene"
     ],
     [
       16,
-      "Besoin de clarté"
+      "Besoin de clarte"
     ],
     [
       17,
@@ -98,7 +98,7 @@
     ],
     [
       24,
-      "Dans mes artères"
+      "Dans mes arteres"
     ],
     [
       25,
@@ -110,7 +110,7 @@
     ],
     [
       27,
-      "Partition nébuleuse"
+      "Partition nebuleuse"
     ],
     [
       28,
@@ -122,7 +122,7 @@
     ],
     [
       30,
-      "Là n'est pas la question"
+      "La n'est pas la question"
     ],
     [
       31,
@@ -130,7 +130,7 @@
     ],
     [
       32,
-      "Deuxième cicatrice"
+      "Deuxieme cicatrice"
     ],
     [
       33,
@@ -138,11 +138,11 @@
     ],
     [
       34,
-      "Ma génération"
+      "Ma generation"
     ],
     [
       35,
-      "Majeur et vacciné"
+      "Majeur et vaccine"
     ],
     [
       36,
@@ -458,7 +458,7 @@
     ],
     [
       114,
-      "Liebestraum, N°3"
+      "Liebestraum, N3"
     ],
     [
       115,
@@ -518,7 +518,7 @@
     ],
     [
       129,
-      "Improvisation N°4"
+      "Improvisation N4"
     ],
     [
       130,
@@ -690,7 +690,7 @@
     ],
     [
       172,
-      "Manoir De Mes Rêves"
+      "Manoir De Mes Reves"
     ],
     [
       173,
@@ -722,7 +722,7 @@
     ],
     [
       180,
-      "Troublant Bolero (Boléro de Django)"
+      "Troublant Bolero (Bolero de Django)"
     ],
     [
       181,
@@ -878,7 +878,7 @@
     ],
     [
       219,
-      "Manoir De Mes Rêves"
+      "Manoir De Mes Reves"
     ],
     [
       220,
@@ -930,11 +930,11 @@
     ],
     [
       232,
-      "Improvisation N°3 - Part 2"
+      "Improvisation N3 - Part 2"
     ],
     [
       233,
-      "Improvisation N°3 - Part 1"
+      "Improvisation N3 - Part 1"
     ],
     [
       234,
@@ -954,7 +954,7 @@
     ],
     [
       238,
-      "Manoir De Mes Rêves"
+      "Manoir De Mes Reves"
     ],
     [
       239,
@@ -1410,7 +1410,7 @@
   "indexToAlbum": [
     [
       0,
-      "Hécatombe 2.0"
+      "Hecatombe 2.0"
     ],
     [
       1,
@@ -4194,9 +4194,9 @@
     [
       0,
       {
-        "title": "Bombe à retardement",
+        "title": "Bombe a retardement",
         "artist": "Swift Guad",
-        "album": "Hécatombe 2.0",
+        "album": "Hecatombe 2.0",
         "genre": "Unknown Genre",
         "index": 20,
         "year": 2014,
@@ -4208,7 +4208,7 @@
       {
         "title": "Le point",
         "artist": "Swift Guad",
-        "album": "Hécatombe 2.0",
+        "album": "Hecatombe 2.0",
         "genre": "Unknown Genre",
         "index": 19,
         "year": 2014,
@@ -4220,7 +4220,7 @@
       {
         "title": "Mon calvaire",
         "artist": "Swift Guad",
-        "album": "Hécatombe 2.0",
+        "album": "Hecatombe 2.0",
         "genre": "Unknown Genre",
         "index": 18,
         "year": 2014,
@@ -4230,9 +4230,9 @@
     [
       3,
       {
-        "title": "Dernière lettre",
+        "title": "Derniere lettre",
         "artist": "Swift Guad",
-        "album": "Hécatombe 2.0",
+        "album": "Hecatombe 2.0",
         "genre": "Unknown Genre",
         "index": 17,
         "year": 2014,
@@ -4244,7 +4244,7 @@
       {
         "title": "Phone Call",
         "artist": "Swift Guad",
-        "album": "Hécatombe 2.0",
+        "album": "Hecatombe 2.0",
         "genre": "Unknown Genre",
         "index": 16,
         "year": 2014,
@@ -4254,9 +4254,9 @@
     [
       5,
       {
-        "title": "Mise à jour",
+        "title": "Mise a jour",
         "artist": "Swift Guad",
-        "album": "Hécatombe 2.0",
+        "album": "Hecatombe 2.0",
         "genre": "Unknown Genre",
         "index": 15,
         "year": 2014,
@@ -4266,9 +4266,9 @@
     [
       6,
       {
-        "title": "Révolution",
+        "title": "Revolution",
         "artist": "Swift Guad",
-        "album": "Hécatombe 2.0",
+        "album": "Hecatombe 2.0",
         "genre": "Unknown Genre",
         "index": 14,
         "year": 2014,
@@ -4280,7 +4280,7 @@
       {
         "title": "Paradox",
         "artist": "Swift Guad",
-        "album": "Hécatombe 2.0",
+        "album": "Hecatombe 2.0",
         "genre": "Unknown Genre",
         "index": 13,
         "year": 2014,
@@ -4292,7 +4292,7 @@
       {
         "title": "Pour les p'tits",
         "artist": "Swift Guad",
-        "album": "Hécatombe 2.0",
+        "album": "Hecatombe 2.0",
         "genre": "Unknown Genre",
         "index": 12,
         "year": 2014,
@@ -4304,7 +4304,7 @@
       {
         "title": "I Try",
         "artist": "Swift Guad",
-        "album": "Hécatombe 2.0",
+        "album": "Hecatombe 2.0",
         "genre": "Unknown Genre",
         "index": 11,
         "year": 2014,
@@ -4316,7 +4316,7 @@
       {
         "title": "Enfant soldat",
         "artist": "Swift Guad",
-        "album": "Hécatombe 2.0",
+        "album": "Hecatombe 2.0",
         "genre": "Unknown Genre",
         "index": 10,
         "year": 2014,
@@ -4328,7 +4328,7 @@
       {
         "title": "Maman pleure pas",
         "artist": "Swift Guad",
-        "album": "Hécatombe 2.0",
+        "album": "Hecatombe 2.0",
         "genre": "Unknown Genre",
         "index": 9,
         "year": 2014,
@@ -4338,9 +4338,9 @@
     [
       12,
       {
-        "title": "Enervé",
+        "title": "Enerve",
         "artist": "Swift Guad",
-        "album": "Hécatombe 2.0",
+        "album": "Hecatombe 2.0",
         "genre": "Unknown Genre",
         "index": 8,
         "year": 2014,
@@ -4352,7 +4352,7 @@
       {
         "title": "L'ogre et l'enfant",
         "artist": "Swift Guad",
-        "album": "Hécatombe 2.0",
+        "album": "Hecatombe 2.0",
         "genre": "Unknown Genre",
         "index": 7,
         "year": 2014,
@@ -4364,7 +4364,7 @@
       {
         "title": "Jour de pluie",
         "artist": "Swift Guad",
-        "album": "Hécatombe 2.0",
+        "album": "Hecatombe 2.0",
         "genre": "Unknown Genre",
         "index": 6,
         "year": 2014,
@@ -4374,9 +4374,9 @@
     [
       15,
       {
-        "title": "Skyzophrène",
+        "title": "Skyzophrene",
         "artist": "Swift Guad",
-        "album": "Hécatombe 2.0",
+        "album": "Hecatombe 2.0",
         "genre": "Unknown Genre",
         "index": 5,
         "year": 2014,
@@ -4386,9 +4386,9 @@
     [
       16,
       {
-        "title": "Besoin de clarté",
+        "title": "Besoin de clarte",
         "artist": "Swift Guad",
-        "album": "Hécatombe 2.0",
+        "album": "Hecatombe 2.0",
         "genre": "Unknown Genre",
         "index": 4,
         "year": 2014,
@@ -4400,7 +4400,7 @@
       {
         "title": "Hip Hop Fat",
         "artist": "Swift Guad",
-        "album": "Hécatombe 2.0",
+        "album": "Hecatombe 2.0",
         "genre": "Unknown Genre",
         "index": 3,
         "year": 2014,
@@ -4412,7 +4412,7 @@
       {
         "title": "Pourquoi",
         "artist": "Swift Guad",
-        "album": "Hécatombe 2.0",
+        "album": "Hecatombe 2.0",
         "genre": "Unknown Genre",
         "index": 2,
         "year": 2014,
@@ -4424,7 +4424,7 @@
       {
         "title": "La montreuilloise",
         "artist": "Swift Guad",
-        "album": "Hécatombe 2.0",
+        "album": "Hecatombe 2.0",
         "genre": "Unknown Genre",
         "index": 1,
         "year": 2014,
@@ -4482,7 +4482,7 @@
     [
       24,
       {
-        "title": "Dans mes artères",
+        "title": "Dans mes arteres",
         "artist": "Swift Guad",
         "album": "C.P.C.D.M.C",
         "genre": "Unknown Genre",
@@ -4518,7 +4518,7 @@
     [
       27,
       {
-        "title": "Partition nébuleuse",
+        "title": "Partition nebuleuse",
         "artist": "Swift Guad",
         "album": "C.P.C.D.M.C",
         "genre": "Unknown Genre",
@@ -4554,7 +4554,7 @@
     [
       30,
       {
-        "title": "Là n'est pas la question",
+        "title": "La n'est pas la question",
         "artist": "Swift Guad",
         "album": "C.P.C.D.M.C",
         "genre": "Unknown Genre",
@@ -4578,7 +4578,7 @@
     [
       32,
       {
-        "title": "Deuxième cicatrice",
+        "title": "Deuxieme cicatrice",
         "artist": "Swift Guad",
         "album": "C.P.C.D.M.C",
         "genre": "Unknown Genre",
@@ -4602,7 +4602,7 @@
     [
       34,
       {
-        "title": "Ma génération",
+        "title": "Ma generation",
         "artist": "Swift Guad",
         "album": "C.P.C.D.M.C",
         "genre": "Unknown Genre",
@@ -4614,7 +4614,7 @@
     [
       35,
       {
-        "title": "Majeur et vacciné",
+        "title": "Majeur et vaccine",
         "artist": "Swift Guad",
         "album": "C.P.C.D.M.C",
         "genre": "Unknown Genre",
@@ -5562,7 +5562,7 @@
     [
       114,
       {
-        "title": "Liebestraum, N°3",
+        "title": "Liebestraum, N3",
         "artist": "Django Reinhardt",
         "album": "Djangologie 1928-1950 (Disc 03)",
         "genre": "Gypsy Jazz",
@@ -5742,7 +5742,7 @@
     [
       129,
       {
-        "title": "Improvisation N°4",
+        "title": "Improvisation N4",
         "artist": "Django Reinhardt",
         "album": "Djangologie 1928-1950 (Disc 20)",
         "genre": "Gypsy Jazz",
@@ -6258,7 +6258,7 @@
     [
       172,
       {
-        "title": "Manoir De Mes Rêves",
+        "title": "Manoir De Mes Reves",
         "artist": "Django Reinhardt",
         "album": "Djangologie 1928-1950 (Disc 18)",
         "genre": "Gypsy Jazz",
@@ -6354,7 +6354,7 @@
     [
       180,
       {
-        "title": "Troublant Bolero (Boléro de Django)",
+        "title": "Troublant Bolero (Bolero de Django)",
         "artist": "Django Reinhardt",
         "album": "Djangologie 1928-1950 (Disc 17)",
         "genre": "Gypsy Jazz",
@@ -6822,7 +6822,7 @@
     [
       219,
       {
-        "title": "Manoir De Mes Rêves",
+        "title": "Manoir De Mes Reves",
         "artist": "Django Reinhardt",
         "album": "Djangologie 1928-1950 (Disc 14)",
         "genre": "Gypsy Jazz",
@@ -6978,7 +6978,7 @@
     [
       232,
       {
-        "title": "Improvisation N°3 - Part 2",
+        "title": "Improvisation N3 - Part 2",
         "artist": "Django Reinhardt",
         "album": "Djangologie 1928-1950 (Disc 13)",
         "genre": "Gypsy Jazz",
@@ -6990,7 +6990,7 @@
     [
       233,
       {
-        "title": "Improvisation N°3 - Part 1",
+        "title": "Improvisation N3 - Part 1",
         "artist": "Django Reinhardt",
         "album": "Djangologie 1928-1950 (Disc 13)",
         "genre": "Gypsy Jazz",
@@ -7050,7 +7050,7 @@
     [
       238,
       {
-        "title": "Manoir De Mes Rêves",
+        "title": "Manoir De Mes Reves",
         "artist": "Django Reinhardt",
         "album": "Djangologie 1928-1950 (Disc 13)",
         "genre": "Gypsy Jazz",
