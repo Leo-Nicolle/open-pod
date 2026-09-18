@@ -8,3 +8,8 @@ node_modules/
 docs/.vitepress/cache/
 docs/.vitepress/dist/
 indexer/exports
+datasheets/*
+scripts/*.ttf
+scripts/*.png
+scripts/*.zip
+scripts/*.h

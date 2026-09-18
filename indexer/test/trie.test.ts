@@ -3,9 +3,9 @@ import {
   buildTrieFromCrawlIndex,
   searchTrie,
   serializeTrie,
-  getSerializedTrieStats,
   exportToBinary,
 } from "../src/trie";
+import { getSerializedTrieStats } from "../src/stats";
 import { unserialize } from "../src/crawler";
 import data from "./stubs/crawl-index.json";
 import type { CrawlIndex } from "../src/types";

@@ -11,11 +11,7 @@ import type { CrawlIndex } from "../src/types";
 import { readFile, readdir } from "fs/promises";
 import path from "path";
 import { __dirname } from "./utils";
-import {
-  exportIndexesToBinary,
-  importStringIndexFromBinary,
-  importRelationshipMapFromBinary,
-} from "../src/music-indexes";
+import { exportIndexesToBinary, importStringIndexFromBinary, importRelationshipMapFromBinary } from "../src/music-indexes";
 
 const keys = [
   "genre_to_tracks",
@@ -54,9 +50,7 @@ describe("Binary Serialization Round-trip", () => {
     const binaries = exportIndexesToBinary(crawlIndex);
 
     expect(binaries[key]).toBeInstanceOf(Uint8Array);
-    if (key === "artist_to_tracks") {
-      debugger;
-    }
+
     // Relationship maps
     if (
       key === "genre_to_tracks" ||

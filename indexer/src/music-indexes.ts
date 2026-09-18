@@ -1,6 +1,5 @@
 import type {
   CrawlIndex,
-  SerializedPathIndex,
   SerializedRelationshipMap,
   SerializedStringIndex,
 } from "./types";
