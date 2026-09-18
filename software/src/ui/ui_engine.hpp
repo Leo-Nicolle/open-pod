@@ -403,13 +403,13 @@ void OpenPodUIEngine::renderCurrentState() {
 }
 
 void OpenPodUIEngine::renderTrackList() {
-  header.render(display);
+  header.render(display, state.getHeaderTitle());
   elementList.renderAllElements(display);
   scrollbar.render(display);
 }
 
 void OpenPodUIEngine::renderNowPlaying(int xOffset, int width) {
-  header.render(display);
+  header.render(display, state.getHeaderTitle());
 
   const char *trackName = state.getPlayingTrackName();
   if (!trackName) {

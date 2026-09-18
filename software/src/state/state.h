@@ -180,6 +180,9 @@ public:
   Router& getRouteManager() { return router; }
   Route_t& getCurrentRoute() { return router.getCurrentRoute(); }
   bool canGoBack() { return router.canGoBack(); }
+
+  // Breadcrumb title for the header
+  const char *getHeaderTitle();
 };
 
 extern State state;

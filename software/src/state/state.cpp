@@ -495,6 +495,30 @@ uint32_t State::getSelectedEntityId(MusicLookup &musicLookup) {
   return 0;
 }
 
+const char *State::getHeaderTitle() {
+  Route_t &route = router.getCurrentRoute();
+  if (route.entityName[0] != '\0') {
+    return route.entityName;
+  }
+  switch (route.type) {
+  case Route_t::ROOT:
+    return "Menu";
+  case Route_t::ARTISTS:
+    return "Artists";
+  case Route_t::ALBUMS:
+    return "Albums";
+  case Route_t::GENRES:
+    return "Genres";
+  case Route_t::TRACKS:
+    return "Tracks";
+  case Route_t::SEARCH_RESULTS:
+    return "Search";
+  case Route_t::NOW_PLAYING:
+    return "Now Playing";
+  }
+  return "OpenPod";
+}
+
 void State::restoreSelectionState() {
   Route_t &currentRoute = router.getCurrentRoute();
   selectedIndex = currentRoute.selectedIndex;

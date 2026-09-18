@@ -82,8 +82,9 @@ bool MusicLookup::getTrackPath(uint32_t track_id, char *buffer,
   }
 
   // Binary search for track ID in path index
-  int32_t index =
-      binarySearch(track_id, path_index_h.baseOffset, path_index_h.entry_count);
+  // (+8 skips the [entry_count][data_size] header before the id array)
+  int32_t index = binarySearch(track_id, path_index_h.baseOffset + 8,
+                               path_index_h.entry_count);
   if (index < 0) {
     return false; // Track ID not found
   }
@@ -108,8 +109,9 @@ bool MusicLookup::getString(uint32_t id, const index_header_t &index_header,
     return false;
   }
 
-  int32_t index =
-      binarySearch(id, index_header.baseOffset, index_header.entry_count);
+  // (+8 skips the [entry_count][data_size] header before the id array)
+  int32_t index = binarySearch(id, index_header.baseOffset + 8,
+                               index_header.entry_count);
   if (index < 0) {
     return false;
   }
@@ -350,7 +352,8 @@ uint32_t MusicLookup::getLookupStrings(
 
   for (uint32_t i = 0; i < id_count && strings_loaded < max_results; i++) {
     // Binary search for this ID in the target index
-    int32_t index = binarySearch(target_ids[i], target_index_header.baseOffset,
+    // (+8 skips the [entry_count][data_size] header before the id array)
+    int32_t index = binarySearch(target_ids[i], target_index_header.baseOffset + 8,
                                  target_index_header.entry_count);
 
     if (index >= 0) {

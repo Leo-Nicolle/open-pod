@@ -4,6 +4,7 @@
 #include "rendering/font_renderer.h"
 #include "fonts/IBMPlexSans16Bold.h"
 #include <Arduino.h>
+#include <string.h>
 
 class ILI9341_GFX;
 
@@ -46,9 +47,29 @@ void HeaderComponent::render(ILI9341_GFX* display, const char* title) {
         buffer[i] = COLOR_PRIMARY;
     }
     const char *headerTitle = title ? title : "OpenPod";
+
+    // Truncate the title to fit within the header (with an ellipsis)
+    char truncatedTitle[64];
+    strncpy(truncatedTitle, headerTitle, sizeof(truncatedTitle) - 1);
+    truncatedTitle[sizeof(truncatedTitle) - 1] = '\0';
+
     fontRenderer.setBuffer(buffer, SCREEN_WIDTH, HEADER_HEIGHT);
-    fontRenderer.renderText(headerTitle, 10, 10, IBMPlexSans16Bold, COLOR_BACKGROUND, COLOR_PRIMARY);
-    renderBatteryToBuffer(buffer, SCREEN_WIDTH, headerTitle);
+    const int maxTitleWidth = SCREEN_WIDTH - 10 - 35; // left margin + battery reserve
+    if (fontRenderer.measureText(truncatedTitle, IBMPlexSans16Bold) > maxTitleWidth) {
+        int len = strlen(truncatedTitle);
+        while (len > 1) {
+            char test[64];
+            snprintf(test, sizeof(test), "%.*s...", len, truncatedTitle);
+            if (fontRenderer.measureText(test, IBMPlexSans16Bold) <= maxTitleWidth) {
+                break;
+            }
+            len--;
+        }
+        snprintf(truncatedTitle, sizeof(truncatedTitle), "%.*s...", len, truncatedTitle);
+    }
+
+    fontRenderer.renderText(truncatedTitle, 10, 10, IBMPlexSans16Bold, COLOR_BACKGROUND, COLOR_PRIMARY);
+    renderBatteryToBuffer(buffer, SCREEN_WIDTH, truncatedTitle);
     display->setWindow(0, 0, SCREEN_WIDTH - 1, HEADER_HEIGHT - 1);
     display->pushPixels(buffer, SCREEN_WIDTH * HEADER_HEIGHT);
     display->drawFastHLine(0, HEADER_HEIGHT, SCREEN_WIDTH, COLOR_SECONDARY);
