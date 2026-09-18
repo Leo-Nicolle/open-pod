@@ -1,4 +1,3 @@
-#pragma once
 #include "state.h"
 #include "static_menu.h"
 

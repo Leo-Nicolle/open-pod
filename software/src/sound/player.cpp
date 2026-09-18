@@ -1,5 +1,7 @@
 #include "player.h"
 
+PodPlayer *PodPlayer::instance = nullptr;
+
 void PodPlayer::setup() {
   Serial.println("=== OpenPod Audio System Initialization ===");
 
@@ -12,9 +14,53 @@ void PodPlayer::setup() {
   Serial.println("\n=== VS1053 Register Status ===");
   audioPlayer.dumpRegisters();
   audioPlayer.sineTest(0x44, 1000); // 1 second test tone
+
+  state.addEventListener(onStateEvent);
+}
+
+void PodPlayer::onStateEvent(int eventType, void *eventData,
+                             EventTarget *source) {
+  if (!instance) {
+    return;
+  }
+
+  switch (eventType) {
+  case EVENT_PLAYBACK_STARTED:
+    instance->handleTrackPlaybackStarted((PlaybackEvent *)eventData);
+    break;
+  case EVENT_PLAYBACK_PAUSED:
+    instance->handlePlaybackPaused((PlaybackEvent *)eventData);
+    break;
+  case EVENT_PLAYBACK_RESUMED:
+    instance->handlePlaybackResumed((PlaybackEvent *)eventData);
+    break;
+  case EVENT_PLAYBACK_STOPPED:
+    instance->handlePlaybackStopped((PlaybackEvent *)eventData);
+    break;
+  default:
+    break;
+  }
+}
+
+void PodPlayer::handleTrackPlaybackStarted(const PlaybackEvent *event) {
+  if (musicLookup.getTrackPath(event->trackIndex, currentPath,
+                               sizeof(currentPath))) {
+    audioPlayer.startPlaying(currentPath);
+  }
+}
+
+void PodPlayer::handlePlaybackPaused(const PlaybackEvent *event) {
+  audioPlayer.pausePlaying(true);
+}
+
+void PodPlayer::handlePlaybackResumed(const PlaybackEvent *event) {
+  audioPlayer.resumePlaying();
+}
+
+void PodPlayer::handlePlaybackStopped(const PlaybackEvent *event) {
+  audioPlayer.stopPlaying();
 }
 
 void PodPlayer::loop() {
-  // Add your loop logic here
   audioPlayer.loop();
 }

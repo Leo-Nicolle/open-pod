@@ -119,7 +119,6 @@ void setup() {
   state.scrollDown();
   state.scrollDown();
   delay(20);
-
   state.goToSelected(musicLookup);
   while (state.getIsAnimating()) {
     delay(20);
