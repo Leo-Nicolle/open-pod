@@ -8,10 +8,10 @@ int main(int argc, char **argv)
 {
   doctest::Context context;
 
-  // BEGIN:: PLATFORMIO REQUIRED OPTIONS
-  context.setOption("success", false);     // Report successful tests
+  // Keep successful assertions/tests in the output so PlatformIO's doctest
+  // parser can collect them (with `success = false` it sees zero test cases).
+  context.setOption("success", true);
   context.setOption("no-exitcode", true); // Do not return non-zero code on failed test case
-  // END:: PLATFORMIO REQUIRED OPTIONS
 
   // YOUR CUSTOM DOCTEST OPTIONS
 
