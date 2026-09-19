@@ -73,7 +73,12 @@ void State::notifyTrackEnded(MusicLookup &musicLookup) {
     emitEvent(EVENT_TRACK_ENDED, &event);
     if (playingTrackIndex < totalElements - 1) {
       int nextIndex = playingTrackIndex + 1;
-      startPlayback(nextIndex, resolveTrackId(musicLookup, nextIndex));
+      uint32_t nextTrackId = resolveTrackId(musicLookup, nextIndex);
+      if (nextTrackId != UINT32_MAX) {
+        startPlayback(nextIndex, nextTrackId);
+      } else {
+        stopPlayback();
+      }
     } else {
       stopPlayback();
     }
@@ -347,7 +352,7 @@ void State::goToSelected(MusicLookup &musicLookup) {
   }
   case Route_t::ARTISTS: {
     uint32_t artistId = getSelectedEntityId(musicLookup);
-    if (artistId == -1)
+    if (artistId == UINT32_MAX)
       break;
     musicLookup.getArtistName(artistId, name, sizeof(name));
     entityId = artistId;
@@ -358,7 +363,7 @@ void State::goToSelected(MusicLookup &musicLookup) {
 
   case Route_t::ALBUMS: {
     uint32_t albumId = getSelectedEntityId(musicLookup);
-    if (albumId == -1)
+    if (albumId == UINT32_MAX)
       break;
 
     musicLookup.getAlbumName(albumId, name, sizeof(name));
@@ -370,7 +375,7 @@ void State::goToSelected(MusicLookup &musicLookup) {
 
   case Route_t::GENRES: {
     uint32_t genreId = getSelectedEntityId(musicLookup);
-    if (genreId == -1)
+    if (genreId == UINT32_MAX)
       break;
     musicLookup.getGenreName(genreId, name, sizeof(name));
     entityId = genreId;
@@ -382,6 +387,8 @@ void State::goToSelected(MusicLookup &musicLookup) {
   case Route_t::TRACKS: {
     // Start playback of selected track
     uint32_t trackId = getSelectedEntityId(musicLookup);
+    if (trackId == UINT32_MAX)
+      break;
     startPlayback(selectedIndex, trackId);
     newRouteType = Route_t::NOW_PLAYING;
     break;
@@ -518,7 +525,7 @@ uint32_t State::getSelectedEntityId(MusicLookup &musicLookup) {
     break;
   }
 
-  return 0;
+  return UINT32_MAX; // Not found - 0 is a valid id, can't mean "not found"
 }
 
 uint32_t State::resolveTrackId(MusicLookup &musicLookup, int index) {
@@ -526,11 +533,11 @@ uint32_t State::resolveTrackId(MusicLookup &musicLookup, int index) {
   // that was playing lives one level below it on the stack.
   int depth = router.getDepth();
   if (depth < 1 || router.routeStack[depth].type != Route_t::NOW_PLAYING) {
-    return 0;
+    return UINT32_MAX; // Not found - 0 is a valid id, can't mean "not found"
   }
   Route_t &tracksRoute = router.routeStack[depth - 1];
   if (tracksRoute.type != Route_t::TRACKS || depth < 2) {
-    return 0;
+    return UINT32_MAX;
   }
   Route_t &parentRoute = router.routeStack[depth - 2];
   switch (parentRoute.type) {
@@ -541,7 +548,7 @@ uint32_t State::resolveTrackId(MusicLookup &musicLookup, int index) {
   case Route_t::GENRES:
     return musicLookup.getTrackIdByGenreAtIndex(tracksRoute.entityId, index);
   default:
-    return 0;
+    return UINT32_MAX;
   }
 }
 

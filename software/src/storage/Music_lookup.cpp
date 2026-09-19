@@ -541,8 +541,18 @@ uint32_t MusicLookup::getLastPSRAMAddress() { return psram_last_address; }
 uint32_t MusicLookup::getRelatedIdAtIndex(uint32_t source_id,
                                           const relation_header_t &header,
                                           uint32_t index) {
-  if (!initialized || source_id == 0) {
-    return 0;
+  // NOTE: source_id == 0 is a valid id here (the indexer assigns ids
+  // starting at 0), so it must not be rejected - getRelatedIds() (the
+  // list-building counterpart used to populate what's shown on screen)
+  // has no such check, so excluding it here silently broke every lookup
+  // for whichever artist/album/genre happened to get id 0 (e.g. the first
+  // artist crawled): the list displayed correctly, but every selection
+  // within it resolved to 0 regardless of which row was actually picked.
+  //
+  // For the same reason, failures return UINT32_MAX rather than 0 - 0 is a
+  // real id, so it can't double as "not found" without colliding with it.
+  if (!initialized) {
+    return UINT32_MAX;
   }
 
   // Binary search for source ID
@@ -550,7 +560,7 @@ uint32_t MusicLookup::getRelatedIdAtIndex(uint32_t source_id,
   int32_t source_index =
       binarySearch(source_id, source_ids_base, header.entry_count);
   if (source_index < 0) {
-    return 0; // Source ID not found
+    return UINT32_MAX; // Source ID not found
   }
 
   // Get target count for this source
@@ -560,7 +570,7 @@ uint32_t MusicLookup::getRelatedIdAtIndex(uint32_t source_id,
                  (uint8_t *)&target_count, 4);
 
   if (index >= target_count) {
-    return 0; // Index out of range
+    return UINT32_MAX; // Index out of range
   }
 
   // Calculate offset into target IDs array
@@ -583,7 +593,7 @@ uint32_t MusicLookup::getRelatedIdAtIndex(uint32_t source_id,
 uint32_t MusicLookup::getIdAtIndex(const index_header_t &header,
                                    uint32_t index) {
   if (!initialized || index >= header.entry_count) {
-    return 0;
+    return UINT32_MAX; // Not found - 0 is a valid id, can't mean "not found"
   }
 
   uint32_t entity_id;
