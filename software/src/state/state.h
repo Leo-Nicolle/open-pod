@@ -33,7 +33,11 @@ enum StateEvent {
   // Data events
   EVENT_TRACK_LIST_UPDATED,
   EVENT_TRACK_DURATION_CHANGED,
-  EVENT_DATA_LOADED
+  EVENT_DATA_LOADED,
+
+  // Now Playing input events
+  EVENT_VOLUME_CHANGED,
+  EVENT_SEEK_MODE_CHANGED
 };
 
 // Event data structures
@@ -80,11 +84,19 @@ struct RouteChangedEvent {
   Route_t::RouteType oldRouteType;
   Route_t::RouteType newRouteType;
   uint32_t entityId;
-  uint32_t topVisibleIndex; 
+  uint32_t topVisibleIndex;
   uint32_t selectedIndex;
   const char *entityName;
   bool isForward;
   bool canGoBack;
+};
+
+struct VolumeEvent {
+  int volume; // 0-100
+};
+
+struct SeekModeEvent {
+  bool active;
 };
 
 class State : public EventTarget {
@@ -104,6 +116,19 @@ private:
   bool isPlaying;
   int playbackPosition; // in seconds
   int trackDuration;    // in seconds
+  char playingTrackName[64]; // owned copy - elements[] may point at a
+                              // different list by the time this is read
+
+  // Source-list context captured at playback-start time (not re-derived
+  // later from the live router stack or the currently-displayed list -
+  // both can point elsewhere once the user browses away from Now Playing
+  // while a track keeps playing).
+  Route_t::RouteType playingListParentType;
+  uint32_t playingListEntityId;
+  int playingListTotalTracks;
+
+  int volume;          // 0-100 logical volume
+  bool seekModeActive; // Now Playing seek-mode (center press to enter)
 
   // Navigation state - RENAMED for generalization
   int selectedIndex;        // Currently selected item (was selectedTrackIndex)
@@ -134,6 +159,7 @@ public:
   void goToSelected(MusicLookup& musicLookup);  // Navigate into selected item
   bool back(MusicLookup& musicLookup);          // Go back one level
   void backToMain(MusicLookup& musicLookup);    // Go back to root menu
+  void goToNowPlaying(MusicLookup& musicLookup); // Jump to Now Playing from anywhere
   
   // Scroll navigation (still needed for UI)
   void scrollUp();
@@ -142,13 +168,24 @@ public:
   void pageDown();
   
   // Playback control
-  void startPlayback(int trackIndex, uint32_t trackId);
+  void startPlayback(int trackIndex, uint32_t trackId, MusicLookup &musicLookup);
   void togglePlayback();
   void stopPlayback();
   void updateProgress(int position);
   void setTrackDuration(int duration);
   void notifyTrackEnded(MusicLookup &musicLookup);
-  
+
+  // Volume control (Now Playing wheel scroll)
+  void setVolume(int vol);
+  void increaseVolume(int step = 5);
+  void decreaseVolume(int step = 5);
+  int getVolume() const { return volume; }
+
+  // Seek mode (Now Playing center press)
+  void enterSeekMode();
+  void exitSeekMode();
+  bool getSeekModeActive() const { return seekModeActive; }
+
   // UI state management
   void setAnimating(bool animating, uint32_t animId = 0);
   void setRotation(bool rotated);

@@ -37,6 +37,9 @@ void PodPlayer::onStateEvent(int eventType, void *eventData,
   case EVENT_PLAYBACK_STOPPED:
     instance->handlePlaybackStopped((PlaybackEvent *)eventData);
     break;
+  case EVENT_VOLUME_CHANGED:
+    instance->handleVolumeChanged((VolumeEvent *)eventData);
+    break;
   default:
     break;
   }
@@ -65,6 +68,15 @@ void PodPlayer::handlePlaybackStopped(const PlaybackEvent *event) {
   audioPlayer.stopPlaying();
 }
 
+void PodPlayer::handleVolumeChanged(const VolumeEvent *event) {
+  // Hardware volume register is inverted: 0 = loudest, 255 = silent.
+  uint8_t hw = (uint8_t)constrain(255 - (event->volume * 255 / 100), 0, 255);
+  audioPlayer.setVolume(hw, hw);
+}
+
 void PodPlayer::loop() {
   audioPlayer.loop();
+  if (audioPlayer.consumeTrackEnded()) {
+    state.notifyTrackEnded(musicLookup);
+  }
 }

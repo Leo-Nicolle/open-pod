@@ -20,6 +20,13 @@
 // called. A single 4KB chunk per main-loop tick can't outrun the drain once
 // display/wheel work makes a tick slow, so keep several seconds of headroom.
 #define AUDIO_TARGET_BUFFERED_BYTES (256 * 1024)
+// Bounded refill used right after a seek: just enough to bridge until the
+// next couple of loop() ticks top the buffer back up to the full target
+// above. Filling all the way to AUDIO_TARGET_BUFFERED_BYTES synchronously
+// mid-playback blocks the main loop for many SD reads, during which nothing
+// feeds the VS1053 - its small internal FIFO drains dry and produces an
+// audible gap.
+#define AUDIO_SEEK_PRIME_BYTES (32 * 1024)
 
 /*!
  * @class Audio_buffer
@@ -36,13 +43,20 @@ public:
   bool begin(uint32_t sdFreq = 25000000);
 
   void setFileName(const char *filename);
-  bool load();
+  // Tops the ring buffer up to targetBufferedBytes (default: the full
+  // streaming target). Pass a smaller value for a bounded refill, e.g.
+  // right after a seek (see AUDIO_SEEK_PRIME_BYTES).
+  bool load(size_t targetBufferedBytes = AUDIO_TARGET_BUFFERED_BYTES);
   size_t readData(uint8_t *buffer, size_t maxLen);
   SdFat &getSD() { return _sd; }
   void resetRingBuffer();
   // Estimated total track length in seconds (0 if not yet known/parseable).
   // Assumes CBR; VBR files will be approximate.
   uint32_t getDurationSeconds() const { return _durationSeconds; }
+  // Jumps to an approximate byte offset for targetSeconds (same CBR-linear
+  // assumption as getDurationSeconds; may land mid MPEG-frame, causing a
+  // brief decode glitch until the VS1053 resyncs). Discards buffered audio.
+  bool seekToSeconds(uint32_t targetSeconds);
 
   friend class SDToPSRAMTest; // Allow SDToPSRAMTest to access private/protected members
 
@@ -68,6 +82,7 @@ protected:
   uint32_t _psramDataSize = 0; // Total preloaded data size
   uint32_t _psramPosition = 0; // Current position in preloaded data
   uint32_t _durationSeconds = 0; // Estimated track length, set on file open
+  uint32_t _dataStart = 0;     // First audio byte offset (past ID3 header)
 
   // Internals
   bool initializePSRAM();

@@ -59,6 +59,7 @@ bool AudioPlayer::startPlaying(const char *filename) {
   _buffer.setFileName(filename);
   if (_buffer.load()) {
     _driver.resetDecodeTime();
+    _seekOffsetSeconds = 0;
     _playing = true;
     _paused = false;
     return true;
@@ -125,7 +126,9 @@ void AudioPlayer::setVolume(uint8_t left, uint8_t right) {
   _driver.setVolume(left, right);
 }
 
-uint16_t AudioPlayer::getDecodeTime() { return _driver.getDecodeTime(); }
+uint16_t AudioPlayer::getDecodeTime() {
+  return (uint16_t)(_driver.getDecodeTime() + _seekOffsetSeconds);
+}
 
 void AudioPlayer::setPlaySpeed(uint16_t speed) { _driver.setPlaySpeed(speed); }
 
@@ -137,6 +140,9 @@ void AudioPlayer::sineTest(uint8_t freq, uint16_t duration) {
 
 void AudioPlayer::dumpRegisters() { _driver.dumpRegisters(); }
 void AudioPlayer::loop() {
+  if (_duckingForSeek && millis() >= _duckRestoreAt) {
+    restoreVolumeFromDuck();
+  }
   if (!_playing || _paused) return;
   _buffer.load();
   while (_playing && !_paused && _driver.readyForData()) {
@@ -158,10 +164,74 @@ bool AudioPlayer::feedBuffer() {
       return true;
     } else {
       Serial.println("Stopping playback");
+      _trackEnded = true;
       stopPlaying();
       return false;
     }
   }
+}
+
+bool AudioPlayer::consumeTrackEnded() {
+  bool ended = _trackEnded;
+  _trackEnded = false;
+  return ended;
+}
+
+bool AudioPlayer::seekToSeconds(uint32_t targetSeconds) {
+  if (!_playing) {
+    return false;
+  }
+
+  // Datasheet 10.5.4 recommends lowering volume during a seek to mask the
+  // decoder resync glitch. Only duck once per seek "session" - if a new
+  // seek commits before loop() has restored the previous one, don't
+  // re-duck an already-ducked volume (see restoreVolumeFromDuck()).
+  if (!_duckingForSeek) {
+    _savedVolumeRaw = _driver.getVolumeRaw();
+    uint8_t left = (uint8_t)min(255, (_savedVolumeRaw >> 8) + SEEK_DUCK_ATTENUATION);
+    uint8_t right = (uint8_t)min(255, (_savedVolumeRaw & 0xFF) + SEEK_DUCK_ATTENUATION);
+    _driver.setVolume(left, right);
+    _duckingForSeek = true;
+  }
+
+  // Datasheet 10.5.4: flush the chip's in-flight decode state before we
+  // jump the file position out from under it - without this the VS1053
+  // keeps trying to decode stale, now-discontinuous audio it already has
+  // queued internally, which is what actually produced the silence+glitch
+  // (not just our own software ring buffer).
+  if (!_driver.prepareForSeek()) {
+    restoreVolumeFromDuck(); // no jump happening; nothing to mask
+    return false; // header mid-decode; not safe to jump right now
+  }
+  if (!_buffer.seekToSeconds(targetSeconds)) {
+    restoreVolumeFromDuck();
+    return false;
+  }
+  // Bounded prime, not a full refill to AUDIO_TARGET_BUFFERED_BYTES: this
+  // runs while playback is actively draining the VS1053, so a long
+  // synchronous SD refill here would starve its internal FIFO (audible
+  // silence) before any of the new data even reaches it. loop()'s regular
+  // per-tick load() call tops the buffer the rest of the way up afterward.
+  _buffer.load(AUDIO_SEEK_PRIME_BYTES);
+  _driver.resetDecodeTime(); // Hardware counter can't jump; restart at 0.
+  _seekOffsetSeconds = targetSeconds;
+  // Keep the duck through the resync window (the glitch lands a few
+  // feedBuffer() ticks into the resumed stream, not at this exact instant).
+  _duckRestoreAt = millis() + SEEK_DUCK_RESTORE_DELAY;
+  return true;
+}
+
+void AudioPlayer::restoreVolumeFromDuck() {
+  if (_duckingForSeek) {
+    _driver.setVolume((uint8_t)(_savedVolumeRaw >> 8), (uint8_t)(_savedVolumeRaw & 0xFF));
+    _duckingForSeek = false;
+  }
+}
+
+bool AudioPlayer::seekBySeconds(int deltaSeconds) {
+  int target = constrain((int)getDecodeTime() + deltaSeconds, 0,
+                         (int)getDurationSeconds());
+  return seekToSeconds((uint32_t)target);
 }
 
 // OPTIMIZED: Send proper end fill sequence

@@ -32,6 +32,9 @@
 #define VS1053_SCI_READ 0x03
 #define VS1053_SCI_WRITE 0x02
 
+// Status register bits
+#define VS1053_STATUS_SS_DO_NOT_JUMP 0x8000 // Header in decode, do not fast forward/rewind
+
 // Mode register bits
 #define VS1053_MODE_SM_DIFF 0x0001
 #define VS1053_MODE_SM_LAYER12 0x0002
@@ -102,11 +105,21 @@ public:
 
   // Audio control
   void setVolume(uint8_t left, uint8_t right);
+  // Raw SCI_VOL register: high byte = left attenuation, low byte = right
+  // attenuation, both in 0.5dB steps from max volume (datasheet 9.6.11).
+  uint16_t getVolumeRaw();
   uint16_t getDecodeTime();
   void resetDecodeTime();
   void setPlaySpeed(uint16_t speed);
   uint16_t getPlaySpeed();
   void cancel();
+  // Datasheet 10.5.4 "Fast Forward and Rewind without Audio": flushes the
+  // chip's in-flight decode state with endFillByte so a random-access jump
+  // in the underlying file lands at a clean point instead of cutting off
+  // audio the chip already has queued (starvation + a resync pop). Returns
+  // false if SS_DO_NOT_JUMP is set (a header is mid-decode; not safe to
+  // jump right now) - caller should not jump and may retry later.
+  bool prepareForSeek();
 
   // Test functions
   void sineTest(uint8_t freq, uint16_t duration);

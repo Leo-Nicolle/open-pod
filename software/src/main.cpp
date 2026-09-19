@@ -42,10 +42,28 @@ void onNavigationStateEvent(int eventType, void *eventData,
 unsigned long lastUIUpdate = 0;
 const unsigned long UI_UPDATE_INTERVAL = 50; // 20Hz
 
-// Center button hold for recalibration
+// Center button two-stage hold: short hold jumps to Now Playing, longer
+// hold (unchanged threshold) recalibrates the wheel. Both fire once per
+// physical hold.
 unsigned long centerHoldStart = 0;
-bool isHoldingCenter = false;
-const unsigned long RECALIB_HOLD_TIME = 2000; // 2 seconds
+bool centerHoldActive = false;
+bool jumpToNowPlayingFired = false;
+bool recalibFired = false;
+const unsigned long NOWPLAYING_JUMP_HOLD_TIME = 800; // 0.8 seconds
+const unsigned long RECALIB_HOLD_TIME = 2000;        // 2 seconds
+
+// Now Playing seek-mode: active while the countdown below hasn't elapsed.
+unsigned long seekModeLastInteraction = 0;
+const unsigned long SEEK_MODE_DELAY = 3000; // 3 seconds
+const int SEEK_SECONDS_PER_CLICK = 3;
+
+// Scrolling while seeking only previews a target position (moves the
+// displayed time/progress bar); the actual file seek is deferred until
+// scrolling pauses, so a long scrub doesn't re-seek the file on every tick.
+bool seekPending = false;
+int pendingSeekTarget = 0; // seconds, valid only while seekPending
+unsigned long lastSeekScrollTime = 0;
+const unsigned long SEEK_COMMIT_DELAY = 400; // ms of no scrolling
 
 // Audio progress tracking
 unsigned long lastProgressUpdate = 0;
@@ -53,19 +71,14 @@ const unsigned long PROGRESS_UPDATE_INTERVAL = 1000; // 1 second
 
 // Function declarations
 void handleWheelInput();
-void checkRecalibration();
+void checkCenterHold();
+void checkSeekModeTimeout();
+void commitPendingSeek();
 void drawTraceVisualization();
 bool shouldUpdateTelemetry();
 void sendTelemetry();
 void demoAnimations();
-void setupAudioCallbacks();
 void updateAudioProgress();
-
-// Audio system callbacks
-void onTrackStarted(const char *trackName, int duration);
-void onTrackEnded();
-void onPlaybackStateChanged(bool isPlaying);
-void onProgressChanged(int position);
 
 void setup() {
   Serial.begin(115200);
@@ -78,7 +91,6 @@ void setup() {
 
   // Initialize hardware
   player.setup();
-  setupAudioCallbacks();
   musicLookup.init();
   display.begin();
   Serial.println("✅ Display initialized!");
@@ -113,9 +125,11 @@ void setup() {
   state.loadCurrentRouteData(musicLookup);
 
   Serial.println("🎮 Ready! Controls:");
-  Serial.println("- Scroll: Navigate list");
-  Serial.println("- Center press: Select / enter");
-  Serial.println("- Top press: Back");
+  Serial.println("- Scroll: Navigate list / adjust volume / seek");
+  Serial.println("- Center press: Select / enter Now Playing seek-mode");
+  Serial.println("- Bottom press: Play/pause (Now Playing)");
+  Serial.println("- Top press: Back / exit seek-mode");
+  Serial.println("- Center hold 0.8s: Jump to Now Playing");
   Serial.println("- Center hold 2s: Recalibrate wheel");
   Serial.println("=====================================");
 }
@@ -132,7 +146,8 @@ void loop() {
 
   // Handle input
   handleWheelInput();
-  checkRecalibration();
+  checkCenterHold();
+  checkSeekModeTimeout();
 
   // Update UI (handles animations and event processing)
   ui.update();
@@ -165,31 +180,70 @@ void handleWheelInput() {
   // transition is still playing (tracked via EVENT_ANIMATION_STARTED/
   // FINISHED, see onNavigationStateEvent), rather than queuing/stacking it.
 
-  // Center press: enter menu / navigate forward (toggle playback in Now Playing)
+  bool onNowPlaying =
+      state.getCurrentRoute().type == Route_t::RouteType::NOW_PLAYING;
+
+  // Center press: enter menu / navigate forward, or enter seek-mode on Now
+  // Playing (play/pause moved to the bottom button, see below).
   if (wheel.wasCenterJustPressed()) {
     Serial.println("🔘 Center pressed");
-    if (state.getCurrentRoute().type == Route_t::RouteType::NOW_PLAYING) {
-      state.togglePlayback();
+    if (onNowPlaying) {
+      if (!state.getSeekModeActive()) {
+        state.enterSeekMode();
+        seekModeLastInteraction = millis();
+        seekPending = false; // start each seek session from the real position
+      }
     } else if (!navigationBusy) {
       state.goToSelected(musicLookup);
     }
   }
 
-  // Top press: go back one level
+  // Bottom press: play/pause on Now Playing
+  if (wheel.wasBottomJustPressed()) {
+    Serial.println("⬇️ Bottom pressed");
+    if (onNowPlaying) {
+      state.togglePlayback();
+    }
+  }
+
+  // Top press: exit seek-mode if active, otherwise go back one level
   if (wheel.wasTopJustPressed()) {
     Serial.println("⬆️ Top pressed - back");
-    if (!navigationBusy) {
+    if (onNowPlaying && state.getSeekModeActive()) {
+      commitPendingSeek(); // don't lose an in-flight scrub on exit
+      state.exitSeekMode();
+    } else if (!navigationBusy) {
       state.back(musicLookup);
     }
   }
 
-  // Scroll wheel navigation
+  // Scroll wheel: seek (seek-mode) / volume (Now Playing) / list navigation
   int scrollClicks = wheel.consumeScrollClicks();
   if (scrollClicks != 0) {
     Serial.print("🔄 Scroll: ");
-    // Serial.println(scrollClicks < 0 ? "Down" : "Up");
     Serial.println(scrollClicks);
-    if (abs(scrollClicks) > 1) {
+    if (onNowPlaying && state.getSeekModeActive()) {
+      // Scroll direction is reversed vs. list navigation: scrolling "up"
+      // seeks backward, "down" seeks forward.
+      int base = seekPending ? pendingSeekTarget
+                             : (int)player.audioPlayer.getDecodeTime();
+      int duration = (int)player.audioPlayer.getDurationSeconds();
+      pendingSeekTarget = constrain(
+          base - scrollClicks * SEEK_SECONDS_PER_CLICK, 0, duration);
+      seekPending = true;
+      state.updateProgress(pendingSeekTarget); // preview only, no file seek yet
+      seekModeLastInteraction = millis();
+      lastSeekScrollTime = millis();
+    } else if (onNowPlaying) {
+      // Reversed vs. list navigation, same as seeking above.
+      for (int i = 0; i < abs(scrollClicks); i++) {
+        if (scrollClicks < 0) {
+          state.increaseVolume();
+        } else {
+          state.decreaseVolume();
+        }
+      }
+    } else if (abs(scrollClicks) > 1) {
       if (scrollClicks < 0) {
         state.pageDown(); // Fast scroll down
       } else {
@@ -230,44 +284,61 @@ void handleWheelInput() {
   wasWheelTouched = wheelTouched;
 }
 
-void checkRecalibration() {
+void checkCenterHold() {
   if (wheel.isCenterPressed()) {
-    if (!isHoldingCenter) {
+    if (!centerHoldActive) {
+      centerHoldActive = true;
       centerHoldStart = millis();
-      isHoldingCenter = true;
-    } else if (millis() - centerHoldStart > RECALIB_HOLD_TIME) {
+      jumpToNowPlayingFired = false;
+      recalibFired = false;
+    }
+    unsigned long held = millis() - centerHoldStart;
+    if (!jumpToNowPlayingFired && held >= NOWPLAYING_JUMP_HOLD_TIME) {
+      jumpToNowPlayingFired = true;
+      if (!navigationBusy) {
+        Serial.println("⏭️ Jumping to Now Playing");
+        state.goToNowPlaying(musicLookup);
+      }
+    }
+    if (!recalibFired && held >= RECALIB_HOLD_TIME) {
+      recalibFired = true;
       Serial.println("🔁 Recalibrating wheel baseline...");
       wheel.takeBaseline();
-      isHoldingCenter = false;
     }
   } else {
-    isHoldingCenter = false;
+    centerHoldActive = false;
   }
 }
 
-void setupAudioCallbacks() {
-  // Set up audio system callbacks to update state
-  // These would be implemented in your PodPlayer class
+void commitPendingSeek() {
+  if (seekPending) {
+    player.audioPlayer.seekToSeconds((uint32_t)pendingSeekTarget);
+    seekPending = false;
+  }
+}
 
-  // Example callback setup (adjust based on your audio library):
-  /*
-  player.onTrackStarted([](const char* trackName, int duration) {
-    onTrackStarted(trackName, duration);
-  });
-
-  player.onTrackEnded([]() {
-    onTrackEnded();
-  });
-
-  player.onPlaybackStateChanged([](bool isPlaying) {
-    onPlaybackStateChanged(isPlaying);
-  });
-  */
+void checkSeekModeTimeout() {
+  if (!state.getSeekModeActive()) {
+    return;
+  }
+  // Commit the actual file seek once scrolling has paused, rather than on
+  // every scroll tick, so a long scrub doesn't repeatedly re-seek the file.
+  if (seekPending && millis() - lastSeekScrollTime >= SEEK_COMMIT_DELAY) {
+    commitPendingSeek();
+  }
+  if (millis() - seekModeLastInteraction > SEEK_MODE_DELAY) {
+    commitPendingSeek(); // don't lose an in-flight scrub on idle-exit
+    state.exitSeekMode();
+  }
 }
 
 void updateAudioProgress() {
-  // Update progress periodically if playing
-  if (state.getIsPlaying()) {
+  // Update progress periodically if playing. Skip while seek-mode is
+  // active: the scroll handler already previews the pending target
+  // position (bar + timestamp), and this periodic poll would otherwise
+  // fight it - overwriting the preview with the real, not-yet-committed
+  // decode time every second and making the bar jump back and forth.
+  if (state.getIsPlaying() && !state.getSeekModeActive()) {
     unsigned long now = millis();
     if (now - lastProgressUpdate >= PROGRESS_UPDATE_INTERVAL) {
       lastProgressUpdate = now;
@@ -277,32 +348,6 @@ void updateAudioProgress() {
                                               // EVENT_PROGRESS_UPDATED
     }
   }
-}
-
-// Audio system event handlers
-void onTrackStarted(const char *trackName, int duration) {
-  Serial.print("♪ Track started: ");
-  Serial.println(trackName);
-
-  state.setTrackDuration(duration);
-  // Note: The actual playback start should be triggered by
-  // state.startPlayback() This callback just confirms the audio system has
-  // started
-}
-
-void onTrackEnded() {
-  Serial.println("♪ Track ended");
-  state.notifyTrackEnded(musicLookup); // This will auto-advance or stop
-}
-
-void onPlaybackStateChanged(bool isPlaying) {
-  Serial.println(isPlaying ? "♪ Playback started" : "⏸ Playback paused");
-  // The state should already be updated via UI actions, but this confirms it
-}
-
-void onProgressChanged(int position) {
-  // This could be called by audio system for more frequent updates
-  state.updateProgress(position);
 }
 
 void drawTraceVisualization() {

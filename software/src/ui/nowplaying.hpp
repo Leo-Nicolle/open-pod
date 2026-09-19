@@ -15,6 +15,9 @@ private:
   int trackLength;
   /** @brief Current playback time in seconds */
   int progress;
+  bool seekModeActive;
+  int volumeLevel;         // 0-100
+  bool volumeOverlayVisible;
   // Layout constants
   static const int ALBUM_ART_X = 100;
   static const int ALBUM_ART_Y = 50;
@@ -29,6 +32,14 @@ private:
   static const int PROGRESS_BAR_STROKE = 1;
   static const int TIME_TEXT_Y = PROGRESS_BAR_Y - PROGRESS_BAR_HEIGHT - 10;
 
+  // Volume overlay: fixed-position bar in the gap between the header and
+  // the album art, drawn directly (not through the chunk-buffer scheme,
+  // since it's outside the animated slide-transition area).
+  static const int VOLUME_BAR_X = 60;
+  static const int VOLUME_BAR_Y = 40;
+  static const int VOLUME_BAR_WIDTH = 200;
+  static const int VOLUME_BAR_HEIGHT = 8;
+
 public:
   NowPlayingComponent();
 
@@ -40,6 +51,13 @@ public:
   void setProgress(int progress);
   void setTrackLength(int tl);
   void setPlayState(bool playing);
+  // Tints the progress bar fill while seek-mode is active.
+  void setSeekModeActive(bool active) { seekModeActive = active; }
+  void setVolumeOverlay(int level, bool visible) {
+    volumeLevel = level;
+    volumeOverlayVisible = visible;
+  }
+  void renderVolumeOverlay(ILI9341_GFX *display);
 
   void renderChunk(ILI9341_GFX *display, int x, int y,
                    int width = SCREEN_WIDTH, int tx = -1,
@@ -56,7 +74,8 @@ public:
 
 // Implementation
 NowPlayingComponent::NowPlayingComponent()
-    : currentTrack(""), isPlaying(false), trackLength(0), progress(0) {}
+    : currentTrack(""), isPlaying(false), trackLength(0), progress(0),
+      seekModeActive(false), volumeLevel(0), volumeOverlayVisible(false) {}
 
 void NowPlayingComponent::setTrack(const char *trackName) {
   currentTrack = trackName;
@@ -221,13 +240,15 @@ void NowPlayingComponent::renderChunk(ILI9341_GFX *display, int x,
             buffer[bufRow * actualWidth + bufCol] = COLOR_HIGHLIGHT;
           }
 
-          // Fill progress (overlay on track background)
+          // Fill progress (overlay on track background) - tinted while
+          // seek-mode is active so scrubbing has visible feedback.
+          uint16_t fillColor = seekModeActive ? COLOR_ACCENT : COLOR_PRIMARY;
           int progressEnd = barLeft + PROGRESS_BAR_STROKE + filledWidth;
           int fillStart = std::max(barLeft + PROGRESS_BAR_STROKE, x);
           int fillEnd = std::min(progressEnd, x + actualWidth);
           for (col = fillStart; col < fillEnd && col < trackEnd; ++col) {
             int bufCol = col - x;
-            buffer[bufRow * actualWidth + bufCol] = COLOR_PRIMARY;
+            buffer[bufRow * actualWidth + bufCol] = fillColor;
           }
         }
       }
@@ -277,6 +298,23 @@ void NowPlayingComponent::renderChunk(ILI9341_GFX *display, int x,
   g_buffers.swapBuffers();
 }
 
+
+void NowPlayingComponent::renderVolumeOverlay(ILI9341_GFX *display) {
+  if (!volumeOverlayVisible) {
+    display->fillRect(VOLUME_BAR_X - 2, VOLUME_BAR_Y - 2,
+                      VOLUME_BAR_WIDTH + 4, VOLUME_BAR_HEIGHT + 4,
+                      COLOR_BACKGROUND);
+    return;
+  }
+  int level = constrain(volumeLevel, 0, 100);
+  int filled = (VOLUME_BAR_WIDTH * level) / 100;
+  display->fillRect(VOLUME_BAR_X, VOLUME_BAR_Y, VOLUME_BAR_WIDTH,
+                    VOLUME_BAR_HEIGHT, COLOR_HIGHLIGHT);
+  display->fillRect(VOLUME_BAR_X, VOLUME_BAR_Y, filled, VOLUME_BAR_HEIGHT,
+                    COLOR_PRIMARY);
+  display->drawRect(VOLUME_BAR_X - 1, VOLUME_BAR_Y - 1, VOLUME_BAR_WIDTH + 2,
+                    VOLUME_BAR_HEIGHT + 2, COLOR_PRIMARY);
+}
 
 void NowPlayingComponent::updateNowPlaying(ILI9341_GFX *display) {
   // Only update the progress bar and time text areas for efficiency

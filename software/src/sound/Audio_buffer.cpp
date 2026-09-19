@@ -139,11 +139,11 @@ bool Audio_buffer::SDtoPSRAM() {
     if (!openFile()) {
       return false;
     }
-    uint32_t dataStart = filePos ? (uint32_t)filePos : skipID3Header(file);
+    _dataStart = filePos ? (uint32_t)filePos : skipID3Header(file);
     if (!filePos) {
-      _durationSeconds = estimateDurationSeconds(dataStart);
+      _durationSeconds = estimateDurationSeconds(_dataStart);
     }
-    file.seekSet(dataStart);
+    file.seekSet(_dataStart);
     Serial.printf("Loading file: %s, size: %d bytes, ~%lu s\n",
                   _currentFileName, file.size(), _durationSeconds);
   }
@@ -187,11 +187,11 @@ bool Audio_buffer::SDtoPSRAM() {
   
   return true;
 }
-bool Audio_buffer::load() {
+bool Audio_buffer::load(size_t targetBufferedBytes) {
   // Keep topping up the ring buffer (not just one 4KB chunk) so a slow
   // main-loop tick (display/wheel work) can't starve playback before the
   // next refill.
-  while (!_bufferFull && getPSRAMDataSize() < AUDIO_TARGET_BUFFERED_BYTES) {
+  while (!_bufferFull && getPSRAMDataSize() < targetBufferedBytes) {
     if (!SDtoPSRAM()) {
       break; // buffer full or end of file
     }
@@ -223,6 +223,29 @@ size_t Audio_buffer::readData(uint8_t *buffer, size_t maxLen) {
   _bufferFull = false;
 
   return toRead;
+}
+
+bool Audio_buffer::seekToSeconds(uint32_t targetSeconds) {
+  if (!file.isOpen() || _durationSeconds == 0) {
+    return false;
+  }
+  targetSeconds = min(targetSeconds, _durationSeconds);
+  uint32_t audioBytes = (fileSize > _dataStart) ? (fileSize - _dataStart) : 0;
+  if (audioBytes == 0) {
+    return false;
+  }
+  uint32_t bytesPerSecond = audioBytes / max(_durationSeconds, (uint32_t)1);
+  uint32_t targetPos = _dataStart + targetSeconds * bytesPerSecond;
+  if (targetPos >= fileSize) {
+    targetPos = fileSize > 0 ? fileSize - 1 : 0;
+  }
+  if (!file.seekSet(targetPos)) {
+    return false;
+  }
+  filePos = (int)targetPos;
+  // Discard stale pre-seek buffered audio.
+  resetRingBuffer();
+  return true;
 }
 
 size_t Audio_buffer::getPSRAMDataSize() {

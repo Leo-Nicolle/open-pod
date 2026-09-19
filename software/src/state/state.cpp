@@ -6,18 +6,30 @@
 State::State()
     : EventTarget(), elements(nullptr), totalElements(0), playingTrackIndex(-1),
       playingTrackId(-1), isPlaying(false), playbackPosition(0),
-      trackDuration(0), isAnimating(false), scrollAnimId(0),
-      transitionAnimId(0), isRotatedMode(false) {}
+      trackDuration(0), playingListParentType(Route_t::ROOT),
+      playingListEntityId(0), playingListTotalTracks(0), volume(92),
+      seekModeActive(false), isAnimating(false), scrollAnimId(0),
+      transitionAnimId(0), isRotatedMode(false) {
+  playingTrackName[0] = '\0';
+}
 
-void State::startPlayback(int trackIndex, uint32_t trackId) {
+void State::startPlayback(int trackIndex, uint32_t trackId,
+                          MusicLookup &musicLookup) {
   if (trackIndex == -1) {
     trackIndex = selectedIndex;
   }
-  if (trackIndex >= 0 && trackIndex < totalElements) {
+  // Bounds-check against the captured source-list size, not whatever list is
+  // currently displayed - the user may have browsed elsewhere since this
+  // list was loaded (see playingListTotalTracks).
+  if (trackIndex >= 0 && trackIndex < playingListTotalTracks) {
     playingTrackIndex = trackIndex;
     playingTrackId = (int)trackId;
     isPlaying = true;
     playbackPosition = 0;
+    if (!musicLookup.getTrackName(trackId, playingTrackName,
+                                  sizeof(playingTrackName))) {
+      playingTrackName[0] = '\0';
+    }
     PlaybackEvent event = {trackIndex, (int)trackId, getPlayingTrackName(),
                            true};
     emitEvent(EVENT_PLAYBACK_STARTED, &event);
@@ -71,11 +83,11 @@ void State::notifyTrackEnded(MusicLookup &musicLookup) {
     PlaybackEvent event = {playingTrackIndex, playingTrackId,
                            getPlayingTrackName(), false};
     emitEvent(EVENT_TRACK_ENDED, &event);
-    if (playingTrackIndex < totalElements - 1) {
+    if (playingTrackIndex < playingListTotalTracks - 1) {
       int nextIndex = playingTrackIndex + 1;
       uint32_t nextTrackId = resolveTrackId(musicLookup, nextIndex);
       if (nextTrackId != UINT32_MAX) {
-        startPlayback(nextIndex, nextTrackId);
+        startPlayback(nextIndex, nextTrackId, musicLookup);
       } else {
         stopPlayback();
       }
@@ -104,8 +116,8 @@ const char *State::getCurrentTrackName() const {
 }
 
 const char *State::getPlayingTrackName() const {
-  if (playingTrackIndex >= 0 && playingTrackIndex < totalElements) {
-    return elements[playingTrackIndex];
+  if (playingTrackIndex >= 0 && playingTrackName[0] != '\0') {
+    return playingTrackName;
   }
   return nullptr;
 }
@@ -389,7 +401,16 @@ void State::goToSelected(MusicLookup &musicLookup) {
     uint32_t trackId = getSelectedEntityId(musicLookup);
     if (trackId == UINT32_MAX)
       break;
-    startPlayback(selectedIndex, trackId);
+    // Capture the source-list context now, while currentRoute is still the
+    // TRACKS route being played from - this is the only point it's reliably
+    // available and must not be re-derived later (see notifyTrackEnded /
+    // resolveTrackId).
+    playingListEntityId = currentRoute.entityId;
+    playingListTotalTracks = totalElements;
+    playingListParentType = (router.getDepth() > 0)
+        ? router.routeStack[router.getDepth() - 1].type
+        : Route_t::ROOT;
+    startPlayback(selectedIndex, trackId, musicLookup);
     newRouteType = Route_t::NOW_PLAYING;
     break;
   }
@@ -473,6 +494,48 @@ void State::backToMain(MusicLookup &musicLookup) {
   emitEvent(EVENT_ROUTE_CHANGED, &event);
 }
 
+void State::goToNowPlaying(MusicLookup &musicLookup) {
+  Route_t::RouteType oldRouteType = router.getCurrentRoute().type;
+  if (oldRouteType == Route_t::NOW_PLAYING) {
+    return; // Already there - no-op, same guard style as goToSelected.
+  }
+  router.saveCurrentSelection(selectedIndex, topVisibleIndex);
+  router.pushRoute(Route_t::NOW_PLAYING);
+  RouteChangedEvent event = {oldRouteType, Route_t::NOW_PLAYING, 0, 0, 0,
+                             nullptr,      true,                router.canGoBack()};
+  setAnimating(true);
+  emitEvent(EVENT_ROUTE_CHANGED, &event);
+}
+
+void State::setVolume(int vol) {
+  vol = constrain(vol, 0, 100);
+  if (vol != volume) {
+    volume = vol;
+    VolumeEvent event = {volume};
+    emitEvent(EVENT_VOLUME_CHANGED, &event);
+  }
+}
+
+void State::increaseVolume(int step) { setVolume(volume + step); }
+
+void State::decreaseVolume(int step) { setVolume(volume - step); }
+
+void State::enterSeekMode() {
+  if (!seekModeActive) {
+    seekModeActive = true;
+    SeekModeEvent event = {true};
+    emitEvent(EVENT_SEEK_MODE_CHANGED, &event);
+  }
+}
+
+void State::exitSeekMode() {
+  if (seekModeActive) {
+    seekModeActive = false;
+    SeekModeEvent event = {false};
+    emitEvent(EVENT_SEEK_MODE_CHANGED, &event);
+  }
+}
+
 uint32_t State::getSelectedEntityId(MusicLookup &musicLookup) {
   Route_t &currentRoute = router.getCurrentRoute();
 
@@ -529,26 +592,18 @@ uint32_t State::getSelectedEntityId(MusicLookup &musicLookup) {
 }
 
 uint32_t State::resolveTrackId(MusicLookup &musicLookup, int index) {
-  // Called while playing (currentRoute == NOW_PLAYING); the TRACKS route
-  // that was playing lives one level below it on the stack.
-  int depth = router.getDepth();
-  if (depth < 1 || router.routeStack[depth].type != Route_t::NOW_PLAYING) {
-    return UINT32_MAX; // Not found - 0 is a valid id, can't mean "not found"
-  }
-  Route_t &tracksRoute = router.routeStack[depth - 1];
-  if (tracksRoute.type != Route_t::TRACKS || depth < 2) {
-    return UINT32_MAX;
-  }
-  Route_t &parentRoute = router.routeStack[depth - 2];
-  switch (parentRoute.type) {
+  // Uses the source-list context captured at playback-start time (see
+  // goToSelected's TRACKS case), not the live router stack - the user may
+  // have navigated elsewhere since the track started playing.
+  switch (playingListParentType) {
   case Route_t::ARTISTS:
-    return musicLookup.getTrackIdByArtistAtIndex(tracksRoute.entityId, index);
+    return musicLookup.getTrackIdByArtistAtIndex(playingListEntityId, index);
   case Route_t::ALBUMS:
-    return musicLookup.getTrackIdByAlbumAtIndex(tracksRoute.entityId, index);
+    return musicLookup.getTrackIdByAlbumAtIndex(playingListEntityId, index);
   case Route_t::GENRES:
-    return musicLookup.getTrackIdByGenreAtIndex(tracksRoute.entityId, index);
+    return musicLookup.getTrackIdByGenreAtIndex(playingListEntityId, index);
   default:
-    return UINT32_MAX;
+    return UINT32_MAX; // Not found - 0 is a valid id, can't mean "not found"
   }
 }
 

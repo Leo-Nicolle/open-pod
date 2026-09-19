@@ -196,6 +196,8 @@ void VS1053_driver::setVolume(uint8_t left, uint8_t right) {
   writeRegister(VS1053_REG_VOLUME, (left << 8) | right);
 }
 
+uint16_t VS1053_driver::getVolumeRaw() { return readRegister(VS1053_REG_VOLUME); }
+
 uint16_t VS1053_driver::getDecodeTime() {
   return readRegister(VS1053_REG_DECODETIME);
 }
@@ -248,6 +250,23 @@ void VS1053_driver::sineTest(uint8_t freq, uint16_t duration) {
 
 void VS1053_driver::cancel() {
   writeRegister(VS1053_REG_MODE, VS1053_MODE_SM_SDINEW | VS1053_MODE_SM_CANCEL);
+}
+
+bool VS1053_driver::prepareForSeek() {
+  uint16_t status = readRegister(VS1053_REG_STATUS);
+  if (status & VS1053_STATUS_SS_DO_NOT_JUMP) {
+    return false;
+  }
+
+  writeRegister(VS1053_REG_WRAMADDR, VS1053_PARA_ENDFILLBYTE);
+  uint8_t endFillByte = readRegister(VS1053_REG_WRAM) & 0xFF;
+
+  uint8_t fillBuf[32];
+  memset(fillBuf, endFillByte, sizeof(fillBuf));
+  for (int sent = 0; sent < 2048; sent += sizeof(fillBuf)) {
+    sendData(fillBuf, sizeof(fillBuf));
+  }
+  return true;
 }
 
 void VS1053_driver::dumpRegisters() {

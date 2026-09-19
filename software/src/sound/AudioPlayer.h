@@ -50,6 +50,13 @@ public:
   void forward();
   void rewind();
 
+  // Seek support (approximate; see Audio_buffer::seekToSeconds)
+  bool seekToSeconds(uint32_t targetSeconds);
+  bool seekBySeconds(int deltaSeconds);
+
+  // One-shot: true if the current track hit end-of-data since the last call.
+  bool consumeTrackEnded();
+
   VS1053_driver &getDriver() { return _driver; }
   // Audio settings
   void setVolume(uint8_t left, uint8_t right);
@@ -97,6 +104,17 @@ private:
   bool _usingInterrupts;
   bool _needsFeeding;
   uint8_t _interruptType;
+  bool _trackEnded = false;
+  uint32_t _seekOffsetSeconds = 0;
+
+  // Volume ducking around a seek (datasheet 10.5.4 recommends lowering
+  // volume during fast forward/rewind to mask the decoder resync).
+  bool _duckingForSeek = false;
+  uint16_t _savedVolumeRaw = 0;
+  unsigned long _duckRestoreAt = 0;
+  static const uint8_t SEEK_DUCK_ATTENUATION = 20; // 0.5dB steps => ~10dB
+  static const unsigned long SEEK_DUCK_RESTORE_DELAY = 150; // ms
+  void restoreVolumeFromDuck();
 
   // Buffer for audio data
   uint8_t _feedBuffer[AUDIO_DATABUFFERLEN];

@@ -12,6 +12,7 @@ class PodPlayer {
     void handlePlaybackStopped(const PlaybackEvent* event);
     void handlePlaybackPaused(const PlaybackEvent* event);
     void handlePlaybackResumed(const PlaybackEvent* event);
+    void handleVolumeChanged(const VolumeEvent* event);
     char currentPath[256]; // Current track path for playback
 
     // Event handler - must be static to use as callback

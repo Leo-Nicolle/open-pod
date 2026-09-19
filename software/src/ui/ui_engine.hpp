@@ -26,6 +26,10 @@ private:
   int lastDrawnOffset;
   bool animatingLeftToRight; // Track direction of last transition
 
+  // Volume overlay auto-hide: 0 means no overlay currently shown.
+  unsigned long volumeOverlayHideAt = 0;
+  static const unsigned long VOLUME_OVERLAY_HIDE_DELAY = 1500; // ms
+
   // Event handler - must be static to use as callback
   static void onStateEvent(int eventType, void *eventData, EventTarget *source);
 
@@ -47,6 +51,8 @@ private:
   void handleAnimationFinished(const AnimationEvent *event);
   void handleTrackListUpdated(const ListEvent *event);
   void handleTrackDurationChanged(int *duration);
+  void handleVolumeChanged(const VolumeEvent *event);
+  void handleSeekModeChanged(const SeekModeEvent *event);
 
 public:
   OpenPodUIEngine(ILI9341_GFX *disp);
@@ -134,6 +140,15 @@ void OpenPodUIEngine::hookToEvents() {
 bool OpenPodUIEngine::update() {
   // Update animation manager
   bool result = animManager.update();
+
+  if (volumeOverlayHideAt != 0 && millis() >= volumeOverlayHideAt) {
+    volumeOverlayHideAt = 0;
+    nowPlaying.setVolumeOverlay(0, false);
+    if (state.getCurrentRoute().type == Route_t::RouteType::NOW_PLAYING) {
+      nowPlaying.renderVolumeOverlay(display);
+    }
+  }
+
   return result;
 }
 
@@ -201,6 +216,14 @@ void OpenPodUIEngine::onStateEvent(int eventType, void *eventData,
 
   case EVENT_TRACK_DURATION_CHANGED:
     instance->handleTrackDurationChanged((int *)eventData);
+    break;
+
+  case EVENT_VOLUME_CHANGED:
+    instance->handleVolumeChanged((VolumeEvent *)eventData);
+    break;
+
+  case EVENT_SEEK_MODE_CHANGED:
+    instance->handleSeekModeChanged((SeekModeEvent *)eventData);
     break;
 
   default:
@@ -391,6 +414,21 @@ void OpenPodUIEngine::handleTrackDurationChanged(int *duration) {
     renderNowPlaying();
   }
 }
+void OpenPodUIEngine::handleVolumeChanged(const VolumeEvent *event) {
+  nowPlaying.setVolumeOverlay(event->volume, true);
+  volumeOverlayHideAt = millis() + VOLUME_OVERLAY_HIDE_DELAY;
+  if (state.getCurrentRoute().type == Route_t::RouteType::NOW_PLAYING) {
+    nowPlaying.renderVolumeOverlay(display);
+  }
+}
+
+void OpenPodUIEngine::handleSeekModeChanged(const SeekModeEvent *event) {
+  nowPlaying.setSeekModeActive(event->active);
+  if (state.getCurrentRoute().type == Route_t::RouteType::NOW_PLAYING) {
+    renderNowPlaying();
+  }
+}
+
 // Rendering methods (mostly unchanged, but now use state getters)
 void OpenPodUIEngine::renderCurrentState() {
   if (state.getIsAnimating()) {
@@ -424,6 +462,10 @@ void OpenPodUIEngine::renderNowPlaying(int xOffset, int width) {
   nowPlaying.setProgress(state.getPlaybackPosition());
   nowPlaying.setPlayState(state.getIsPlaying());
   nowPlaying.render(display, xOffset, width);
+
+  if (volumeOverlayHideAt != 0) {
+    nowPlaying.renderVolumeOverlay(display);
+  }
 }
 
 void OpenPodUIEngine::renderTrackListArea() {

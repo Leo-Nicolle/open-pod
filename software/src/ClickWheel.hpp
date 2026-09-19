@@ -34,8 +34,11 @@ private:
   bool lastCenterPressed = false;
   bool topPressed = false;       // TOP electrode currently touched (raw)
   bool topPressFired = false;    // one-shot: a top TAP completed (fires on release)
+  bool bottomPressed = false;    // BOTTOM electrode currently touched (raw)
+  bool bottomPressFired = false; // one-shot: a bottom TAP completed (fires on release)
   bool wheelTouched = false;     // any wheel electrode currently touched
   bool topTapCandidate = false;  // current wheel touch started on TOP
+  bool bottomTapCandidate = false; // current wheel touch started on BOTTOM
   
   // Wheel state
   int16_t wheelBaseline[12]; // Full baseline array for all 12 electrodes
@@ -175,28 +178,39 @@ public:
     uint16_t touched = mpr121->touched();
     centerPressed = (touched & (1 << CENTER_ELECTRODE)) != 0;
     bool topTouched = (touched & (1 << TOP)) != 0;
+    bool bottomTouched = (touched & (1 << BOTTOM)) != 0;
     const uint16_t wheelMask =
         (1 << RIGHT) | (1 << TOP) | (1 << BOTTOM) | (1 << LEFT);
     bool wheelTouchedNow = (touched & wheelMask) != 0;
 
-    // Top TAP detection:
+    // Top/Bottom TAP detection:
     // - a press is only registered when the touch ENDS,
-    // - and only if the touch STARTED on TOP (a roll/scroll that starts
-    //   elsewhere or rolls off TOP cancels the candidate).
+    // - and only if the touch STARTED on that electrode (a roll/scroll that
+    //   starts elsewhere or rolls off it cancels the candidate).
     topPressFired = false;
+    bottomPressFired = false;
     if (wheelTouchedNow && !wheelTouched) {
       // wheel touch just started
       topTapCandidate = topTouched;
-    } else if (wheelTouchedNow && wheelTouched && topTapCandidate && !topTouched) {
-      // finger rolled off TOP -> it's a scroll, not a tap
-      topTapCandidate = false;
+      bottomTapCandidate = bottomTouched;
+    } else if (wheelTouchedNow && wheelTouched) {
+      if (topTapCandidate && !topTouched) {
+        // finger rolled off TOP -> it's a scroll, not a tap
+        topTapCandidate = false;
+      }
+      if (bottomTapCandidate && !bottomTouched) {
+        bottomTapCandidate = false;
+      }
     } else if (!wheelTouchedNow && wheelTouched) {
-      // wheel touch ended -> confirm a tap only if it started on TOP
+      // wheel touch ended -> confirm a tap only if it started on that electrode
       topPressFired = topTapCandidate;
+      bottomPressFired = bottomTapCandidate;
       topTapCandidate = false;
+      bottomTapCandidate = false;
     }
     wheelTouched = wheelTouchedNow;
     topPressed = topTouched;
+    bottomPressed = bottomTouched;
 
     // Process wheel increment
     int16_t wheelIncrement = getWheelIncrement();
@@ -272,6 +286,8 @@ public:
   bool wasCenterJustReleased() const { return !centerPressed && lastCenterPressed; }
   bool isTopPressed() const { return topPressed; }
   bool wasTopJustPressed() const { return topPressFired; }
+  bool isBottomPressed() const { return bottomPressed; }
+  bool wasBottomJustPressed() const { return bottomPressFired; }
   bool isCalibrating() const { return calibrationState == CALIB_RUNNING; }
   
   // Scroll interface
