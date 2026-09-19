@@ -42,6 +42,11 @@ inline void registerSampleCatalog() {
       std::make_pair(2u, std::string("/music/artist_two/track_two.flac")));
   fs.addFile("/openpod/path_index.bin", buildStringIndex(paths));
 
+  std::vector<std::pair<uint32_t, uint16_t>> durations;
+  durations.push_back(std::make_pair(1u, (uint16_t)200));
+  durations.push_back(std::make_pair(2u, (uint16_t)180));
+  fs.addFile("/openpod/duration_index.bin", buildDurationIndex(durations));
+
   std::vector<std::pair<uint32_t, std::vector<uint32_t>>> artist_to_albums;
   artist_to_albums.push_back(std::make_pair(1u, std::vector<uint32_t>{1}));
   artist_to_albums.push_back(std::make_pair(2u, std::vector<uint32_t>{2}));

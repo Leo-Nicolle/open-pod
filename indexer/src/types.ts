@@ -86,6 +86,11 @@ export type SerializedStringIndex = {
   ids: number[];
 };
 
+export type SerializedDurationIndex = {
+  entryCount: number;
+  durations: number[]; // seconds, indexed by track id
+};
+
 export type SerializedRelationshipMap = {
   entryCount: number;
   totalTargetCount: number;

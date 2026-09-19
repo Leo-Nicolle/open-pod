@@ -42,7 +42,10 @@ public:
   // Initialization
   bool begin(uint32_t sdFreq = 25000000);
 
-  void setFileName(const char *filename);
+  // knownDurationSeconds, when > 0, comes from the indexer's precomputed
+  // duration index and short-circuits estimateDurationSeconds()'s on-device
+  // MP3-frame-scan guess (which doesn't understand FLAC at all).
+  void setFileName(const char *filename, uint32_t knownDurationSeconds = 0);
   // Tops the ring buffer up to targetBufferedBytes (default: the full
   // streaming target). Pass a smaller value for a bounded refill, e.g.
   // right after a seek (see AUDIO_SEEK_PRIME_BYTES).

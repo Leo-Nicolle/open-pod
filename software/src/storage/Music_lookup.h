@@ -24,6 +24,15 @@ typedef struct {
   uint32_t total_target_count; // Total number of target IDs
 } relation_header_t;
 
+// Structure for the duration index: a flat, fixed-width array of uint16
+// seconds directly indexed by (dense, 0-based) track id - no string data or
+// offset table like index_header_t's format, since every entry is the same
+// size.
+typedef struct {
+  uint32_t baseOffset;  // PSRAM address of the first uint16 entry
+  uint32_t entry_count; // Number of entries
+} duration_index_t;
+
 // Structure for lookup results
 typedef struct {
   uint32_t address; // PSRAM address of data
@@ -109,6 +118,7 @@ private:
   const char *genre_index_path = "/openpod/genre_index.bin";
   const char *track_index_path = "/openpod/track_index.bin";
   const char *path_index_path = "/openpod/path_index.bin";
+  const char *duration_index_path = "/openpod/duration_index.bin";
 
   // SD card and file handling
   SdFat sd;
@@ -126,12 +136,16 @@ private:
   index_header_t genre_index_h;
   index_header_t track_index_h;
   index_header_t path_index_h;
+  duration_index_t duration_index_h;
 
   // Private helper methods
   bool loadIndexFromSDCard(const char *filename, uint32_t &base_address,
                            index_header_t &header);
   bool loadRelationFromSDCard(const char *filename, uint32_t &base_address,
                               relation_header_t &header);
+  bool loadDurationIndexFromSDCard(const char *filename,
+                                   uint32_t &base_address,
+                                   duration_index_t &header);
   bool loadDataFromSDCard(uint32_t base_address, uint32_t size);
   int32_t binarySearch(uint32_t id, uint32_t baseAddress, uint32_t count);
   uint32_t readLittleEndian32(FsFile &file);
@@ -167,6 +181,9 @@ public:
   bool getAlbumName(uint32_t album_id, char *buffer, uint32_t buffer_size);
   bool getGenreName(uint32_t genre_id, char *buffer, uint32_t buffer_size);
   bool getTrackName(uint32_t track_id, char *buffer, uint32_t buffer_size);
+
+  // Duration lookup (seconds), O(1) direct index - returns 0 if unavailable
+  uint32_t getTrackDurationSeconds(uint32_t track_id);
 
   // Consolidated relationship lookups - new signature
   uint32_t getTracksByArtist(uint32_t artist_id, char *buffer,

@@ -92,4 +92,33 @@ inline std::vector<uint8_t> buildRelation(
   return out;
 }
 
+// Mirrors indexer exportDurationIndexToBinary:
+// [entry_count][uint16 seconds]*entry_count, directly indexed by track id
+// (gaps up to the highest id default to 0, same as the indexer).
+inline std::vector<uint8_t>
+buildDurationIndex(const std::vector<std::pair<uint32_t, uint16_t>> &entries) {
+  uint32_t maxId = 0;
+  bool any = false;
+  for (size_t i = 0; i < entries.size(); i++) {
+    if (!any || entries[i].first > maxId) {
+      maxId = entries[i].first;
+    }
+    any = true;
+  }
+  uint32_t entryCount = any ? maxId + 1 : 0;
+
+  std::vector<uint16_t> durations(entryCount, 0);
+  for (size_t i = 0; i < entries.size(); i++) {
+    durations[entries[i].first] = entries[i].second;
+  }
+
+  std::vector<uint8_t> out;
+  pushU32(out, entryCount);
+  for (size_t i = 0; i < durations.size(); i++) {
+    out.push_back((uint8_t)(durations[i] & 0xFF));
+    out.push_back((uint8_t)((durations[i] >> 8) & 0xFF));
+  }
+  return out;
+}
+
 } // namespace openpod_test

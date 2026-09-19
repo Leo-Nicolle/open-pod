@@ -32,7 +32,10 @@ public:
   bool enablePSRAM(bool enable = true);
   bool isPSRAMAvailable();
 
-  bool startPlaying(const char *filename);
+  // knownDurationSeconds, when > 0, comes from the indexer's precomputed
+  // duration index and is forwarded to Audio_buffer::setFileName() to
+  // short-circuit the on-device MP3-frame-scan duration guess.
+  bool startPlaying(const char *filename, uint32_t knownDurationSeconds = 0);
   bool
   startPlayingSimple(const char *filename); 
   bool startPlayingEnhanced(

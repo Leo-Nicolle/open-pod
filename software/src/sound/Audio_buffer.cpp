@@ -107,7 +107,8 @@ uint32_t Audio_buffer::estimateDurationSeconds(uint32_t dataStart) {
   return 0;
 }
 
-void Audio_buffer::setFileName(const char *filename) {
+void Audio_buffer::setFileName(const char *filename,
+                               uint32_t knownDurationSeconds) {
   if (file.isOpen()) {
     file.close();
   }
@@ -115,7 +116,7 @@ void Audio_buffer::setFileName(const char *filename) {
   _currentFileName[sizeof(_currentFileName) - 1] =
       '\0';    // Ensure null-termination
   filePos = 0; // Reset file position
-  _durationSeconds = 0;
+  _durationSeconds = knownDurationSeconds;
 }
 bool Audio_buffer::openFile() {
   if (!file.open(_currentFileName, O_RDONLY)) {
@@ -140,7 +141,10 @@ bool Audio_buffer::SDtoPSRAM() {
       return false;
     }
     _dataStart = filePos ? (uint32_t)filePos : skipID3Header(file);
-    if (!filePos) {
+    // Only fall back to the on-device MP3-frame-scan guess if the caller
+    // didn't already supply a known duration (setFileName's
+    // knownDurationSeconds) - that guess doesn't understand FLAC at all.
+    if (!filePos && _durationSeconds == 0) {
       _durationSeconds = estimateDurationSeconds(_dataStart);
     }
     file.seekSet(_dataStart);

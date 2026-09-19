@@ -11,7 +11,7 @@ import type { CrawlIndex } from "../src/types";
 import { readFile, readdir } from "fs/promises";
 import path from "path";
 import { __dirname } from "./utils";
-import { exportIndexesToBinary, importStringIndexFromBinary, importRelationshipMapFromBinary } from "../src/music-indexes";
+import { exportIndexesToBinary, importStringIndexFromBinary, importRelationshipMapFromBinary, importDurationIndexFromBinary } from "../src/music-indexes";
 
 const keys = [
   "genre_to_tracks",
@@ -25,6 +25,7 @@ const keys = [
   "genre_index",
   "track_index",
   "path_index",
+  "duration_index",
 ];
 
 describe("Binary Serialization Round-trip", () => {
@@ -66,6 +67,11 @@ describe("Binary Serialization Round-trip", () => {
       expect(imported).toHaveProperty("sourceIds");
       expect(imported).toHaveProperty("targetCounts");
       expect(imported).toHaveProperty("targetIds");
+    } else if (key === "duration_index") {
+      const imported = importDurationIndexFromBinary(binaries[key]);
+      expect(imported).toHaveProperty("entryCount");
+      expect(imported).toHaveProperty("durations");
+      expect(imported.durations.length).toBe(imported.entryCount);
     } else {
       // String indexes
       const imported = importStringIndexFromBinary(binaries[key]);

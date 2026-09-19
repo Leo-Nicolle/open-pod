@@ -1514,83 +1514,83 @@
   "indexToPath": [
     [
       0,
-      "Swift Guad/Hécatombe 2.0/20 Bombe à retardement.flac"
+      "Swift Guad/Hécatombe 2.0/20 Bombe à retardement.mp3"
     ],
     [
       1,
-      "Swift Guad/Hécatombe 2.0/19 Le Point.flac"
+      "Swift Guad/Hécatombe 2.0/19 Le Point.mp3"
     ],
     [
       2,
-      "Swift Guad/Hécatombe 2.0/18 Mon calvaire.flac"
+      "Swift Guad/Hécatombe 2.0/18 Mon calvaire.mp3"
     ],
     [
       3,
-      "Swift Guad/Hécatombe 2.0/17 Dernière lettre.flac"
+      "Swift Guad/Hécatombe 2.0/17 Dernière lettre.mp3"
     ],
     [
       4,
-      "Swift Guad/Hécatombe 2.0/16 Phone Call.flac"
+      "Swift Guad/Hécatombe 2.0/16 Phone Call.mp3"
     ],
     [
       5,
-      "Swift Guad/Hécatombe 2.0/15 Mise à jour.flac"
+      "Swift Guad/Hécatombe 2.0/15 Mise à jour.mp3"
     ],
     [
       6,
-      "Swift Guad/Hécatombe 2.0/14 Révolution.flac"
+      "Swift Guad/Hécatombe 2.0/14 Révolution.mp3"
     ],
     [
       7,
-      "Swift Guad/Hécatombe 2.0/13 Paradox.flac"
+      "Swift Guad/Hécatombe 2.0/13 Paradox.mp3"
     ],
     [
       8,
-      "Swift Guad/Hécatombe 2.0/12 Pour les p'tits.flac"
+      "Swift Guad/Hécatombe 2.0/12 Pour les p'tits.mp3"
     ],
     [
       9,
-      "Swift Guad/Hécatombe 2.0/11 I Try.flac"
+      "Swift Guad/Hécatombe 2.0/11 I Try.mp3"
     ],
     [
       10,
-      "Swift Guad/Hécatombe 2.0/10 Enfant soldat (2ème rafale).flac"
+      "Swift Guad/Hécatombe 2.0/10 Enfant soldat (2ème rafale).mp3"
     ],
     [
       11,
-      "Swift Guad/Hécatombe 2.0/09 Maman pleure pas.flac"
+      "Swift Guad/Hécatombe 2.0/09 Maman pleure pas.mp3"
     ],
     [
       12,
-      "Swift Guad/Hécatombe 2.0/08 Énervé.flac"
+      "Swift Guad/Hécatombe 2.0/08 Énervé.mp3"
     ],
     [
       13,
-      "Swift Guad/Hécatombe 2.0/07 L'Ogre et l'Enfant.flac"
+      "Swift Guad/Hécatombe 2.0/07 L'Ogre et l'Enfant.mp3"
     ],
     [
       14,
-      "Swift Guad/Hécatombe 2.0/06 Jour de pluie.flac"
+      "Swift Guad/Hécatombe 2.0/06 Jour de pluie.mp3"
     ],
     [
       15,
-      "Swift Guad/Hécatombe 2.0/05 Skyzophrène.flac"
+      "Swift Guad/Hécatombe 2.0/05 Skyzophrène.mp3"
     ],
     [
       16,
-      "Swift Guad/Hécatombe 2.0/04 Besoin de clarté.flac"
+      "Swift Guad/Hécatombe 2.0/04 Besoin de clarté.mp3"
     ],
     [
       17,
-      "Swift Guad/Hécatombe 2.0/03 Hip Hop Fat.flac"
+      "Swift Guad/Hécatombe 2.0/03 Hip Hop Fat.mp3"
     ],
     [
       18,
-      "Swift Guad/Hécatombe 2.0/02 Pourquoi _.flac"
+      "Swift Guad/Hécatombe 2.0/02 Pourquoi _.mp3"
     ],
     [
       19,
-      "Swift Guad/Hécatombe 2.0/01 La Montreuilloise.flac"
+      "Swift Guad/Hécatombe 2.0/01 La Montreuilloise.mp3"
     ],
     [
       20,
@@ -4200,7 +4200,7 @@
         "genre": "Unknown Genre",
         "index": 20,
         "year": 2014,
-        "duration": 221.52
+        "duration": 221.57061224489797
       }
     ],
     [
@@ -4212,7 +4212,7 @@
         "genre": "Unknown Genre",
         "index": 19,
         "year": 2014,
-        "duration": 159.02666666666667
+        "duration": 159.05959183673468
       }
     ],
     [
@@ -4224,7 +4224,7 @@
         "genre": "Unknown Genre",
         "index": 18,
         "year": 2014,
-        "duration": 243.78666666666666
+        "duration": 243.8269387755102
       }
     ],
     [
@@ -4236,7 +4236,7 @@
         "genre": "Unknown Genre",
         "index": 17,
         "year": 2014,
-        "duration": 132.42666666666668
+        "duration": 132.46693877551022
       }
     ],
     [
@@ -4248,7 +4248,7 @@
         "genre": "Unknown Genre",
         "index": 16,
         "year": 2014,
-        "duration": 280.41333333333336
+        "duration": 280.45061224489797
       }
     ],
     [
@@ -4260,7 +4260,7 @@
         "genre": "Unknown Genre",
         "index": 15,
         "year": 2014,
-        "duration": 304.3066666666667
+        "duration": 304.3526530612245
       }
     ],
     [
@@ -4272,7 +4272,7 @@
         "genre": "Unknown Genre",
         "index": 14,
         "year": 2014,
-        "duration": 198.85333333333332
+        "duration": 198.89632653061224
       }
     ],
     [
@@ -4284,7 +4284,7 @@
         "genre": "Unknown Genre",
         "index": 13,
         "year": 2014,
-        "duration": 206.12
+        "duration": 206.15836734693877
       }
     ],
     [
@@ -4296,7 +4296,7 @@
         "genre": "Unknown Genre",
         "index": 12,
         "year": 2014,
-        "duration": 237.09333333333333
+        "duration": 236.22530612244898
       }
     ],
     [
@@ -4308,7 +4308,7 @@
         "genre": "Unknown Genre",
         "index": 11,
         "year": 2014,
-        "duration": 239.45333333333335
+        "duration": 239.49061224489796
       }
     ],
     [
@@ -4320,7 +4320,7 @@
         "genre": "Unknown Genre",
         "index": 10,
         "year": 2014,
-        "duration": 257.6933333333333
+        "duration": 257.72408163265305
       }
     ],
     [
@@ -4332,7 +4332,7 @@
         "genre": "Unknown Genre",
         "index": 9,
         "year": 2014,
-        "duration": 190.32
+        "duration": 190.3542857142857
       }
     ],
     [
@@ -4344,7 +4344,7 @@
         "genre": "Unknown Genre",
         "index": 8,
         "year": 2014,
-        "duration": 101.85333333333334
+        "duration": 101.90367346938775
       }
     ],
     [
@@ -4356,7 +4356,7 @@
         "genre": "Unknown Genre",
         "index": 7,
         "year": 2014,
-        "duration": 154.96
+        "duration": 155.01061224489797
       }
     ],
     [
@@ -4368,7 +4368,7 @@
         "genre": "Unknown Genre",
         "index": 6,
         "year": 2014,
-        "duration": 231.96
+        "duration": 231.9934693877551
       }
     ],
     [
@@ -4380,7 +4380,7 @@
         "genre": "Unknown Genre",
         "index": 5,
         "year": 2014,
-        "duration": 261.7733333333333
+        "duration": 261.825306122449
       }
     ],
     [
@@ -4392,7 +4392,7 @@
         "genre": "Unknown Genre",
         "index": 4,
         "year": 2014,
-        "duration": 289.9066666666667
+        "duration": 289.9330612244898
       }
     ],
     [
@@ -4404,7 +4404,7 @@
         "genre": "Unknown Genre",
         "index": 3,
         "year": 2014,
-        "duration": 213.58666666666667
+        "duration": 213.62938775510204
       }
     ],
     [
@@ -4416,7 +4416,7 @@
         "genre": "Unknown Genre",
         "index": 2,
         "year": 2014,
-        "duration": 221.52
+        "duration": 221.57061224489797
       }
     ],
     [
@@ -4428,7 +4428,7 @@
         "genre": "Unknown Genre",
         "index": 1,
         "year": 2014,
-        "duration": 239.05333333333334
+        "duration": 239.0987755102041
       }
     ],
     [

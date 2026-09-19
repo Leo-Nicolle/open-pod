@@ -48,7 +48,8 @@ void PodPlayer::onStateEvent(int eventType, void *eventData,
 void PodPlayer::handleTrackPlaybackStarted(const PlaybackEvent *event) {
   if (musicLookup.getTrackPath(event->trackId, currentPath,
                                sizeof(currentPath))) {
-    if (audioPlayer.startPlaying(currentPath)) {
+    uint32_t indexedDuration = musicLookup.getTrackDurationSeconds(event->trackId);
+    if (audioPlayer.startPlaying(currentPath, indexedDuration)) {
       state.setTrackDuration((int)audioPlayer.getDurationSeconds());
     }
   } else {

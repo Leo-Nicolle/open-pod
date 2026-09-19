@@ -1,7 +1,9 @@
 import type {
   CrawlIndex,
+  SerializedDurationIndex,
   SerializedRelationshipMap,
   SerializedStringIndex,
+  TrackMetadata,
 } from "./types";
 
 export function exportStringIndexToBinary(
@@ -129,6 +131,41 @@ export function exportRelationshipMapToBinary(
   return new Uint8Array(buffer);
 }
 
+// Format: [uint32 entryCount][uint16 seconds]*entryCount, directly indexed
+// by track id (ids are dense/0-based, so no id array or offsets needed -
+// unlike exportStringIndexToBinary, which exists to handle variable-length
+// string payloads this format doesn't have).
+export function exportDurationIndexToBinary(
+  metadataByTrackIndex: Map<number, TrackMetadata>
+): Uint8Array {
+  const maxId = Math.max(-1, ...Array.from(metadataByTrackIndex.keys()));
+  const entryCount = maxId + 1;
+  const buffer = new ArrayBuffer(4 + entryCount * 2);
+  const view = new DataView(buffer);
+  view.setUint32(0, entryCount, true);
+  for (let id = 0; id < entryCount; id++) {
+    const seconds = Math.round(metadataByTrackIndex.get(id)?.duration ?? 0);
+    view.setUint16(4 + id * 2, Math.min(Math.max(seconds, 0), 0xffff), true);
+  }
+  return new Uint8Array(buffer);
+}
+
+export function importDurationIndexFromBinary(
+  buffer: Uint8Array
+): SerializedDurationIndex {
+  const view = new DataView(
+    buffer.buffer,
+    buffer.byteOffset,
+    buffer.byteLength
+  );
+  const entryCount = view.getUint32(0, true);
+  const durations: number[] = [];
+  for (let id = 0; id < entryCount; id++) {
+    durations.push(view.getUint16(4 + id * 2, true));
+  }
+  return { entryCount, durations };
+}
+
 // Generic import function for string indexes
 export function importStringIndexFromBinary(
   buffer: Uint8Array
@@ -232,5 +269,6 @@ export function exportIndexesToBinary(crawlIndex: CrawlIndex) {
     genre_index: exportStringIndexToBinary(crawlIndex.indexToGenre),
     track_index: exportStringIndexToBinary(crawlIndex.indexToTrack),
     path_index: exportStringIndexToBinary(crawlIndex.indexToPath),
+    duration_index: exportDurationIndexToBinary(crawlIndex.metadataByTrackIndex),
   };
 }

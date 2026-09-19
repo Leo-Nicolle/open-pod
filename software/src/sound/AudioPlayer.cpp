@@ -46,7 +46,8 @@ bool AudioPlayer::begin(uint32_t spiFreq, uint32_t sdFreq) {
   return true;
 }
 
-bool AudioPlayer::startPlaying(const char *filename) {
+bool AudioPlayer::startPlaying(const char *filename,
+                               uint32_t knownDurationSeconds) {
   Serial.printf("Starting playback: %s\n", filename);
   stopPlaying();
 
@@ -56,7 +57,7 @@ bool AudioPlayer::startPlaying(const char *filename) {
       return false;
     }
   }
-  _buffer.setFileName(filename);
+  _buffer.setFileName(filename, knownDurationSeconds);
   if (_buffer.load()) {
     _driver.resetDecodeTime();
     _seekOffsetSeconds = 0;

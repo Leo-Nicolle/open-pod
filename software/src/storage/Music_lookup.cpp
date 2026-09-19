@@ -13,6 +13,7 @@ MusicLookup::MusicLookup(uint32_t psram_base_addr)
   memset(&genre_index_h, 0, sizeof(genre_index_h));
   memset(&track_index_h, 0, sizeof(track_index_h));
   memset(&path_index_h, 0, sizeof(path_index_h));
+  memset(&duration_index_h, 0, sizeof(duration_index_h));
 }
 
 MusicLookup::~MusicLookup() {
@@ -40,6 +41,9 @@ bool MusicLookup::init() {
   if (!loadIndexFromSDCard(track_index_path, current_address, track_index_h))
     return false;
   if (!loadIndexFromSDCard(path_index_path, current_address, path_index_h))
+    return false;
+  if (!loadDurationIndexFromSDCard(duration_index_path, current_address,
+                                   duration_index_h))
     return false;
 
   if (!loadRelationFromSDCard(artist_to_albums_path, current_address,
@@ -103,6 +107,17 @@ bool MusicLookup::getTrackPath(uint32_t track_id, char *buffer,
   return true;
 }
 
+uint32_t MusicLookup::getTrackDurationSeconds(uint32_t track_id) {
+  if (!initialized || track_id >= duration_index_h.entry_count) {
+    return 0;
+  }
+
+  uint16_t seconds = 0;
+  psram.readData(duration_index_h.baseOffset + track_id * sizeof(uint16_t),
+                 (uint8_t *)&seconds, sizeof(uint16_t));
+  return seconds;
+}
+
 bool MusicLookup::getString(uint32_t id, const index_header_t &index_header,
                             char *buffer, uint32_t buffer_size) {
   if (!initialized || !buffer || buffer_size == 0) {
@@ -154,6 +169,34 @@ bool MusicLookup::loadIndexFromSDCard(const char *filename,
   uint32_t offsets_size = (header.entry_count + 1) * 4; // +1 for end marker
   uint32_t total_size =
       8 + ids_size + offsets_size + header.data_size; // 8 = header
+
+  // Seek back to beginning to load entire file
+  file.seekSet(0);
+  bool res = loadDataFromSDCard(base_address, total_size);
+  base_address += total_size;
+
+  file.close();
+  return res;
+}
+
+bool MusicLookup::loadDurationIndexFromSDCard(const char *filename,
+                                              uint32_t &base_address,
+                                              duration_index_t &header) {
+  if (!file.open(filename, O_RDONLY)) {
+    Serial.print("ERROR: Could not open duration index file: ");
+    Serial.println(filename);
+    return false;
+  }
+
+  uint32_t entry_count = readLittleEndian32(file);
+
+  // Layout: [entry_count][uint16 seconds]*entry_count - skip the 4-byte
+  // count field so baseOffset points straight at the array for O(1)
+  // indexed reads (no ids/offsets table like index_header_t's format).
+  header.baseOffset = base_address + 4;
+  header.entry_count = entry_count;
+
+  uint32_t total_size = 4 + entry_count * sizeof(uint16_t);
 
   // Seek back to beginning to load entire file
   file.seekSet(0);
