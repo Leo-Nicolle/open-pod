@@ -51,7 +51,8 @@ struct ScrollChangedEvent {
 };
 
 struct PlaybackEvent {
-  int trackIndex;
+  int trackIndex; // Row position in the currently displayed track list
+  int trackId;    // Global track ID, as used by MusicLookup::getTrackPath()
   const char *trackName;
   bool isPlaying;
 };
@@ -99,6 +100,7 @@ private:
 
   // Current playback state
   int playingTrackIndex;
+  int playingTrackId;
   bool isPlaying;
   int playbackPosition; // in seconds
   int trackDuration;    // in seconds
@@ -118,6 +120,9 @@ private:
 
   void updateVisibleElements();
   void restoreSelectionState();
+  // Resolves the global track ID for a row position in the TRACKS list,
+  // given the current route is NOW_PLAYING (TRACKS is one level below it).
+  uint32_t resolveTrackId(MusicLookup &musicLookup, int index);
 public:
   // Constructor with defaults
   State();
@@ -137,12 +142,12 @@ public:
   void pageDown();
   
   // Playback control
-  void startPlayback(int trackIndex = -1);
+  void startPlayback(int trackIndex, uint32_t trackId);
   void togglePlayback();
   void stopPlayback();
   void updateProgress(int position);
   void setTrackDuration(int duration);
-  void notifyTrackEnded();
+  void notifyTrackEnded(MusicLookup &musicLookup);
   
   // UI state management
   void setAnimating(bool animating, uint32_t animId = 0);
@@ -168,6 +173,7 @@ public:
   int getSelectedIndex() const { return selectedIndex; }
   int getTopVisibleIndex() const { return topVisibleIndex; }
   int getPlayingTrackIndex() const { return playingTrackIndex; }
+  int getPlayingTrackId() const { return playingTrackId; }
   bool getIsPlaying() const { return isPlaying; }
   int getPlaybackPosition() const { return playbackPosition; }
   int getTrackDuration() const { return trackDuration; }

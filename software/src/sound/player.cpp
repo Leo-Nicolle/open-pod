@@ -43,9 +43,13 @@ void PodPlayer::onStateEvent(int eventType, void *eventData,
 }
 
 void PodPlayer::handleTrackPlaybackStarted(const PlaybackEvent *event) {
-  if (musicLookup.getTrackPath(event->trackIndex, currentPath,
+  if (musicLookup.getTrackPath(event->trackId, currentPath,
                                sizeof(currentPath))) {
-    audioPlayer.startPlaying(currentPath);
+    if (audioPlayer.startPlaying(currentPath)) {
+      state.setTrackDuration((int)audioPlayer.getDurationSeconds());
+    }
+  } else {
+    Serial.printf("Could not resolve path for track id %d\n", event->trackId);
   }
 }
 

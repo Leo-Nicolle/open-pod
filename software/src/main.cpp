@@ -25,6 +25,20 @@ WheelTrace trace;
 // Control settings
 bool enableTeleplot = false;
 bool enableTrace = false;
+
+// Tracks whether a route-transition animation is currently playing, kept in
+// sync via EVENT_ANIMATION_STARTED/FINISHED (see onNavigationStateEvent
+// below) rather than polled from state.getIsAnimating() each tick.
+static bool navigationBusy = false;
+
+void onNavigationStateEvent(int eventType, void *eventData,
+                            EventTarget *source) {
+  if (eventType == EVENT_ANIMATION_STARTED) {
+    navigationBusy = true;
+  } else if (eventType == EVENT_ANIMATION_FINISHED) {
+    navigationBusy = false;
+  }
+}
 unsigned long lastUIUpdate = 0;
 const unsigned long UI_UPDATE_INTERVAL = 50; // 20Hz
 
@@ -60,6 +74,8 @@ void setup() {
 
   Serial.println("=== OpenPod with ClickWheel (Event-Driven) ===");
 
+  state.addEventListener(onNavigationStateEvent);
+
   // Initialize hardware
   player.setup();
   setupAudioCallbacks();
@@ -94,67 +110,12 @@ void setup() {
   }
   delay(100);
   ui.begin();
-  Serial.println("HERE");
-  // state.navigateToRoute(Route_t::ROOT);
   state.loadCurrentRouteData(musicLookup);
-  state.scrollDown();
-  state.goToSelected(musicLookup);
-  while (state.getIsAnimating()) {
-    delay(20);
-    ui.update();
-  }
-  state.scrollDown();
-  delay(20);
-  state.goToSelected(musicLookup);
-  // state.back(musicLookup);
-  while (state.getIsAnimating()) {
-    delay(20);
-    ui.update();
-  }
-  state.goToSelected(musicLookup);
-  while (state.getIsAnimating()) {
-    delay(20);
-    ui.update();
-  }
-  state.scrollDown();
-  state.scrollDown();
-  delay(20);
-  state.goToSelected(musicLookup);
-  while (state.getIsAnimating()) {
-    delay(20);
-    ui.update();
-  }
-  state.back(musicLookup);
-  while (state.getIsAnimating()) {
-    delay(20);
-    ui.update();
-  }
-  // state.back(musicLookup);
-  // while (state.getIsAnimating()) {
-  //   delay(20);
-  //   ui.update();
-  // }
-  // state.back(musicLookup);
-  // while (state.getIsAnimating()) {
-  //   delay(20);
-  //   ui.update();
-  // }
-  // state.back(musicLookup);
-  // while (state.getIsAnimating()) {
-  //   delay(20);
-  //   ui.update();
-  // }
-  // delay(1000);
-  // state.goToSelected(musicLookup);
-
-  // state.loadTracksByArtist(musicLookup, 0);
-
-  // Optional demo animations
-  // demoAnimations();
 
   Serial.println("🎮 Ready! Controls:");
-  Serial.println("- Scroll: Navigate tracks");
-  Serial.println("- Center press: Play/Pause or Select");
+  Serial.println("- Scroll: Navigate list");
+  Serial.println("- Center press: Select / enter");
+  Serial.println("- Top press: Back");
   Serial.println("- Center hold 2s: Recalibrate wheel");
   Serial.println("=====================================");
 }
@@ -176,6 +137,9 @@ void loop() {
   // Update UI (handles animations and event processing)
   ui.update();
 
+  // Feed audio data to the VS1053 (this is what actually makes sound)
+  player.loop();
+
   // Update audio progress periodically
   updateAudioProgress();
 
@@ -193,38 +157,30 @@ void loop() {
 }
 
 void handleWheelInput() {
-  // Center button press
+  // A route change (goToSelected/back) kicks off an 800ms slide animation
+  // that owns shared state (OpenPodUIEngine::lastDrawnOffset) for its whole
+  // duration. Starting a second one before the first finishes runs two
+  // animations against that same shared state at once and corrupts the
+  // display buffer / can hang the MCU - so drop navigation input while a
+  // transition is still playing (tracked via EVENT_ANIMATION_STARTED/
+  // FINISHED, see onNavigationStateEvent), rather than queuing/stacking it.
+
+  // Center press: enter menu / navigate forward (toggle playback in Now Playing)
   if (wheel.wasCenterJustPressed()) {
     Serial.println("🔘 Center pressed");
-    return;
-    if (state.getCurrentRoute().type != Route_t::RouteType::NOW_PLAYING) {
-      // In track list: select track (could start playback or go to now playing)
-      state.goToSelected(musicLookup);
-    } else if (state.getCurrentRoute().type ==
-               Route_t::RouteType::NOW_PLAYING) {
-      // In now playing: toggle play/pause
+    if (state.getCurrentRoute().type == Route_t::RouteType::NOW_PLAYING) {
       state.togglePlayback();
+    } else if (!navigationBusy) {
+      state.goToSelected(musicLookup);
     }
   }
 
-  // Long press center button in now playing = go back to list
-  static unsigned long centerPressStart = 0;
-  static bool centerLongPressHandled = false;
-
-  if (wheel.isCenterPressed() &&
-      state.getCurrentRoute().type == Route_t::RouteType::NOW_PLAYING) {
-    if (centerPressStart == 0) {
-      centerPressStart = millis();
-      centerLongPressHandled = false;
-    } else if (!centerLongPressHandled && (millis() - centerPressStart > 500)) {
-      // Long press: go back to track list
-      Serial.println("🔙 Back to track list");
+  // Top press: go back one level
+  if (wheel.wasTopJustPressed()) {
+    Serial.println("⬆️ Top pressed - back");
+    if (!navigationBusy) {
       state.back(musicLookup);
-      centerLongPressHandled = true;
     }
-  } else {
-    centerPressStart = 0;
-    centerLongPressHandled = false;
   }
 
   // Scroll wheel navigation
@@ -316,10 +272,9 @@ void updateAudioProgress() {
     if (now - lastProgressUpdate >= PROGRESS_UPDATE_INTERVAL) {
       lastProgressUpdate = now;
 
-      // Get current position from audio player
-      // int currentPosition = player.getCurrentPosition(); // You'll need to
-      // implement this state.updateProgress(currentPosition); // This triggers
-      // EVENT_PROGRESS_UPDATED
+      int currentPosition = player.audioPlayer.getDecodeTime();
+      state.updateProgress(currentPosition); // This triggers
+                                              // EVENT_PROGRESS_UPDATED
     }
   }
 }
@@ -337,7 +292,7 @@ void onTrackStarted(const char *trackName, int duration) {
 
 void onTrackEnded() {
   Serial.println("♪ Track ended");
-  state.notifyTrackEnded(); // This will auto-advance or stop
+  state.notifyTrackEnded(musicLookup); // This will auto-advance or stop
 }
 
 void onPlaybackStateChanged(bool isPlaying) {

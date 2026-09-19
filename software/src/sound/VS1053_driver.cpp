@@ -183,7 +183,7 @@ void VS1053_driver::sendData(const uint8_t *data, size_t len) {
     beginSDITransaction();
     size_t toSend = min(len - offset, (size_t)32);
     for (int i = 0; i < toSend; i++) {
-      spiWrite(data[i]);
+      spiWrite(data[offset + i]);
     }
     offset += toSend;
     endSDITransaction();
@@ -198,6 +198,12 @@ void VS1053_driver::setVolume(uint8_t left, uint8_t right) {
 
 uint16_t VS1053_driver::getDecodeTime() {
   return readRegister(VS1053_REG_DECODETIME);
+}
+
+void VS1053_driver::resetDecodeTime() {
+  // Datasheet: write 0 twice in a row to reliably clear DECODE_TIME.
+  writeRegister(VS1053_REG_DECODETIME, 0);
+  writeRegister(VS1053_REG_DECODETIME, 0);
 }
 
 void VS1053_driver::setPlaySpeed(uint16_t speed) {

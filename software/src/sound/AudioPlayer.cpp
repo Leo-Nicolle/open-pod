@@ -58,6 +58,7 @@ bool AudioPlayer::startPlaying(const char *filename) {
   }
   _buffer.setFileName(filename);
   if (_buffer.load()) {
+    _driver.resetDecodeTime();
     _playing = true;
     _paused = false;
     return true;
@@ -135,42 +136,30 @@ void AudioPlayer::sineTest(uint8_t freq, uint16_t duration) {
 }
 
 void AudioPlayer::dumpRegisters() { _driver.dumpRegisters(); }
-
 void AudioPlayer::loop() {
-  if (!_playing || _paused )return;
+  if (!_playing || _paused) return;
   _buffer.load();
-  // if(_driver.readyForData()) {
-    feedBuffer();
-  // }
-
-  // // Legacy interrupt-based feeding
-  // if (_needsFeeding) {
-  //   _needsFeeding = false;
-  //   if (_playing && !_paused && _driver.readyForData()) {
-  //     feedBuffer(); // Use optimized feeding
-  //   }
+  while (_playing && !_paused && _driver.readyForData()) {
+    if (!feedBuffer()) break;
+  }
 }
-void AudioPlayer::feedBuffer() {
+
+bool AudioPlayer::feedBuffer() {
   size_t bytesRead = _buffer.readData(_feedBuffer, AUDIO_DATABUFFERLEN);
   if (bytesRead > 0) {
     _driver.sendData(_feedBuffer, bytesRead);
-    // Debug: Print first few bytes to verify data integrity (less frequent)
-    static int debugCount = 0;
-    if (debugCount < 2) { // Reduced debug output
-      Serial.printf("Feed %d: %d bytes [%02X %02X %02X %02X...]\n", debugCount,
-                    bytesRead, _feedBuffer[0], _feedBuffer[1], _feedBuffer[2],
-                    _feedBuffer[3]);
-      debugCount++;
-    }
+    return true;
   } else {
     // End of data
     Serial.println("End of audio data reached");
     if (_looping) {
       Serial.println("Looping back to start");
       _buffer.resetRingBuffer();
+      return true;
     } else {
       Serial.println("Stopping playback");
       stopPlaying();
+      return false;
     }
   }
 }

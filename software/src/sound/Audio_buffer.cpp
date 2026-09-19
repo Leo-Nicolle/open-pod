@@ -28,7 +28,14 @@ bool Audio_buffer::initializePSRAM() {
     Serial.println("PSRAM init or test failed");
     return false;
   }
-  _psramBaseAddress = 0x100000;
+  // NOTE: must stay AUDIO_BUFFER_BASE_ADDRESS, not some other offset - the
+  // ring buffer spans [base, base + _psramBufferSize), and MusicLookup's
+  // index is placed right after it at MUSIC_INDEX_BASE_ADDRESS. A stray
+  // offset here (there used to be a leftover 0x100000 from an older memory
+  // layout) makes the two regions overlap, so streaming past a few MB of
+  // audio silently corrupts the music index the player is reading tracks
+  // from.
+  _psramBaseAddress = AUDIO_BUFFER_BASE_ADDRESS;
 
   Serial.printf("PSRAM OK: %d bytes\n", _psramBufferSize);
   resetRingBuffer();
@@ -55,11 +62,60 @@ uint32_t Audio_buffer::skipID3Header(FsFile &file) {
 
   return 0;
 }
+
+// Scans forward from dataStart for the first valid MPEG audio frame sync,
+// reads its bitrate, and estimates duration as (audio bytes) / (bitrate).
+// This is exact for CBR files (the common case for ripped libraries) and
+// approximate for VBR files, since only the first frame's bitrate is used.
+uint32_t Audio_buffer::estimateDurationSeconds(uint32_t dataStart) {
+  static const uint16_t kBitrateKbpsV1L3[16] = {0,   32,  40,  48,  56,
+                                                64,  80,  96,  112, 128,
+                                                160, 192, 224, 256, 320, 0};
+  static const uint16_t kBitrateKbpsV2L3[16] = {0,  8,  16, 24, 32,  40,
+                                                48, 56, 64, 80, 96,  112,
+                                                128, 144, 160, 0};
+  const uint32_t maxScan = 4096;
+  if (dataStart >= fileSize)
+    return 0;
+
+  file.seekSet(dataStart);
+  int prevByte = -1;
+  for (uint32_t scanned = 0; scanned < maxScan; scanned++) {
+    int b = file.read();
+    if (b < 0)
+      break;
+    if (prevByte == 0xFF && (b & 0xE0) == 0xE0) {
+      uint8_t rest[2];
+      if (file.read(rest, 2) != 2)
+        break;
+      uint8_t versionBits = (b >> 3) & 0x3;  // 00=v2.5, 10=v2, 11=v1
+      uint8_t layerBits = (b >> 1) & 0x3;    // 01=Layer III
+      uint8_t bitrateIndex = (rest[0] >> 4) & 0xF;
+      if (versionBits != 0x1 && layerBits == 0x1 && bitrateIndex > 0 &&
+          bitrateIndex < 15) {
+        uint16_t kbps = (versionBits == 0x3) ? kBitrateKbpsV1L3[bitrateIndex]
+                                             : kBitrateKbpsV2L3[bitrateIndex];
+        if (kbps > 0) {
+          uint32_t audioBytes = fileSize - dataStart;
+          return (uint32_t)(((uint64_t)audioBytes * 8) / ((uint64_t)kbps * 1000));
+        }
+      }
+      break; // malformed header at the first sync found; give up
+    }
+    prevByte = b;
+  }
+  return 0;
+}
+
 void Audio_buffer::setFileName(const char *filename) {
+  if (file.isOpen()) {
+    file.close();
+  }
   strncpy(_currentFileName, filename, sizeof(_currentFileName) - 1);
   _currentFileName[sizeof(_currentFileName) - 1] =
       '\0';    // Ensure null-termination
   filePos = 0; // Reset file position
+  _durationSeconds = 0;
 }
 bool Audio_buffer::openFile() {
   if (!file.open(_currentFileName, O_RDONLY)) {
@@ -83,16 +139,19 @@ bool Audio_buffer::SDtoPSRAM() {
     if (!openFile()) {
       return false;
     }
-    file.seekSet(filePos ? filePos : skipID3Header(file));
-    Serial.printf("Loading file: %s, size: %d bytes\n", _currentFileName,
-                  file.size());
+    uint32_t dataStart = filePos ? (uint32_t)filePos : skipID3Header(file);
+    if (!filePos) {
+      _durationSeconds = estimateDurationSeconds(dataStart);
+    }
+    file.seekSet(dataStart);
+    Serial.printf("Loading file: %s, size: %d bytes, ~%lu s\n",
+                  _currentFileName, file.size(), _durationSeconds);
   }
   
   size_t remainingFile = fileSize - filePos;
   size_t freeSpace = getPSRAMFreeSpace();
   
   if (freeSpace == 0) {
-    file.close();
     return false; // Buffer is full, can't write more
   }
   
@@ -100,26 +159,25 @@ bool Audio_buffer::SDtoPSRAM() {
       min(remainingFile, min((size_t)AUDIO_PRELOAD_CHUNK_SIZE, freeSpace));
   static uint8_t temp[AUDIO_PRELOAD_CHUNK_SIZE];
   
-  unsigned long t0 = micros();
   size_t read = file.read(temp, toRead);
-  unsigned long t1 = micros();
-  // Serial.printf("SD read %u bytes in %lu us (%.2f KB/s)\n", read, t1-t0, (read/1024.0)/((t1-t0)/1000000.0));
+  if (read == 0) {
+    return false; // End of file
+  }
+
   bool wraps = (_psramHead + read) > _psramBufferSize;
   size_t writeSize = wraps ? (_psramBufferSize - _psramHead) : read;
   size_t wrapWriteSize = wraps ? (read - writeSize) : 0;
-  t0 = micros();
   noInterrupts();
-  // psram.writeData(_psramBaseAddress + _psramHead, temp, writeSize);
+  psram.writeData(_psramBaseAddress + _psramHead, temp, writeSize);
   if (wrapWriteSize > 0) {
-    // psram.writeData(_psramBaseAddress, temp + writeSize, wrapWriteSize);
+    psram.writeData(_psramBaseAddress, temp + writeSize, wrapWriteSize);
   }
   _psramHead = (_psramHead + read) % _psramBufferSize;
   interrupts();
-  t1 = micros();
-  // Serial.printf("PSRAM write %u bytes in %lu us (%.2f KB/s)\n", read, t1-t0, (read/1024.0)/((t1-t0)/1000000.0));
-  // Set buffer full flag if head catches up to tail
+
+  // Mark the buffer full when the head catches the tail, but keep the file
+  // open while streaming (closing/reopening per refill starved the decoder).
   if (_psramHead == _psramTail) {
-    closeFile();
     _bufferFull = true;
   }
 
@@ -130,9 +188,14 @@ bool Audio_buffer::SDtoPSRAM() {
   return true;
 }
 bool Audio_buffer::load() {
-  if (_bufferFull && getPSRAMDataSize() > (_psramBufferSize / 10))
-    return true;
-  SDtoPSRAM();
+  // Keep topping up the ring buffer (not just one 4KB chunk) so a slow
+  // main-loop tick (display/wheel work) can't starve playback before the
+  // next refill.
+  while (!_bufferFull && getPSRAMDataSize() < AUDIO_TARGET_BUFFERED_BYTES) {
+    if (!SDtoPSRAM()) {
+      break; // buffer full or end of file
+    }
+  }
   return true;
 }
 
@@ -163,8 +226,9 @@ size_t Audio_buffer::readData(uint8_t *buffer, size_t maxLen) {
 }
 
 size_t Audio_buffer::getPSRAMDataSize() {
-  return _bufferFull ? 0
-         : (_psramHead >= _psramTail)
+  if (_bufferFull)
+    return _psramBufferSize;
+  return (_psramHead >= _psramTail)
              ? (_psramHead - _psramTail)
              : (_psramBufferSize - (_psramTail - _psramHead));
 }

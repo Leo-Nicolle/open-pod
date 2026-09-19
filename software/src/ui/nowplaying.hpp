@@ -56,7 +56,7 @@ public:
 
 // Implementation
 NowPlayingComponent::NowPlayingComponent()
-    : currentTrack(""), progress(0.0f), isPlaying(false) {}
+    : currentTrack(""), isPlaying(false), trackLength(0), progress(0) {}
 
 void NowPlayingComponent::setTrack(const char *trackName) {
   currentTrack = trackName;
@@ -97,8 +97,10 @@ void NowPlayingComponent::renderChunk(ILI9341_GFX *display, int x,
   int barLeft = PROGRESS_BAR_X;
   int barRight = PROGRESS_BAR_X + PROGRESS_BAR_WIDTH;
 
-  float barProgress =
-      constrain((float)progress / (float)trackLength, 0.0f, 1.0f);
+  float barProgress = (trackLength > 0)
+                          ? constrain((float)progress / (float)trackLength,
+                                     0.0f, 1.0f)
+                          : 0.0f;
   int filledWidth = static_cast<int>(
       (PROGRESS_BAR_WIDTH - 2 * PROGRESS_BAR_STROKE) * barProgress);
 

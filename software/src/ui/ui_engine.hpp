@@ -321,8 +321,8 @@ void OpenPodUIEngine::handleProgressUpdated(const ProgressEvent *event) {
     nowPlaying.setProgress(event->position);
     nowPlaying.setTrackLength(event->duration);
 
-    // Only re-render the progress portion to avoid flicker
-    // nowPlaying.renderProgressOnly(display);
+    // Only redraw the progress bar + time text area, to avoid flicker
+    nowPlaying.updateNowPlaying(display);
   }
 }
 
@@ -453,7 +453,10 @@ void OpenPodUIEngine::transitionToNowPlaying() {
       [this](float offset) {
         int currentOffset = (int)offset;
         int width = currentOffset - lastDrawnOffset;
-        if (!width)
+        // Guard against a non-positive width (e.g. a transient glitch in the
+        // eased offset) rather than handing it to the renderer/display -
+        // a negative width there can wrap to a huge pixel count and hang.
+        if (width <= 0)
           return;
         for (int y = BODY_Y; y < SCREEN_HEIGHT; y += CHUNK_HEIGHT) {
           nowPlaying.renderChunk(display, lastDrawnOffset, y, width);
@@ -474,7 +477,10 @@ void OpenPodUIEngine::transitionToTrackList(bool leftToRight) {
       [this](float offset) {
         int currentOffset = (int)offset;
         int width = currentOffset - lastDrawnOffset;
-        if (!width)
+        // Guard against a non-positive width (e.g. a transient glitch in the
+        // eased offset) rather than handing it to the renderer/display -
+        // a negative width there can wrap to a huge pixel count and hang.
+        if (width <= 0)
           return;
 
         // Scrollbar rendering (this looks correct)
@@ -486,7 +492,19 @@ void OpenPodUIEngine::transitionToTrackList(bool leftToRight) {
         // Fixed coordinate calculations
         int x = animatingLeftToRight ? SCREEN_WIDTH - currentOffset
                                      : lastDrawnOffset;
-        elementList.renderRect(display, x, 0, width, SCREEN_HEIGHT - BODY_Y, x);
+        // g_buffers' scratch buffers are sized for one CHUNK_HEIGHT-tall
+        // strip (SCREEN_WIDTH * CHUNK_HEIGHT pixels), same as every other
+        // renderer in this codebase respects. Rendering the full BODY_HEIGHT
+        // in one renderRect call (as this used to) overflows that buffer
+        // whenever a frame's width grows past ~46px - which normally only
+        // takes ~7px/frame, but does happen when a slow tick (e.g. the audio
+        // pipeline's PSRAM refill while a track is playing) delays ui.update()
+        // and several frames' worth of movement land in a single call.
+        for (int chunkY = 0; chunkY < BODY_HEIGHT; chunkY += CHUNK_HEIGHT) {
+          int chunkHeight = min(CHUNK_HEIGHT, BODY_HEIGHT - chunkY);
+          elementList.renderRect(display, x, chunkY, width, chunkHeight, x,
+                                 BODY_Y + chunkY);
+        }
 
         // Fixed scroll offset
         display->setScrollOffset(animatingLeftToRight

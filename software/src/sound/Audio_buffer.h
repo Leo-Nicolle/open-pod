@@ -16,6 +16,10 @@
 #define AUDIO_DATABUFFERLEN 32                // Matches VS1053_BURST_SIZE for feeding
 #define AUDIO_PRELOAD_CHUNK_SIZE 4096         // 4KB chunks for efficient transfers
 #define AUDIO_LARGE_READ_SIZE 4096            // For PSRAM reads
+// load() tops the ring buffer up to this many buffered bytes every time it's
+// called. A single 4KB chunk per main-loop tick can't outrun the drain once
+// display/wheel work makes a tick slow, so keep several seconds of headroom.
+#define AUDIO_TARGET_BUFFERED_BYTES (256 * 1024)
 
 /*!
  * @class Audio_buffer
@@ -36,6 +40,9 @@ public:
   size_t readData(uint8_t *buffer, size_t maxLen);
   SdFat &getSD() { return _sd; }
   void resetRingBuffer();
+  // Estimated total track length in seconds (0 if not yet known/parseable).
+  // Assumes CBR; VBR files will be approximate.
+  uint32_t getDurationSeconds() const { return _durationSeconds; }
 
   friend class SDToPSRAMTest; // Allow SDToPSRAMTest to access private/protected members
 
@@ -60,6 +67,7 @@ protected:
   // Preload tracking
   uint32_t _psramDataSize = 0; // Total preloaded data size
   uint32_t _psramPosition = 0; // Current position in preloaded data
+  uint32_t _durationSeconds = 0; // Estimated track length, set on file open
 
   // Internals
   bool initializePSRAM();
@@ -67,7 +75,8 @@ protected:
   bool closeFile();
   bool SDtoPSRAM();
   uint32_t skipID3Header(FsFile &file);
-  size_t getPSRAMDataSize(); // Returns the size of data in PSRAM buffer 
+  uint32_t estimateDurationSeconds(uint32_t dataStart);
+  size_t getPSRAMDataSize(); // Returns the size of data in PSRAM buffer
   size_t getPSRAMFreeSpace(); // Returns the free space in PSRAM buffer
 };
 

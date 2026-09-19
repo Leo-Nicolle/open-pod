@@ -5,19 +5,21 @@
 
 State::State()
     : EventTarget(), elements(nullptr), totalElements(0), playingTrackIndex(-1),
-      isPlaying(false), playbackPosition(0), trackDuration(0),
-      isAnimating(false), scrollAnimId(0), transitionAnimId(0),
-      isRotatedMode(false) {}
+      playingTrackId(-1), isPlaying(false), playbackPosition(0),
+      trackDuration(0), isAnimating(false), scrollAnimId(0),
+      transitionAnimId(0), isRotatedMode(false) {}
 
-void State::startPlayback(int trackIndex) {
+void State::startPlayback(int trackIndex, uint32_t trackId) {
   if (trackIndex == -1) {
     trackIndex = selectedIndex;
   }
   if (trackIndex >= 0 && trackIndex < totalElements) {
     playingTrackIndex = trackIndex;
+    playingTrackId = (int)trackId;
     isPlaying = true;
     playbackPosition = 0;
-    PlaybackEvent event = {trackIndex, getPlayingTrackName(), true};
+    PlaybackEvent event = {trackIndex, (int)trackId, getPlayingTrackName(),
+                           true};
     emitEvent(EVENT_PLAYBACK_STARTED, &event);
   }
 }
@@ -25,7 +27,8 @@ void State::startPlayback(int trackIndex) {
 void State::togglePlayback() {
   if (playingTrackIndex >= 0) {
     isPlaying = !isPlaying;
-    PlaybackEvent event = {playingTrackIndex, getPlayingTrackName(), isPlaying};
+    PlaybackEvent event = {playingTrackIndex, playingTrackId,
+                           getPlayingTrackName(), isPlaying};
     emitEvent(isPlaying ? EVENT_PLAYBACK_RESUMED : EVENT_PLAYBACK_PAUSED,
               &event);
   }
@@ -34,11 +37,14 @@ void State::togglePlayback() {
 void State::stopPlayback() {
   if (playingTrackIndex >= 0) {
     int stoppedTrackIndex = playingTrackIndex;
+    int stoppedTrackId = playingTrackId;
     const char *stoppedTrackName = getPlayingTrackName();
     isPlaying = false;
     playbackPosition = 0;
     playingTrackIndex = -1;
-    PlaybackEvent event = {stoppedTrackIndex, stoppedTrackName, false};
+    playingTrackId = -1;
+    PlaybackEvent event = {stoppedTrackIndex, stoppedTrackId, stoppedTrackName,
+                           false};
     emitEvent(EVENT_PLAYBACK_STOPPED, &event);
   }
 }
@@ -60,12 +66,14 @@ void State::setTrackDuration(int duration) {
   }
 }
 
-void State::notifyTrackEnded() {
+void State::notifyTrackEnded(MusicLookup &musicLookup) {
   if (playingTrackIndex >= 0) {
-    PlaybackEvent event = {playingTrackIndex, getPlayingTrackName(), false};
+    PlaybackEvent event = {playingTrackIndex, playingTrackId,
+                           getPlayingTrackName(), false};
     emitEvent(EVENT_TRACK_ENDED, &event);
     if (playingTrackIndex < totalElements - 1) {
-      startPlayback(playingTrackIndex + 1);
+      int nextIndex = playingTrackIndex + 1;
+      startPlayback(nextIndex, resolveTrackId(musicLookup, nextIndex));
     } else {
       stopPlayback();
     }
@@ -110,17 +118,19 @@ void State::loadCurrentRouteData(MusicLookup &musicLookup) {
     break;
 
   case Route_t::ALBUMS:
-    // Check if we're loading albums by artist or genre
-    if (router.getDepth() > 1) {
-      Route_t &parentRoute = router.routeStack[router.getDepth() - 2];
+    // Check if we're loading albums by artist or genre. currentRoute.entityId
+    // (set when this ALBUMS route was pushed) is the artist/genre id;
+    // parentRoute only tells us which kind of id it is.
+    if (router.getDepth() > 0) {
+      Route_t &parentRoute = router.routeStack[router.getDepth() - 1];
       if (parentRoute.type == Route_t::ARTISTS) {
         count = musicLookup.getAlbumsByArtist(
-            parentRoute.entityId, elementsBuffer, ELEMENTS_BUFFER_SIZE,
+            currentRoute.entityId, elementsBuffer, ELEMENTS_BUFFER_SIZE,
             stringPointers, MAX_STRING_POINTERS);
         currentRoute.hasMore = false; // Relationship lookups return all results
       } else if (parentRoute.type == Route_t::GENRES) {
         count = musicLookup.getAlbumsByGenre(
-            parentRoute.entityId, elementsBuffer, ELEMENTS_BUFFER_SIZE,
+            currentRoute.entityId, elementsBuffer, ELEMENTS_BUFFER_SIZE,
             stringPointers, MAX_STRING_POINTERS);
         currentRoute.hasMore = false;
       } else {
@@ -146,20 +156,22 @@ void State::loadCurrentRouteData(MusicLookup &musicLookup) {
     break;
 
   case Route_t::TRACKS:
-    // Load tracks based on parent entity
-    if (router.getDepth() > 1) {
+    // Load tracks based on parent entity. currentRoute.entityId (set when
+    // this TRACKS route was pushed) is the artist/album/genre id; parentRoute
+    // only tells us which kind of id it is.
+    if (router.getDepth() > 0) {
       Route_t &parentRoute = router.routeStack[router.getDepth() - 1];
       if (parentRoute.type == Route_t::ARTISTS) {
         count = musicLookup.getTracksByArtist(
-            parentRoute.entityId, elementsBuffer, ELEMENTS_BUFFER_SIZE,
+            currentRoute.entityId, elementsBuffer, ELEMENTS_BUFFER_SIZE,
             stringPointers, MAX_STRING_POINTERS);
       } else if (parentRoute.type == Route_t::ALBUMS) {
         count = musicLookup.getTracksByAlbum(
-            parentRoute.entityId, elementsBuffer, ELEMENTS_BUFFER_SIZE,
+            currentRoute.entityId, elementsBuffer, ELEMENTS_BUFFER_SIZE,
             stringPointers, MAX_STRING_POINTERS);
       } else if (parentRoute.type == Route_t::GENRES) {
         count = musicLookup.getTracksByGenre(
-            parentRoute.entityId, elementsBuffer, ELEMENTS_BUFFER_SIZE,
+            currentRoute.entityId, elementsBuffer, ELEMENTS_BUFFER_SIZE,
             stringPointers, MAX_STRING_POINTERS);
       }
       currentRoute.hasMore = false; // Relationship lookups return all results
@@ -369,11 +381,22 @@ void State::goToSelected(MusicLookup &musicLookup) {
 
   case Route_t::TRACKS: {
     // Start playback of selected track
-    startPlayback(selectedIndex);
+    uint32_t trackId = getSelectedEntityId(musicLookup);
+    startPlayback(selectedIndex, trackId);
     newRouteType = Route_t::NOW_PLAYING;
     break;
   }
   }
+
+  // Unimplemented menu items (Tracks/Search/Settings from ROOT) and failed
+  // entity lookups leave newRouteType unchanged. Nothing pushed a route in
+  // that case, so there is no transition animation to end this call's
+  // setAnimating(true) - firing it anyway would leave isAnimating stuck true
+  // forever and lock out all further navigation.
+  if (newRouteType == oldRouteType) {
+    return;
+  }
+
   if (newRouteType != Route_t::NOW_PLAYING) {
     selectedIndex = 0;
     topVisibleIndex = 0;
@@ -451,14 +474,16 @@ uint32_t State::getSelectedEntityId(MusicLookup &musicLookup) {
     return musicLookup.getArtistIdAtIndex(selectedIndex);
 
   case Route_t::ALBUMS:
-    // Check if we're in a parent context (albums by artist/genre)
-    if (router.getDepth() > 1) {
-      Route_t &parentRoute = router.routeStack[router.getDepth() - 2];
+    // Check if we're in a parent context (albums by artist/genre).
+    // currentRoute.entityId is the artist/genre id this ALBUMS route was
+    // scoped to; parentRoute only tells us which kind of id it is.
+    if (router.getDepth() > 0) {
+      Route_t &parentRoute = router.routeStack[router.getDepth() - 1];
       if (parentRoute.type == Route_t::ARTISTS) {
-        return musicLookup.getAlbumIdByArtistAtIndex(parentRoute.entityId,
+        return musicLookup.getAlbumIdByArtistAtIndex(currentRoute.entityId,
                                                      selectedIndex);
       } else if (parentRoute.type == Route_t::GENRES) {
-        return musicLookup.getAlbumIdByGenreAtIndex(parentRoute.entityId,
+        return musicLookup.getAlbumIdByGenreAtIndex(currentRoute.entityId,
                                                     selectedIndex);
       }
     }
@@ -469,17 +494,19 @@ uint32_t State::getSelectedEntityId(MusicLookup &musicLookup) {
     return musicLookup.getGenreIdAtIndex(selectedIndex);
 
   case Route_t::TRACKS:
-    // Tracks always have parent context
-    if (router.getDepth() > 1) {
-      Route_t &parentRoute = router.routeStack[router.getDepth() - 2];
+    // Tracks always have parent context. currentRoute.entityId is the
+    // artist/album/genre id this TRACKS route was scoped to; parentRoute
+    // only tells us which kind of id it is.
+    if (router.getDepth() > 0) {
+      Route_t &parentRoute = router.routeStack[router.getDepth() - 1];
       if (parentRoute.type == Route_t::ARTISTS) {
-        return musicLookup.getTrackIdByArtistAtIndex(parentRoute.entityId,
+        return musicLookup.getTrackIdByArtistAtIndex(currentRoute.entityId,
                                                      selectedIndex);
       } else if (parentRoute.type == Route_t::ALBUMS) {
-        return musicLookup.getTrackIdByAlbumAtIndex(parentRoute.entityId,
+        return musicLookup.getTrackIdByAlbumAtIndex(currentRoute.entityId,
                                                     selectedIndex);
       } else if (parentRoute.type == Route_t::GENRES) {
-        return musicLookup.getTrackIdByGenreAtIndex(parentRoute.entityId,
+        return musicLookup.getTrackIdByGenreAtIndex(currentRoute.entityId,
                                                     selectedIndex);
       }
     }
@@ -492,6 +519,30 @@ uint32_t State::getSelectedEntityId(MusicLookup &musicLookup) {
   }
 
   return 0;
+}
+
+uint32_t State::resolveTrackId(MusicLookup &musicLookup, int index) {
+  // Called while playing (currentRoute == NOW_PLAYING); the TRACKS route
+  // that was playing lives one level below it on the stack.
+  int depth = router.getDepth();
+  if (depth < 1 || router.routeStack[depth].type != Route_t::NOW_PLAYING) {
+    return 0;
+  }
+  Route_t &tracksRoute = router.routeStack[depth - 1];
+  if (tracksRoute.type != Route_t::TRACKS || depth < 2) {
+    return 0;
+  }
+  Route_t &parentRoute = router.routeStack[depth - 2];
+  switch (parentRoute.type) {
+  case Route_t::ARTISTS:
+    return musicLookup.getTrackIdByArtistAtIndex(tracksRoute.entityId, index);
+  case Route_t::ALBUMS:
+    return musicLookup.getTrackIdByAlbumAtIndex(tracksRoute.entityId, index);
+  case Route_t::GENRES:
+    return musicLookup.getTrackIdByGenreAtIndex(tracksRoute.entityId, index);
+  default:
+    return 0;
+  }
 }
 
 const char *State::getHeaderTitle() {

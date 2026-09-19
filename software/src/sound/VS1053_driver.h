@@ -103,6 +103,7 @@ public:
   // Audio control
   void setVolume(uint8_t left, uint8_t right);
   uint16_t getDecodeTime();
+  void resetDecodeTime();
   void setPlaySpeed(uint16_t speed);
   uint16_t getPlaySpeed();
   void cancel();

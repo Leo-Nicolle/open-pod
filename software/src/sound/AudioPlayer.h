@@ -53,7 +53,11 @@ public:
   VS1053_driver &getDriver() { return _driver; }
   // Audio settings
   void setVolume(uint8_t left, uint8_t right);
+  // Elapsed playback time in seconds (VS1053 hardware counter, reset on
+  // every startPlaying()).
   uint16_t getDecodeTime();
+  // Estimated total track length in seconds (0 if not yet known).
+  uint32_t getDurationSeconds() { return _buffer.getDurationSeconds(); }
   void setPlaySpeed(uint16_t speed);
   uint16_t getPlaySpeed();
 
@@ -74,7 +78,7 @@ public:
   // OPTIMIZED: Buffer management methods
   bool primeBuffer();
   bool primeBufferEnhanced(bool isHighQuality);
-  void feedBuffer();
+  bool feedBuffer();
   void sendEndFillSequence();
 
   // ISR methods

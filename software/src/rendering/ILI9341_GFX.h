@@ -128,8 +128,16 @@ public:
   // Optimized window push - send pixels to a defined window area
   void pushWindow(int16_t x, int16_t y, int16_t w, int16_t h,
                   uint16_t *colors) {
+    // w*h is computed in signed 16/32-bit math; if a caller ever passes a
+    // non-positive w or h (e.g. a transient negative width mid-animation),
+    // the product goes negative and then silently wraps to a huge uint32_t
+    // when handed to pushPixels() below - which turns into a multi-billion
+    // iteration GPIO loop that looks exactly like a hang. Refuse it here,
+    // before that conversion happens.
+    if (w <= 0 || h <= 0)
+      return;
     setWindow(x, y, x + w - 1, y + h - 1);
-    pushPixels(colors, w * h);
+    pushPixels(colors, (uint32_t)w * (uint32_t)h);
   }
 
   // Fast vertical scroll (hardware accelerated if supported)
