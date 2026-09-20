@@ -17,9 +17,11 @@
 #define AUDIO_PRELOAD_CHUNK_SIZE 4096         // 4KB chunks for efficient transfers
 #define AUDIO_LARGE_READ_SIZE 4096            // For PSRAM reads
 // load() tops the ring buffer up to this many buffered bytes once triggered.
-// Sized to use most of the 5 MB AUDIO_BUFFER_SIZE reservation (leaving some
-// headroom rather than the exact byte capacity). See memory-improvements.md.
-#define AUDIO_TARGET_BUFFERED_BYTES (4608UL * 1024UL) // 4.5 MB
+// Sized to use most of the 4 MB AUDIO_BUFFER_SIZE reservation (leaving some
+// headroom rather than the exact byte capacity, same ~0.5 MB margin as
+// before 1 MB was reallocated to COVER_BUFFER_SIZE - see
+// PSRAM_controller.hpp and memory-improvements.md).
+#define AUDIO_TARGET_BUFFERED_BYTES (3584UL * 1024UL) // 3.5 MB
 // AudioPlayer::loop() only triggers a refill once the buffer has drained
 // below this low watermark, instead of topping up on every tick. This is
 // what actually creates a long SD-idle valley between big refill bursts,
@@ -45,6 +47,13 @@
 static_assert(NEXT_TRACK_BUFFER_SIZE <= AUDIO_BUFFER_SIZE,
              "a full next-track prefetch must always fit in the empty ring "
              "buffer without wrapping");
+
+// AUDIO_TARGET_BUFFERED_BYTES is a hand-picked literal, not derived from
+// AUDIO_BUFFER_SIZE - catch it silently exceeding the buffer's actual
+// physical capacity if that reservation ever shrinks again.
+static_assert(AUDIO_TARGET_BUFFERED_BYTES < AUDIO_BUFFER_SIZE,
+             "the ring buffer must never be asked to fill past its own "
+             "physical PSRAM reservation");
 
 /*!
  * @class Audio_buffer

@@ -2,6 +2,7 @@
 #include "../rendering/ILI9341_GFX.h"
 #include "../rendering/animation_manager.h"
 #include "../state/state.h"
+#include "../storage/Music_lookup.h"
 #include "header.hpp"
 #include "list/list_component.hpp"
 #include "nowplaying.hpp"
@@ -11,6 +12,7 @@
 
 // Forward declaration for global state
 extern State state;
+extern MusicLookup musicLookup;
 
 class OpenPodUIEngine {
 private:
@@ -82,6 +84,11 @@ private:
   void updateScrollbar();
   void updateTrackListScroll();
   bool isAnimating() const { return state.getIsAnimating(); }
+  // Resolves trackId -> albumId -> cover location and pushes it into
+  // nowPlaying, or clears it if either lookup misses. Shared by
+  // handlePlaybackStarted (event-driven) and renderNowPlaying (redraw path,
+  // e.g. returning to Now Playing from another screen) - both need it.
+  void updateAlbumArtForTrack(int trackId);
 };
 
 // Static member definition
@@ -297,6 +304,7 @@ void OpenPodUIEngine::handlePlaybackStarted(const PlaybackEvent *event) {
   // Update now playing component
   nowPlaying.setTrack(event->trackName);
   nowPlaying.setPlayState(true);
+  updateAlbumArtForTrack(event->trackId);
 
   // If we're in now playing view, update display
   if (state.getCurrentRoute().type == Route_t::RouteType::NOW_PLAYING) {
@@ -457,6 +465,7 @@ void OpenPodUIEngine::renderNowPlaying(int xOffset, int width) {
   if (trackName) {
     nowPlaying.setTrack(trackName);
   }
+  updateAlbumArtForTrack(state.getPlayingTrackId());
 
   nowPlaying.setTrackLength(state.getTrackDuration());
   nowPlaying.setProgress(state.getPlaybackPosition());
@@ -465,6 +474,21 @@ void OpenPodUIEngine::renderNowPlaying(int xOffset, int width) {
 
   if (volumeOverlayHideAt != 0) {
     nowPlaying.renderVolumeOverlay(display);
+  }
+}
+
+void OpenPodUIEngine::updateAlbumArtForTrack(int trackId) {
+  if (trackId < 0) {
+    nowPlaying.clearAlbumArt();
+    return;
+  }
+
+  uint32_t albumId = musicLookup.getAlbumIdForTrack((uint32_t)trackId);
+  album_cover_entry_t cover;
+  if (albumId != 0xFFFFFFFFu && musicLookup.getAlbumCoverEntry(albumId, cover)) {
+    nowPlaying.setAlbumArt(cover.offset, cover.length, cover.format);
+  } else {
+    nowPlaying.clearAlbumArt();
   }
 }
 

@@ -121,4 +121,69 @@ buildDurationIndex(const std::vector<std::pair<uint32_t, uint16_t>> &entries) {
   return out;
 }
 
+// Mirrors indexer exportTrackToAlbumIndexToBinary:
+// [entry_count][uint32 albumId]*entry_count, directly indexed by track id
+// (gaps up to the highest id default to 0, same as the indexer).
+inline std::vector<uint8_t> buildTrackToAlbumIndex(
+    const std::vector<std::pair<uint32_t, uint32_t>> &entries) {
+  uint32_t maxId = 0;
+  bool any = false;
+  for (size_t i = 0; i < entries.size(); i++) {
+    if (!any || entries[i].first > maxId) {
+      maxId = entries[i].first;
+    }
+    any = true;
+  }
+  uint32_t entryCount = any ? maxId + 1 : 0;
+
+  std::vector<uint32_t> albumIds(entryCount, 0);
+  for (size_t i = 0; i < entries.size(); i++) {
+    albumIds[entries[i].first] = entries[i].second;
+  }
+
+  std::vector<uint8_t> out;
+  pushU32(out, entryCount);
+  for (size_t i = 0; i < albumIds.size(); i++)
+    pushU32(out, albumIds[i]);
+  return out;
+}
+
+struct CoverIndexEntry {
+  uint32_t albumId;
+  uint32_t offset;
+  uint32_t length;
+  uint8_t format;
+};
+
+// Mirrors indexer exportAlbumCoverIndexToBinary:
+// [entry_count][{u32 offset, u32 length, u8 format}]*entry_count, directly
+// indexed by album id (gaps up to the highest id default to
+// {offset:0, length:0, format:0}, same as the indexer).
+inline std::vector<uint8_t>
+buildAlbumCoverIndex(const std::vector<CoverIndexEntry> &entries) {
+  uint32_t maxId = 0;
+  bool any = false;
+  for (size_t i = 0; i < entries.size(); i++) {
+    if (!any || entries[i].albumId > maxId) {
+      maxId = entries[i].albumId;
+    }
+    any = true;
+  }
+  uint32_t entryCount = any ? maxId + 1 : 0;
+
+  std::vector<CoverIndexEntry> dense(entryCount, {0, 0, 0, 0});
+  for (size_t i = 0; i < entries.size(); i++) {
+    dense[entries[i].albumId] = entries[i];
+  }
+
+  std::vector<uint8_t> out;
+  pushU32(out, entryCount);
+  for (size_t i = 0; i < dense.size(); i++) {
+    pushU32(out, dense[i].offset);
+    pushU32(out, dense[i].length);
+    out.push_back(dense[i].format);
+  }
+  return out;
+}
+
 } // namespace openpod_test

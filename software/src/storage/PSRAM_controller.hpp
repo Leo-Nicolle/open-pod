@@ -12,18 +12,25 @@
 #define PSRAM_SIZE                (8 * 1024 * 1024) // 8 MB PSRAM chip size
 #define AUDIO_BUFFER_BASE_ADDRESS 0x000
 // Current-track ring buffer. See memory-improvements.md for the full 8 MB
-// budget (5 MB current-track + 1 MB next-track prefetch + 2 MB music index).
-#define AUDIO_BUFFER_SIZE         (5 * 1024 * 1024) // 5 MB
+// budget (4 MB current-track + 1 MB cover buffer + 1 MB next-track prefetch
+// + 2 MB music index). 1 MB was reallocated from this buffer (was 5 MB) to
+// COVER_BUFFER_SIZE below for the on-device QOI-vs-raw565 cover benchmark.
+#define AUDIO_BUFFER_SIZE         (4 * 1024 * 1024) // 4 MB
+// Scratch region for album-art decode/cache experiments (see
+// software/test/onboard/'s cover format benchmark). Not yet claimed by the
+// production cover-fetch path - that's decided by the benchmark's results.
+#define COVER_BUFFER_BASE_ADDRESS (AUDIO_BUFFER_BASE_ADDRESS + AUDIO_BUFFER_SIZE)
+#define COVER_BUFFER_SIZE         (1 * 1024 * 1024) // 1 MB
 // Linear (non-ring) scratch region used to prefetch the start of the next
 // track while the current one is still playing, so a track change usually
 // needs zero fresh SD activity - see Audio_buffer::prepareNextTrack().
-#define NEXT_TRACK_BUFFER_BASE_ADDRESS (AUDIO_BUFFER_BASE_ADDRESS + AUDIO_BUFFER_SIZE)
+#define NEXT_TRACK_BUFFER_BASE_ADDRESS (COVER_BUFFER_BASE_ADDRESS + COVER_BUFFER_SIZE)
 #define NEXT_TRACK_BUFFER_SIZE    (1 * 1024 * 1024) // 1 Mb
 #define MUSIC_INDEX_BASE_ADDRESS  (NEXT_TRACK_BUFFER_BASE_ADDRESS + NEXT_TRACK_BUFFER_SIZE)
-#define MUSIC_INDEX_SIZE          (PSRAM_SIZE - AUDIO_BUFFER_SIZE - NEXT_TRACK_BUFFER_SIZE) // Remaining PSRAM size for music index
+#define MUSIC_INDEX_SIZE          (PSRAM_SIZE - AUDIO_BUFFER_SIZE - COVER_BUFFER_SIZE - NEXT_TRACK_BUFFER_SIZE) // Remaining PSRAM size for music index
 
-static_assert(AUDIO_BUFFER_SIZE + NEXT_TRACK_BUFFER_SIZE < PSRAM_SIZE,
-             "Audio + next-track prefetch regions must leave room in PSRAM for the music index");
+static_assert(AUDIO_BUFFER_SIZE + COVER_BUFFER_SIZE + NEXT_TRACK_BUFFER_SIZE < PSRAM_SIZE,
+             "Audio + cover buffer + next-track prefetch regions must leave room in PSRAM for the music index");
 
 // SPI PSRAM interface for APS6404L-3SQR-SN using Arduino SPI library
 class SPI_PSRAM {

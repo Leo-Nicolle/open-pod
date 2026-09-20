@@ -136,6 +136,39 @@ TEST_CASE("MusicLookup - id accessors") {
   CHECK(lookup.getAlbumIdByGenreAtIndex(1, 1) == 2);
 }
 
+TEST_CASE("MusicLookup - track to album lookup") {
+  openpod_test::resetAll();
+  openpod_test::registerSampleCatalog();
+
+  MusicLookup lookup;
+  REQUIRE(lookup.init());
+
+  CHECK(lookup.getAlbumIdForTrack(1) == 1);
+  CHECK(lookup.getAlbumIdForTrack(2) == 2);
+  CHECK(lookup.getAlbumIdForTrack(999) == 0xFFFFFFFFu);
+}
+
+TEST_CASE("MusicLookup - album cover lookup") {
+  openpod_test::resetAll();
+  openpod_test::registerSampleCatalog();
+
+  MusicLookup lookup;
+  REQUIRE(lookup.init());
+
+  album_cover_entry_t cover;
+  CHECK(lookup.getAlbumCoverEntry(1, cover) == true);
+  CHECK(cover.offset == 0);
+  CHECK(cover.length == 100);
+  CHECK(cover.format == 1);
+
+  CHECK(lookup.getAlbumCoverEntry(2, cover) == true);
+  CHECK(cover.offset == 100);
+  CHECK(cover.length == 200);
+  CHECK(cover.format == 0);
+
+  CHECK(lookup.getAlbumCoverEntry(999, cover) == false);
+}
+
 TEST_CASE("MusicLookup - printStats does not crash") {
   openpod_test::resetAll();
   openpod_test::registerSampleCatalog();

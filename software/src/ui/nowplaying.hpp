@@ -1,6 +1,7 @@
 #pragma once
 #include "fonts/IBMPlexSans16.h"
 #include "rendering/font_renderer.h"
+#include "storage/AlbumArt.h"
 #include "theme.h"
 #include "ui_types.h"
 #include <Arduino.h>
@@ -18,10 +19,17 @@ private:
   bool seekModeActive;
   int volumeLevel;         // 0-100
   bool volumeOverlayVisible;
+  // Resolved cover location (see MusicLookup::getAlbumCoverEntry); set by
+  // the caller (OpenPodUIEngine) once per track/album change, not looked
+  // up here - this component only ever receives pre-resolved display data.
+  uint32_t coverOffset;
+  uint32_t coverLength;
+  uint8_t coverFormat; // 1 = raw565 (see indexer's ALBUM_COVER_FORMAT_BYTE)
+  bool coverValid;
   // Layout constants
   static const int ALBUM_ART_X = 100;
   static const int ALBUM_ART_Y = 50;
-  static const int ALBUM_ART_SIZE = 120;
+  static const int ALBUM_ART_SIZE = 128; // matches the generated thumbnail size
   static const int TITLE_Y = 185;
   static const int PROGRESS_BAR_Y = 220;
   static const int PROGRESS_BAR_HEIGHT = 8;
@@ -57,6 +65,13 @@ public:
     volumeLevel = level;
     volumeOverlayVisible = visible;
   }
+  void setAlbumArt(uint32_t offset, uint32_t length, uint8_t format) {
+    coverOffset = offset;
+    coverLength = length;
+    coverFormat = format;
+    coverValid = length > 0;
+  }
+  void clearAlbumArt() { coverValid = false; }
   void renderVolumeOverlay(ILI9341_GFX *display);
 
   void renderChunk(ILI9341_GFX *display, int x, int y,
@@ -75,7 +90,8 @@ public:
 // Implementation
 NowPlayingComponent::NowPlayingComponent()
     : currentTrack(""), isPlaying(false), trackLength(0), progress(0),
-      seekModeActive(false), volumeLevel(0), volumeOverlayVisible(false) {}
+      seekModeActive(false), volumeLevel(0), volumeOverlayVisible(false),
+      coverOffset(0), coverLength(0), coverFormat(0), coverValid(false) {}
 
 void NowPlayingComponent::setTrack(const char *trackName) {
   currentTrack = trackName;
@@ -140,14 +156,34 @@ void NowPlayingComponent::renderChunk(ILI9341_GFX *display, int x,
   int overlapRight = std::min(x + actualWidth, artRight);
 
   if (overlapTop < overlapBottom && overlapLeft < overlapRight) {
-    // Fill album art area
-    for (row = overlapTop; row < overlapBottom; ++row) {
-      bufRow = row - y;
-      for (col = overlapLeft; col < overlapRight; ++col) {
-        int bufCol = col - x;
-        if (bufCol >= 0 && bufCol < actualWidth && bufRow >= 0 &&
-            bufRow < actualHeight) {
-          buffer[bufRow * actualWidth + bufCol] = COLOR_SECONDARY;
+    // Fill album art area: blit real cover pixels when available (raw565
+    // only - see AlbumArt.h), falling back to the solid placeholder fill
+    // otherwise. The blit writes full 128px-wide rows straight from
+    // thumbs.bin, so it only applies when this chunk isn't horizontally
+    // clipping the art (overlapLeft/Right == artLeft/Right) - a
+    // slide-transition chunk narrower than the art falls back to the
+    // solid fill for that call instead.
+    bool blitted = false;
+    if (coverValid && coverFormat == 1 && overlapLeft == artLeft &&
+        overlapRight == artRight) {
+      int destRow0 = overlapTop - y;
+      int destCol0 = artLeft - x;
+      int coverRowStart = overlapTop - artTop;
+      int rowCount = overlapBottom - overlapTop;
+      blitted = albumArt.blitCoverRows(buffer, actualWidth, destRow0,
+                                       destCol0, coverOffset, coverLength,
+                                       coverRowStart, rowCount);
+    }
+
+    if (!blitted) {
+      for (row = overlapTop; row < overlapBottom; ++row) {
+        bufRow = row - y;
+        for (col = overlapLeft; col < overlapRight; ++col) {
+          int bufCol = col - x;
+          if (bufCol >= 0 && bufCol < actualWidth && bufRow >= 0 &&
+              bufRow < actualHeight) {
+            buffer[bufRow * actualWidth + bufCol] = COLOR_SECONDARY;
+          }
         }
       }
     }

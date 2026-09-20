@@ -33,6 +33,32 @@ typedef struct {
   uint32_t entry_count; // Number of entries
 } duration_index_t;
 
+// Structure for the track->album index: same dense/fixed-width shape as
+// duration_index_t (one uint32 albumId per track, directly indexed by
+// dense, 0-based track id), since track->album is 1:1 - no need for the
+// relation_header_t 1:many format used by e.g. album_to_tracks.
+typedef struct {
+  uint32_t baseOffset;  // PSRAM address of the first uint32 albumId entry
+  uint32_t entry_count; // Number of entries
+} track_to_album_index_t;
+
+// One album's cover location within thumbs.bin, as written by the indexer's
+// exportAlbumCoverIndexToBinary (indexer/src/thumbnails.ts). format byte is
+// a shared contract with that function's ALBUM_COVER_FORMAT_BYTE map: 0 =
+// qoi, 1 = raw565. length == 0 means no cover was resolved for this album.
+typedef struct {
+  uint32_t offset;
+  uint32_t length;
+  uint8_t format;
+} album_cover_entry_t;
+
+// Structure for the album->cover index: dense/fixed-width array of
+// album_cover_entry_t, directly indexed by (dense, 0-based) album id.
+typedef struct {
+  uint32_t baseOffset;  // PSRAM address of the first entry (9 bytes each)
+  uint32_t entry_count; // Number of entries
+} album_cover_index_t;
+
 // Structure for lookup results
 typedef struct {
   uint32_t address; // PSRAM address of data
@@ -119,6 +145,8 @@ private:
   const char *track_index_path = "/openpod/track_index.bin";
   const char *path_index_path = "/openpod/path_index.bin";
   const char *duration_index_path = "/openpod/duration_index.bin";
+  const char *track_to_album_path = "/openpod/track_to_album.bin";
+  const char *album_to_cover_path = "/openpod/album_to_cover.bin";
 
   // SD card and file handling
   SdFat sd;
@@ -137,6 +165,8 @@ private:
   index_header_t track_index_h;
   index_header_t path_index_h;
   duration_index_t duration_index_h;
+  track_to_album_index_t track_to_album_h;
+  album_cover_index_t album_cover_h;
 
   // Private helper methods
   bool loadIndexFromSDCard(const char *filename, uint32_t &base_address,
@@ -146,6 +176,12 @@ private:
   bool loadDurationIndexFromSDCard(const char *filename,
                                    uint32_t &base_address,
                                    duration_index_t &header);
+  bool loadTrackToAlbumIndexFromSDCard(const char *filename,
+                                       uint32_t &base_address,
+                                       track_to_album_index_t &header);
+  bool loadAlbumCoverIndexFromSDCard(const char *filename,
+                                     uint32_t &base_address,
+                                     album_cover_index_t &header);
   bool loadDataFromSDCard(uint32_t base_address, uint32_t size);
   int32_t binarySearch(uint32_t id, uint32_t baseAddress, uint32_t count);
   uint32_t readLittleEndian32(FsFile &file);
@@ -184,6 +220,14 @@ public:
 
   // Duration lookup (seconds), O(1) direct index - returns 0 if unavailable
   uint32_t getTrackDurationSeconds(uint32_t track_id);
+
+  // Album lookup for a track, O(1) direct index - returns UINT32_MAX if
+  // track_id is out of range.
+  uint32_t getAlbumIdForTrack(uint32_t track_id);
+
+  // Cover location for an album, O(1) direct index - returns false if
+  // album_id is out of range or no cover was resolved for it (length == 0).
+  bool getAlbumCoverEntry(uint32_t album_id, album_cover_entry_t &out);
 
   // Consolidated relationship lookups - new signature
   uint32_t getTracksByArtist(uint32_t artist_id, char *buffer,

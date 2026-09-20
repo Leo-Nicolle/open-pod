@@ -4,6 +4,7 @@
 #include "rendering/ILI9341_GFX.h"
 #include "sound/player.h"
 #include "state/state.h"
+#include "storage/AlbumArt.h"
 #include "storage/Music_index.h"
 #include "storage/Music_lookup.h"
 #include "ui/ui_engine.hpp"
@@ -11,6 +12,7 @@
 #include <Wire.h>
 MusicIndex musicIndex;
 MusicLookup musicLookup;
+AlbumArt albumArt;
 // Display and UI instances
 ILI9341_GFX display;
 PodPlayer player;
@@ -92,6 +94,7 @@ void setup() {
   // Initialize hardware
   player.setup();
   musicLookup.init();
+  albumArt.init(musicLookup.getSD());
   display.begin();
   Serial.println("✅ Display initialized!");
   delay(100);

@@ -70,6 +70,16 @@ inline void registerSampleCatalog() {
   std::vector<std::pair<uint32_t, std::vector<uint32_t>>> genre_to_tracks;
   genre_to_tracks.push_back(std::make_pair(1u, std::vector<uint32_t>{1, 2}));
   fs.addFile("/openpod/genre_to_tracks.bin", buildRelation(genre_to_tracks));
+
+  std::vector<std::pair<uint32_t, uint32_t>> track_to_album;
+  track_to_album.push_back(std::make_pair(1u, 1u));
+  track_to_album.push_back(std::make_pair(2u, 2u));
+  fs.addFile("/openpod/track_to_album.bin", buildTrackToAlbumIndex(track_to_album));
+
+  std::vector<CoverIndexEntry> album_to_cover;
+  album_to_cover.push_back({1u, 0u, 100u, 1});
+  album_to_cover.push_back({2u, 100u, 200u, 0});
+  fs.addFile("/openpod/album_to_cover.bin", buildAlbumCoverIndex(album_to_cover));
 }
 
 // Additive, self-contained catalog used only by the State tests (never by
@@ -130,6 +140,15 @@ inline void registerStateTestCatalog() {
   std::vector<std::pair<uint32_t, std::vector<uint32_t>>> genre_to_tracks;
   genre_to_tracks.push_back(std::make_pair(1u, std::vector<uint32_t>{1, 2}));
   fs.addFile("/openpod/genre_to_tracks.bin", buildRelation(genre_to_tracks));
+
+  std::vector<std::pair<uint32_t, uint32_t>> track_to_album;
+  track_to_album.push_back(std::make_pair(1u, 1u));
+  track_to_album.push_back(std::make_pair(2u, 1u));
+  fs.addFile("/openpod/track_to_album.bin", buildTrackToAlbumIndex(track_to_album));
+
+  std::vector<CoverIndexEntry> album_to_cover;
+  album_to_cover.push_back({1u, 0u, 50u, 1});
+  fs.addFile("/openpod/album_to_cover.bin", buildAlbumCoverIndex(album_to_cover));
 }
 
 } // namespace openpod_test

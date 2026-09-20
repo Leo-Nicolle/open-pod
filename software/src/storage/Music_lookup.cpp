@@ -14,6 +14,8 @@ MusicLookup::MusicLookup(uint32_t psram_base_addr)
   memset(&track_index_h, 0, sizeof(track_index_h));
   memset(&path_index_h, 0, sizeof(path_index_h));
   memset(&duration_index_h, 0, sizeof(duration_index_h));
+  memset(&track_to_album_h, 0, sizeof(track_to_album_h));
+  memset(&album_cover_h, 0, sizeof(album_cover_h));
 }
 
 MusicLookup::~MusicLookup() {
@@ -44,6 +46,12 @@ bool MusicLookup::init() {
     return false;
   if (!loadDurationIndexFromSDCard(duration_index_path, current_address,
                                    duration_index_h))
+    return false;
+  if (!loadTrackToAlbumIndexFromSDCard(track_to_album_path, current_address,
+                                       track_to_album_h))
+    return false;
+  if (!loadAlbumCoverIndexFromSDCard(album_to_cover_path, current_address,
+                                     album_cover_h))
     return false;
 
   if (!loadRelationFromSDCard(artist_to_albums_path, current_address,
@@ -116,6 +124,35 @@ uint32_t MusicLookup::getTrackDurationSeconds(uint32_t track_id) {
   psram.readData(duration_index_h.baseOffset + track_id * sizeof(uint16_t),
                  (uint8_t *)&seconds, sizeof(uint16_t));
   return seconds;
+}
+
+uint32_t MusicLookup::getAlbumIdForTrack(uint32_t track_id) {
+  if (!initialized || track_id >= track_to_album_h.entry_count) {
+    return 0xFFFFFFFFu;
+  }
+
+  uint32_t albumId = 0;
+  psram.readData(track_to_album_h.baseOffset + track_id * sizeof(uint32_t),
+                 (uint8_t *)&albumId, sizeof(uint32_t));
+  return albumId;
+}
+
+bool MusicLookup::getAlbumCoverEntry(uint32_t album_id,
+                                     album_cover_entry_t &out) {
+  if (!initialized || album_id >= album_cover_h.entry_count) {
+    return false;
+  }
+
+  // Read the three fields individually rather than into a padded C struct,
+  // matching every other lookup here (avoids host/PSRAM struct-packing
+  // mismatches).
+  const uint32_t ENTRY_SIZE = 9;
+  uint32_t addr = album_cover_h.baseOffset + album_id * ENTRY_SIZE;
+  psram.readData(addr, (uint8_t *)&out.offset, sizeof(uint32_t));
+  psram.readData(addr + 4, (uint8_t *)&out.length, sizeof(uint32_t));
+  psram.readData(addr + 8, (uint8_t *)&out.format, sizeof(uint8_t));
+
+  return out.length > 0;
 }
 
 bool MusicLookup::getString(uint32_t id, const index_header_t &index_header,
@@ -199,6 +236,59 @@ bool MusicLookup::loadDurationIndexFromSDCard(const char *filename,
   uint32_t total_size = 4 + entry_count * sizeof(uint16_t);
 
   // Seek back to beginning to load entire file
+  file.seekSet(0);
+  bool res = loadDataFromSDCard(base_address, total_size);
+  base_address += total_size;
+
+  file.close();
+  return res;
+}
+
+bool MusicLookup::loadTrackToAlbumIndexFromSDCard(
+    const char *filename, uint32_t &base_address,
+    track_to_album_index_t &header) {
+  if (!file.open(filename, O_RDONLY)) {
+    Serial.print("ERROR: Could not open track-to-album index file: ");
+    Serial.println(filename);
+    return false;
+  }
+
+  uint32_t entry_count = readLittleEndian32(file);
+
+  // Layout: [entry_count][uint32 albumId]*entry_count - same shape as
+  // loadDurationIndexFromSDCard, just 4-byte entries instead of 2-byte.
+  header.baseOffset = base_address + 4;
+  header.entry_count = entry_count;
+
+  uint32_t total_size = 4 + entry_count * sizeof(uint32_t);
+
+  file.seekSet(0);
+  bool res = loadDataFromSDCard(base_address, total_size);
+  base_address += total_size;
+
+  file.close();
+  return res;
+}
+
+bool MusicLookup::loadAlbumCoverIndexFromSDCard(const char *filename,
+                                                uint32_t &base_address,
+                                                album_cover_index_t &header) {
+  if (!file.open(filename, O_RDONLY)) {
+    Serial.print("ERROR: Could not open album-to-cover index file: ");
+    Serial.println(filename);
+    return false;
+  }
+
+  uint32_t entry_count = readLittleEndian32(file);
+
+  // Layout: [entry_count][{u32 offset, u32 length, u8 format}]*entry_count -
+  // 9 bytes per entry, matching indexer's exportAlbumCoverIndexToBinary.
+  header.baseOffset = base_address + 4;
+  header.entry_count = entry_count;
+
+  const uint32_t ENTRY_SIZE = 9;
+  uint32_t total_size = 4 + entry_count * ENTRY_SIZE;
+
   file.seekSet(0);
   bool res = loadDataFromSDCard(base_address, total_size);
   base_address += total_size;
