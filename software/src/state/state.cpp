@@ -8,7 +8,8 @@ State::State()
       playingTrackId(-1), isPlaying(false), playbackPosition(0),
       trackDuration(0), playingListParentType(Route_t::ROOT),
       playingListEntityId(0), playingListTotalTracks(0), volume(92),
-      seekModeActive(false), isAnimating(false), scrollAnimId(0),
+      seekModeActive(false), selectedIndex(0), topVisibleIndex(0),
+      isAnimating(false), scrollAnimId(0),
       transitionAnimId(0), isRotatedMode(false) {
   playingTrackName[0] = '\0';
 }

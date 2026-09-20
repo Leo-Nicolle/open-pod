@@ -3,7 +3,10 @@
 #include "../src/ui/list/list_cache.hpp"
 #include "../src/ui/list/list_renderer.hpp"
 #include "../src/ui/list/utils.h"
-#include "../src/fonts/IBMPlexSans16Bold.h"
+// Not including "../src/fonts/IBMPlexSans16Bold.h" directly here: it's the
+// one place that *defines* the global `IBMPlexSans16Bold` FastFont (see
+// test_bit_operations.cpp for the full explanation) - test_list_cache.cpp
+// owns that include, this file just uses the extern symbol.
 #include "./mock_ui_types.h"
 
 class ListRendererTestFixture {
@@ -18,10 +21,12 @@ public:
         cache = new ListCache(IBMPlexSans16Bold, 2);
         renderer = new ListRenderer(*cache);
         
-        // Allocate test buffer
-        int width = 100;
-        int height = 30;
-        bufferSize = calculateBufferSize(width, height, 2);
+        // Allocate test buffer. renderElementBinary() always memsets
+        // cache->bytesPerElement bytes (sized from the cache's fixed
+        // internal cacheWidth x cacheHeight), regardless of any width/height
+        // the caller has in mind - size testBuffer to match that, not an
+        // arbitrary width/height, or it overflows.
+        bufferSize = cache->bytesPerElement;
         testBuffer = new uint8_t[bufferSize];
         memset(testBuffer, 0, bufferSize);
     }
@@ -91,9 +96,14 @@ TEST_CASE_FIXTURE(ListRendererTestFixture, "Binary pixel operations") {
     renderer->renderRect(0, 0, testWidth, testHeight, displayBuffer, -1);
     
     // All pixels should be valid colors
+    bool allValid = true;
     for (int i = 0; i < testWidth * testHeight; i++) {
-        CHECK_LE(displayBuffer[i], 0xFFFF);
+        if (displayBuffer[i] > 0xFFFF) {
+            allValid = false;
+            break;
+        }
     }
+    CHECK(allValid);
     
     delete[] binaryTest;
     delete[] displayBuffer;

@@ -1,14 +1,8 @@
 #include <doctest.h>
 #include "../src/state/event-target.h"
 #include "../src/state/state.h"
-
-typedef int UIState;
-
-// Test tracks data
-const char *testTracks[] = {"Track 1", "Track 2", "Track 3", "Track 4",
-                            "Track 5", "Track 6", "Track 7", "Track 8",
-                            "Track 9", "Track 10"};
-const int testTrackCount = 10;
+#include "../src/storage/Music_lookup.h"
+#include <cstring>
 
 // Test event capture system
 struct CapturedEvent {
@@ -31,10 +25,60 @@ struct CapturedEvent {
 CapturedEvent lastEvent;
 int eventCount = 0;
 
+// State builds its event payload structs on the stack and passes emitEvent()
+// a pointer to them; that pointer is only valid for the duration of the
+// (synchronous) listener call. Since these tests inspect the event data
+// *after* the call that emitted it has already returned, the callback has to
+// copy the payload out into storage that outlives the call, not just stash
+// the (about to dangle) pointer.
+namespace {
+unsigned char lastEventDataStorage[64];
+
+size_t eventDataSize(int eventType) {
+  switch (eventType) {
+  case EVENT_TRACK_SELECTED:
+    return sizeof(TrackSelectedEvent);
+  case EVENT_SCROLL_CHANGED:
+  case EVENT_PAGE_CHANGED:
+    return sizeof(ScrollChangedEvent);
+  case EVENT_PLAYBACK_STARTED:
+  case EVENT_PLAYBACK_PAUSED:
+  case EVENT_PLAYBACK_RESUMED:
+  case EVENT_PLAYBACK_STOPPED:
+  case EVENT_TRACK_ENDED:
+    return sizeof(PlaybackEvent);
+  case EVENT_PROGRESS_UPDATED:
+    return sizeof(ProgressEvent);
+  case EVENT_ANIMATION_STARTED:
+  case EVENT_ANIMATION_FINISHED:
+    return sizeof(AnimationEvent);
+  case EVENT_TRACK_LIST_UPDATED:
+    return sizeof(ListEvent);
+  case EVENT_ROUTE_CHANGED:
+    return sizeof(RouteChangedEvent);
+  case EVENT_VOLUME_CHANGED:
+    return sizeof(VolumeEvent);
+  case EVENT_SEEK_MODE_CHANGED:
+    return sizeof(SeekModeEvent);
+  case EVENT_TRACK_DURATION_CHANGED:
+    return sizeof(int);
+  default:
+    return 0;
+  }
+}
+} // namespace
+
 // Test event callback
 void testEventCallback(int eventType, void *eventData, EventTarget *source) {
   lastEvent.eventType = eventType;
-  lastEvent.eventData = eventData;
+  if (eventData) {
+    size_t sz = eventDataSize(eventType);
+    if (sz > sizeof(lastEventDataStorage)) sz = sizeof(lastEventDataStorage);
+    memcpy(lastEventDataStorage, eventData, sz);
+    lastEvent.eventData = lastEventDataStorage;
+  } else {
+    lastEvent.eventData = nullptr;
+  }
   lastEvent.source = source;
   lastEvent.captured = true;
   eventCount++;
@@ -169,14 +213,27 @@ TEST_SUITE("EventTarget Tests") {
   }
 }
 
+// The tests below exercise State (which derives from EventTarget) rather
+// than EventTarget directly. State's API has moved on a lot since these were
+// written (setTracks/selectTrack/startPlayback(index) are all gone - see
+// state.h), so they're adapted to the current setElements/scroll*/goTo*
+// API instead of a literal port.
+
+namespace {
+const char *genericElements[] = {"Item 1", "Item 2", "Item 3", "Item 4",
+                                  "Item 5", "Item 6", "Item 7", "Item 8",
+                                  "Item 9", "Item 10"};
+const int genericElementCount = 10;
+} // namespace
+
 TEST_CASE("Multiple Listeners Receive Events") {
   State state;
   resetTestState();
-  state.setTracks(testTracks, testTrackCount);
   state.addEventListener(testEventCallback);
   state.addEventListener(secondTestCallback);
 
-  state.startPlayback(2);
+  state.setVolume(50); // Any state-changing call will do; volume needs no
+                        // MusicLookup or navigation setup.
 
   CHECK(lastEvent.captured == true); // First callback triggered
   CHECK(secondCallbackCount == 1);   // Second callback triggered
@@ -185,27 +242,29 @@ TEST_CASE("Multiple Listeners Receive Events") {
 TEST_CASE("Event Data Integrity") {
   State state;
   resetTestState();
-  state.setTracks(testTracks, testTrackCount);
+  state.setElements(genericElements, genericElementCount);
   state.addEventListener(testEventCallback);
 
-  state.selectTrack(4);
+  state.scrollDown(); // selectedIndex 0 -> 1
 
-  CHECK(lastEvent.eventType == EVENT_TRACK_SELECTED);
+  CHECK(lastEvent.eventType == EVENT_SCROLL_CHANGED);
   CHECK(lastEvent.source == &state);
 
-  TrackSelectedEvent *event = (TrackSelectedEvent *)lastEvent.eventData;
-  CHECK(event->trackIndex == 4);
-  CHECK(strcmp(event->trackName, "Track 5") == 0);
+  ScrollChangedEvent *event = (ScrollChangedEvent *)lastEvent.eventData;
+  CHECK(event->selectedIndex == 1);
+  CHECK(event->oldSelectedIndex == 0);
 }
 
 TEST_CASE("Complex Navigation Sequence") {
   State state;
+  MusicLookup lookup; // goToNowPlaying() doesn't touch the MusicLookup it's
+                       // handed, so no fake filesystem/catalog is needed here.
   resetTestState();
-  state.setTracks(testTracks, testTrackCount);
   state.addEventListener(testEventCallback);
 
-  // Sequence: select -> scroll -> page -> play -> pause -> stop
-  state.selectTrack(3);
+  // Sequence: load a list -> scroll -> page -> change volume -> animate ->
+  // navigate to Now Playing. Each step should fire its own event.
+  state.setElements(genericElements, genericElementCount);
   int eventCount1 = eventCount;
 
   state.scrollDown();
@@ -214,19 +273,19 @@ TEST_CASE("Complex Navigation Sequence") {
   state.pageDown();
   int eventCount3 = eventCount;
 
-  state.startPlayback();
+  state.setVolume(state.getVolume() + 5);
   int eventCount4 = eventCount;
 
-  state.togglePlayback();
+  state.setAnimating(true, 42);
   int eventCount5 = eventCount;
 
-  state.stopPlayback();
+  state.goToNowPlaying(lookup);
   int eventCount6 = eventCount;
 
-  CHECK(eventCount1 >= 1);          // At least selection event
+  CHECK(eventCount1 >= 1);          // At least the list-updated event
   CHECK(eventCount2 > eventCount1); // Scroll event added
   CHECK(eventCount3 > eventCount2); // Page event added
-  CHECK(eventCount4 > eventCount3); // Playback started
-  CHECK(eventCount5 > eventCount4); // Playback paused
-  CHECK(eventCount6 > eventCount5); // Playback stopped
+  CHECK(eventCount4 > eventCount3); // Volume changed
+  CHECK(eventCount5 > eventCount4); // Animation started
+  CHECK(eventCount6 > eventCount5); // Route changed (Now Playing)
 }

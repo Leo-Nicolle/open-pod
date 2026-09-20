@@ -54,6 +54,22 @@ auto max(const T &a, const L &b) -> decltype((a < b) ? b : a) {
   ((amt) < (low) ? (low) : ((amt) > (high) ? (high) : (amt)))
 #endif
 
+// Minimal stand-in for Arduino's String class - just enough for production
+// headers (e.g. ListCache::printCacheStats(), never actually called by the
+// tests, but still compiled since it's a non-template inline member
+// function) to build under the native test toolchain. No real string
+// storage/formatting is needed since Serial.println() below is a no-op.
+class String {
+public:
+  String() {}
+  String(int) {}
+  String(unsigned int) {}
+  String(const char *) {}
+  String operator+(const char *) const { return String(); }
+  String operator+(const String &) const { return String(); }
+};
+inline String operator+(const char *, const String &) { return String(); }
+
 namespace openpod_test {
 
 class SerialClass {
