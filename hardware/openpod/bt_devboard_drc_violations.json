@@ -1,0 +1,518 @@
+{
+  "board": "/home/leo/Documents/dev/open-pod/hardware/openpod/bt_devboard.kicad_pcb",
+  "timestamp": "2026-09-20T02:49:13+0200",
+  "total_violations": 50,
+  "violation_counts": {
+    "solder_mask_bridge": 15,
+    "tracks_crossing": 17,
+    "shorting_items": 14,
+    "clearance": 4
+  },
+  "severity_counts": {
+    "error": 50,
+    "warning": 0,
+    "info": 0
+  },
+  "violations": [
+    {
+      "type": "solder_mask_bridge",
+      "severity": "error",
+      "message": "Front solder mask aperture bridges items with different nets",
+      "location": {
+        "x": 87.5,
+        "y": 57.62,
+        "unit": "mm"
+      }
+    },
+    {
+      "type": "solder_mask_bridge",
+      "severity": "error",
+      "message": "Front solder mask aperture bridges items with different nets",
+      "location": {
+        "x": 96.25,
+        "y": 86.25,
+        "unit": "mm"
+      }
+    },
+    {
+      "type": "solder_mask_bridge",
+      "severity": "error",
+      "message": "Front solder mask aperture bridges items with different nets",
+      "location": {
+        "x": 93.0,
+        "y": 80.0,
+        "unit": "mm"
+      }
+    },
+    {
+      "type": "solder_mask_bridge",
+      "severity": "error",
+      "message": "Front solder mask aperture bridges items with different nets",
+      "location": {
+        "x": 102.815,
+        "y": 72.85,
+        "unit": "mm"
+      }
+    },
+    {
+      "type": "solder_mask_bridge",
+      "severity": "error",
+      "message": "Front solder mask aperture bridges items with different nets",
+      "location": {
+        "x": 102.815,
+        "y": 72.85,
+        "unit": "mm"
+      }
+    },
+    {
+      "type": "solder_mask_bridge",
+      "severity": "error",
+      "message": "Front solder mask aperture bridges items with different nets",
+      "location": {
+        "x": 126.0,
+        "y": 80.0,
+        "unit": "mm"
+      }
+    },
+    {
+      "type": "solder_mask_bridge",
+      "severity": "error",
+      "message": "Front solder mask aperture bridges items with different nets",
+      "location": {
+        "x": 126.0,
+        "y": 80.0,
+        "unit": "mm"
+      }
+    },
+    {
+      "type": "solder_mask_bridge",
+      "severity": "error",
+      "message": "Front solder mask aperture bridges items with different nets",
+      "location": {
+        "x": 126.0,
+        "y": 80.0,
+        "unit": "mm"
+      }
+    },
+    {
+      "type": "solder_mask_bridge",
+      "severity": "error",
+      "message": "Front solder mask aperture bridges items with different nets",
+      "location": {
+        "x": 87.5,
+        "y": 67.78,
+        "unit": "mm"
+      }
+    },
+    {
+      "type": "solder_mask_bridge",
+      "severity": "error",
+      "message": "Front solder mask aperture bridges items with different nets",
+      "location": {
+        "x": 87.5,
+        "y": 60.16,
+        "unit": "mm"
+      }
+    },
+    {
+      "type": "solder_mask_bridge",
+      "severity": "error",
+      "message": "Front solder mask aperture bridges items with different nets",
+      "location": {
+        "x": 93.5875,
+        "y": 75.0,
+        "unit": "mm"
+      }
+    },
+    {
+      "type": "solder_mask_bridge",
+      "severity": "error",
+      "message": "Front solder mask aperture bridges items with different nets",
+      "location": {
+        "x": 91.75,
+        "y": 86.25,
+        "unit": "mm"
+      }
+    },
+    {
+      "type": "solder_mask_bridge",
+      "severity": "error",
+      "message": "Front solder mask aperture bridges items with different nets",
+      "location": {
+        "x": 91.75,
+        "y": 86.25,
+        "unit": "mm"
+      }
+    },
+    {
+      "type": "solder_mask_bridge",
+      "severity": "error",
+      "message": "Front solder mask aperture bridges items with different nets",
+      "location": {
+        "x": 91.75,
+        "y": 86.25,
+        "unit": "mm"
+      }
+    },
+    {
+      "type": "solder_mask_bridge",
+      "severity": "error",
+      "message": "Front solder mask aperture bridges items with different nets",
+      "location": {
+        "x": 120.5,
+        "y": 70.32,
+        "unit": "mm"
+      }
+    },
+    {
+      "type": "tracks_crossing",
+      "severity": "error",
+      "message": "Tracks crossing",
+      "location": {
+        "x": 87.5,
+        "y": 67.78,
+        "unit": "mm"
+      }
+    },
+    {
+      "type": "tracks_crossing",
+      "severity": "error",
+      "message": "Tracks crossing",
+      "location": {
+        "x": 113.5,
+        "y": 50.0,
+        "unit": "mm"
+      }
+    },
+    {
+      "type": "tracks_crossing",
+      "severity": "error",
+      "message": "Tracks crossing",
+      "location": {
+        "x": 93.5875,
+        "y": 75.0,
+        "unit": "mm"
+      }
+    },
+    {
+      "type": "shorting_items",
+      "severity": "error",
+      "message": "Items shorting two nets (nets /BT_3V3 and /BT_GND)",
+      "location": {
+        "x": 87.5,
+        "y": 67.78,
+        "unit": "mm"
+      }
+    },
+    {
+      "type": "tracks_crossing",
+      "severity": "error",
+      "message": "Tracks crossing",
+      "location": {
+        "x": 87.5,
+        "y": 57.62,
+        "unit": "mm"
+      }
+    },
+    {
+      "type": "shorting_items",
+      "severity": "error",
+      "message": "Items shorting two nets (nets /BT_3V3 and /BT_GND)",
+      "location": {
+        "x": 87.5,
+        "y": 67.78,
+        "unit": "mm"
+      }
+    },
+    {
+      "type": "shorting_items",
+      "severity": "error",
+      "message": "Items shorting two nets (nets /BT_GND and /BT_RTS)",
+      "location": {
+        "x": 96.5,
+        "y": 52.95,
+        "unit": "mm"
+      }
+    },
+    {
+      "type": "shorting_items",
+      "severity": "error",
+      "message": "Items shorting two nets (nets /BT_3V3 and /BT_VBAT)",
+      "location": {
+        "x": 87.5,
+        "y": 67.78,
+        "unit": "mm"
+      }
+    },
+    {
+      "type": "shorting_items",
+      "severity": "error",
+      "message": "Items shorting two nets (nets /BT_VDD_IO and /BT_1V8)",
+      "location": {
+        "x": 98.415,
+        "y": 66.95,
+        "unit": "mm"
+      }
+    },
+    {
+      "type": "tracks_crossing",
+      "severity": "error",
+      "message": "Tracks crossing",
+      "location": {
+        "x": 120.5,
+        "y": 62.7,
+        "unit": "mm"
+      }
+    },
+    {
+      "type": "shorting_items",
+      "severity": "error",
+      "message": "Items shorting two nets (nets /BT_GND and /BT_CTS)",
+      "location": {
+        "x": 114.0,
+        "y": 50.95,
+        "unit": "mm"
+      }
+    },
+    {
+      "type": "shorting_items",
+      "severity": "error",
+      "message": "Items shorting two nets (nets /BT_RX and /BT_RTS)",
+      "location": {
+        "x": 120.5,
+        "y": 70.32,
+        "unit": "mm"
+      }
+    },
+    {
+      "type": "tracks_crossing",
+      "severity": "error",
+      "message": "Tracks crossing",
+      "location": {
+        "x": 113.75,
+        "y": 80.0,
+        "unit": "mm"
+      }
+    },
+    {
+      "type": "tracks_crossing",
+      "severity": "error",
+      "message": "Tracks crossing",
+      "location": {
+        "x": 120.5,
+        "y": 60.16,
+        "unit": "mm"
+      }
+    },
+    {
+      "type": "tracks_crossing",
+      "severity": "error",
+      "message": "Tracks crossing",
+      "location": {
+        "x": 123.0,
+        "y": 77.0,
+        "unit": "mm"
+      }
+    },
+    {
+      "type": "shorting_items",
+      "severity": "error",
+      "message": "Items shorting two nets (nets /BT_CTS and /BT_RX)",
+      "location": {
+        "x": 112.215,
+        "y": 64.95,
+        "unit": "mm"
+      }
+    },
+    {
+      "type": "shorting_items",
+      "severity": "error",
+      "message": "Items shorting two nets (nets /BT_RX and /BT_RTS)",
+      "location": {
+        "x": 120.5,
+        "y": 70.32,
+        "unit": "mm"
+      }
+    },
+    {
+      "type": "shorting_items",
+      "severity": "error",
+      "message": "Items shorting two nets (nets /BT_USB_DP and /BT_VDD_IO)",
+      "location": {
+        "x": 98.415,
+        "y": 65.95,
+        "unit": "mm"
+      }
+    },
+    {
+      "type": "tracks_crossing",
+      "severity": "error",
+      "message": "Tracks crossing",
+      "location": {
+        "x": 87.5,
+        "y": 62.7,
+        "unit": "mm"
+      }
+    },
+    {
+      "type": "tracks_crossing",
+      "severity": "error",
+      "message": "Tracks crossing",
+      "location": {
+        "x": 87.5,
+        "y": 67.78,
+        "unit": "mm"
+      }
+    },
+    {
+      "type": "tracks_crossing",
+      "severity": "error",
+      "message": "Tracks crossing",
+      "location": {
+        "x": 124.5,
+        "y": 78.5,
+        "unit": "mm"
+      }
+    },
+    {
+      "type": "clearance",
+      "severity": "error",
+      "message": "Clearance violation (board minimum clearance 0.2500 mm; actual 0.2294 mm)",
+      "location": {
+        "x": 98.415,
+        "y": 66.95,
+        "unit": "mm"
+      }
+    },
+    {
+      "type": "tracks_crossing",
+      "severity": "error",
+      "message": "Tracks crossing",
+      "location": {
+        "x": 93.5875,
+        "y": 75.0,
+        "unit": "mm"
+      }
+    },
+    {
+      "type": "tracks_crossing",
+      "severity": "error",
+      "message": "Tracks crossing",
+      "location": {
+        "x": 96.25,
+        "y": 86.25,
+        "unit": "mm"
+      }
+    },
+    {
+      "type": "tracks_crossing",
+      "severity": "error",
+      "message": "Tracks crossing",
+      "location": {
+        "x": 87.5,
+        "y": 67.78,
+        "unit": "mm"
+      }
+    },
+    {
+      "type": "shorting_items",
+      "severity": "error",
+      "message": "Items shorting two nets (nets /BT_RESET and /BT_VCHG)",
+      "location": {
+        "x": 113.75,
+        "y": 80.0,
+        "unit": "mm"
+      }
+    },
+    {
+      "type": "shorting_items",
+      "severity": "error",
+      "message": "Items shorting two nets (nets /BT_SYS_CTRL and /BT_USB_DN)",
+      "location": {
+        "x": 87.5,
+        "y": 62.7,
+        "unit": "mm"
+      }
+    },
+    {
+      "type": "tracks_crossing",
+      "severity": "error",
+      "message": "Tracks crossing",
+      "location": {
+        "x": 120.5,
+        "y": 65.239999,
+        "unit": "mm"
+      }
+    },
+    {
+      "type": "tracks_crossing",
+      "severity": "error",
+      "message": "Tracks crossing",
+      "location": {
+        "x": 120.5,
+        "y": 67.78,
+        "unit": "mm"
+      }
+    },
+    {
+      "type": "clearance",
+      "severity": "error",
+      "message": "Clearance violation (board minimum clearance 0.2500 mm; actual 0.0599 mm)",
+      "location": {
+        "x": 87.5,
+        "y": 62.7,
+        "unit": "mm"
+      }
+    },
+    {
+      "type": "tracks_crossing",
+      "severity": "error",
+      "message": "Tracks crossing",
+      "location": {
+        "x": 98.415,
+        "y": 70.95,
+        "unit": "mm"
+      }
+    },
+    {
+      "type": "shorting_items",
+      "severity": "error",
+      "message": "Items shorting two nets (nets /BT_RX and /BT_CTS)",
+      "location": {
+        "x": 120.5,
+        "y": 70.32,
+        "unit": "mm"
+      }
+    },
+    {
+      "type": "clearance",
+      "severity": "error",
+      "message": "Clearance violation (board minimum clearance 0.2500 mm; actual 0.0758 mm)",
+      "location": {
+        "x": 98.415,
+        "y": 68.95,
+        "unit": "mm"
+      }
+    },
+    {
+      "type": "shorting_items",
+      "severity": "error",
+      "message": "Items shorting two nets (nets /BT_RX and /BT_CTS)",
+      "location": {
+        "x": 120.5,
+        "y": 70.32,
+        "unit": "mm"
+      }
+    },
+    {
+      "type": "clearance",
+      "severity": "error",
+      "message": "Clearance violation (board minimum clearance 0.2500 mm; actual 0.0768 mm)",
+      "location": {
+        "x": 95.4125,
+        "y": 75.0,
+        "unit": "mm"
+      }
+    }
+  ]
+}
