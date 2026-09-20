@@ -8,6 +8,11 @@ import {
   getSerializedTrieStats,
   exportIndexesToBinary,
 } from "./src";
+import {
+  packThumbnails,
+  exportAlbumCoverIndexToBinary,
+  THUMBNAIL_PIPELINE_VERSION,
+} from "./src/thumbnails";
 import fs from "fs/promises";
 import path from "path";
 
@@ -54,13 +59,51 @@ async function main() {
   // Step 1: Crawl music directory
   console.log("📁 Crawling music directory...");
   const crawlIndex = await readMetadata(musicPath);
-  await fs.writeFile("test/stubs/crawl-index.json", serialize(crawlIndex));
+  await fs.writeFile(
+    path.resolve(outputPath, "crawl-index.debug.json"),
+    serialize(crawlIndex)
+  );
 
   console.log(`Found:`);
   console.log(`  - ${crawlIndex.indexToTrack.size} tracks`);
   console.log(`  - ${crawlIndex.indexToArtist.size} artists`);
   console.log(`  - ${crawlIndex.indexToAlbum.size} albums`);
   console.log(`  - ${crawlIndex.indexToGenre.size} genres`);
+  console.log("");
+
+  console.log("🖼️  Packing album thumbnails...");
+  const thumbnailEntries = Array.from(crawlIndex.albumThumbnails.entries())
+    .sort(([a], [b]) => a - b)
+    .map(([albumId, result]) => ({ albumId, result }));
+  const { blob: thumbsBlob, index: thumbsIndex } = packThumbnails(
+    thumbnailEntries
+  );
+  await fs.writeFile(path.resolve(outputPath, "thumbs.bin"), thumbsBlob);
+  await fs.writeFile(
+    path.resolve(outputPath, "album_to_cover.bin"),
+    exportAlbumCoverIndexToBinary(thumbsIndex)
+  );
+  await fs.writeFile(
+    path.resolve(outputPath, "thumbs.manifest.json"),
+    JSON.stringify(
+      {
+        pipelineVersion: THUMBNAIL_PIPELINE_VERSION,
+        entries: Array.from(thumbsIndex.entries()).map(([albumId, entry]) => ({
+          albumId,
+          ...entry,
+        })),
+      },
+      null,
+      2
+    )
+  );
+  const placeholderCount = thumbnailEntries.filter(
+    (e) => e.result.isPlaceholder
+  ).length;
+  console.log(
+    `  - ${thumbnailEntries.length} thumbnails (${placeholderCount} placeholders)`
+  );
+  console.log(`  - thumbs.bin size: ${thumbsBlob.length} bytes`);
   console.log("");
 
   console.log("🌳 Building search trie...");

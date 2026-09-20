@@ -3,6 +3,12 @@ import path from "path";
 import type { CrawlCallback, CrawlIndex, TrackMetadata } from "./types";
 import { parseFile } from "music-metadata";
 import { sanitizeName } from "./utils";
+import {
+  resolveAlbumArtSource,
+  generateAlbumThumbnail,
+  type ThumbnailConfig,
+  type ThumbnailResult,
+} from "./thumbnails";
 
 function getOrAdd<T>(
   map: Map<string, number>,
@@ -63,7 +69,10 @@ export async function organizeFiles(messyRoot: string, organizedRoot: string) {
   });
 }
 
-export async function readMetadata(root: string): Promise<CrawlIndex> {
+export async function readMetadata(
+  root: string,
+  thumbnailConfig?: Partial<ThumbnailConfig>
+): Promise<CrawlIndex> {
   const audioExts = new Set([".mp3", ".flac", ".ogg", ".wav", ".m4a", ".aac"]);
 
   const indexToTrack = new Map<number, string>();
@@ -85,6 +94,8 @@ export async function readMetadata(root: string): Promise<CrawlIndex> {
   const genreToArtists = new Map<number, Set<number>>();
 
   const metadataByTrackIndex = new Map<number, TrackMetadata>();
+  const albumThumbnails = new Map<number, ThumbnailResult>();
+  const trackToAlbum = new Map<number, number>();
   const trackIndexCounter = { value: 0 };
   const artistIndexCounter = { value: 0 };
   const albumIndexCounter = { value: 0 };
@@ -111,12 +122,22 @@ export async function readMetadata(root: string): Promise<CrawlIndex> {
       artist,
       artistIndexCounter
     );
+    const isNewAlbum = !albumToIndex.has(album);
     const albumId = getOrAdd(
       albumToIndex,
       indexToAlbum,
       album,
       albumIndexCounter
     );
+    if (isNewAlbum) {
+      const artSource = await resolveAlbumArtSource(fullPath);
+      const thumbnail = await generateAlbumThumbnail({
+        source: artSource,
+        albumId,
+        config: thumbnailConfig,
+      });
+      albumThumbnails.set(albumId, thumbnail);
+    }
     const genreId = getOrAdd(
       genreToIndex,
       indexToGenre,
@@ -124,6 +145,7 @@ export async function readMetadata(root: string): Promise<CrawlIndex> {
       genreIndexCounter
     );
     const trackId = trackIndexCounter.value++;
+    trackToAlbum.set(trackId, albumId);
 
     trackToIndex.set(title, trackId);
     indexToTrack.set(trackId, title);
@@ -172,6 +194,8 @@ export async function readMetadata(root: string): Promise<CrawlIndex> {
     genreToAlbums,
     genreToTracks,
     genreToArtists,
+    albumThumbnails,
+    trackToAlbum,
   };
 }
 
@@ -219,6 +243,9 @@ export function serialize(indexes: CrawlIndex): string {
       ])
     ),
     metadataByTrackIndex: Array.from(indexes.metadataByTrackIndex.entries()),
+    trackToAlbum: Array.from(indexes.trackToAlbum.entries()),
+    // albumThumbnails deliberately omitted: it carries raw blob bytes and
+    // isn't needed by this JSON debug/fixture dump. See thumbs.bin instead.
   };
   return JSON.stringify(data, null, 2);
 }
@@ -282,6 +309,9 @@ export function unserialize(data: string): CrawlIndex {
     genreToTracks,
     genreToArtists,
     metadataByTrackIndex,
+    trackToAlbum: new Map<number, number>(parsed.trackToAlbum ?? []),
+    // Not part of the JSON fixture; re-crawl to regenerate thumbnails.
+    albumThumbnails: new Map(),
   };
 }
 export function printIndexes(indexes: CrawlIndex) {
@@ -353,5 +383,12 @@ export function printIndexes(indexes: CrawlIndex) {
   for (const [index, filePath] of indexes.indexToPath.entries()) {
     console.log(`  ${index}: ${filePath}`);
   }
+  console.log("Album Thumbnails:");
+  const placeholderCount = Array.from(
+    indexes.albumThumbnails.values()
+  ).filter((t) => t.isPlaceholder).length;
+  console.log(
+    `  ${indexes.albumThumbnails.size} generated, ${placeholderCount} placeholders`
+  );
   console.log("Finished printing indexes.");
 }

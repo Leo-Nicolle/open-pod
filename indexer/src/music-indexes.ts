@@ -166,6 +166,39 @@ export function importDurationIndexFromBinary(
   return { entryCount, durations };
 }
 
+// Format: [uint32 entryCount][uint32 albumId]*entryCount, directly indexed
+// by (dense, 0-based) track id - mirrors exportDurationIndexToBinary's dense
+// fixed-width layout, since track->album is 1:1 (no id array/offsets needed).
+export function exportTrackToAlbumIndexToBinary(
+  trackToAlbum: Map<number, number>
+): Uint8Array {
+  const maxId = Math.max(-1, ...Array.from(trackToAlbum.keys()));
+  const entryCount = maxId + 1;
+  const buffer = new ArrayBuffer(4 + entryCount * 4);
+  const view = new DataView(buffer);
+  view.setUint32(0, entryCount, true);
+  for (let id = 0; id < entryCount; id++) {
+    view.setUint32(4 + id * 4, trackToAlbum.get(id) ?? 0, true);
+  }
+  return new Uint8Array(buffer);
+}
+
+export function importTrackToAlbumIndexFromBinary(
+  buffer: Uint8Array
+): { entryCount: number; albumIds: number[] } {
+  const view = new DataView(
+    buffer.buffer,
+    buffer.byteOffset,
+    buffer.byteLength
+  );
+  const entryCount = view.getUint32(0, true);
+  const albumIds: number[] = [];
+  for (let id = 0; id < entryCount; id++) {
+    albumIds.push(view.getUint32(4 + id * 4, true));
+  }
+  return { entryCount, albumIds };
+}
+
 // Generic import function for string indexes
 export function importStringIndexFromBinary(
   buffer: Uint8Array
@@ -270,5 +303,6 @@ export function exportIndexesToBinary(crawlIndex: CrawlIndex) {
     track_index: exportStringIndexToBinary(crawlIndex.indexToTrack),
     path_index: exportStringIndexToBinary(crawlIndex.indexToPath),
     duration_index: exportDurationIndexToBinary(crawlIndex.metadataByTrackIndex),
+    track_to_album: exportTrackToAlbumIndexToBinary(crawlIndex.trackToAlbum),
   };
 }

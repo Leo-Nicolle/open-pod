@@ -49,6 +49,9 @@ export type CrawlCallback = (
   path: string
 ) => Promise<void>;
 
+import type { ThumbnailResult } from "./thumbnails";
+export type { ThumbnailResult } from "./thumbnails";
+
 export type TrackMetadata = {
   title: string;
   artist: string;
@@ -71,6 +74,8 @@ export type CrawlIndex = {
   genreToAlbums: Map<number, Set<number>>;
   genreToTracks: Map<number, Set<number>>;
   genreToArtists: Map<number, Set<number>>;
+  albumThumbnails: Map<number, ThumbnailResult>;
+  trackToAlbum: Map<number, number>;
 };
 
 // Path index types for track path lookup
