@@ -1,0 +1,28 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "graft": {
+      "type": "local",
+      "command": [
+        "graft",
+        "mcp"
+      ],
+      "enabled": true
+    },
+    "kicad": {
+      "type": "local",
+      "command": [
+        "node",
+        "/home/leo/Documents/dev/KiCAD-MCP-Server/dist/index.js"
+      ],
+      "environment": {
+        "NODE_ENV": "production",
+        "LOG_LEVEL": "info",
+        "KICAD_AUTO_LAUNCH": "false",
+        "PYTHONPATH": "/usr/lib/python3/dist-packages"
+      },
+      "enabled": true,
+      "timeout": 30000
+    }
+  }
+}

@@ -1,6 +1,7 @@
 import { EnhanceAppContext, useRoute } from "vitepress";
 import Clickwheel from "./components/clickwheel.vue";
 import Video from "./components/video.vue";
+import IndexCalculator from "./components/index-calculator.vue";
 import { setup } from "@css-render/vue3-ssr";
 import { NConfigProvider } from "naive-ui";
 import DefaultTheme from "vitepress/theme";
@@ -52,6 +53,7 @@ export default {
   enhanceApp({ app }: EnhanceAppContext) {
     app.component("Clickwheel", Clickwheel);
     app.component("Video", Video);
+    app.component("IndexCalculator", IndexCalculator);
 
     if (import.meta.env.SSR) {
       const { collect } = setup(app);
