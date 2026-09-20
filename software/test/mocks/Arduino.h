@@ -89,6 +89,11 @@ inline void digitalWrite(uint8_t pin, uint8_t val) {
 
 inline void delay(unsigned long) {}
 inline void delayMicroseconds(unsigned int) {}
+// Native tests are single-threaded with no ISRs, so these are no-ops -
+// Audio_buffer brackets its PSRAM read/write calls with them to keep the
+// real (interrupt-driven) firmware from tearing a multi-byte transfer.
+inline void noInterrupts() {}
+inline void interrupts() {}
 
 // Make `Serial.println(...)` resolve to the mock singleton. This matches how
 // the storage layer uses Serial and avoids a global object definition.

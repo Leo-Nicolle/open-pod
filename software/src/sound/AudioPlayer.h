@@ -74,6 +74,15 @@ public:
   // Advanced configuration
   bool configureAudioQuality(uint32_t targetSampleRate = 48000);
 
+  // Next-track prefetch (see memory-improvements.md §3): call once the
+  // current track starts, with whatever comes next (if known), so its
+  // opening bytes get pulled into PSRAM ahead of time and the eventual
+  // track change usually needs zero fresh SD activity.
+  void prepareNextTrack(const char *filename, uint32_t knownDurationSeconds = 0);
+  // Discards an in-progress next-track prefetch, e.g. on a user skip that
+  // invalidates the sequential-next guess before it's ever consumed.
+  void invalidateNextTrack();
+
   bool isFLACFile(const char *filename); // NEW: FLAC detection
 
   // Testing and diagnostics

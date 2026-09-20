@@ -3,11 +3,27 @@
 #include <SPI.h>
 #include "../pinout.h"
 
-#define PSRAM_SIZE                (64 * 1024 * 1024) // 64 Mb PSRAM chip size
+// APS6404L-3SQR-SN is a 64-Megabit chip, i.e. 8 MB - not 64 MB. This used to
+// be defined as (64 * 1024 * 1024) (confusing Mbit with MB), which made
+// MUSIC_INDEX_SIZE below claim ~58 MB of address space that doesn't
+// physically exist: any write past the real 8 MB boundary would wrap around
+// and silently corrupt AUDIO_BUFFER_SIZE's region at address 0. Keep this in
+// sync with SPI_PSRAM::getCapacity() below, which was already correct.
+#define PSRAM_SIZE                (8 * 1024 * 1024) // 8 MB PSRAM chip size
 #define AUDIO_BUFFER_BASE_ADDRESS 0x000
-#define AUDIO_BUFFER_SIZE         (6 * 1024 * 1024) // 6 Mb
-#define MUSIC_INDEX_BASE_ADDRESS  (AUDIO_BUFFER_BASE_ADDRESS + AUDIO_BUFFER_SIZE)
-#define MUSIC_INDEX_SIZE           PSRAM_SIZE - AUDIO_BUFFER_SIZE // Remaining PSRAM size for music index
+// Current-track ring buffer. See memory-improvements.md for the full 8 MB
+// budget (5 MB current-track + 1 MB next-track prefetch + 2 MB music index).
+#define AUDIO_BUFFER_SIZE         (5 * 1024 * 1024) // 5 MB
+// Linear (non-ring) scratch region used to prefetch the start of the next
+// track while the current one is still playing, so a track change usually
+// needs zero fresh SD activity - see Audio_buffer::prepareNextTrack().
+#define NEXT_TRACK_BUFFER_BASE_ADDRESS (AUDIO_BUFFER_BASE_ADDRESS + AUDIO_BUFFER_SIZE)
+#define NEXT_TRACK_BUFFER_SIZE    (1 * 1024 * 1024) // 1 Mb
+#define MUSIC_INDEX_BASE_ADDRESS  (NEXT_TRACK_BUFFER_BASE_ADDRESS + NEXT_TRACK_BUFFER_SIZE)
+#define MUSIC_INDEX_SIZE          (PSRAM_SIZE - AUDIO_BUFFER_SIZE - NEXT_TRACK_BUFFER_SIZE) // Remaining PSRAM size for music index
+
+static_assert(AUDIO_BUFFER_SIZE + NEXT_TRACK_BUFFER_SIZE < PSRAM_SIZE,
+             "Audio + next-track prefetch regions must leave room in PSRAM for the music index");
 
 // SPI PSRAM interface for APS6404L-3SQR-SN using Arduino SPI library
 class SPI_PSRAM {

@@ -55,6 +55,20 @@ void PodPlayer::handleTrackPlaybackStarted(const PlaybackEvent *event) {
   } else {
     Serial.printf("Could not resolve path for track id %d\n", event->trackId);
   }
+
+  // Kick off background prefetch of whatever plays next (memory-improvements
+  // .md §3), so the eventual track change usually needs zero fresh SD
+  // activity. If there's no next track (end of list), drop any stale guess
+  // left over from a previous playlist/track.
+  uint32_t nextTrackId;
+  char nextPath[256];
+  if (state.getNextTrackId(musicLookup, nextTrackId) &&
+      musicLookup.getTrackPath(nextTrackId, nextPath, sizeof(nextPath))) {
+    uint32_t nextDuration = musicLookup.getTrackDurationSeconds(nextTrackId);
+    audioPlayer.prepareNextTrack(nextPath, nextDuration);
+  } else {
+    audioPlayer.invalidateNextTrack();
+  }
 }
 
 void PodPlayer::handlePlaybackPaused(const PlaybackEvent *event) {

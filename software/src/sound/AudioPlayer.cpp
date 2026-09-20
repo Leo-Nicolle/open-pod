@@ -57,7 +57,13 @@ bool AudioPlayer::startPlaying(const char *filename,
       return false;
     }
   }
-  _buffer.setFileName(filename, knownDurationSeconds);
+  // If this exact file was already prefetched while the previous track was
+  // playing, adopt it (reopen at the resumed position + copy the prefetched
+  // bytes into the ring buffer) instead of reading its opening bytes from
+  // SD again from scratch.
+  if (!_buffer.consumeNextTrackIfMatches(filename, knownDurationSeconds)) {
+    _buffer.setFileName(filename, knownDurationSeconds);
+  }
   if (_buffer.load()) {
     _driver.resetDecodeTime();
     _seekOffsetSeconds = 0;
@@ -145,11 +151,32 @@ void AudioPlayer::loop() {
     restoreVolumeFromDuck();
   }
   if (!_playing || _paused) return;
-  _buffer.load();
+
+  // Hysteresis: only touch the SD card for a big burst refill once the
+  // buffer has actually drained below the low watermark, instead of
+  // topping up on every tick. That's what turns "continuous small SD reads
+  // for the whole track" into "one big burst, then idle for minutes" - see
+  // memory-improvements.md §1/§2.
+  if (_buffer.getBufferedBytes() < AUDIO_LOW_WATERMARK_BYTES) {
+    _buffer.load();
+  } else {
+    // Buffer is healthy: use the otherwise-idle SD bus to make background
+    // progress on the next track's prefetch instead (memory-improvements.md
+    // §3), bounded to one chunk per tick same as load().
+    _buffer.prefetchNextTrack();
+  }
+
   while (_playing && !_paused && _driver.readyForData()) {
     if (!feedBuffer()) break;
   }
 }
+
+void AudioPlayer::prepareNextTrack(const char *filename,
+                                   uint32_t knownDurationSeconds) {
+  _buffer.prepareNextTrack(filename, knownDurationSeconds);
+}
+
+void AudioPlayer::invalidateNextTrack() { _buffer.invalidateNextTrack(); }
 
 bool AudioPlayer::feedBuffer() {
   size_t bytesRead = _buffer.readData(_feedBuffer, AUDIO_DATABUFFERLEN);

@@ -63,50 +63,6 @@ uint32_t Audio_buffer::skipID3Header(FsFile &file) {
   return 0;
 }
 
-// Scans forward from dataStart for the first valid MPEG audio frame sync,
-// reads its bitrate, and estimates duration as (audio bytes) / (bitrate).
-// This is exact for CBR files (the common case for ripped libraries) and
-// approximate for VBR files, since only the first frame's bitrate is used.
-uint32_t Audio_buffer::estimateDurationSeconds(uint32_t dataStart) {
-  static const uint16_t kBitrateKbpsV1L3[16] = {0,   32,  40,  48,  56,
-                                                64,  80,  96,  112, 128,
-                                                160, 192, 224, 256, 320, 0};
-  static const uint16_t kBitrateKbpsV2L3[16] = {0,  8,  16, 24, 32,  40,
-                                                48, 56, 64, 80, 96,  112,
-                                                128, 144, 160, 0};
-  const uint32_t maxScan = 4096;
-  if (dataStart >= fileSize)
-    return 0;
-
-  file.seekSet(dataStart);
-  int prevByte = -1;
-  for (uint32_t scanned = 0; scanned < maxScan; scanned++) {
-    int b = file.read();
-    if (b < 0)
-      break;
-    if (prevByte == 0xFF && (b & 0xE0) == 0xE0) {
-      uint8_t rest[2];
-      if (file.read(rest, 2) != 2)
-        break;
-      uint8_t versionBits = (b >> 3) & 0x3;  // 00=v2.5, 10=v2, 11=v1
-      uint8_t layerBits = (b >> 1) & 0x3;    // 01=Layer III
-      uint8_t bitrateIndex = (rest[0] >> 4) & 0xF;
-      if (versionBits != 0x1 && layerBits == 0x1 && bitrateIndex > 0 &&
-          bitrateIndex < 15) {
-        uint16_t kbps = (versionBits == 0x3) ? kBitrateKbpsV1L3[bitrateIndex]
-                                             : kBitrateKbpsV2L3[bitrateIndex];
-        if (kbps > 0) {
-          uint32_t audioBytes = fileSize - dataStart;
-          return (uint32_t)(((uint64_t)audioBytes * 8) / ((uint64_t)kbps * 1000));
-        }
-      }
-      break; // malformed header at the first sync found; give up
-    }
-    prevByte = b;
-  }
-  return 0;
-}
-
 void Audio_buffer::setFileName(const char *filename,
                                uint32_t knownDurationSeconds) {
   if (file.isOpen()) {
@@ -118,12 +74,16 @@ void Audio_buffer::setFileName(const char *filename,
   filePos = 0; // Reset file position
   _durationSeconds = knownDurationSeconds;
 }
-bool Audio_buffer::openFile() {
-  if (!file.open(_currentFileName, O_RDONLY)) {
-    Serial.printf("Can't open: %s\n", _currentFileName);
+bool Audio_buffer::openFile(bool nextFile) {
+  File &f = nextFile ? _nextFile : file;
+  const char *fname = nextFile ? _nextFileName : _currentFileName;
+  size_t &fsize = nextFile ? _nextFileSize : fileSize;
+
+  if (!f.open(fname, O_RDONLY)) {
+    Serial.printf("Can't open: %s\n", fname);
     return false;
   }
-  fileSize = file.size();
+  fsize = f.size();
   return true;
 }
 
@@ -135,72 +95,205 @@ bool Audio_buffer::closeFile() {
   return false;
 }
 
-bool Audio_buffer::SDtoPSRAM() {
-  if (!file.isOpen()) {
-    if (!openFile()) {
+bool Audio_buffer::SDtoPSRAM(bool nextFile) {
+  // Prefetching with nothing queued: refuse before even trying to open an
+  // empty filename (openFile() would just fail anyway, but noisily).
+  if (nextFile && _nextFileName[0] == '\0') {
+    return false;
+  }
+
+  File &f = nextFile ? _nextFile : file;
+  size_t &fsize = nextFile ? _nextFileSize : fileSize;
+  int &fpos = nextFile ? _nextFilePos : filePos;
+  uint32_t &dataStart = nextFile ? _nextDataStart : _dataStart;
+
+  if (!f.isOpen()) {
+    if (!openFile(nextFile)) {
+      if (nextFile) {
+        _nextFileName[0] = '\0'; // give up on this guess
+      }
       return false;
     }
-    _dataStart = filePos ? (uint32_t)filePos : skipID3Header(file);
-    // Only fall back to the on-device MP3-frame-scan guess if the caller
-    // didn't already supply a known duration (setFileName's
-    // knownDurationSeconds) - that guess doesn't understand FLAC at all.
-    if (!filePos && _durationSeconds == 0) {
-      _durationSeconds = estimateDurationSeconds(_dataStart);
+    // fpos is 0 here for a fresh file (both setFileName() and
+    // prepareNextTrack() reset it), so this always skips the ID3 header on
+    // first read; a resumed fpos (e.g. after consumeNextTrackIfMatches())
+    // re-seeks to where streaming left off instead.
+    dataStart = fpos ? (uint32_t)fpos : skipID3Header(f);
+    fpos = (int)dataStart;
+    f.seekSet(dataStart);
+    if (!nextFile) {
+      Serial.printf("Loading file: %s, size: %d bytes, ~%lu s\n",
+                    _currentFileName, f.size(), _durationSeconds);
     }
-    file.seekSet(_dataStart);
-    Serial.printf("Loading file: %s, size: %d bytes, ~%lu s\n",
-                  _currentFileName, file.size(), _durationSeconds);
   }
-  
-  size_t remainingFile = fileSize - filePos;
-  size_t freeSpace = getPSRAMFreeSpace();
-  
+
+  size_t remainingFile = fsize - fpos;
+  size_t freeSpace = nextFile
+                         ? (NEXT_TRACK_BUFFER_SIZE - _nextPrefetchedBytes)
+                         : getPSRAMFreeSpace();
   if (freeSpace == 0) {
-    return false; // Buffer is full, can't write more
+    return false; // Destination is full, can't write more
   }
-  
+
   size_t toRead =
       min(remainingFile, min((size_t)AUDIO_PRELOAD_CHUNK_SIZE, freeSpace));
-  static uint8_t temp[AUDIO_PRELOAD_CHUNK_SIZE];
-  
-  size_t read = file.read(temp, toRead);
+  if (toRead == 0) {
+    return false;
+  }
+
+  size_t read = f.read(_scratchBuffer, toRead);
   if (read == 0) {
     return false; // End of file
   }
 
-  bool wraps = (_psramHead + read) > _psramBufferSize;
-  size_t writeSize = wraps ? (_psramBufferSize - _psramHead) : read;
-  size_t wrapWriteSize = wraps ? (read - writeSize) : 0;
   noInterrupts();
-  psram.writeData(_psramBaseAddress + _psramHead, temp, writeSize);
-  if (wrapWriteSize > 0) {
-    psram.writeData(_psramBaseAddress, temp + writeSize, wrapWriteSize);
+  if (nextFile) {
+    psram.writeData(NEXT_TRACK_BUFFER_BASE_ADDRESS + _nextPrefetchedBytes,
+                    _scratchBuffer, read);
+  } else {
+    bool wraps = (_psramHead + read) > _psramBufferSize;
+    size_t writeSize = wraps ? (_psramBufferSize - _psramHead) : read;
+    size_t wrapWriteSize = wraps ? (read - writeSize) : 0;
+    psram.writeData(_psramBaseAddress + _psramHead, _scratchBuffer, writeSize);
+    if (wrapWriteSize > 0) {
+      psram.writeData(_psramBaseAddress, _scratchBuffer + writeSize,
+                      wrapWriteSize);
+    }
+    _psramHead = (_psramHead + read) % _psramBufferSize;
+    // Mark the buffer full when the head catches the tail, but keep the
+    // file open while streaming (closing/reopening per refill starved the
+    // decoder).
+    if (_psramHead == _psramTail) {
+      _bufferFull = true;
+    }
+    _psramDataSize += read;
+    _psramPosition = 0;
   }
-  _psramHead = (_psramHead + read) % _psramBufferSize;
   interrupts();
 
-  // Mark the buffer full when the head catches the tail, but keep the file
-  // open while streaming (closing/reopening per refill starved the decoder).
-  if (_psramHead == _psramTail) {
-    _bufferFull = true;
+  if (nextFile) {
+    _nextPrefetchedBytes += read;
   }
+  fpos += read;
 
-  filePos += read;
-  _psramDataSize += read;
-  _psramPosition = 0;
-  
   return true;
 }
 bool Audio_buffer::load(size_t targetBufferedBytes) {
   // Keep topping up the ring buffer (not just one 4KB chunk) so a slow
   // main-loop tick (display/wheel work) can't starve playback before the
-  // next refill.
-  while (!_bufferFull && getPSRAMDataSize() < targetBufferedBytes) {
+  // next refill. Bounded to AUDIO_MAX_CHUNKS_PER_LOAD_CALL reads per call so
+  // a big refill (from AUDIO_LOW_WATERMARK_BYTES up to a multi-MB target)
+  // spreads across many calls/ticks instead of blocking the caller in one
+  // long synchronous burst - AudioPlayer::loop() calls this every tick, so
+  // it naturally keeps making progress across the following ticks.
+  uint8_t chunksThisCall = 0;
+  while (!_bufferFull && getPSRAMDataSize() < targetBufferedBytes &&
+         chunksThisCall < AUDIO_MAX_CHUNKS_PER_LOAD_CALL) {
     if (!SDtoPSRAM()) {
       break; // buffer full or end of file
     }
+    chunksThisCall++;
   }
   return true;
+}
+
+void Audio_buffer::prepareNextTrack(const char *filename,
+                                    uint32_t knownDurationSeconds) {
+  // Drop any previous (now-irrelevant) guess and its partial progress.
+  _nextFile.close();
+  strncpy(_nextFileName, filename, sizeof(_nextFileName) - 1);
+  _nextFileName[sizeof(_nextFileName) - 1] = '\0';
+  _nextFilePos = 0;
+  _nextFileSize = 0;
+  _nextDataStart = 0;
+  _nextDurationSeconds = knownDurationSeconds;
+  _nextPrefetchedBytes = 0;
+}
+
+bool Audio_buffer::prefetchNextTrack() {
+  // Same open/skip-ID3/read-a-chunk operation SDtoPSRAM() does for the
+  // current track, just aimed at the next-track prefetch region instead of
+  // the main ring buffer - see SDtoPSRAM()'s nextFile branches.
+  return SDtoPSRAM(true);
+}
+
+bool Audio_buffer::consumeNextTrackIfMatches(const char *filename,
+                                             uint32_t knownDurationSeconds) {
+  bool matches =
+      _nextFileName[0] != '\0' && strcmp(_nextFileName, filename) == 0;
+  bool hasPrefetchedData = matches && _nextPrefetchedBytes > 0;
+  bool adopted = false;
+
+  if (hasPrefetchedData) {
+    uint32_t adoptFilePos = (uint32_t)_nextFilePos;
+    uint32_t adoptDataStart = _nextDataStart;
+    uint32_t adoptDuration =
+        knownDurationSeconds ? knownDurationSeconds : _nextDurationSeconds;
+    uint32_t adoptBytes = _nextPrefetchedBytes;
+
+    _nextFile.close();
+    closeFile();
+    strncpy(_currentFileName, filename, sizeof(_currentFileName) - 1);
+    _currentFileName[sizeof(_currentFileName) - 1] = '\0';
+    // Don't rely on File copy-assignment to "move" the open next-track
+    // handle over - SdFat handle semantics vary by version/backend. Closing
+    // and reopening at the resumed position is just a directory lookup +
+    // seek (not a data re-read), and is safe regardless. openFile(false)
+    // reopens _currentFileName (set above) and refreshes fileSize from it -
+    // the same helper SDtoPSRAM() uses for a fresh current-track open.
+    if (openFile(false) && file.seekSet(adoptFilePos)) {
+      filePos = (int)adoptFilePos;
+      _dataStart = adoptDataStart;
+      _durationSeconds = adoptDuration;
+
+      // Copy the already-prefetched bytes into the main ring buffer, which
+      // stopPlaying()'s resetRingBuffer() already emptied before
+      // startPlaying() called us - a plain append from an empty ring, and
+      // (per the static_assert in Audio_buffer.h) never wraps.
+      uint32_t remaining = adoptBytes;
+      uint32_t srcOffset = 0;
+      while (remaining > 0) {
+        size_t chunk =
+            (size_t)min((uint32_t)AUDIO_PRELOAD_CHUNK_SIZE, remaining);
+        psram.readData(NEXT_TRACK_BUFFER_BASE_ADDRESS + srcOffset,
+                       _scratchBuffer, chunk);
+        psram.writeData(_psramBaseAddress + _psramHead, _scratchBuffer, chunk);
+        _psramHead += chunk;
+        srcOffset += chunk;
+        remaining -= chunk;
+      }
+      _psramDataSize += adoptBytes;
+      Serial.printf("Adopted %lu prefetched bytes for %s\n", adoptBytes,
+                    filename);
+      adopted = true;
+    } else {
+      Serial.printf("Adopt: failed to reopen prefetched track: %s\n",
+                    filename);
+    }
+  }
+
+  // Whether we matched, adopted, or not: this slot's guess is now spent for
+  // this transition. Free it so the caller can prepareNextTrack() again for
+  // whatever follows the track that's about to start.
+  _nextFile.close();
+  _nextFileName[0] = '\0';
+  _nextPrefetchedBytes = 0;
+  _nextFilePos = 0;
+  _nextFileSize = 0;
+  _nextDataStart = 0;
+  _nextDurationSeconds = 0;
+
+  return adopted;
+}
+
+void Audio_buffer::invalidateNextTrack() {
+  _nextFile.close();
+  _nextFileName[0] = '\0';
+  _nextFilePos = 0;
+  _nextFileSize = 0;
+  _nextDataStart = 0;
+  _nextDurationSeconds = 0;
+  _nextPrefetchedBytes = 0;
 }
 
 size_t Audio_buffer::readData(uint8_t *buffer, size_t maxLen) {

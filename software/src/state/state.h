@@ -174,6 +174,12 @@ public:
   void updateProgress(int position);
   void setTrackDuration(int duration);
   void notifyTrackEnded(MusicLookup &musicLookup);
+  // Returns true and sets nextTrackId to the track after the one currently
+  // playing in the active play list (same source-list context as
+  // resolveTrackId/notifyTrackEnded); false at end of list or if nothing is
+  // playing. Used to prefetch the next track's data ahead of time instead of
+  // only resolving it reactively once the current track ends.
+  bool getNextTrackId(MusicLookup &musicLookup, uint32_t &nextTrackId);
 
   // Volume control (Now Playing wheel scroll)
   void setVolume(int vol);

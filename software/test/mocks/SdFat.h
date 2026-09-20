@@ -76,6 +76,7 @@ public:
   }
 
   operator bool() const { return open_; }
+  bool isOpen() const { return open_; }
 
   size_t size() const { return open_ ? data_->size() : 0; }
 
@@ -113,3 +114,8 @@ public:
   uint32_t sectorsPerCluster() { return 1; }
   uint32_t clusterCount() { return 1024; }
 };
+
+// Real SdFat aliases File to whichever concrete file class the library is
+// configured for (FsFile in this project's config); src/sound/Audio_buffer.h
+// declares its file handles as `File`, so mirror that alias here.
+typedef FsFile File;

@@ -97,6 +97,18 @@ void State::notifyTrackEnded(MusicLookup &musicLookup) {
   }
 }
 
+bool State::getNextTrackId(MusicLookup &musicLookup, uint32_t &nextTrackId) {
+  if (playingTrackIndex >= 0 &&
+      playingTrackIndex < playingListTotalTracks - 1) {
+    uint32_t id = resolveTrackId(musicLookup, playingTrackIndex + 1);
+    if (id != UINT32_MAX) {
+      nextTrackId = id;
+      return true;
+    }
+  }
+  return false;
+}
+
 void State::setAnimating(bool animating, uint32_t animId) {
   if (animating != isAnimating) {
     isAnimating = animating;
