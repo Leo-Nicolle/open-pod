@@ -70,6 +70,26 @@ TEST_CASE("Audio_buffer - streams a single file's exact bytes in order") {
   CHECK(buf.readData(extra, sizeof(extra)) == 0);
 }
 
+TEST_CASE("Audio_buffer - isFileExhausted is false while data is buffered and "
+         "true only once the file and buffer are both empty") {
+  resetAll();
+  const uint32_t size = 4000;
+  FakeFs::get().addFile("/music/a.raw", buildFakeAudioFile(1, size));
+
+  Audio_buffer buf(4);
+  REQUIRE(buf.begin());
+  buf.setFileName("/music/a.raw");
+  loadUntil(buf, size);
+
+  // The file has been fully read, but its bytes are still sitting in the
+  // ring buffer - so this is a refill/consume gap, not end-of-file.
+  CHECK(buf.isFileExhausted() == false);
+
+  std::vector<uint8_t> out(size);
+  CHECK(buf.readData(out.data(), out.size()) == size);
+  CHECK(buf.isFileExhausted() == true);
+}
+
 TEST_CASE("Audio_buffer - a single load() call is bounded, refilling spreads "
          "across several calls") {
   resetAll();

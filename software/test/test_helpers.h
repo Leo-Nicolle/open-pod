@@ -151,4 +151,77 @@ inline void registerStateTestCatalog() {
   fs.addFile("/openpod/album_to_cover.bin", buildAlbumCoverIndex(album_to_cover));
 }
 
+// Two genres, each scoped to its own distinct artist/album/track, so a test
+// can tell "Genres -> just this genre's albums" apart from "Genres -> every
+// album regardless of genre" - registerSampleCatalog()'s single genre covers
+// every album, so it can't distinguish the two.
+inline void registerMultiGenreTestCatalog() {
+  auto &fs = FakeFs::get();
+
+  std::vector<std::pair<uint32_t, std::string>> artists;
+  artists.push_back(std::make_pair(1u, std::string("Django Reinhardt")));
+  artists.push_back(std::make_pair(2u, std::string("MC Solaar")));
+  fs.addFile("/openpod/artist_index.bin", buildStringIndex(artists));
+
+  std::vector<std::pair<uint32_t, std::string>> albums;
+  albums.push_back(std::make_pair(1u, std::string("Djangology")));
+  albums.push_back(std::make_pair(2u, std::string("Qui Seme Le Vent")));
+  fs.addFile("/openpod/album_index.bin", buildStringIndex(albums));
+
+  std::vector<std::pair<uint32_t, std::string>> genres;
+  genres.push_back(std::make_pair(1u, std::string("Gipsy Jazz")));
+  genres.push_back(std::make_pair(2u, std::string("Hip Hop")));
+  fs.addFile("/openpod/genre_index.bin", buildStringIndex(genres));
+
+  std::vector<std::pair<uint32_t, std::string>> tracks;
+  tracks.push_back(std::make_pair(1u, std::string("Minor Swing")));
+  tracks.push_back(std::make_pair(2u, std::string("Caroline")));
+  fs.addFile("/openpod/track_index.bin", buildStringIndex(tracks));
+
+  std::vector<std::pair<uint32_t, std::string>> paths;
+  paths.push_back(std::make_pair(1u, std::string("/music/django/minor_swing.flac")));
+  paths.push_back(std::make_pair(2u, std::string("/music/mcsolaar/caroline.flac")));
+  fs.addFile("/openpod/path_index.bin", buildStringIndex(paths));
+
+  std::vector<std::pair<uint32_t, uint16_t>> durations;
+  durations.push_back(std::make_pair(1u, (uint16_t)180));
+  durations.push_back(std::make_pair(2u, (uint16_t)220));
+  fs.addFile("/openpod/duration_index.bin", buildDurationIndex(durations));
+
+  std::vector<std::pair<uint32_t, std::vector<uint32_t>>> artist_to_albums;
+  artist_to_albums.push_back(std::make_pair(1u, std::vector<uint32_t>{1}));
+  artist_to_albums.push_back(std::make_pair(2u, std::vector<uint32_t>{2}));
+  fs.addFile("/openpod/artist_to_albums.bin", buildRelation(artist_to_albums));
+
+  std::vector<std::pair<uint32_t, std::vector<uint32_t>>> artist_to_tracks;
+  artist_to_tracks.push_back(std::make_pair(1u, std::vector<uint32_t>{1}));
+  artist_to_tracks.push_back(std::make_pair(2u, std::vector<uint32_t>{2}));
+  fs.addFile("/openpod/artist_to_tracks.bin", buildRelation(artist_to_tracks));
+
+  std::vector<std::pair<uint32_t, std::vector<uint32_t>>> album_to_tracks;
+  album_to_tracks.push_back(std::make_pair(1u, std::vector<uint32_t>{1}));
+  album_to_tracks.push_back(std::make_pair(2u, std::vector<uint32_t>{2}));
+  fs.addFile("/openpod/album_to_tracks.bin", buildRelation(album_to_tracks));
+
+  std::vector<std::pair<uint32_t, std::vector<uint32_t>>> genre_to_albums;
+  genre_to_albums.push_back(std::make_pair(1u, std::vector<uint32_t>{1}));
+  genre_to_albums.push_back(std::make_pair(2u, std::vector<uint32_t>{2}));
+  fs.addFile("/openpod/genre_to_albums.bin", buildRelation(genre_to_albums));
+
+  std::vector<std::pair<uint32_t, std::vector<uint32_t>>> genre_to_tracks;
+  genre_to_tracks.push_back(std::make_pair(1u, std::vector<uint32_t>{1}));
+  genre_to_tracks.push_back(std::make_pair(2u, std::vector<uint32_t>{2}));
+  fs.addFile("/openpod/genre_to_tracks.bin", buildRelation(genre_to_tracks));
+
+  std::vector<std::pair<uint32_t, uint32_t>> track_to_album;
+  track_to_album.push_back(std::make_pair(1u, 1u));
+  track_to_album.push_back(std::make_pair(2u, 2u));
+  fs.addFile("/openpod/track_to_album.bin", buildTrackToAlbumIndex(track_to_album));
+
+  std::vector<CoverIndexEntry> album_to_cover;
+  album_to_cover.push_back({1u, 0u, 50u, 1});
+  album_to_cover.push_back({2u, 50u, 60u, 1});
+  fs.addFile("/openpod/album_to_cover.bin", buildAlbumCoverIndex(album_to_cover));
+}
+
 } // namespace openpod_test

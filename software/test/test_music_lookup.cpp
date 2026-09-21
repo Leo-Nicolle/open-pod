@@ -85,6 +85,11 @@ TEST_CASE("MusicLookup - browse all artists, albums and genres") {
   n = lookup.getAllGenres(buffer, sizeof(buffer), ptrs, 16);
   CHECK(n == 1);
   CHECK(std::strcmp(ptrs[0], "Rock") == 0);
+
+  n = lookup.getAllTracks(buffer, sizeof(buffer), ptrs, 16);
+  CHECK(n == 2);
+  CHECK(std::strcmp(ptrs[0], "Track One") == 0);
+  CHECK(std::strcmp(ptrs[1], "Track Two") == 0);
 }
 
 TEST_CASE("MusicLookup - relationship string lookups") {
@@ -128,6 +133,8 @@ TEST_CASE("MusicLookup - id accessors") {
   CHECK(lookup.getAlbumIdAtIndex(0) == 1);
   CHECK(lookup.getAlbumIdAtIndex(1) == 2);
   CHECK(lookup.getGenreIdAtIndex(0) == 1);
+  CHECK(lookup.getTrackIdAtIndex(0) == 1);
+  CHECK(lookup.getTrackIdAtIndex(1) == 2);
 
   CHECK(lookup.getTrackIdByArtistAtIndex(1, 0) == 1);
   CHECK(lookup.getAlbumIdByArtistAtIndex(1, 0) == 1);

@@ -256,6 +256,9 @@ public:
   uint32_t getAllGenres(char *buffer, uint32_t buffer_size,
                         const char **string_pointers, uint32_t max_results,
                         uint32_t offset = 0);
+  uint32_t getAllTracks(char *buffer, uint32_t buffer_size,
+                        const char **string_pointers, uint32_t max_results,
+                        uint32_t offset = 0);
   uint32_t getRelatedIdAtIndex(uint32_t source_id,
                                const relation_header_t &header, uint32_t index);
   uint32_t getIdAtIndex(const index_header_t &header, uint32_t index);
@@ -263,6 +266,7 @@ public:
   uint32_t getArtistIdAtIndex(uint32_t index);
   uint32_t getAlbumIdAtIndex(uint32_t index);
   uint32_t getGenreIdAtIndex(uint32_t index);
+  uint32_t getTrackIdAtIndex(uint32_t index);
   uint32_t getTrackIdByArtistAtIndex(uint32_t artistId, uint32_t index);
   uint32_t getTrackIdByAlbumAtIndex(uint32_t albumId, uint32_t index);
   uint32_t getTrackIdByGenreAtIndex(uint32_t genreId, uint32_t index);

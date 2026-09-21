@@ -68,9 +68,11 @@ private:
 
 public:
   SPI_PSRAM() : spi(nullptr) {
-    // Conservative clock: the APS6404L is rated higher, but a slow SPI bus is
-    // far more reliable over long/breadboard wiring (this fixes intermittent
-    // garbage ID reads like 0xFF/0x1A during init).
+    // APS6404L is rated up to 33 MHz (SPI), but over long/breadboard wiring a
+    // slower bus is more reliable (this fixes intermittent garbage ID reads
+    // like 0xFF/0x1A during init). 16 MHz turned out to hang the reads on this
+    // breadboard (the ring buffer dropped to 0 and stayed there), so keep 8 MHz
+    // until quadSPI/QPI is wired up.
     spiSettings = SPISettings(8000000, MSBFIRST, SPI_MODE0);
   }
 

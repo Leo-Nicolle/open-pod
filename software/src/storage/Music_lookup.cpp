@@ -649,6 +649,38 @@ uint32_t MusicLookup::getAllGenres(char *buffer, uint32_t buffer_size,
   return strings_loaded;
 }
 
+uint32_t MusicLookup::getAllTracks(char *buffer, uint32_t buffer_size,
+                                   const char **string_pointers,
+                                   uint32_t max_results, uint32_t offset) {
+  if (!initialized || !buffer || !string_pointers || max_results == 0) {
+    return 0;
+  }
+
+  uint32_t start_index = min(offset, track_index_h.entry_count);
+  uint32_t end_index =
+      min(start_index + max_results, track_index_h.entry_count);
+
+  char *buffer_pos = buffer;
+  uint32_t buffer_remaining = buffer_size;
+  uint32_t strings_loaded = 0;
+
+  for (uint32_t i = start_index; i < end_index; i++) {
+    lookup_result_t result = getStringAtIndex(i, track_index_h);
+
+    if (result.length > 0 && result.length < buffer_remaining - 1) {
+      string_pointers[strings_loaded] = buffer_pos;
+
+      psram.readData(result.address, (uint8_t *)buffer_pos, result.length);
+      buffer_pos[result.length] = '\0';
+
+      buffer_pos += result.length + 1;
+      strings_loaded++;
+    }
+  }
+
+  return strings_loaded;
+}
+
 // String lookup functions
 bool MusicLookup::getArtistName(uint32_t artist_id, char *buffer,
                                 uint32_t buffer_size) {
@@ -746,6 +778,10 @@ uint32_t MusicLookup::getAlbumIdAtIndex(uint32_t index) {
 
 uint32_t MusicLookup::getGenreIdAtIndex(uint32_t index) {
   return getIdAtIndex(genre_index_h, index);
+}
+
+uint32_t MusicLookup::getTrackIdAtIndex(uint32_t index) {
+  return getIdAtIndex(track_index_h, index);
 }
 
 uint32_t MusicLookup::getTrackIdByArtistAtIndex(uint32_t artistId,

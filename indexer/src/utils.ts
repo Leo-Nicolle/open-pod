@@ -100,3 +100,31 @@ export function sanitizeName(str: string): string {
     .replace(/\s+/g, " ")
     .trim();
 }
+
+// Splits a combined artist tag ("A & B", "A feat. B", "A, B, C") into its
+// individual artist names, so each performer is indexed - and browsable - on
+// their own instead of every combination ("A & B", "A & B & C", "A & C", ...)
+// becoming its own noisy, one-off artist entry. Case-insensitive de-duped and
+// each name run through sanitizeName. Returns [] for an empty/missing tag -
+// callers decide the "no artist" fallback.
+// feat./ft. use a lookahead instead of a trailing \b: with the period
+// consumed, the position right after it sits between two non-word
+// characters ("." and the following space), so \b would never match there.
+const ARTIST_SEPARATOR_REGEX =
+  /\s*(?:\/|;|,|&|\bfeat\.?(?=\s|$)|\bft\.?(?=\s|$)|\bfeaturing\b|\bwith\b)\s*/i;
+
+export function splitArtists(rawArtist: string | undefined | null): string[] {
+  if (!rawArtist) return [];
+
+  const seen = new Set<string>();
+  const result: string[] = [];
+  for (const part of rawArtist.split(ARTIST_SEPARATOR_REGEX)) {
+    const name = sanitizeName(part);
+    if (name.length === 0) continue;
+    const key = name.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    result.push(name);
+  }
+  return result;
+}

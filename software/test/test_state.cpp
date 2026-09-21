@@ -684,3 +684,61 @@ TEST_SUITE("State Utility Tests") {
     CHECK(needsUpdate3 == true);
   }
 }
+
+TEST_SUITE("State Navigation Tests") {
+  // Regression test: selecting "Tracks" from the ROOT menu used to be an
+  // unimplemented TODO that left the route unchanged (see goToSelected's
+  // ROOT case) - selecting it did nothing.
+  TEST_CASE("State - Root Tracks Menu Item Browses Full Catalog") {
+    setupCatalog();
+    State state;
+    MusicLookup lookup;
+    REQUIRE(lookup.init());
+
+    state.loadCurrentRouteData(lookup); // ROOT menu, selectedIndex 0 ("Tracks")
+    state.goToSelected(lookup);         // ROOT -> TRACKS (all tracks)
+
+    CHECK(state.getCurrentRoute().type == Route_t::TRACKS);
+    CHECK(state.getTotalElements() == 2);
+    CHECK(std::strcmp(state.getVisibleElements()[0], "First Song") == 0);
+    CHECK(std::strcmp(state.getVisibleElements()[1], "Second Song") == 0);
+
+    // Selecting a track here plays it, and auto-advance to the next track
+    // (resolveTrackId) must also work with no artist/album/genre scoping.
+    state.goToSelected(lookup); // TRACKS -> NOW_PLAYING, plays "First Song"
+    CHECK(state.getPlayingTrackIndex() == 0);
+    CHECK(state.getIsPlaying() == true);
+
+    state.notifyTrackEnded(lookup);
+    CHECK(state.getPlayingTrackIndex() == 1);
+    CHECK(std::strcmp(state.getPlayingTrackName(), "Second Song") == 0);
+  }
+
+  // Regression test: selecting a Genre used to route to ARTISTS, but the
+  // genre->artists relation is never loaded (see MusicLookup::init()), so
+  // the ARTISTS list came back unfiltered and any artist picked from it led
+  // to that artist's albums regardless of genre - in effect, "select a
+  // genre" showed albums from every genre. Genre now routes straight to
+  // ALBUMS, which is genre-scoped.
+  TEST_CASE("State - Genre Selection Scopes Albums To That Genre") {
+    openpod_test::resetAll();
+    openpod_test::registerMultiGenreTestCatalog();
+    State state;
+    MusicLookup lookup;
+    REQUIRE(lookup.init());
+
+    state.loadCurrentRouteData(lookup); // ROOT menu
+    state.scrollDown();
+    state.scrollDown();
+    state.scrollDown();                 // selectedIndex 0 -> 3 ("Genres")
+    state.goToSelected(lookup);         // ROOT -> GENRES (["Gipsy Jazz", "Hip Hop"])
+    CHECK(state.getCurrentRoute().type == Route_t::GENRES);
+    CHECK(state.getTotalElements() == 2);
+
+    state.goToSelected(lookup); // GENRES -> ALBUMS, scoped to "Gipsy Jazz"
+
+    CHECK(state.getCurrentRoute().type == Route_t::ALBUMS);
+    CHECK(state.getTotalElements() == 1);
+    CHECK(std::strcmp(state.getVisibleElements()[0], "Djangology") == 0);
+  }
+}

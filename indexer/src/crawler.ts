@@ -2,7 +2,7 @@ import fs from "fs/promises";
 import path from "path";
 import type { CrawlCallback, CrawlIndex, TrackMetadata } from "./types";
 import { parseFile } from "music-metadata";
-import { sanitizeName } from "./utils";
+import { sanitizeName, splitArtists } from "./utils";
 import {
   resolveAlbumArtSource,
   generateAlbumThumbnail,
@@ -109,18 +109,16 @@ export async function readMetadata(
     const { common, format } = await parseFile(fullPath);
 
     const title = sanitizeName(common.title || path.basename(filename));
-    const artist = sanitizeName(common.artist || "Unknown Artist");
+    const artistNames = splitArtists(common.artist);
+    const artists = artistNames.length > 0 ? artistNames : ["Unknown Artist"];
     const album = sanitizeName(common.album || "Unknown Album");
     const genre = sanitizeName(common.genre?.[0] || "Unknown Genre");
     const index = (common.track && common.track.no) || 0;
     const year = common.year || 0;
     const duration = format.duration || 0;
 
-    const artistId = getOrAdd(
-      artistToIndex,
-      indexToArtist,
-      artist,
-      artistIndexCounter
+    const artistIds = artists.map((artistName) =>
+      getOrAdd(artistToIndex, indexToArtist, artistName, artistIndexCounter)
     );
     const isNewAlbum = !albumToIndex.has(album);
     const albumId = getOrAdd(
@@ -153,7 +151,7 @@ export async function readMetadata(
 
     metadataByTrackIndex.set(trackId, {
       title,
-      artist,
+      artist: artists.join(" & "),
       album,
       genre,
       index,
@@ -161,14 +159,8 @@ export async function readMetadata(
       duration,
     });
 
-    if (!artistToTracks.has(artistId)) artistToTracks.set(artistId, new Set());
-    artistToTracks.get(artistId)!.add(trackId);
-
     if (!albumToTracks.has(albumId)) albumToTracks.set(albumId, new Set());
     albumToTracks.get(albumId)!.add(trackId);
-
-    if (!artistToAlbums.has(artistId)) artistToAlbums.set(artistId, new Set());
-    artistToAlbums.get(artistId)!.add(albumId);
 
     if (!genreToTracks.has(genreId)) genreToTracks.set(genreId, new Set());
     genreToTracks.get(genreId)!.add(trackId);
@@ -176,8 +168,22 @@ export async function readMetadata(
     if (!genreToAlbums.has(genreId)) genreToAlbums.set(genreId, new Set());
     genreToAlbums.get(genreId)!.add(albumId);
 
-    if (!genreToArtists.has(genreId)) genreToArtists.set(genreId, new Set());
-    genreToArtists.get(genreId)!.add(artistId);
+    // Every individual artist parsed out of the tag (see splitArtists) is
+    // credited on this track/album independently, rather than only the
+    // combined "A & B" string - that's what lets each of A and B show up as
+    // their own browsable artist referencing this album.
+    for (const artistId of artistIds) {
+      if (!artistToTracks.has(artistId))
+        artistToTracks.set(artistId, new Set());
+      artistToTracks.get(artistId)!.add(trackId);
+
+      if (!artistToAlbums.has(artistId))
+        artistToAlbums.set(artistId, new Set());
+      artistToAlbums.get(artistId)!.add(albumId);
+
+      if (!genreToArtists.has(genreId)) genreToArtists.set(genreId, new Set());
+      genreToArtists.get(genreId)!.add(artistId);
+    }
   });
 
   // Optionally, you can serialize this to a JSON or binary format here
