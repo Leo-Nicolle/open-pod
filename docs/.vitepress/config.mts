@@ -6,13 +6,26 @@ export default defineConfig({
   title: "Openpod",
   description: "An ESP32 mp3 player",
   base: "/open-pod/",
-  head: [["link", { rel: "icon", href: "/open-pod/favicon.svg" }]],
+  head: [
+    ["link", { rel: "icon", href: "/open-pod/favicon.svg" }],
+    ["link", { rel: "preconnect", href: "https://fonts.googleapis.com" }],
+    ["link", { rel: "preconnect", href: "https://fonts.gstatic.com", crossorigin: "" }],
+    [
+      "link",
+      {
+        rel: "stylesheet",
+        href: "https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap",
+      },
+    ],
+  ],
   themeConfig: {
     // https://vitepress.dev/reference/default-theme-config
     nav: [
       { text: "Home", link: "/" },
       { text: "About", link: "/about" },
       { text: "Clickwheel", link: "/clickwheel" },
+      { text: "Pinout", link: "/pinout" },
+      { text: "UI builder", link: "/ui-builder" },
       { text: "Blog", link: "/blog" },
     ],
 

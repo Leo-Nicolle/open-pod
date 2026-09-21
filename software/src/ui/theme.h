@@ -5,13 +5,17 @@
 #define HEX_TO_RGB565(hex) RGB565(((hex) >> 16) & 0xFF, ((hex) >> 8) & 0xFF, (hex) & 0xFF)
 #define HEX_TO_BGR565(hex) BGR565(((hex) >> 16) & 0xFF, ((hex) >> 8) & 0xFF, (hex) & 0xFF)
 
-// Usage with hex values:
-#define COLOR_PRIMARY    HEX_TO_BGR565(0x1E40AF)
-#define COLOR_SECONDARY  HEX_TO_BGR565(0xA1D6B2)
-#define COLOR_BACKGROUND HEX_TO_BGR565(0xF8FAFC)
-#define COLOR_HIGHLIGHT  HEX_TO_BGR565(0x8B5CF6)
-#define COLOR_ACCENT     HEX_TO_BGR565(0x10B981)
-#define COLOR_TEXT       HEX_TO_BGR565(0x374151)
+// Dark theme for the Now Playing screen (see docs/ui-builder).
+// The ILI9341 is wired BGR, so every color uses HEX_TO_BGR565.
+#define COLOR_BG         HEX_TO_BGR565(0x12100F) // screen background
+#define COLOR_SURFACE    HEX_TO_BGR565(0x1E1B19) // header bar, volume band, art plate
+#define COLOR_LINE       HEX_TO_BGR565(0x332E2B) // 1px rules, empty track, borders
+#define COLOR_TEXT       HEX_TO_BGR565(0xF2EDE6) // title, elapsed time, clock
+#define COLOR_DIM        HEX_TO_BGR565(0x9B918A) // artist, secondary numbers
+#define COLOR_MUTED      HEX_TO_BGR565(0x6E655F) // album, total time, inactive chips
+#define COLOR_ACCENT     HEX_TO_BGR565(0x31AAA9) // progress fill, active state
+#define COLOR_ACCENT_DK  HEX_TO_BGR565(0x6C1A1A) // seek track fill behind the handle
+#define COLOR_ACCENT_ALT HEX_TO_BGR565(0xF8E0A4) // seek handle, SEEK chip
 
 #define SCROLLBAR_X 312
 #define SCROLLBAR_W 8

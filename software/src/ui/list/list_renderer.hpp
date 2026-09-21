@@ -48,7 +48,7 @@ public:
     Serial.print("maxPixelValue=");
     Serial.println(maxPixelValue);
 
-    // blendColor(COLOR_BACKGROUND, COLOR_TEXT, alpha)
+    // blendColor(COLOR_BG, COLOR_TEXT, alpha)
     // Normal blend table - text on background (0 = background, max = text)
     Serial.println("Normal Blend:");
     for (int i = 0; i <= maxPixelValue; i++) {
@@ -56,11 +56,11 @@ public:
       Serial.print("Alpha:  ");
       Serial.print(alpha, 2);
       Serial.print(" BACK ");
-      Serial.print(COLOR_BACKGROUND, HEX);
+      Serial.print(COLOR_BG, HEX);
       Serial.print(" TEXT ");
       Serial.print(COLOR_TEXT, HEX);
       Serial.print(" -> Color: ");
-      uint16_t color = blendColor(COLOR_BACKGROUND, COLOR_TEXT, alpha);
+      uint16_t color = blendColor(COLOR_BG, COLOR_TEXT, alpha);
       Serial.println(color, HEX);
     }
   }
@@ -92,8 +92,8 @@ public:
       uint8_t *binaryBuffer = cache.getCacheForRow(cacheRowIndex);
 
       // Calculate colors for this element row
-      uint16_t bgColor = isSelected ? getGradientColor(COLOR_PRIMARY, yInList)
-                                    : COLOR_BACKGROUND;
+      uint16_t bgColor = isSelected ? getGradientColor(COLOR_ACCENT, yInList)
+                                    : COLOR_BG;
 
       for (int x = startx; x < startx + width; x++) {
         uint8_t pixelValue = 0;
@@ -110,7 +110,7 @@ public:
           // For selected rows: blend text color with gradient background
           // Fix: Correct blending order - text should be visible!
           float alpha = (float)pixelValue / maxPixelValue;
-          color = blendColor(bgColor, COLOR_BACKGROUND,
+          color = blendColor(bgColor, COLOR_BG,
                              alpha); // Text in white/background color
         } else {
           // Use pre-computed normal blend table
@@ -131,7 +131,7 @@ public:
                                 int height) {
     int totalPixels = width * height;
     for (int i = 0; i < totalPixels; i++) {
-      displayBuffer[i] = COLOR_BACKGROUND;
+      displayBuffer[i] = COLOR_BG;
     }
   }
 
@@ -147,7 +147,7 @@ private:
     // Normal blend table - text on background (0 = background, max = text)
     for (int i = 0; i <= maxPixelValue; i++) {
       float alpha = (float)i / maxPixelValue;
-      normalBlend.colors[i] = blendColor(COLOR_BACKGROUND, COLOR_TEXT, alpha);
+      normalBlend.colors[i] = blendColor(COLOR_BG, COLOR_TEXT, alpha);
     }
   }
 

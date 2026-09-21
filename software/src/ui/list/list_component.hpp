@@ -81,7 +81,7 @@ public:
     // Use global buffer for efficient rendering
     uint16_t *buffer = g_buffers.getCurrentBuffer();
     display->fillRect(xOffset, yOffset, width, ELEMENTS_PER_SCREEN * ELEMENT_HEIGHT,
-                      COLOR_BACKGROUND);
+                      COLOR_BG);
     for (int i = 0; i < ELEMENTS_PER_SCREEN; i++) {
       int elementIndex = topVisibleElement + i;
       bool isVisible = (elementIndex < numElements);

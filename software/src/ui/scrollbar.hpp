@@ -68,12 +68,12 @@ void ScrollbarComponent::render(ILI9341_GFX* display, int x) {
     int scrollBarY = scrollAreaY;
     int scrollBarHeight = scrollAreaHeight;
 
-    display->fillRect(scrollBarX, scrollBarY, 8, scrollBarHeight, COLOR_BACKGROUND);
-    display->drawRect(scrollBarX, scrollBarY, 6, scrollBarHeight, COLOR_PRIMARY);
+    display->fillRect(scrollBarX, scrollBarY, 8, scrollBarHeight, COLOR_BG);
+    display->drawRect(scrollBarX, scrollBarY, 6, scrollBarHeight, COLOR_LINE);
 
     int thumbHeight = max(20, (scrollBarHeight * visibleItems) / totalItems);
     int thumbPos = scrollBarY + ((scrollBarHeight - thumbHeight) * topVisibleItem) /
                               (totalItems - visibleItems);
 
-    display->fillRect(scrollBarX + 1, thumbPos, 4, thumbHeight, COLOR_SECONDARY);
+    display->fillRect(scrollBarX + 1, thumbPos, 4, thumbHeight, COLOR_DIM);
 }

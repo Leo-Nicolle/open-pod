@@ -1,0 +1,909 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+html,body{margin:0;background:oklch(0.19 0.012 255);color:oklch(0.94 0.006 255);font-family:'Space Grotesk',Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased}
+*{box-sizing:border-box}
+a{color:oklch(0.80 0.15 195);text-decoration:none}
+a:hover{color:oklch(0.88 0.11 195);text-decoration:underline}
+input,select,textarea,button{font-family:inherit;font-size:inherit}
+::selection{background:oklch(0.80 0.15 195 / 0.28)}
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-thumb{background:oklch(0.34 0.015 255);border-radius:6px}
+::-webkit-scrollbar-track{background:transparent}
+</style>
+</helmet>
+<div style="min-height:100vh;padding:20px 22px 40px;max-width:1680px;margin:0 auto;display:flex;flex-direction:column;gap:14px">
+
+  <header style="display:flex;flex-wrap:wrap;align-items:flex-end;gap:16px 24px;border-bottom:1px solid oklch(0.30 0.014 255);padding-bottom:14px">
+    <div style="display:flex;flex-direction:column;gap:4px">
+      <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:oklch(0.66 0.012 255)">Pinout studio</span>
+      <h1 style="margin:0;font-size:26px;font-weight:600;letter-spacing:-0.01em">STM32F446RE <span style="color:oklch(0.66 0.012 255);font-weight:400">/ Nucleo-F446RE</span></h1>
+    </div>
+    <p style="margin:0;max-width:52ch;font-size:13px;line-height:1.5;color:oklch(0.72 0.012 255);text-wrap:pretty">LQFP64 as wired on the MP3 project board. Hover any pin or legend swatch to trace it; click to pin it open. Edits are kept locally and export to C++, Markdown or JSON.</p>
+    <div style="margin-left:auto;display:flex;gap:18px;font-family:'IBM Plex Mono',monospace;font-size:12px">
+      <div style="display:flex;flex-direction:column;gap:2px"><span style="color:oklch(0.66 0.012 255);font-size:10px;letter-spacing:0.1em;text-transform:uppercase">Assigned</span><span style="font-size:20px;font-weight:600">{{ statAssigned }}</span></div>
+      <div style="display:flex;flex-direction:column;gap:2px"><span style="color:oklch(0.66 0.012 255);font-size:10px;letter-spacing:0.1em;text-transform:uppercase">Free I/O</span><span style="font-size:20px;font-weight:600;color:oklch(0.72 0.13 155)">{{ statFree }}</span></div>
+      <div style="display:flex;flex-direction:column;gap:2px"><span style="color:oklch(0.66 0.012 255);font-size:10px;letter-spacing:0.1em;text-transform:uppercase">Flags</span><span style="font-size:20px;font-weight:600;color:oklch(0.72 0.13 60)">{{ statIssues }}</span></div>
+    </div>
+  </header>
+
+  <div style="display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center;padding:10px 12px;background:oklch(0.235 0.014 255);border:1px solid oklch(0.30 0.014 255);border-radius:10px">
+    <div style="display:flex;gap:2px;padding:2px;background:oklch(0.19 0.012 255);border-radius:7px">
+      <sc-for list="{{ viewTabs }}" as="t" hint-placeholder-count="4">
+        <button type="button" data-v="{{ t.id }}" onClick="{{ onView }}" style="{{ t.style }}">{{ t.label }}</button>
+      </sc-for>
+    </div>
+    <label style="display:flex;align-items:center;gap:7px;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:oklch(0.66 0.012 255)">Label
+      <div style="display:flex;gap:2px;padding:2px;background:oklch(0.19 0.012 255);border-radius:7px">
+        <sc-for list="{{ nameTabs }}" as="t" hint-placeholder-count="3">
+          <button type="button" data-v="{{ t.id }}" onClick="{{ onNaming }}" style="{{ t.style }}">{{ t.label }}</button>
+        </sc-for>
+      </div>
+    </label>
+    <label style="display:flex;align-items:center;gap:7px;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:oklch(0.66 0.012 255)">Colour
+      <div style="display:flex;gap:2px;padding:2px;background:oklch(0.19 0.012 255);border-radius:7px">
+        <sc-for list="{{ colorTabs }}" as="t" hint-placeholder-count="3">
+          <button type="button" data-v="{{ t.id }}" onClick="{{ onColor }}" style="{{ t.style }}">{{ t.label }}</button>
+        </sc-for>
+      </div>
+    </label>
+    <input type="search" placeholder="Search pin, signal, macro…" value="{{ q }}" onInput="{{ onQ }}" style="flex:1 1 200px;min-width:160px;padding:7px 10px;background:oklch(0.19 0.012 255);border:1px solid oklch(0.32 0.014 255);border-radius:7px;color:oklch(0.94 0.006 255);font-family:'IBM Plex Mono',monospace;font-size:12px" />
+    <label style="display:flex;align-items:center;gap:7px;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:oklch(0.66 0.012 255)">Function
+      <select value="{{ fn }}" onChange="{{ onFn }}" style="padding:7px 8px;background:oklch(0.19 0.012 255);border:1px solid oklch(0.32 0.014 255);border-radius:7px;color:oklch(0.94 0.006 255);font-family:'IBM Plex Mono',monospace;font-size:12px;text-transform:none;letter-spacing:0">
+        <option value="">All</option>
+        <sc-for list="{{ fnOptions }}" as="o" hint-placeholder-count="6">
+          <option value="{{ o.id }}">{{ o.label }}</option>
+        </sc-for>
+      </select>
+    </label>
+    <button type="button" onClick="{{ onFlip }}" title="Mirror the layout — as seen from the solder side" style="{{ flipStyle }}">{{ flipLabel }}</button>
+    <button type="button" onClick="{{ onClear }}" style="{{ clearStyle }}">Clear</button>
+  </div>
+
+  <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center">
+    <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:oklch(0.60 0.012 255);margin-right:4px">Peripherals</span>
+    <sc-for list="{{ periphChips }}" as="c" hint-placeholder-count="5">
+      <button type="button" data-p="{{ c.name }}" onClick="{{ onPeriphToggle }}" onMouseEnter="{{ onPeriphEnter }}" onMouseLeave="{{ onPeriphLeave }}" style="{{ c.style }}">
+        <span style="width:8px;height:8px;border-radius:2px;background:{{ c.color }}"></span>{{ c.name }}
+        <span style="opacity:0.55;font-size:10px">{{ c.count }}</span>
+      </button>
+    </sc-for>
+    <span style="width:1px;height:20px;background:oklch(0.30 0.014 255);margin:0 6px"></span>
+    <sc-for list="{{ legendItems }}" as="l" hint-placeholder-count="6">
+      <button type="button" data-l="{{ l.id }}" onMouseEnter="{{ onLegendEnter }}" onMouseLeave="{{ onLegendLeave }}" onClick="{{ onLegendClick }}" style="{{ l.style }}">
+        <span style="width:8px;height:8px;border-radius:2px;background:{{ l.color }}"></span>{{ l.label }}
+        <span style="opacity:0.55;font-size:10px">{{ l.count }}</span>
+      </button>
+    </sc-for>
+  </div>
+
+  <div style="display:flex;flex-wrap:wrap;gap:14px;align-items:flex-start">
+
+    <div style="flex:1 1 640px;min-width:0;background:oklch(0.225 0.013 255);border:1px solid oklch(0.30 0.014 255);border-radius:12px;padding:16px;overflow:auto">
+
+      <sc-if value="{{ isBoard }}" hint-placeholder-val="{{ true }}">
+        <div style="display:flex;gap:12px;align-items:flex-start;justify-content:center;flex-wrap:wrap">
+          <sc-for list="{{ boardLeft }}" as="cn" hint-placeholder-count="1">
+            <div style="display:flex;flex-direction:column;gap:6px">
+              <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:oklch(0.62 0.012 255)">{{ cn.title }}</span>
+              <div style="{{ cn.grid }}">
+                <sc-for list="{{ cn.cells }}" as="c" hint-placeholder-count="12">
+                  <button type="button" data-pin="{{ c.base }}" data-cell="{{ c.key }}" title="{{ c.title }}" onMouseEnter="{{ onPinEnter }}" onMouseLeave="{{ onPinLeave }}" onClick="{{ onPinClick }}" style="{{ c.style }}">
+                    <span style="{{ c.numStyle }}">{{ c.num }}</span>
+                    <span style="{{ c.labelStyle }}">{{ c.label }}</span>
+                  </button>
+                </sc-for>
+              </div>
+            </div>
+          </sc-for>
+          <div style="display:flex;flex-direction:column;gap:10px;align-items:center;align-self:center;padding:0 4px">
+            <div style="width:126px;height:126px;border-radius:8px;background:oklch(0.27 0.012 255);border:1px solid oklch(0.38 0.014 255);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;position:relative">
+              <span style="position:absolute;top:8px;left:8px;width:7px;height:7px;border-radius:50%;background:oklch(0.60 0.012 255)"></span>
+              <span style="font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:600;letter-spacing:0.02em">STM32F446RE</span>
+              <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:oklch(0.66 0.012 255)">LQFP64</span>
+            </div>
+            <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:oklch(0.60 0.012 255);text-align:center;max-width:130px;line-height:1.4">Arduino headers inboard, Morpho outboard</span>
+          </div>
+          <sc-for list="{{ boardRight }}" as="cn" hint-placeholder-count="1">
+            <div style="display:flex;flex-direction:column;gap:6px">
+              <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:oklch(0.62 0.012 255)">{{ cn.title }}</span>
+              <div style="{{ cn.grid }}">
+                <sc-for list="{{ cn.cells }}" as="c" hint-placeholder-count="12">
+                  <button type="button" data-pin="{{ c.base }}" data-cell="{{ c.key }}" title="{{ c.title }}" onMouseEnter="{{ onPinEnter }}" onMouseLeave="{{ onPinLeave }}" onClick="{{ onPinClick }}" style="{{ c.style }}">
+                    <span style="{{ c.numStyle }}">{{ c.num }}</span>
+                    <span style="{{ c.labelStyle }}">{{ c.label }}</span>
+                  </button>
+                </sc-for>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isChip }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;justify-content:center;overflow:auto">
+          <div style="{{ chipGrid }}">
+            <div style="grid-column:2 / span 16;grid-row:2 / span 16;border:1px solid oklch(0.40 0.014 255);background:oklch(0.26 0.012 255);border-radius:6px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;position:relative">
+              <span style="{{ chipDotStyle }}"></span>
+              <span style="font-family:'IBM Plex Mono',monospace;font-size:15px;font-weight:600;letter-spacing:0.02em">STM32F446RET6</span>
+              <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:oklch(0.66 0.012 255)">{{ chipCaption }}</span>
+            </div>
+            <sc-for list="{{ chipCells }}" as="c" hint-placeholder-count="16">
+              <button type="button" data-pin="{{ c.base }}" data-cell="{{ c.key }}" title="{{ c.title }}" onMouseEnter="{{ onPinEnter }}" onMouseLeave="{{ onPinLeave }}" onClick="{{ onPinClick }}" style="{{ c.style }}">
+                <span style="{{ c.numStyle }}">{{ c.num }}</span>
+                <span style="{{ c.labelStyle }}">{{ c.label }}</span>
+              </button>
+            </sc-for>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isTable }}" hint-placeholder-val="{{ false }}">
+        <div style="overflow:auto;max-height:70vh">
+          <table style="width:100%;border-collapse:collapse;font-size:12px">
+            <thead>
+              <tr style="text-align:left;color:oklch(0.66 0.012 255);font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:0.08em;text-transform:uppercase">
+                <th style="padding:6px 8px;position:sticky;top:0;background:oklch(0.225 0.013 255);border-bottom:1px solid oklch(0.32 0.014 255)">#</th>
+                <th style="padding:6px 8px;position:sticky;top:0;background:oklch(0.225 0.013 255);border-bottom:1px solid oklch(0.32 0.014 255)">Pin</th>
+                <th style="padding:6px 8px;position:sticky;top:0;background:oklch(0.225 0.013 255);border-bottom:1px solid oklch(0.32 0.014 255)">Type</th>
+                <th style="padding:6px 8px;position:sticky;top:0;background:oklch(0.225 0.013 255);border-bottom:1px solid oklch(0.32 0.014 255)">Board</th>
+                <th style="padding:6px 8px;position:sticky;top:0;background:oklch(0.225 0.013 255);border-bottom:1px solid oklch(0.32 0.014 255)">Used as</th>
+                <th style="padding:6px 8px;position:sticky;top:0;background:oklch(0.225 0.013 255);border-bottom:1px solid oklch(0.32 0.014 255)">Alternate functions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <sc-for list="{{ tableRows }}" as="r" hint-placeholder-count="10">
+                <tr data-pin="{{ r.base }}" onMouseEnter="{{ onPinEnter }}" onMouseLeave="{{ onPinLeave }}" onClick="{{ onPinClick }}" style="{{ r.style }}">
+                  <td style="padding:5px 8px;font-family:'IBM Plex Mono',monospace;color:oklch(0.62 0.012 255)">{{ r.n }}</td>
+                  <td style="padding:5px 8px;font-family:'IBM Plex Mono',monospace;font-weight:600">{{ r.name }}</td>
+                  <td style="padding:5px 8px;color:oklch(0.72 0.012 255)">{{ r.type }}</td>
+                  <td style="padding:5px 8px;font-family:'IBM Plex Mono',monospace;color:oklch(0.72 0.012 255)">{{ r.board }}</td>
+                  <td style="padding:5px 8px;color:{{ r.usedColor }}">{{ r.used }}</td>
+                  <td style="padding:5px 8px;font-family:'IBM Plex Mono',monospace;font-size:11px;color:oklch(0.66 0.012 255);line-height:1.5">{{ r.af }}</td>
+                </tr>
+              </sc-for>
+            </tbody>
+          </table>
+        </div>
+      </sc-if>
+    </div>
+
+    <aside style="flex:0 0 330px;max-width:100%;display:flex;flex-direction:column;gap:12px;position:sticky;top:16px">
+      <div style="background:oklch(0.235 0.014 255);border:1px solid oklch(0.30 0.014 255);border-radius:12px;padding:14px">
+        <sc-if value="{{ hasSel }}" hint-placeholder-val="{{ true }}">
+          <div>
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+              <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;padding:2px 6px;border-radius:4px;background:oklch(0.30 0.014 255);color:oklch(0.76 0.010 255)">Pin {{ selNum }}</span>
+              <h2 style="margin:0;font-family:'IBM Plex Mono',monospace;font-size:19px;font-weight:600;letter-spacing:-0.01em">{{ selName }}</h2>
+              <span style="{{ selBadge }}">{{ selCat }}</span>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:7px;font-size:12px">
+              <div style="display:flex;gap:10px"><span style="flex:0 0 78px;color:oklch(0.64 0.012 255);font-size:11px;letter-spacing:0.06em;text-transform:uppercase;padding-top:1px">Board</span><span style="font-family:'IBM Plex Mono',monospace">{{ selBoard }}</span></div>
+              <div style="display:flex;gap:10px"><span style="flex:0 0 78px;color:oklch(0.64 0.012 255);font-size:11px;letter-spacing:0.06em;text-transform:uppercase;padding-top:1px">Default</span><span>{{ selDflt }}</span></div>
+              <div style="display:flex;gap:10px"><span style="flex:0 0 78px;color:oklch(0.64 0.012 255);font-size:11px;letter-spacing:0.06em;text-transform:uppercase;padding-top:1px">I/O</span><span>{{ selIo }}</span></div>
+              <div style="display:flex;gap:10px"><span style="flex:0 0 78px;color:oklch(0.64 0.012 255);font-size:11px;letter-spacing:0.06em;text-transform:uppercase;padding-top:3px">Alternate</span>
+                <div style="display:flex;flex-wrap:wrap;gap:4px;flex:1">
+                  <sc-for list="{{ selAf }}" as="a" hint-placeholder-count="5">
+                    <button type="button" data-fn="{{ a.fam }}" onMouseEnter="{{ onAfEnter }}" onMouseLeave="{{ onAfLeave }}" onClick="{{ onAfClick }}" style="{{ a.style }}">{{ a.t }}</button>
+                  </sc-for>
+                </div>
+              </div>
+              <sc-if value="{{ hasSelNote }}" hint-placeholder-val="{{ false }}">
+                <div style="display:flex;gap:10px"><span style="flex:0 0 78px;color:oklch(0.64 0.012 255);font-size:11px;letter-spacing:0.06em;text-transform:uppercase;padding-top:1px">Board</span><span style="font-size:11.5px;line-height:1.45;color:oklch(0.82 0.05 60)">{{ selNote }}</span></div>
+              </sc-if>
+              <sc-if value="{{ hasSelAdd }}" hint-placeholder-val="{{ false }}">
+                <div style="display:flex;gap:10px"><span style="flex:0 0 78px;color:oklch(0.64 0.012 255);font-size:11px;letter-spacing:0.06em;text-transform:uppercase;padding-top:1px">Extra</span><span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:oklch(0.80 0.010 255)">{{ selAdd }}</span></div>
+              </sc-if>
+            </div>
+
+            <div style="margin-top:14px;padding-top:12px;border-top:1px solid oklch(0.30 0.014 255)">
+              <span style="font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:oklch(0.64 0.012 255)">Assignments</span>
+              <div style="display:flex;flex-direction:column;gap:5px;margin-top:8px">
+                <sc-for list="{{ selUsed }}" as="u" hint-placeholder-count="1">
+                  <div style="{{ u.style }}">
+                    <span style="width:8px;height:8px;border-radius:2px;background:{{ u.color }};flex:0 0 auto"></span>
+                    <span style="font-size:12px;font-weight:500">{{ u.peripheral }}</span>
+                    <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:oklch(0.78 0.010 255);flex:1;text-align:left">{{ u.role }}</span>
+                    <button type="button" data-i="{{ u.i }}" onClick="{{ onDelRow }}" title="Unassign" style="border:none;background:transparent;color:oklch(0.66 0.012 255);cursor:pointer;font-size:14px;line-height:1;padding:2px 4px">×</button>
+                  </div>
+                </sc-for>
+                <sc-if value="{{ selFree }}" hint-placeholder-val="{{ false }}">
+                  <span style="font-size:12px;color:oklch(0.64 0.012 255)">Unassigned — free for use.</span>
+                </sc-if>
+              </div>
+              <sc-if value="{{ selAssignable }}" hint-placeholder-val="{{ true }}">
+                <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;align-items:center">
+                  <select value="{{ aPeriph }}" onChange="{{ onAPeriph }}" style="flex:1 1 120px;padding:6px 7px;background:oklch(0.19 0.012 255);border:1px solid oklch(0.32 0.014 255);border-radius:6px;color:oklch(0.94 0.006 255);font-size:12px">
+                    <sc-for list="{{ periphNames }}" as="p" hint-placeholder-count="5">
+                      <option value="{{ p }}">{{ p }}</option>
+                    </sc-for>
+                    <option value="__new">+ New peripheral…</option>
+                  </select>
+                  <sc-if value="{{ aIsNew }}" hint-placeholder-val="{{ false }}">
+                    <input type="text" placeholder="Name" value="{{ aNewName }}" onInput="{{ onANewName }}" style="flex:1 1 100px;padding:6px 7px;background:oklch(0.19 0.012 255);border:1px solid oklch(0.32 0.014 255);border-radius:6px;color:oklch(0.94 0.006 255);font-size:12px" />
+                  </sc-if>
+                  <input type="text" placeholder="Role e.g. SPI1_SCK" value="{{ aRole }}" onInput="{{ onARole }}" style="flex:1 1 130px;padding:6px 7px;background:oklch(0.19 0.012 255);border:1px solid oklch(0.32 0.014 255);border-radius:6px;color:oklch(0.94 0.006 255);font-family:'IBM Plex Mono',monospace;font-size:12px" />
+                  <input type="text" placeholder="MACRO" value="{{ aMacro }}" onInput="{{ onAMacro }}" style="flex:1 1 90px;padding:6px 7px;background:oklch(0.19 0.012 255);border:1px solid oklch(0.32 0.014 255);border-radius:6px;color:oklch(0.94 0.006 255);font-family:'IBM Plex Mono',monospace;font-size:12px" />
+                  <button type="button" onClick="{{ onAssign }}" style="padding:6px 12px;background:oklch(0.80 0.15 195);border:none;border-radius:6px;color:oklch(0.19 0.03 195);font-weight:600;font-size:12px;cursor:pointer" style-hover="background:oklch(0.86 0.13 195)">Assign</button>
+                </div>
+                <div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:8px">
+                  <sc-for list="{{ selSuggest }}" as="s" hint-placeholder-count="0">
+                    <button type="button" data-s="{{ s.t }}" onClick="{{ onSuggest }}" style="padding:3px 7px;background:oklch(0.27 0.013 255);border:1px dashed oklch(0.40 0.014 255);border-radius:5px;color:oklch(0.80 0.010 255);font-family:'IBM Plex Mono',monospace;font-size:10px;cursor:pointer" style-hover="border-color:oklch(0.80 0.15 195);color:oklch(0.88 0.11 195)">{{ s.t }}</button>
+                  </sc-for>
+                </div>
+              </sc-if>
+            </div>
+          </div>
+        </sc-if>
+        <sc-if value="{{ noSel }}" hint-placeholder-val="{{ false }}">
+          <p style="margin:0;font-size:13px;color:oklch(0.66 0.012 255);line-height:1.5">Select a pin to inspect its functions and assign it.</p>
+        </sc-if>
+      </div>
+
+      <div style="background:oklch(0.235 0.014 255);border:1px solid oklch(0.30 0.014 255);border-radius:12px;padding:14px">
+        <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:10px">
+          <span style="font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:oklch(0.64 0.012 255)">Design checks</span>
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:oklch(0.62 0.012 255);margin-left:auto">{{ issueCount }}</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <sc-for list="{{ issues }}" as="s" hint-placeholder-count="3">
+            <button type="button" data-pin="{{ s.base }}" onMouseEnter="{{ onPinEnter }}" onMouseLeave="{{ onPinLeave }}" onClick="{{ onPinClick }}" style="{{ s.style }}">
+              <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;color:{{ s.color }};flex:0 0 42px;text-align:left">{{ s.base }}</span>
+              <span style="font-size:11.5px;line-height:1.45;color:oklch(0.84 0.010 255);text-align:left">{{ s.msg }}</span>
+            </button>
+          </sc-for>
+          <sc-if value="{{ noIssues }}" hint-placeholder-val="{{ false }}">
+            <span style="font-size:12px;color:oklch(0.72 0.13 155)">No conflicts detected.</span>
+          </sc-if>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <div style="background:oklch(0.225 0.013 255);border:1px solid oklch(0.30 0.014 255);border-radius:12px;padding:14px">
+    <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:12px">
+      <div style="display:flex;gap:2px;padding:2px;background:oklch(0.19 0.012 255);border-radius:7px">
+        <sc-for list="{{ tabs }}" as="t" hint-placeholder-count="4">
+          <button type="button" data-t="{{ t.id }}" onClick="{{ onTab }}" style="{{ t.style }}">{{ t.label }}</button>
+        </sc-for>
+      </div>
+      <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:oklch(0.62 0.012 255)">{{ mapStatus }}</span>
+      <div style="margin-left:auto;display:flex;gap:6px">
+        <button type="button" onClick="{{ onResetFw }}" style="padding:6px 11px;background:oklch(0.27 0.013 255);border:1px solid oklch(0.36 0.014 255);border-radius:6px;color:oklch(0.88 0.010 255);font-size:12px;cursor:pointer" style-hover="border-color:oklch(0.50 0.014 255)">Reset to firmware</button>
+        <sc-if value="{{ showCopy }}" hint-placeholder-val="{{ false }}">
+          <button type="button" onClick="{{ onCopy }}" style="padding:6px 11px;background:oklch(0.80 0.15 195);border:none;border-radius:6px;color:oklch(0.19 0.03 195);font-weight:600;font-size:12px;cursor:pointer" style-hover="background:oklch(0.86 0.13 195)">{{ copyLabel }}</button>
+        </sc-if>
+      </div>
+    </div>
+
+    <sc-if value="{{ isMapTab }}" hint-placeholder-val="{{ true }}">
+      <div style="overflow:auto;max-height:52vh">
+        <table style="width:100%;border-collapse:separate;border-spacing:0 4px;font-size:12px">
+          <thead>
+            <tr style="text-align:left;color:oklch(0.64 0.012 255);font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:0.08em;text-transform:uppercase">
+              <th style="padding:0 8px 4px">Peripheral</th><th style="padding:0 8px 4px">Bus</th><th style="padding:0 8px 4px">Pin</th><th style="padding:0 8px 4px">Role</th><th style="padding:0 8px 4px">Macro</th><th style="padding:0 8px 4px">Check</th><th></th>
+            </tr>
+          </thead>
+          <tbody>
+            <sc-for list="{{ editRows }}" as="r" hint-placeholder-count="8">
+              <tr style="{{ r.style }}">
+                <td style="padding:3px 4px"><input type="text" value="{{ r.p }}" data-i="{{ r.i }}" data-f="p" onInput="{{ onCell }}" style="width:100%;min-width:110px;padding:5px 7px;background:oklch(0.19 0.012 255);border:1px solid oklch(0.30 0.014 255);border-radius:5px;color:oklch(0.94 0.006 255);font-size:12px" /></td>
+                <td style="padding:3px 4px"><input type="text" value="{{ r.bus }}" data-i="{{ r.i }}" data-f="bus" onInput="{{ onCell }}" style="width:100%;min-width:90px;padding:5px 7px;background:oklch(0.19 0.012 255);border:1px solid oklch(0.30 0.014 255);border-radius:5px;color:oklch(0.86 0.010 255);font-family:'IBM Plex Mono',monospace;font-size:11px" /></td>
+                <td style="padding:3px 4px"><input type="text" list="nucleo-pins" value="{{ r.pin }}" data-i="{{ r.i }}" data-f="pin" onInput="{{ onCell }}" style="width:100%;min-width:82px;padding:5px 7px;background:oklch(0.19 0.012 255);border:1px solid {{ r.pinBorder }};border-radius:5px;color:oklch(0.94 0.006 255);font-family:'IBM Plex Mono',monospace;font-size:11px" /></td>
+                <td style="padding:3px 4px"><input type="text" value="{{ r.role }}" data-i="{{ r.i }}" data-f="role" onInput="{{ onCell }}" style="width:100%;min-width:150px;padding:5px 7px;background:oklch(0.19 0.012 255);border:1px solid oklch(0.30 0.014 255);border-radius:5px;color:oklch(0.94 0.006 255);font-family:'IBM Plex Mono',monospace;font-size:11px" /></td>
+                <td style="padding:3px 4px"><input type="text" value="{{ r.macro }}" data-i="{{ r.i }}" data-f="macro" onInput="{{ onCell }}" placeholder="—" style="width:100%;min-width:110px;padding:5px 7px;background:oklch(0.19 0.012 255);border:1px solid oklch(0.30 0.014 255);border-radius:5px;color:oklch(0.86 0.010 255);font-family:'IBM Plex Mono',monospace;font-size:11px" /></td>
+                <td style="padding:3px 8px;font-size:11px;color:{{ r.checkColor }};max-width:220px;line-height:1.4">{{ r.check }}</td>
+                <td style="padding:3px 4px"><button type="button" data-i="{{ r.i }}" onClick="{{ onDelRow }}" title="Delete row" style="border:1px solid oklch(0.32 0.014 255);background:oklch(0.22 0.013 255);color:oklch(0.70 0.012 255);border-radius:5px;cursor:pointer;padding:4px 8px;font-size:12px" style-hover="border-color:oklch(0.72 0.13 25);color:oklch(0.78 0.13 25)">×</button></td>
+              </tr>
+            </sc-for>
+          </tbody>
+        </table>
+      </div>
+      <datalist id="nucleo-pins">
+        <sc-for list="{{ pinNames }}" as="n" hint-placeholder-count="0">
+          <option value="{{ n }}"></option>
+        </sc-for>
+      </datalist>
+      <button type="button" onClick="{{ onAddRow }}" style="margin-top:10px;padding:7px 12px;background:oklch(0.27 0.013 255);border:1px dashed oklch(0.40 0.014 255);border-radius:7px;color:oklch(0.86 0.010 255);font-size:12px;cursor:pointer" style-hover="border-color:oklch(0.80 0.15 195);color:oklch(0.88 0.11 195)">+ Add mapping row</button>
+    </sc-if>
+
+    <sc-if value="{{ isJsonTab }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <textarea spellcheck="false" rows="16" value="{{ jsonText }}" onInput="{{ onJsonInput }}" style="width:100%;padding:12px;background:oklch(0.17 0.012 255);border:1px solid oklch(0.30 0.014 255);border-radius:8px;color:oklch(0.90 0.010 255);font-family:'IBM Plex Mono',monospace;font-size:12px;line-height:1.55;resize:vertical"></textarea>
+        <div style="display:flex;gap:8px;align-items:center">
+          <button type="button" onClick="{{ onApplyJson }}" style="padding:7px 14px;background:oklch(0.80 0.15 195);border:none;border-radius:6px;color:oklch(0.19 0.03 195);font-weight:600;font-size:12px;cursor:pointer">Apply</button>
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:{{ jsonErrColor }}">{{ jsonErr }}</span>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isCodeTab }}" hint-placeholder-val="{{ false }}">
+      <pre style="margin:0;padding:14px;background:oklch(0.17 0.012 255);border:1px solid oklch(0.30 0.014 255);border-radius:8px;color:oklch(0.90 0.010 255);font-family:'IBM Plex Mono',monospace;font-size:12px;line-height:1.6;overflow:auto;max-height:52vh">{{ codeOut }}</pre>
+    </sc-if>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1440,&quot;height&quot;:1000},&quot;defaultView&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;board&quot;,&quot;chip&quot;,&quot;table&quot;],&quot;default&quot;:&quot;board&quot;,&quot;tsType&quot;:&quot;'board'|'chip'|'table'&quot;,&quot;section&quot;:&quot;Defaults&quot;},&quot;naming&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;board&quot;,&quot;mcu&quot;,&quot;signal&quot;],&quot;default&quot;:&quot;board&quot;,&quot;tsType&quot;:&quot;'board'|'mcu'|'signal'&quot;,&quot;section&quot;:&quot;Defaults&quot;},&quot;colorMode&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;category&quot;,&quot;peripheral&quot;,&quot;conflict&quot;],&quot;default&quot;:&quot;category&quot;,&quot;tsType&quot;:&quot;'category'|'peripheral'|'conflict'&quot;,&quot;section&quot;:&quot;Defaults&quot;},&quot;density&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;roomy&quot;,&quot;compact&quot;],&quot;default&quot;:&quot;roomy&quot;,&quot;tsType&quot;:&quot;'roomy'|'compact'&quot;,&quot;section&quot;:&quot;Defaults&quot;}}">
+class Component extends DCLogic {
+  static RAW = [
+    [1,'VBAT','P','Backup power supply','','','','CN7-33'],
+    [2,'PC13','FT','GPIO','EVENTOUT','TAMP_1/WKUP1','','CN7-23'],
+    [3,'PC14-OSC32_IN','FT','GPIO','EVENTOUT','OSC32_IN','','CN7-25'],
+    [4,'PC15-OSC32_OUT','FT','GPIO','EVENTOUT','OSC32_OUT','','CN7-27'],
+    [5,'PH0-OSC_IN','FT','GPIO','EVENTOUT','OSC_IN','','CN7-29'],
+    [6,'PH1-OSC_OUT','FT','GPIO','EVENTOUT','OSC_OUT','','CN7-31'],
+    [7,'NRST','R','System reset','','','RESET',''],
+    [8,'PC0','FT','GPIO','SAI1_MCLK_B, OTG_HS_ULPI_STP, FMC_SDNWE, EVENTOUT','ADC123_IN10','A5','CN7-38'],
+    [9,'PC1','FT','GPIO','SPI3_MOSI/I2S3_SD, SAI1_SD_A, SPI2_MOSI/I2S2_SD, EVENTOUT','ADC123_IN11','A4','CN7-36'],
+    [10,'PC2','FT','GPIO','SPI2_MISO, OTG_HS_ULPI_DIR, FMC_SDNE0, EVENTOUT','ADC123_IN12','','CN7-35'],
+    [11,'PC3','FT','GPIO','SPI2_MOSI/I2S2_SD, OTG_HS_ULPI_NXT, FMC_SDCKE0, EVENTOUT','ADC123_IN13','','CN7-37'],
+    [12,'VSSA','P','Analog ground','','','',''],
+    [13,'VDDA','P','Analog supply','','','',''],
+    [14,'PA0-WKUP','FT','GPIO','TIM2_CH1/TIM2_ETR, TIM5_CH1, TIM8_ETR, USART2_CTS, UART4_TX, EVENTOUT','ADC123_IN0, WKUP0/TAMP_2','A0','CN7-28'],
+    [15,'PA1','FT','GPIO','TIM2_CH2, TIM5_CH2, USART2_RTS, UART4_RX, QUADSPI_BK1_IO3, SAI2_MCLK_B, EVENTOUT','ADC123_IN1','A1','CN7-30'],
+    [16,'PA2','FT','GPIO','TIM2_CH3, TIM5_CH3, TIM9_CH1, USART2_TX, SAI2_SCK_B, EVENTOUT','ADC123_IN2','D1','CN10-35'],
+    [17,'PA3','FT','GPIO','TIM2_CH4, TIM5_CH4, TIM9_CH2, SAI1_FS_A, USART2_RX, OTG_HS_ULPI_D0, EVENTOUT','ADC123_IN3','D0','CN10-37'],
+    [18,'VSS','P','Ground','','','',''],
+    [19,'VDD','P','Digital supply','','','',''],
+    [20,'PA4','TTa','GPIO','SPI1_NSS/I2S1_WS, SPI3_NSS/I2S3_WS, USART2_CK, OTG_HS_SOF, DCMI_HSYNC, EVENTOUT','ADC12_IN4, DAC_OUT1','A2','CN7-32'],
+    [21,'PA5','TTa','GPIO','TIM2_CH1/TIM2_ETR, TIM8_CH1N, SPI1_SCK/I2S1_CK, OTG_HS_ULPI_CK, EVENTOUT','ADC12_IN5, DAC_OUT2','D13','CN10-11'],
+    [22,'PA6','FT','GPIO','TIM1_BKIN, TIM3_CH1, TIM8_BKIN, SPI1_MISO, I2S2_MCK, TIM13_CH1, DCMI_PIXCLK, EVENTOUT','ADC12_IN6','D12','CN10-13'],
+    [23,'PA7','FT','GPIO','TIM1_CH1N, TIM3_CH2, TIM8_CH1N, SPI1_MOSI/I2S1_SD, TIM14_CH1, FMC_SDNWE, EVENTOUT','ADC12_IN7','D11','CN10-15'],
+    [24,'PC4','FT','GPIO','I2S1_MCK, SPDIFRX_IN2, FMC_SDNE0, EVENTOUT','ADC12_IN14','','CN10-34'],
+    [25,'PC5','FT','GPIO','USART3_RX, SPDIFRX_IN3, FMC_SDCKE0, EVENTOUT','ADC12_IN15','','CN10-6'],
+    [26,'PB0','FT','GPIO','TIM1_CH2N, TIM3_CH3, TIM8_CH2N, SPI3_MOSI/I2S3_SD, UART4_CTS, OTG_HS_ULPI_D1, SDIO_D1, EVENTOUT','ADC12_IN8','A3','CN7-34'],
+    [27,'PB1','FT','GPIO','TIM1_CH3N, TIM3_CH4, TIM8_CH3N, OTG_HS_ULPI_D2, SDIO_D2, EVENTOUT','ADC12_IN9','','CN10-24'],
+    [28,'PB2-BOOT1','FT','BOOT1','TIM2_CH4, SAI1_SD_A, SPI3_MOSI/I2S3_SD, QUADSPI_CLK, OTG_HS_ULPI_D4, SDIO_CK, EVENTOUT','','','CN10-22'],
+    [29,'PB10','FT','GPIO','TIM2_CH3, I2C2_SCL, SPI2_SCK/I2S2_CK, SAI1_SCK_A, USART3_TX, OTG_HS_ULPI_D3, EVENTOUT','','D6','CN10-25'],
+    [30,'VCAP_1','P','Regulator capacitor','','','',''],
+    [31,'VSS','P','Ground','','','',''],
+    [32,'VDD','P','Digital supply','','','',''],
+    [33,'PB12','FT','GPIO','TIM1_BKIN, I2C2_SMBA, SPI2_NSS/I2S2_WS, SAI1_SCK_B, USART3_CK, CAN2_RX, OTG_HS_ULPI_D5, OTG_HS_ID, EVENTOUT','','','CN10-16'],
+    [34,'PB13','FT','GPIO','TIM1_CH1N, SPI2_SCK/I2S2_CK, USART3_CTS, CAN2_TX, OTG_HS_ULPI_D6, EVENTOUT','OTG_HS_VBUS','','CN10-30'],
+    [35,'PB14','FT','GPIO','TIM1_CH2N, TIM8_CH2N, SPI2_MISO, USART3_RTS, TIM12_CH1, OTG_HS_DM, EVENTOUT','','','CN10-28'],
+    [36,'PB15','FT','GPIO','RTC_REFIN, TIM1_CH3N, TIM8_CH3N, SPI2_MOSI/I2S2_SD, TIM12_CH2, OTG_HS_DP, EVENTOUT','','','CN10-26'],
+    [37,'PC6','FTf','GPIO','TIM3_CH1, TIM8_CH1, FMPI2C1_SCL, I2S2_MCK, USART6_TX, SDIO_D6, DCMI_D0, EVENTOUT','','','CN10-4'],
+    [38,'PC7','FTf','GPIO','TIM3_CH2, TIM8_CH2, FMPI2C1_SDA, SPI2_SCK/I2S2_CK, I2S3_MCK, SPDIFRX_IN1, USART6_RX, SDIO_D7, DCMI_D1, EVENTOUT','','D9','CN10-19'],
+    [39,'PC8','FT','GPIO','TRACED0, TIM3_CH3, TIM8_CH3, UART5_RTS, USART6_CK, SDIO_D0, DCMI_D2, EVENTOUT','','','CN10-2'],
+    [40,'PC9','FT','GPIO','MCO2, TIM3_CH4, TIM8_CH4, I2C3_SDA, I2S_CKIN, UART5_CTS, QUADSPI_BK1_IO0, SDIO_D1, DCMI_D3, EVENTOUT','','','CN10-1'],
+    [41,'PA8','FT','GPIO','MCO1, TIM1_CH1, I2C3_SCL, USART1_CK, OTG_FS_SOF, EVENTOUT','','D7','CN10-23'],
+    [42,'PA9','FT','GPIO','TIM1_CH2, I2C3_SMBA, SPI2_SCK/I2S2_CK, SAI1_SD_B, USART1_TX, DCMI_D0, EVENTOUT','OTG_FS_VBUS','D8','CN10-21'],
+    [43,'PA10','FT','GPIO','TIM1_CH3, USART1_RX, OTG_FS_ID, DCMI_D1, EVENTOUT','','D2','CN10-33'],
+    [44,'PA11','FT','GPIO','TIM1_CH4, USART1_CTS, CAN1_RX, OTG_FS_DM, EVENTOUT','','','CN10-14'],
+    [45,'PA12','FT','GPIO','TIM1_ETR, USART1_RTS, SAI2_FS_B, CAN1_TX, OTG_FS_DP, EVENTOUT','','','CN10-12'],
+    [46,'PA13','FT','SWD data (JTMS-SWDIO)','JTMS-SWDIO, EVENTOUT','','','CN7-13'],
+    [47,'VSS','P','Ground','','','',''],
+    [48,'VDD','P','Digital supply','','','',''],
+    [49,'PA14','FT','SWD clock (JTCK-SWCLK)','JTCK-SWCLK, EVENTOUT','','','CN7-15'],
+    [50,'PA15','FT','JTDI','JTDI, TIM2_CH1/TIM2_ETR, HDMI_CEC, SPI1_NSS/I2S1_WS, SPI3_NSS/I2S3_WS, UART4_RTS, EVENTOUT','','','CN7-17'],
+    [51,'PC10','FT','GPIO','SPI3_SCK/I2S3_CK, USART3_TX, UART4_TX, QUADSPI_BK1_IO1, SDIO_D2, DCMI_D8, EVENTOUT','','','CN7-1'],
+    [52,'PC11','FT','GPIO','SPI3_MISO, USART3_RX, UART4_RX, QUADSPI_BK2_NCS, SDIO_D3, DCMI_D4, EVENTOUT','','','CN7-2'],
+    [53,'PC12','FT','GPIO','I2C2_SDA, SPI3_MOSI/I2S3_SD, USART3_CK, UART5_TX, SDIO_CK, DCMI_D9, EVENTOUT','','','CN7-3'],
+    [54,'PD2','FT','GPIO','TIM3_ETR, UART5_RX, SDIO_CMD, DCMI_D11, EVENTOUT','','','CN7-4'],
+    [55,'PB3','FT','JTDO/TRACESWO','JTDO/TRACESWO, TIM2_CH2, I2C2_SDA, SPI1_SCK/I2S1_CK, SPI3_SCK/I2S3_CK, EVENTOUT','','D3','CN10-31'],
+    [56,'PB4','FT','NJTRST','NJTRST, TIM3_CH1, I2C3_SDA, SPI1_MISO, SPI3_MISO, SPI2_NSS/I2S2_WS, EVENTOUT','','D5','CN10-27'],
+    [57,'PB5','FT','GPIO','TIM3_CH2, I2C1_SMBA, SPI1_MOSI/I2S1_SD, SPI3_MOSI/I2S3_SD, CAN2_RX, OTG_HS_ULPI_D7, FMC_SDCKE1, DCMI_D10, EVENTOUT','','D4','CN10-29'],
+    [58,'PB6','FT','GPIO','TIM4_CH1, HDMI_CEC, I2C1_SCL, USART1_TX, CAN2_TX, QUADSPI_BK1_NCS, FMC_SDNE1, DCMI_D5, EVENTOUT','','D10','CN10-17'],
+    [59,'PB7','FT','GPIO','TIM4_CH2, I2C1_SDA, USART1_RX, SPDIFRX_IN0, FMC_NL, DCMI_VSYNC, EVENTOUT','','','CN7-21'],
+    [60,'BOOT0','B','Boot configuration','','VPP','','CN7-7'],
+    [61,'PB8','FT','GPIO','TIM2_CH1/TIM2_ETR, TIM4_CH3, TIM10_CH1, I2C1_SCL, CAN1_RX, SDIO_D4, DCMI_D6, EVENTOUT','','D15, A5 (alt)','CN10-3, CN7-38'],
+    [62,'PB9','FT','GPIO','TIM2_CH2, TIM4_CH4, TIM11_CH1, I2C1_SDA, SPI2_NSS/I2S2_WS, SAI1_FS_B, CAN1_TX, SDIO_D5, DCMI_D7, EVENTOUT','','D14, A4 (alt)','CN10-5, CN7-36'],
+    [63,'VSS','P','Ground','','','',''],
+    [64,'VDD','P','Digital supply','','','','']
+  ];
+
+  static CONN = [
+    { id:'CN7', title:'CN7 · Morpho left', cols:2, side:'L', pins:['PC10','PC11','PC12','PD2','VDD','E5V','BOOT0','GND','—','—','—','IOREF','PA13','RESET|NRST','PA14','+3.3V','PA15','+5V','GND','GND','PB7','GND','PC13','VIN','PC14','—','PC15','PA0','PH0','PA1','PH1','PA4','VBAT','PB0','PC2','PC1','PC3','PC0'] },
+    { id:'CN6', title:'CN6 · Arduino power', cols:1, side:'L', pins:['NC','IOREF','RESET|NRST','+3.3V','+5V','GND','GND','VIN'] },
+    { id:'CN8', title:'CN8 · Arduino analog', cols:1, side:'L', pins:['A0|PA0','A1|PA1','A2|PA4','A3|PB0','A4|PC1','A5|PC0'] },
+    { id:'CN5', title:'CN5 · Arduino digital', cols:1, side:'R', pins:['D15|PB8','D14|PB9','AREF','GND','D13|PA5','D12|PA6','D11|PA7','D10|PB6','D9|PC7','D8|PA9'] },
+    { id:'CN9', title:'CN9 · Arduino digital', cols:1, side:'R', pins:['D7|PA8','D6|PB10','D5|PB4','D4|PB5','D3|PB3','D2|PA10','D1|PA2','D0|PA3'] },
+    { id:'CN10', title:'CN10 · Morpho right', cols:2, side:'R', pins:['PC9','PC8','PB8','PC6','PB9','PC5','AVDD','U5V','GND','—','PA5','PA12','PA6','PA11','PA7','PB12','PB6','—','PC7','GND','PA9','PB2','PA8','PB1','PB10','PB15','PB4','PB14','PB5','PB13','PB3','AGND','PA10','PC4','PA2','—','PA3','—'] }
+  ];
+
+  static FW = [
+    ['VS1053','SPI1','PA9','MP3XDCS (data/command)','MP3XDCS'],
+    ['VS1053','SPI1','PA10','MP3_RESET','MP3_RESET'],
+    ['VS1053','SPI1','PA11','MP3CS (chip select)','MP3CS'],
+    ['VS1053','SPI1','PB3','MP3DREQ','MP3DREQ'],
+    ['VS1053','SPI1','PA5','SPI1_SCK',''],
+    ['VS1053','SPI1','PA6','SPI1_MISO',''],
+    ['VS1053','SPI1','PA7','SPI1_MOSI',''],
+    ['SD card','SPI1','PA4','CARDCS (chip select)','CARDCS'],
+    ['SD card','SPI1','PA5','SPI1_SCK',''],
+    ['SD card','SPI1','PA6','SPI1_MISO',''],
+    ['SD card','SPI1','PA7','SPI1_MOSI',''],
+    ['PSRAM','SPI2','PB6','PSRAM_CS','PSRAM_CS'],
+    ['PSRAM','SPI2','PB13','PSRAM_CLK (SPI2_SCK)','PSRAM_CLK'],
+    ['PSRAM','SPI2','PB14','PSRAM_MISO (SPI2_MISO)','PSRAM_MISO'],
+    ['PSRAM','SPI2','PB15','PSRAM_MOSI (SPI2_MOSI)','PSRAM_MOSI'],
+    ['Screen (ILI9341)','16-bit parallel','PB8','TFT_DC','TFT_DC'],
+    ['Screen (ILI9341)','16-bit parallel','PB9','TFT_WR','TFT_WR'],
+    ['Screen (ILI9341)','16-bit parallel','PB10','TFT_RD','TFT_RD'],
+    ['Screen (ILI9341)','16-bit parallel','PB12','TFT_RST','TFT_RST'],
+    ['Screen (ILI9341)','16-bit parallel','PC0','D0',''],
+    ['Screen (ILI9341)','16-bit parallel','PC1','D1',''],
+    ['Screen (ILI9341)','16-bit parallel','PC2','D2',''],
+    ['Screen (ILI9341)','16-bit parallel','PC3','D3',''],
+    ['Screen (ILI9341)','16-bit parallel','PC4','D4',''],
+    ['Screen (ILI9341)','16-bit parallel','PC5','D5',''],
+    ['Screen (ILI9341)','16-bit parallel','PC6','D6',''],
+    ['Screen (ILI9341)','16-bit parallel','PC7','D7',''],
+    ['Screen (ILI9341)','16-bit parallel','PC8','D8',''],
+    ['Screen (ILI9341)','16-bit parallel','PC9','D9',''],
+    ['Screen (ILI9341)','16-bit parallel','PC10','D10',''],
+    ['Screen (ILI9341)','16-bit parallel','PC11','D11',''],
+    ['Screen (ILI9341)','16-bit parallel','PC12','D12',''],
+    ['Screen (ILI9341)','16-bit parallel','PC13','D13',''],
+    ['Screen (ILI9341)','16-bit parallel','PC14','D14',''],
+    ['Screen (ILI9341)','16-bit parallel','PC15','D15',''],
+    ['MPR121','I2C3','PA8','SCL (I2C3_SCL)',''],
+    ['MPR121','I2C3','PB4','SDA (I2C3_SDA)','']
+  ];
+
+  static FAMS = ['SPI1','SPI2','SPI3','I2S1','I2S2','I2S3','I2C1','I2C2','I2C3','FMPI2C1','USART1','USART2','USART3','USART6','UART4','UART5','CAN1','CAN2','TIM1','TIM2','TIM3','TIM4','TIM5','TIM8','TIM9','TIM10','TIM11','TIM12','TIM13','TIM14','ADC','DAC','SAI1','SAI2','SPDIFRX','QUADSPI','SDIO','DCMI','FMC','USB','RTC','HDMI_CEC','MCO','SWD'];
+
+  static NOTES = {
+    PA5:'Also drives LD2, the green user LED, through a buffer on the board.',
+    PC13:'Also wired to B1, the blue user button (with its pull-up).',
+    PC14:'LSE crystal pin (OSC32_IN) — only free if the 32 kHz oscillator is unused.',
+    PC15:'LSE crystal pin (OSC32_OUT) — only free if the 32 kHz oscillator is unused.',
+    PH0:'HSE input from the ST-LINK MCO clock on the board.',
+    PH1:'HSE output — leave alone if the board clock is used.'
+  };
+
+  static CAT = {
+    power:'oklch(0.72 0.13 25)', ref:'oklch(0.72 0.13 95)', reset:'oklch(0.72 0.13 60)',
+    boot:'oklch(0.72 0.13 310)', debug:'oklch(0.72 0.13 250)', io:'oklch(0.72 0.13 155)',
+    nc:'oklch(0.50 0.010 255)', used:'oklch(0.80 0.15 195)'
+  };
+  static PHUES = [205, 25, 155, 285, 75, 330, 120, 250];
+  static BG = 'oklch(0.19 0.012 255)';
+
+  state = { rows:null, view:null, naming:null, color:null, sel:'PB3', hover:null, legend:null,
+    periph:[], hoverPeriph:null, fn:'', hoverFn:null, q:'', tab:'map', json:'', jsonErr:'',
+    aPeriph:'', aNew:'', aRole:'', aMacro:'', copied:0 };
+
+  componentDidMount() {
+    let rows = null;
+    try { const s = localStorage.getItem('nucleo-pinmap-v1'); if (s) rows = JSON.parse(s); } catch (e) {}
+    this.setState({ rows: rows && rows.length ? rows : this.fwRows() });
+  }
+
+  fwRows() { return Component.FW.map(r => ({ p:r[0], bus:r[1], pin:r[2], role:r[3], macro:r[4] })); }
+  rows() { return this.state.rows || this.fwRows(); }
+  save(rows) {
+    try { localStorage.setItem('nucleo-pinmap-v1', JSON.stringify(rows)); } catch (e) {}
+    this.setState({ rows, json:'' });
+  }
+
+  pins() {
+    if (this._pins) return this._pins;
+    this._pins = Component.RAW.map(r => {
+      const name = r[1], base = name.split('-')[0];
+      const type = r[2];
+      let cat = 'io';
+      if (type === 'P') cat = 'power';
+      else if (type === 'R') cat = 'reset';
+      else if (type === 'B') cat = 'boot';
+      else if (/SWD|JTDI|JTDO|NJTRST|JTMS|JTCK/.test(r[3])) cat = 'debug';
+      else if (/BOOT/.test(r[3])) cat = 'boot';
+      const af = r[4] ? r[4].split(', ') : [];
+      const add = r[5] ? r[5].split(', ') : [];
+      return { n:r[0], name, base, type, dflt:r[3], af, add, ard:r[6], morpho:r[7], cat,
+        blob:[r[3], r[4], r[5]].join(' ') };
+    });
+    this._byBase = {};
+    this._pins.forEach(p => { if (!this._byBase[p.base]) this._byBase[p.base] = p; });
+    return this._pins;
+  }
+  byBase(b) { this.pins(); return this._byBase[b] || null; }
+
+  famRe(f) {
+    this._re = this._re || {};
+    if (this._re[f]) return this._re[f];
+    this._re[f] = f === 'USB' ? /OTG_/ : f === 'SWD' ? /SWD|JTMS|JTCK|JTDI|JTDO|NJTRST/ : new RegExp(f + '(?![0-9])');
+    return this._re[f];
+  }
+  mix(c, pct) { return 'color-mix(in oklab, ' + c + ' ' + pct + '%, ' + Component.BG + ')'; }
+
+  periphColor(name) {
+    const names = this.periphList();
+    const i = names.indexOf(name);
+    return 'oklch(0.72 0.14 ' + Component.PHUES[(i < 0 ? 0 : i) % Component.PHUES.length] + ')';
+  }
+  periphList() {
+    const out = [];
+    this.rows().forEach(r => { if (r.p && out.indexOf(r.p) < 0) out.push(r.p); });
+    return out;
+  }
+  usedIndex() {
+    const rows = this.rows();
+    if (this._uiRows === rows) return this._ui;
+    const m = {};
+    rows.forEach((r, i) => { (m[r.pin] = m[r.pin] || []).push({ ...r, i }); });
+    this._uiRows = rows; this._ui = m;
+    return m;
+  }
+  usedBy(base) { return this.usedIndex()[base] || []; }
+
+  signalsIn(text) {
+    const out = [];
+    (text || '').replace(/[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+/g, m => { out.push(m); return m; });
+    return out;
+  }
+
+  issueList() {
+    const rows = this.rows();
+    if (this._ilRows === rows) return this._il;
+    const out = [];
+    const byPin = {};
+    rows.forEach(r => { (byPin[r.pin] = byPin[r.pin] || []).push(r); });
+    Object.keys(byPin).forEach(base => {
+      const rs = byPin[base], p = this.byBase(base);
+      if (!p) { out.push({ base, sev:'error', msg:'Unknown pin name — not on this package.' }); return; }
+      const roles = rs.map(r => r.role.replace(/\s*\(.*\)/, '').trim());
+      const uniq = roles.filter((v, i) => roles.indexOf(v) === i);
+      if (rs.length > 1 && uniq.length > 1)
+        out.push({ base, sev:'error', msg:'Driven by ' + rs.map(r => r.p).join(' + ') + ' with different roles (' + uniq.join(' / ') + ').' });
+      else if (rs.length > 1)
+        out.push({ base, sev:'info', msg:'Shared bus line: ' + rs.map(r => r.p).join(', ') + ' — fine if they share ' + uniq[0] + '.' });
+      if (p.cat === 'debug' || /JTDO|NJTRST|JTDI/.test(p.dflt))
+        out.push({ base, sev:'warn', msg:p.dflt + ' by default — reusing it costs you JTAG/SWO.' });
+      if (p.cat === 'power' || p.cat === 'reset' || p.cat === 'boot')
+        out.push({ base, sev:'error', msg:'This is a ' + p.cat + ' pin, not general purpose I/O.' });
+      rs.forEach(r => {
+        this.signalsIn(r.role).forEach(sig => {
+          const fam = Component.FAMS.find(f => this.famRe(f).test(sig));
+          if (!fam) return;
+          if (p.blob.indexOf(sig) < 0)
+            out.push({ base, sev:'warn', msg:sig + ' is not an alternate function of ' + base + '.' });
+        });
+      });
+    });
+    this._ilRows = rows; this._il = out; this._ilBy = {};
+    out.forEach(s => { (this._ilBy[s.base] = this._ilBy[s.base] || []).push(s); });
+    return out;
+  }
+
+  matchSet() {
+    const st = this.state, pins = this.pins();
+    const fn = st.hoverFn || st.fn;
+    const periphs = st.hoverPeriph ? [st.hoverPeriph] : st.periph;
+    const q = st.q.trim().toLowerCase();
+    const legend = st.legend;
+    if (!fn && !periphs.length && !q && !legend) return null;
+    const set = new Set();
+    pins.forEach(p => {
+      let ok = true;
+      if (fn) ok = ok && this.famRe(fn).test(p.blob);
+      if (periphs.length) ok = ok && this.usedBy(p.base).some(r => periphs.indexOf(r.p) >= 0);
+      if (legend) ok = ok && (legend === 'used' ? this.usedBy(p.base).length > 0 : p.cat === legend);
+      if (q) {
+        const hay = (p.name + ' ' + p.ard + ' ' + p.morpho + ' ' + p.blob + ' ' +
+          this.usedBy(p.base).map(r => r.p + ' ' + r.role + ' ' + r.macro).join(' ')).toLowerCase();
+        ok = ok && hay.indexOf(q) >= 0;
+      }
+      if (ok) set.add(p.base);
+    });
+    return set;
+  }
+
+  cellFor(base, label, num, key, size) {
+    const st = this.state, p = base ? this.byBase(base) : null;
+    const used = p ? this.usedBy(p.base) : [];
+    const naming = st.naming || this.props.naming || 'board';
+    const mode = st.color || this.props.colorMode || 'category';
+    let cat = 'nc';
+    if (p) cat = p.cat; else if (/GND|VDD|VIN|5V|3\.3V|AVDD|AGND|U5V|E5V/.test(label)) cat = 'power';
+    else if (/IOREF|AREF/.test(label)) cat = 'ref';
+    let color = Component.CAT[cat];
+    if (used.length) {
+      if (mode === 'peripheral') color = this.periphColor(used[0].p);
+      else if (mode === 'category') color = Component.CAT.used;
+    }
+    if (mode === 'conflict') {
+      const iss = (p && this._ilBy ? this._ilBy[p.base] : null) || [];
+      const worst = iss.some(i => i.sev === 'error') ? 'error' : iss.some(i => i.sev === 'warn') ? 'warn' : null;
+      color = worst === 'error' ? Component.CAT.power : worst === 'warn' ? Component.CAT.reset
+        : used.length ? Component.CAT.io : Component.CAT.nc;
+    }
+
+    let text = label;
+    if (p) {
+      if (naming === 'mcu') text = p.base;
+      else if (naming === 'signal') text = used.length ? (used[0].macro || used[0].role.replace(/\s*\(.*\)/, '')) : p.base;
+    }
+    const ms = this._ms;
+    const dim = ms && p ? !ms.has(p.base) : ms ? true : false;
+    const isSel = p && st.sel === p.base;
+    const isHover = p && st.hover === p.base;
+    const compact = (st.density || this.props.density || 'roomy') === 'compact';
+    const style = {
+      display:'flex', alignItems:'center', gap:'6px', width:'100%', textAlign:'left', cursor:p ? 'pointer' : 'default',
+      padding:compact ? '3px 6px' : '5px 8px', borderRadius:'5px', fontFamily:"'IBM Plex Mono', monospace",
+      fontSize:compact ? '11px' : '12px', lineHeight:1.25,
+      background:used.length ? this.mix(color, 22) : this.mix(color, 9),
+      border:'1px solid ' + this.mix(color, used.length ? 62 : 30),
+      color:'oklch(0.94 0.006 255)', opacity:dim ? 0.22 : 1,
+      transition:'opacity .12s, box-shadow .12s, background .12s',
+      boxShadow:isSel ? '0 0 0 2px oklch(0.80 0.15 195)' : isHover ? '0 0 0 1px oklch(0.80 0.15 195)' : (ms && !dim ? '0 0 0 1px ' + this.mix(color, 80) : 'none')
+    };
+    if (size) { style.minWidth = size; }
+    const titleBits = [];
+    if (p) titleBits.push('Pin ' + p.n + ' · ' + p.name);
+    if (p && p.ard) titleBits.push('Arduino ' + p.ard);
+    if (p && p.morpho) titleBits.push(p.morpho);
+    if (used.length) titleBits.push(used.map(u => u.p + ': ' + u.role).join(' | '));
+    return { key, base:p ? p.base : '', label:text || '—', num:num == null ? '' : String(num),
+      title:titleBits.join(' · ') || label, style,
+      numStyle:{ fontSize:'9px', color:'oklch(0.58 0.012 255)', minWidth:'15px', flex:'0 0 auto' },
+      labelStyle:{ fontWeight:used.length ? 600 : 400, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' } };
+  }
+
+  tabStyle(active) {
+    return { padding:'6px 11px', borderRadius:'5px', border:'none', cursor:'pointer', fontSize:'12px', fontWeight:active ? 600 : 400,
+      background:active ? 'oklch(0.80 0.15 195)' : 'transparent', color:active ? 'oklch(0.19 0.03 195)' : 'oklch(0.78 0.010 255)',
+      fontFamily:"'Space Grotesk', sans-serif", whiteSpace:'nowrap' };
+  }
+  chipStyle(active, color) {
+    return { display:'inline-flex', alignItems:'center', gap:'6px', padding:'4px 9px', borderRadius:'20px', cursor:'pointer',
+      fontSize:'11.5px', fontFamily:"'IBM Plex Mono', monospace",
+      background:active ? this.mix(color, 26) : 'oklch(0.235 0.014 255)',
+      border:'1px solid ' + (active ? this.mix(color, 75) : 'oklch(0.32 0.014 255)'),
+      color:active ? 'oklch(0.96 0.006 255)' : 'oklch(0.80 0.010 255)', transition:'background .12s, border-color .12s' };
+  }
+
+  cpp() {
+    const groups = {};
+    this.rows().forEach(r => { (groups[r.p] = groups[r.p] || []).push(r); });
+    let out = '#pragma once\n// Generated from the Nucleo pinout studio\n';
+    Object.keys(groups).forEach(p => {
+      const bus = groups[p][0].bus;
+      out += '\n// ' + p + (bus ? ' — ' + bus : '') + '\n';
+      const w = Math.max.apply(null, groups[p].map(r => (r.macro || (p + '_' + r.role).replace(/[^A-Za-z0-9]+/g, '_')).length));
+      groups[p].forEach(r => {
+        const name = r.macro || (p + '_' + r.role.replace(/\s*\(.*\)/, '')).replace(/[^A-Za-z0-9]+/g, '_').toUpperCase();
+        out += '#define ' + name + ' '.repeat(Math.max(1, w - name.length + 1)) + r.pin + '\n';
+      });
+    });
+    return out;
+  }
+  md() {
+    let out = '| Peripheral | Bus | Pin | Role |\n|---|---|---|---|\n';
+    this.rows().forEach(r => { out += '| ' + r.p + ' | ' + r.bus + ' | `' + r.pin + '` | ' + r.role + ' |\n'; });
+    return out;
+  }
+  jsonOut() {
+    const groups = [];
+    this.rows().forEach(r => {
+      let g = groups.find(x => x.peripheral === r.p);
+      if (!g) { g = { peripheral:r.p, bus:r.bus, pins:[] }; groups.push(g); }
+      const e = { pin:r.pin, role:r.role };
+      if (r.macro) e.macro = r.macro;
+      g.pins.push(e);
+    });
+    return JSON.stringify(groups, null, 2);
+  }
+
+  renderVals() {
+    const st = this.state, pins = this.pins(), rows = this.rows();
+    const view = st.view || this.props.defaultView || 'board';
+    const naming = st.naming || this.props.naming || 'board';
+    const mode = st.color || this.props.colorMode || 'category';
+    const tab = st.tab;
+    const issues = this.issueList();
+    const ms = this.matchSet();
+    this._ms = ms;
+    const periphNames = this.periphList();
+
+    const flip = !!st.flip;
+    const connectors = Component.CONN.map(cn => {
+      const cells = cn.pins.map((spec, i) => {
+        const parts = spec.split('|');
+        const label = parts[0];
+        const base = parts[1] || (this.byBase(parts[0]) ? parts[0] : '');
+        const c = this.cellFor(base, label, i + 1, cn.id + '-' + (i + 1));
+        if (cn.cols === 2) { c.style.gridColumn = flip ? 2 - (i % 2) : (i % 2) + 1; c.style.gridRow = Math.floor(i / 2) + 1; }
+        return c;
+      });
+      return { id:cn.id, title:cn.title, side:cn.side, cells,
+        grid:{ display:'grid', gridTemplateColumns:cn.cols === 2 ? 'repeat(2, 104px)' : '112px', gap:'3px', alignContent:'start' } };
+    });
+
+    const chipCells = pins.map(p => {
+      const c = this.cellFor(p.base, naming === 'board' ? (p.ard || p.morpho || p.name) : p.name, p.n, 'ic-' + p.n);
+      const n = p.n;
+      const goVertical = dir => {
+        c.style.flexDirection = dir;
+        c.style.alignItems = 'center';
+        c.style.justifyContent = 'flex-start';
+        c.style.padding = '5px 2px';
+        c.numStyle = { ...c.numStyle, minWidth:0, flex:'0 0 auto' };
+        c.labelStyle = { ...c.labelStyle, writingMode:'vertical-rl', maxHeight:'104px', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' };
+      };
+      let col, row;
+      if (n <= 16) { col = 1; row = n + 1; c.style.flexDirection = 'row'; }
+      else if (n <= 32) { col = n - 15; row = 18; goVertical('column'); }
+      else if (n <= 48) { col = 18; row = 18 - (n - 32); c.style.flexDirection = 'row-reverse'; c.style.textAlign = 'right'; }
+      else { col = 18 - (n - 48); row = 1; goVertical('column-reverse'); }
+      c.style.gridColumn = flip ? 19 - col : col;
+      c.style.gridRow = row;
+      c.style.overflow = 'hidden';
+      return c;
+    });
+
+    const selPin = this.byBase(st.sel);
+    const selUsedRows = selPin ? this.usedBy(selPin.base) : [];
+    const aPeriph = st.aPeriph || periphNames[0] || '';
+    const aIsNew = aPeriph === '__new';
+
+    const editRows = rows.map((r, i) => {
+      const ri = issues.filter(x => x.base === r.pin && x.sev !== 'note');
+      const bad = ri.find(x => x.sev === 'error') || ri.find(x => x.sev === 'warn');
+      return { ...r, i,
+        pinBorder:this.byBase(r.pin) ? 'oklch(0.30 0.014 255)' : 'oklch(0.60 0.13 25)',
+        check:bad ? bad.msg : '',
+        checkColor:bad ? (bad.sev === 'error' ? 'oklch(0.78 0.13 25)' : 'oklch(0.80 0.13 60)') : 'oklch(0.60 0.012 255)',
+        style:{ background:st.sel === r.pin ? 'oklch(0.27 0.02 195)' : 'oklch(0.205 0.012 255)' } };
+    });
+
+    const q = st.q.trim().toLowerCase();
+    const tableRows = pins.filter(p => !ms || ms.has(p.base)).map(p => {
+      const used = this.usedBy(p.base);
+      return { n:p.n, base:p.base, name:p.name,
+        type:p.cat === 'io' ? 'I/O · ' + p.type : p.cat.charAt(0).toUpperCase() + p.cat.slice(1),
+        board:[p.ard, p.morpho].filter(Boolean).join(' · ') || '—',
+        used:used.map(u => u.p + ' · ' + u.role).join(' | ') || '—',
+        usedColor:used.length ? 'oklch(0.86 0.10 195)' : 'oklch(0.60 0.012 255)',
+        af:p.af.concat(p.add).join(', ') || '—',
+        style:{ background:st.sel === p.base ? 'oklch(0.27 0.02 195)' : st.hover === p.base ? 'oklch(0.255 0.013 255)' : 'transparent', cursor:'pointer', borderBottom:'1px solid oklch(0.26 0.013 255)' } };
+    });
+
+    const catCounts = {};
+    pins.forEach(p => { catCounts[p.cat] = (catCounts[p.cat] || 0) + 1; });
+    const usedCount = new Set(rows.map(r => r.pin)).size;
+
+    const legendDefs = mode === 'conflict'
+      ? [{ id:'used', label:'Assigned', color:Component.CAT.io, count:usedCount }]
+      : [{ id:'power', label:'Power', color:Component.CAT.power, count:catCounts.power || 0 },
+         { id:'reset', label:'Reset', color:Component.CAT.reset, count:catCounts.reset || 0 },
+         { id:'boot', label:'Boot', color:Component.CAT.boot, count:catCounts.boot || 0 },
+         { id:'debug', label:'Debug', color:Component.CAT.debug, count:catCounts.debug || 0 },
+         { id:'io', label:'Free I/O', color:Component.CAT.io, count:(catCounts.io || 0) - usedCount },
+         { id:'used', label:'Assigned', color:Component.CAT.used, count:usedCount }];
+
+    return {
+      statAssigned:usedCount, statFree:Math.max(0, (catCounts.io || 0) - usedCount), statIssues:issues.filter(i => i.sev === 'error' || i.sev === 'warn').length,
+      viewTabs:[['board','Nucleo board'],['chip','LQFP64 chip'],['table','Pin table']].map(t => ({ id:t[0], label:t[1], style:this.tabStyle(view === t[0]) })),
+      nameTabs:[['board','Board'],['mcu','MCU'],['signal','Signal']].map(t => ({ id:t[0], label:t[1], style:this.tabStyle(naming === t[0]) })),
+      colorTabs:[['category','Type'],['peripheral','Peripheral'],['conflict','Checks']].map(t => ({ id:t[0], label:t[1], style:this.tabStyle(mode === t[0]) })),
+      tabs:[['map','Mapping'],['json','JSON'],['cpp','C++'],['md','Markdown']].map(t => ({ id:t[0], label:t[1], style:this.tabStyle(tab === t[0]) })),
+      clearStyle:{ padding:'7px 12px', borderRadius:'7px', cursor:'pointer', fontSize:'12px',
+        background:ms ? 'oklch(0.80 0.15 195)' : 'oklch(0.235 0.014 255)', border:'1px solid ' + (ms ? 'transparent' : 'oklch(0.32 0.014 255)'),
+        color:ms ? 'oklch(0.19 0.03 195)' : 'oklch(0.70 0.012 255)', fontWeight:ms ? 600 : 400 },
+      q:st.q, fn:st.fn,
+      fnOptions:Component.FAMS.map(f => { const n = pins.filter(p => this.famRe(f).test(p.blob)).length; return { id:f, label:f + ' (' + n + ')' }; }).filter(o => o.label.indexOf('(0)') < 0),
+      periphChips:periphNames.map(n => ({ name:n, color:this.periphColor(n), count:rows.filter(r => r.p === n).length,
+        style:this.chipStyle(st.periph.indexOf(n) >= 0 || st.hoverPeriph === n, this.periphColor(n)) })),
+      legendItems:legendDefs.map(l => ({ ...l, style:this.chipStyle(st.legend === l.id, l.color) })),
+
+      isBoard:view === 'board', isChip:view === 'chip', isTable:view === 'table',
+      boardLeft:flip ? connectors.filter(c => c.side === 'R').reverse() : connectors.filter(c => c.side === 'L'),
+      boardRight:flip ? connectors.filter(c => c.side === 'L').reverse() : connectors.filter(c => c.side === 'R'),
+      chipCells,
+      chipGrid:{ display:'grid', gridTemplateColumns:'140px repeat(16, 34px) 140px', gridTemplateRows:'140px repeat(16, 26px) 140px', gap:'2px' },
+      chipCaption:'LQFP64 · pin 1 ' + (flip ? 'top-right · clockwise' : 'top-left · counter-clockwise'),
+      chipDotStyle:{ position:'absolute', top:'10px', left:flip ? 'auto' : '10px', right:flip ? '10px' : 'auto', width:'9px', height:'9px', borderRadius:'50%', background:'oklch(0.60 0.012 255)' },
+      tableRows,
+
+      hasSel:!!selPin, noSel:!selPin,
+      selNum:selPin ? selPin.n : '', selName:selPin ? selPin.name : '',
+      selCat:selPin ? (selPin.cat === 'io' ? 'I/O · ' + selPin.type : selPin.cat.toUpperCase()) : '',
+      selBadge:selPin ? { fontFamily:"'IBM Plex Mono', monospace", fontSize:'10px', padding:'3px 7px', borderRadius:'4px',
+        background:this.mix(Component.CAT[selPin.cat], 24), border:'1px solid ' + this.mix(Component.CAT[selPin.cat], 60), color:'oklch(0.94 0.006 255)' } : {},
+      selBoard:selPin ? ([selPin.ard, selPin.morpho].filter(Boolean).join(' · ') || 'not on a header') : '',
+      selDflt:selPin ? selPin.dflt : '',
+      selIo:selPin ? (selPin.type === 'FT' ? 'FT — 5 V tolerant' : selPin.type === 'TTa' ? 'TTa — 3.3 V only, analog capable' : selPin.type === 'FTf' ? 'FTf — 5 V tolerant, FM+ I2C' : 'supply / control') : '',
+      selAf:selPin ? selPin.af.map(t => { const fam = Component.FAMS.find(f => this.famRe(f).test(t)) || ''; const on = (st.hoverFn || st.fn) === fam && fam;
+        return { t, fam, style:{ padding:'3px 7px', borderRadius:'5px', cursor:fam ? 'pointer' : 'default', fontFamily:"'IBM Plex Mono', monospace", fontSize:'10.5px',
+          background:on ? 'oklch(0.80 0.15 195)' : 'oklch(0.28 0.013 255)', border:'1px solid ' + (on ? 'transparent' : 'oklch(0.34 0.014 255)'),
+          color:on ? 'oklch(0.19 0.03 195)' : 'oklch(0.84 0.010 255)' } }; }) : [],
+      hasSelAdd:!!(selPin && selPin.add.length), selAdd:selPin ? selPin.add.join(', ') : '',
+      hasSelNote:!!(selPin && Component.NOTES[selPin.base]), selNote:selPin ? (Component.NOTES[selPin.base] || '') : '',
+      selUsed:selUsedRows.map(u => ({ ...u, peripheral:u.p, color:this.periphColor(u.p),
+        style:{ display:'flex', alignItems:'center', gap:'8px', padding:'6px 8px', borderRadius:'6px',
+          background:this.mix(this.periphColor(u.p), 16), border:'1px solid ' + this.mix(this.periphColor(u.p), 40) } })),
+      selFree:!!selPin && selUsedRows.length === 0,
+      selAssignable:!!selPin,
+      selSuggest:selPin ? selPin.af.filter(t => /_/.test(t) && t !== 'EVENTOUT').slice(0, 6).map(t => ({ t })) : [],
+      periphNames, aPeriph, aIsNew, aNewName:st.aNew, aRole:st.aRole, aMacro:st.aMacro,
+
+      issues:issues.map(s => ({ ...s,
+        color:s.sev === 'error' ? 'oklch(0.78 0.13 25)' : s.sev === 'warn' ? 'oklch(0.80 0.13 60)' : 'oklch(0.72 0.13 250)',
+        style:{ display:'flex', gap:'8px', alignItems:'flex-start', padding:'7px 8px', borderRadius:'7px', cursor:'pointer', width:'100%',
+          background:st.sel === s.base ? 'oklch(0.27 0.02 195)' : 'oklch(0.205 0.012 255)',
+          border:'1px solid ' + (s.sev === 'error' ? this.mix('oklch(0.72 0.13 25)', 45) : s.sev === 'warn' ? this.mix('oklch(0.72 0.13 60)', 40) : 'oklch(0.29 0.013 255)') } })),
+      noIssues:issues.length === 0, issueCount:issues.length ? issues.length + ' notes' : '',
+
+      isMapTab:tab === 'map', isJsonTab:tab === 'json', isCodeTab:tab === 'cpp' || tab === 'md',
+      editRows, pinNames:pins.map(p => p.base).filter((v, i, a) => a.indexOf(v) === i),
+      mapStatus:periphNames.length + ' peripherals · ' + rows.length + ' assignments',
+      jsonText:st.json || this.jsonOut(), jsonErr:st.jsonErr || '', jsonErrColor:st.jsonErr ? 'oklch(0.78 0.13 25)' : 'oklch(0.60 0.012 255)',
+      codeOut:tab === 'cpp' ? this.cpp() : this.md(),
+      showCopy:tab !== 'map', copyLabel:st.copied ? 'Copied' : 'Copy',
+
+      flipLabel:flip ? 'Bottom view' : 'Top view',
+      flipStyle:{ padding:'7px 12px', borderRadius:'7px', cursor:'pointer', fontSize:'12px',
+        background:flip ? this.mix('oklch(0.72 0.13 310)', 26) : 'oklch(0.235 0.014 255)',
+        border:'1px solid ' + (flip ? this.mix('oklch(0.72 0.13 310)', 70) : 'oklch(0.32 0.014 255)'),
+        color:flip ? 'oklch(0.94 0.006 255)' : 'oklch(0.70 0.012 255)' },
+      onFlip:() => this.setState({ flip:!st.flip }),
+      onView:e => this.setState({ view:e.currentTarget.dataset.v }),
+      onNaming:e => this.setState({ naming:e.currentTarget.dataset.v }),
+      onColor:e => this.setState({ color:e.currentTarget.dataset.v }),
+      onQ:e => this.setState({ q:e.target.value }),
+      onFn:e => this.setState({ fn:e.target.value }),
+      onClear:() => this.setState({ q:'', fn:'', periph:[], legend:null, hoverFn:null, hoverPeriph:null }),
+      onPeriphToggle:e => { const p = e.currentTarget.dataset.p; const cur = st.periph.slice();
+        const i = cur.indexOf(p); if (i < 0) cur.push(p); else cur.splice(i, 1); this.setState({ periph:cur }); },
+      onPeriphEnter:e => this.setState({ hoverPeriph:e.currentTarget.dataset.p }),
+      onPeriphLeave:() => this.setState({ hoverPeriph:null }),
+      onLegendEnter:e => this.setState({ legend:st.legend || e.currentTarget.dataset.l }),
+      onLegendLeave:() => { if (!this._legendLocked) this.setState({ legend:null }); },
+      onLegendClick:e => { const l = e.currentTarget.dataset.l;
+        this._legendLocked = !(this._legendLocked && st.legend === l); this.setState({ legend:this._legendLocked ? l : null }); },
+      onPinEnter:e => this.setState({ hover:e.currentTarget.dataset.pin || null }),
+      onPinLeave:() => this.setState({ hover:null }),
+      onPinClick:e => { const b = e.currentTarget.dataset.pin; if (b) this.setState({ sel:b, aRole:'', aMacro:'' }); },
+      onAfEnter:e => this.setState({ hoverFn:e.currentTarget.dataset.fn || null }),
+      onAfLeave:() => this.setState({ hoverFn:null }),
+      onAfClick:e => { const f = e.currentTarget.dataset.fn; if (f) this.setState({ fn:st.fn === f ? '' : f, hoverFn:null }); },
+      onSuggest:e => { const t = e.currentTarget.dataset.s; this.setState({ aRole:t }); },
+      onAPeriph:e => this.setState({ aPeriph:e.target.value }),
+      onANewName:e => this.setState({ aNew:e.target.value }),
+      onARole:e => this.setState({ aRole:e.target.value }),
+      onAMacro:e => this.setState({ aMacro:e.target.value }),
+      onAssign:() => {
+        if (!selPin) return;
+        const name = aIsNew ? (st.aNew || 'New peripheral') : aPeriph;
+        const bus = rows.filter(r => r.p === name).map(r => r.bus)[0] || '';
+        const next = rows.concat([{ p:name, bus, pin:selPin.base, role:st.aRole || 'GPIO', macro:st.aMacro }]);
+        this.save(next); this.setState({ aRole:'', aMacro:'', aNew:'' });
+      },
+      onCell:e => { const i = +e.currentTarget.dataset.i, f = e.currentTarget.dataset.f;
+        const next = rows.map((r, k) => k === i ? { ...r, [f]:e.target.value } : r); this.save(next); },
+      onDelRow:e => { e.stopPropagation(); const i = +e.currentTarget.dataset.i; this.save(rows.filter((r, k) => k !== i)); },
+      onAddRow:() => this.save(rows.concat([{ p:periphNames[0] || 'New peripheral', bus:'', pin:'PA0', role:'GPIO', macro:'' }])),
+      onResetFw:() => { this._pins = null; this.save(this.fwRows()); this.setState({ jsonErr:'' }); },
+      onTab:e => this.setState({ tab:e.currentTarget.dataset.t, copied:0 }),
+      onJsonInput:e => this.setState({ json:e.target.value, jsonErr:'' }),
+      onApplyJson:() => {
+        try {
+          const data = JSON.parse(st.json || this.jsonOut());
+          const next = [];
+          data.forEach(g => (g.pins || []).forEach(p => next.push({ p:g.peripheral, bus:g.bus || '', pin:p.pin, role:p.role || '', macro:p.macro || '' })));
+          this.save(next); this.setState({ json:'', jsonErr:'Applied — ' + next.length + ' assignments.' });
+        } catch (err) { this.setState({ jsonErr:'Invalid JSON: ' + err.message }); }
+      },
+      onCopy:() => { const text = tab === 'json' ? (st.json || this.jsonOut()) : tab === 'cpp' ? this.cpp() : this.md();
+        try { navigator.clipboard.writeText(text); } catch (e) {}
+        this.setState({ copied:1 }); setTimeout(() => this.setState({ copied:0 }), 1400); }
+    };
+  }
+}
+</script>
+</body>
+</html>

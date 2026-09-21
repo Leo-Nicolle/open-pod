@@ -113,7 +113,7 @@ OpenPodUIEngine::~OpenPodUIEngine() {
 }
 
 void OpenPodUIEngine::begin() {
-  display->fillScreen(COLOR_BACKGROUND);
+  display->fillScreen(COLOR_BG);
   Serial.println("OpenPod UI Engine initializing...");
   delay(500);
   hookToEvents();
@@ -449,13 +449,13 @@ void OpenPodUIEngine::renderCurrentState() {
 }
 
 void OpenPodUIEngine::renderTrackList() {
-  header.render(display, state.getHeaderTitle());
+  header.render(display, state.getHeaderTitle(), state.getIsPlaying());
   elementList.renderAllElements(display);
   scrollbar.render(display);
 }
 
 void OpenPodUIEngine::renderNowPlaying(int xOffset, int width) {
-  header.render(display, state.getHeaderTitle());
+  header.render(display, state.getHeaderTitle(), state.getIsPlaying());
 
   const char *trackName = state.getPlayingTrackName();
   if (!trackName) {
@@ -480,6 +480,7 @@ void OpenPodUIEngine::renderNowPlaying(int xOffset, int width) {
 void OpenPodUIEngine::updateAlbumArtForTrack(int trackId) {
   if (trackId < 0) {
     nowPlaying.clearAlbumArt();
+    nowPlaying.setAlbumName(nullptr);
     return;
   }
 
@@ -489,6 +490,16 @@ void OpenPodUIEngine::updateAlbumArtForTrack(int trackId) {
     nowPlaying.setAlbumArt(cover.offset, cover.length, cover.format);
   } else {
     nowPlaying.clearAlbumArt();
+  }
+
+  // Resolve the album name for the metadata column (best-effort; empty on a
+  // miss or when the album_id is out of range).
+  char albumName[64];
+  if (albumId != 0xFFFFFFFFu &&
+      musicLookup.getAlbumName(albumId, albumName, sizeof(albumName))) {
+    nowPlaying.setAlbumName(albumName);
+  } else {
+    nowPlaying.setAlbumName(nullptr);
   }
 }
 

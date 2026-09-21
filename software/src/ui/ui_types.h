@@ -18,9 +18,9 @@ static const int ELEMENT_HEIGHT = 30;
 static const int ELEMENTS_PER_SCREEN = 7;
 /** The width of the scrollbar in the lists */
 static const int SCROLLBAR_WIDTH = 8;
-/** @brief Margin between header and body (always BG color, never redrawn) */
-static const int MARGIN = 5;
-/** @brief The first body pixel Y coordinate */
+/** @brief Margin between header and body (0: body starts right at the header) */
+static const int MARGIN = 0;
+/** @brief The first body pixel Y coordinate (30 = one CHUNK_HEIGHT boundary) */
 static const int BODY_Y = HEADER_HEIGHT + MARGIN;
 /** @brief The height of the body */
 static const int BODY_HEIGHT = SCREEN_HEIGHT - BODY_Y;
@@ -48,8 +48,8 @@ struct Coords {
 };
 
 // Forward declaration for theme colors
-#ifndef COLOR_BACKGROUND
-#define COLOR_BACKGROUND 0x0000
+#ifndef COLOR_BG
+#define COLOR_BG 0x0000
 #endif
 
 // Centralized buffer management for efficient rendering
@@ -90,7 +90,7 @@ public:
       }
     }
   }
-  void clearCurrentBuffer(uint16_t color = COLOR_BACKGROUND) {
+  void clearCurrentBuffer(uint16_t color = COLOR_BG) {
     for (int i = 0; i < SCREEN_WIDTH * CHUNK_HEIGHT; i++) {
       currentBuffer[i] = color;
     }

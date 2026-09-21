@@ -1,0 +1,69 @@
+[
+  {
+    "peripheral": "VS1053",
+    "bus": "SPI1",
+    "pins": [
+      { "pin": "PA9", "role": "MP3XDCS (data/command)", "macro": "MP3XDCS" },
+      { "pin": "PA10", "role": "MP3_RESET", "macro": "MP3_RESET" },
+      { "pin": "PA11", "role": "MP3CS (chip select)", "macro": "MP3CS" },
+      { "pin": "PB3", "role": "MP3DREQ", "macro": "MP3DREQ" },
+      { "pin": "PA5", "role": "SPI1_SCK" },
+      { "pin": "PA6", "role": "SPI1_MISO" },
+      { "pin": "PA7", "role": "SPI1_MOSI" }
+    ]
+  },
+  {
+    "peripheral": "SD card",
+    "bus": "SPI1",
+    "pins": [
+      { "pin": "PA4", "role": "CARDCS (chip select)", "macro": "CARDCS" },
+      { "pin": "PA5", "role": "SPI1_SCK" },
+      { "pin": "PA6", "role": "SPI1_MISO" },
+      { "pin": "PA7", "role": "SPI1_MOSI" }
+    ]
+  },
+  {
+    "peripheral": "PSRAM",
+    "bus": "SPI2",
+    "pins": [
+      { "pin": "PB6", "role": "PSRAM_CS", "macro": "PSRAM_CS" },
+      { "pin": "PB13", "role": "PSRAM_CLK (SPI2_SCK)", "macro": "PSRAM_CLK" },
+      { "pin": "PB14", "role": "PSRAM_MISO (SPI2_MISO)", "macro": "PSRAM_MISO" },
+      { "pin": "PB15", "role": "PSRAM_MOSI (SPI2_MOSI)", "macro": "PSRAM_MOSI" }
+    ]
+  },
+  {
+    "peripheral": "Screen (ILI9341)",
+    "bus": "16-bit parallel",
+    "pins": [
+      { "pin": "PB8", "role": "TFT_DC", "macro": "TFT_DC" },
+      { "pin": "PB9", "role": "TFT_WR", "macro": "TFT_WR" },
+      { "pin": "PB10", "role": "TFT_RD", "macro": "TFT_RD" },
+      { "pin": "PB12", "role": "TFT_RST", "macro": "TFT_RST" },
+      { "pin": "PC0", "role": "D0" },
+      { "pin": "PC1", "role": "D1" },
+      { "pin": "PC2", "role": "D2" },
+      { "pin": "PC3", "role": "D3" },
+      { "pin": "PC4", "role": "D4" },
+      { "pin": "PC5", "role": "D5" },
+      { "pin": "PC6", "role": "D6" },
+      { "pin": "PC7", "role": "D7" },
+      { "pin": "PC8", "role": "D8" },
+      { "pin": "PC9", "role": "D9" },
+      { "pin": "PC10", "role": "D10" },
+      { "pin": "PC11", "role": "D11" },
+      { "pin": "PC12", "role": "D12" },
+      { "pin": "PC13", "role": "D13" },
+      { "pin": "PC14", "role": "D14" },
+      { "pin": "PC15", "role": "D15" }
+    ]
+  },
+  {
+    "peripheral": "MPR121",
+    "bus": "I2C3",
+    "pins": [
+      { "pin": "PA8", "role": "SCL (I2C3_SCL)" },
+      { "pin": "PB4", "role": "SDA (I2C3_SDA)" }
+    ]
+  }
+]

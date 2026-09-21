@@ -1,65 +1,102 @@
 #pragma once
+#include "fonts/IBMPlexSans12.h"
 #include "fonts/IBMPlexSans16.h"
 #include "rendering/font_renderer.h"
+#include "sprites.h"
 #include "storage/AlbumArt.h"
 #include "theme.h"
 #include "ui_types.h"
 #include <Arduino.h>
+#include <math.h>
+#include <string.h>
 
 class ILI9341_GFX;
+
+// Fill a rounded rectangle (radius r) into a caller-owned RGB565 buffer,
+// clipped to the buffer. Used for the progress/seek/volume bars; the SDF
+// formulation handles full capsules (r == h/2) as well as plain rounded ends.
+static inline void fillRoundedRect(uint16_t *buf, int bufW, int bufH, int x,
+                                   int y, int w, int h, int r,
+                                   uint16_t color) {
+  if (r <= 0) {
+    for (int py = y; py < y + h; py++) {
+      if (py < 0 || py >= bufH)
+        continue;
+      for (int px = x; px < x + w; px++) {
+        if (px < 0 || px >= bufW)
+          continue;
+        buf[py * bufW + px] = color;
+      }
+    }
+    return;
+  }
+  const float cx = x + (w - 1) / 2.0f;
+  const float cy = y + (h - 1) / 2.0f;
+  const float bx = w / 2.0f - r;
+  const float by = h / 2.0f - r;
+  for (int py = y; py < y + h; py++) {
+    if (py < 0 || py >= bufH)
+      continue;
+    const float fy = py + 0.5f;
+    for (int px = x; px < x + w; px++) {
+      if (px < 0 || px >= bufW)
+        continue;
+      const float fx = px + 0.5f;
+      float qx = fabsf(fx - cx) - bx;
+      float qy = fabsf(fy - cy) - by;
+      float e = sqrtf(fmaxf(qx, 0.0f) * fmaxf(qx, 0.0f) +
+                      fmaxf(qy, 0.0f) * fmaxf(qy, 0.0f)) +
+                fminf(fmaxf(qx, qy), 0.0f) - r;
+      if (e <= 0.0f)
+        buf[py * bufW + px] = color;
+    }
+  }
+}
 
 class NowPlayingComponent {
 private:
   const char *currentTrack;
+  char albumName[64]; // resolved by the engine via MusicLookup
   bool isPlaying;
-  /** @brief Track length in seconds */
-  int trackLength;
-  /** @brief Current playback time in seconds */
-  int progress;
+  int trackLength; // seconds
+  int progress;    // seconds
   bool seekModeActive;
-  int volumeLevel;         // 0-100
+  int volumeLevel; // 0-100
   bool volumeOverlayVisible;
-  // Resolved cover location (see MusicLookup::getAlbumCoverEntry); set by
-  // the caller (OpenPodUIEngine) once per track/album change, not looked
-  // up here - this component only ever receives pre-resolved display data.
   uint32_t coverOffset;
   uint32_t coverLength;
   uint8_t coverFormat; // 1 = raw565 (see indexer's ALBUM_COVER_FORMAT_BYTE)
   bool coverValid;
-  // Layout constants
-  static const int ALBUM_ART_X = 100;
-  static const int ALBUM_ART_Y = 50;
+
+  // Layout constants (dark theme: art on the left, metadata on the right,
+  // every animated element in the bottom 30px chunk).
+  static const int ALBUM_ART_X = 16;
+  static const int ALBUM_ART_Y = 56;
   static const int ALBUM_ART_SIZE = 128; // matches the generated thumbnail size
-  static const int TITLE_Y = 185;
-  static const int PROGRESS_BAR_Y = 220;
-  static const int PROGRESS_BAR_HEIGHT = 8;
-  static const int PROGRESS_BAR_WIDTH = 300;
+  static const int METADATA_X = 160;
+  static const int TITLE_Y = 64;
+  static const int ALBUM_Y = 90;
+  static const int BOTTOM_BAND_Y = 210; // one CHUNK_HEIGHT boundary (7 * 30)
 
-  static const int PROGRESS_BAR_X = 10;
-  static const int PROGRESS_BAR_END_X = PROGRESS_BAR_X + PROGRESS_BAR_WIDTH;
-  static const int PROGRESS_BAR_STROKE = 1;
-  static const int TIME_TEXT_Y = PROGRESS_BAR_Y - PROGRESS_BAR_HEIGHT - 10;
-
-  // Volume overlay: fixed-position bar in the gap between the header and
-  // the album art, drawn directly (not through the chunk-buffer scheme,
-  // since it's outside the animated slide-transition area).
-  static const int VOLUME_BAR_X = 60;
-  static const int VOLUME_BAR_Y = 40;
-  static const int VOLUME_BAR_WIDTH = 200;
-  static const int VOLUME_BAR_HEIGHT = 8;
+  // Bottom band geometry.
+  static const int BAR_X = 8;
+  static const int BAR_W = 304; // 8 .. 312 (scrollbar starts at x = 312)
 
 public:
   NowPlayingComponent();
 
-  // Configuration
-  void setTrack(const char *trackName);
-  /**
-   * @brief Set the playback progress in second
-   */
-  void setProgress(int progress);
-  void setTrackLength(int tl);
-  void setPlayState(bool playing);
-  // Tints the progress bar fill while seek-mode is active.
+  void setTrack(const char *trackName) { currentTrack = trackName; }
+  void setAlbumName(const char *name) {
+    if (!name) {
+      albumName[0] = '\0';
+      return;
+    }
+    strncpy(albumName, name, sizeof(albumName) - 1);
+    albumName[sizeof(albumName) - 1] = '\0';
+  }
+  void setProgress(int p) { progress = p; }
+  void setTrackLength(int tl) { trackLength = tl; }
+  void setPlayState(bool playing) { isPlaying = playing; }
   void setSeekModeActive(bool active) { seekModeActive = active; }
   void setVolumeOverlay(int level, bool visible) {
     volumeLevel = level;
@@ -72,97 +109,79 @@ public:
     coverValid = length > 0;
   }
   void clearAlbumArt() { coverValid = false; }
+
+  // Render the volume band (the bottom chunk shows the volume overlay).
   void renderVolumeOverlay(ILI9341_GFX *display);
 
-  void renderChunk(ILI9341_GFX *display, int x, int y,
-                   int width = SCREEN_WIDTH, int tx = -1,
-                   int ty = -1);
+  // Render one 30px chunk row [y, y+CHUNK_HEIGHT) for x in [x, x+width).
+  void renderChunk(ILI9341_GFX *display, int x, int y, int width,
+                   int tx = -1, int ty = -1);
   void render(ILI9341_GFX *display, int x, int width);
 
+  // Re-render only the bottom band (progress/seek/volume) - the cheap path
+  // taken on each progress tick.
   void updateNowPlaying(ILI9341_GFX *display);
 
-  // Utility functions
-  bool isInAlbumArtArea(int x, int y) const;
-  bool isInTitleArea(int x, int y) const;
-  bool isInProgressBarArea(int x, int y) const;
+private:
+  void renderBodyChunk(ILI9341_GFX *display, int x, int y, int width, int tx,
+                       int ty);
+  void renderBandChunk(ILI9341_GFX *display, int x, int width, int tx, int ty);
 };
 
-// Implementation
+// --- implementation ----------------------------------------------------------
+
 NowPlayingComponent::NowPlayingComponent()
     : currentTrack(""), isPlaying(false), trackLength(0), progress(0),
       seekModeActive(false), volumeLevel(0), volumeOverlayVisible(false),
-      coverOffset(0), coverLength(0), coverFormat(0), coverValid(false) {}
-
-void NowPlayingComponent::setTrack(const char *trackName) {
-  currentTrack = trackName;
+      coverOffset(0), coverLength(0), coverFormat(0), coverValid(false) {
+  albumName[0] = '\0';
 }
-void NowPlayingComponent::setProgress(int progress) {
-  this->progress = progress;
-}
-void NowPlayingComponent::setTrackLength(int tl) { trackLength = tl; }
 
-void NowPlayingComponent::setPlayState(bool playing) { isPlaying = playing; }
-void NowPlayingComponent::renderChunk(ILI9341_GFX *display, int x,
-                                      int y, int width, int tx,
-                                      int ty) {
-  // Define chunk height and clamp to screen
+void NowPlayingComponent::render(ILI9341_GFX *display, int x, int width) {
+  for (int y = BODY_Y; y < SCREEN_HEIGHT; y += CHUNK_HEIGHT) {
+    renderChunk(display, x, y, width);
+  }
+}
+
+void NowPlayingComponent::renderChunk(ILI9341_GFX *display, int x, int y,
+                                      int width, int tx, int ty) {
+  if (y >= BOTTOM_BAND_Y) {
+    renderBandChunk(display, x, width, tx, ty);
+  } else {
+    renderBodyChunk(display, x, y, width, tx, ty);
+  }
+}
+
+void NowPlayingComponent::renderBodyChunk(ILI9341_GFX *display, int x, int y,
+                                          int width, int tx, int ty) {
   if (y >= SCREEN_HEIGHT)
     return;
-
   int actualHeight =
       (y + CHUNK_HEIGHT > SCREEN_HEIGHT) ? (SCREEN_HEIGHT - y) : CHUNK_HEIGHT;
   if (x >= SCREEN_WIDTH || width <= 0)
     return;
-
-  int actualWidth =
-      (width < SCREEN_WIDTH - x) ? width : (SCREEN_WIDTH - x);
+  int actualWidth = (width < SCREEN_WIDTH - x) ? width : (SCREEN_WIDTH - x);
   uint16_t *buffer = g_buffers.getCurrentBuffer();
 
-  // Pre-calculate bounds for each UI element
-  int artTop = ALBUM_ART_Y;
-  int artBottom = ALBUM_ART_Y + ALBUM_ART_SIZE;
-  int artLeft = ALBUM_ART_X;
-  int artRight = ALBUM_ART_X + ALBUM_ART_SIZE;
+  const int artTop = ALBUM_ART_Y;
+  const int artBottom = ALBUM_ART_Y + ALBUM_ART_SIZE;
+  const int artLeft = ALBUM_ART_X;
+  const int artRight = ALBUM_ART_X + ALBUM_ART_SIZE;
+  const int chunkTop = y;
+  const int chunkBottom = y + actualHeight;
 
-  int chunkTop = y;
-  int chunkBottom = y + actualHeight;
-
-  int barTop = PROGRESS_BAR_Y;
-  int barBottom = PROGRESS_BAR_Y + PROGRESS_BAR_HEIGHT;
-  int barLeft = PROGRESS_BAR_X;
-  int barRight = PROGRESS_BAR_X + PROGRESS_BAR_WIDTH;
-
-  float barProgress = (trackLength > 0)
-                          ? constrain((float)progress / (float)trackLength,
-                                     0.0f, 1.0f)
-                          : 0.0f;
-  int filledWidth = static_cast<int>(
-      (PROGRESS_BAR_WIDTH - 2 * PROGRESS_BAR_STROKE) * barProgress);
-
-  const int TIME_TEXT_Y = PROGRESS_BAR_Y - PROGRESS_BAR_HEIGHT - 10;
-
-  // Fill background for the specified width only
-  int row, col, bufRow;
-  for (row = 0; row < actualHeight; ++row) {
-    for (col = 0; col < actualWidth; ++col) {
-      buffer[row * actualWidth + col] = COLOR_BACKGROUND;
-    }
+  // Background.
+  for (int i = 0; i < actualWidth * actualHeight; i++) {
+    buffer[i] = COLOR_BG;
   }
 
-  // Album art (if it overlaps this chunk and xOffset)
-  int overlapTop = std::max(chunkTop, artTop);
-  int overlapBottom = std::min(chunkBottom, artBottom);
-  int overlapLeft = std::max(x, artLeft);
-  int overlapRight = std::min(x + actualWidth, artRight);
+  // Album art (if it overlaps this chunk and the x-range).
+  int overlapTop = max(chunkTop, artTop);
+  int overlapBottom = min(chunkBottom, artBottom);
+  int overlapLeft = max(x, artLeft);
+  int overlapRight = min(x + actualWidth, artRight);
 
   if (overlapTop < overlapBottom && overlapLeft < overlapRight) {
-    // Fill album art area: blit real cover pixels when available (raw565
-    // only - see AlbumArt.h), falling back to the solid placeholder fill
-    // otherwise. The blit writes full 128px-wide rows straight from
-    // thumbs.bin, so it only applies when this chunk isn't horizontally
-    // clipping the art (overlapLeft/Right == artLeft/Right) - a
-    // slide-transition chunk narrower than the art falls back to the
-    // solid fill for that call instead.
     bool blitted = false;
     if (coverValid && coverFormat == 1 && overlapLeft == artLeft &&
         overlapRight == artRight) {
@@ -170,199 +189,192 @@ void NowPlayingComponent::renderChunk(ILI9341_GFX *display, int x,
       int destCol0 = artLeft - x;
       int coverRowStart = overlapTop - artTop;
       int rowCount = overlapBottom - overlapTop;
-      blitted = albumArt.blitCoverRows(buffer, actualWidth, destRow0,
-                                       destCol0, coverOffset, coverLength,
+      blitted = albumArt.blitCoverRows(buffer, actualWidth, destRow0, destCol0,
+                                       coverOffset, coverLength,
                                        coverRowStart, rowCount);
     }
-
     if (!blitted) {
-      for (row = overlapTop; row < overlapBottom; ++row) {
-        bufRow = row - y;
-        for (col = overlapLeft; col < overlapRight; ++col) {
+      // Solid art-plate placeholder.
+      for (int row = overlapTop; row < overlapBottom; ++row) {
+        int bufRow = row - y;
+        for (int col = overlapLeft; col < overlapRight; ++col) {
           int bufCol = col - x;
           if (bufCol >= 0 && bufCol < actualWidth && bufRow >= 0 &&
               bufRow < actualHeight) {
-            buffer[bufRow * actualWidth + bufCol] = COLOR_SECONDARY;
+            buffer[bufRow * actualWidth + bufCol] = COLOR_SURFACE;
           }
         }
       }
     }
 
-    // Draw album art border
-    // Top border
-    if (artTop >= chunkTop && artTop < chunkBottom) {
-      bufRow = artTop - y;
-      for (col = overlapLeft; col < overlapRight; ++col) {
-        int bufCol = col - x;
-        if (bufCol >= 0 && bufCol < actualWidth) {
-          buffer[bufRow * actualWidth + bufCol] = COLOR_PRIMARY;
-        }
+    // 1px art border (COLOR_LINE), drawn on the chunk's overlapping edges.
+    auto put = [&](int px, int py) {
+      if (px >= x && px < x + actualWidth && py >= y && py < y + actualHeight) {
+        buffer[(py - y) * actualWidth + (px - x)] = COLOR_LINE;
       }
-    }
-
-    // Bottom border
-    if (artBottom - 1 >= chunkTop && artBottom - 1 < chunkBottom) {
-      bufRow = artBottom - 1 - y;
-      for (col = overlapLeft; col < overlapRight; ++col) {
-        int bufCol = col - x;
-        if (bufCol >= 0 && bufCol < actualWidth) {
-          buffer[bufRow * actualWidth + bufCol] = COLOR_PRIMARY;
-        }
-      }
-    }
-
-    // Left and right borders
-    for (row = overlapTop; row < overlapBottom; ++row) {
-      bufRow = row - y;
-      // Left border
-      if (artLeft >= x && artLeft < x + actualWidth) {
-        int bufCol = artLeft - x;
-        buffer[bufRow * actualWidth + bufCol] = COLOR_PRIMARY;
-      }
-      // Right border
-      if (artRight - 1 >= x && artRight - 1 < x + actualWidth) {
-        int bufCol = artRight - 1 - x;
-        buffer[bufRow * actualWidth + bufCol] = COLOR_PRIMARY;
-      }
-    }
+    };
+    if (artTop >= chunkTop && artTop < chunkBottom)
+      for (int col = overlapLeft; col < overlapRight; ++col)
+        put(col, artTop);
+    if (artBottom - 1 >= chunkTop && artBottom - 1 < chunkBottom)
+      for (int col = overlapLeft; col < overlapRight; ++col)
+        put(col, artBottom - 1);
+    if (artLeft >= x && artLeft < x + actualWidth)
+      for (int row = overlapTop; row < overlapBottom; ++row)
+        put(artLeft, row);
+    if (artRight - 1 >= x && artRight - 1 < x + actualWidth)
+      for (int row = overlapTop; row < overlapBottom; ++row)
+        put(artRight - 1, row);
   }
 
-  // Track title (if it overlaps this chunk and xOffset)
-  if (TITLE_Y >= y && TITLE_Y < y + actualHeight && TITLE_Y - y >= 0 &&
-      TITLE_Y - y < actualHeight) {
-    // Only render text if it's visible in this x range
-    if (10 >= x && 10 < x + actualWidth) {
-      fontRenderer.setBuffer(buffer, actualWidth, actualHeight);
-      fontRenderer.renderText(currentTrack, 10 - x, TITLE_Y - y, IBMPlexSans16,
-                              COLOR_TEXT, COLOR_BACKGROUND);
-    }
-  }
+  // Metadata (title + album). Only render if the text's x range overlaps this
+  // strip; the font renderer clips to the buffer otherwise.
+  fontRenderer.setBuffer(buffer, actualWidth, actualHeight);
+  const int metadataMaxWidth = SCREEN_WIDTH - METADATA_X - 8;
 
-  // Progress bar (if it overlaps this chunk and xOffset)
-  if (barBottom > y && barTop < y + actualHeight) {
-    int barStart = std::max(barTop, chunkTop);
-    int barEnd = std::min(barBottom, chunkBottom);
-
-    // Check if progress bar intersects with our x range
-    if (barRight > x && barLeft < x + actualWidth) {
-      for (row = barStart; row < barEnd; ++row) {
-        bufRow = row - y;
-
-        // Draw outline (top and bottom rows)
-        if (row == barTop || row == barBottom - 1) {
-          int lineStart = std::max(barLeft, x);
-          int lineEnd = std::min(barRight, x + actualWidth);
-          for (col = lineStart; col < lineEnd; ++col) {
-            int bufCol = col - x;
-            buffer[bufRow * actualWidth + bufCol] = COLOR_PRIMARY;
-          }
-        } else {
-          // Draw left and right outline
-          if (barLeft >= x && barLeft < x + actualWidth) {
-            int bufCol = barLeft - x;
-            buffer[bufRow * actualWidth + bufCol] = COLOR_PRIMARY;
-          }
-          if (barRight - 1 >= x && barRight - 1 < x + actualWidth) {
-            int bufCol = barRight - 1 - x;
-            buffer[bufRow * actualWidth + bufCol] = COLOR_PRIMARY;
-          }
-
-          // Fill track background
-          int trackStart = std::max(barLeft + PROGRESS_BAR_STROKE, x);
-          int trackEnd =
-              std::min(barRight - PROGRESS_BAR_STROKE, x + actualWidth);
-          for (col = trackStart; col < trackEnd; ++col) {
-            int bufCol = col - x;
-            buffer[bufRow * actualWidth + bufCol] = COLOR_HIGHLIGHT;
-          }
-
-          // Fill progress (overlay on track background) - tinted while
-          // seek-mode is active so scrubbing has visible feedback.
-          uint16_t fillColor = seekModeActive ? COLOR_ACCENT : COLOR_PRIMARY;
-          int progressEnd = barLeft + PROGRESS_BAR_STROKE + filledWidth;
-          int fillStart = std::max(barLeft + PROGRESS_BAR_STROKE, x);
-          int fillEnd = std::min(progressEnd, x + actualWidth);
-          for (col = fillStart; col < fillEnd && col < trackEnd; ++col) {
-            int bufCol = col - x;
-            buffer[bufRow * actualWidth + bufCol] = fillColor;
-          }
-        }
+  if (TITLE_Y >= y && TITLE_Y < y + actualHeight && METADATA_X >= x &&
+      METADATA_X < x + actualWidth) {
+    char line[64];
+    strncpy(line, currentTrack ? currentTrack : "", sizeof(line) - 1);
+    line[sizeof(line) - 1] = '\0';
+    if (fontRenderer.measureText(line, IBMPlexSans16) > metadataMaxWidth) {
+      int len = strlen(line);
+      while (len > 1) {
+        char test[64];
+        snprintf(test, sizeof(test), "%.*s...", len, line);
+        if (fontRenderer.measureText(test, IBMPlexSans16) <= metadataMaxWidth)
+          break;
+        len--;
       }
+      snprintf(line, sizeof(line), "%.*s...", len, line);
     }
+    fontRenderer.renderText(line, METADATA_X - x, TITLE_Y - y, IBMPlexSans16,
+                            COLOR_TEXT, COLOR_BG);
   }
 
-  // Progress time text (if it overlaps this chunk and xOffset)
-  if (TIME_TEXT_Y >= y && TIME_TEXT_Y < y + actualHeight) {
-    // Format progress time (mm:ss)
-    int progressMinutes = progress / 60;
-    int progressSeconds = progress % 60;
-    char progressText[8];
-    snprintf(progressText, sizeof(progressText), "%d:%02d", progressMinutes,
-             progressSeconds);
-
-    // Format track length (mm:ss)
-    int lengthMinutes = trackLength / 60;
-    int lengthSecondsRemainder = trackLength % 60;
-    char lengthText[8];
-    snprintf(lengthText, sizeof(lengthText), "%d:%02d", lengthMinutes,
-             lengthSecondsRemainder);
-
-    fontRenderer.setBuffer(buffer, actualWidth, actualHeight);
-
-    // Render progress time (left aligned) - only if visible in x range
-    if (PROGRESS_BAR_X >= x && PROGRESS_BAR_X < x + actualWidth) {
-      fontRenderer.renderText(progressText, PROGRESS_BAR_X - x, TIME_TEXT_Y - y,
-                              IBMPlexSans16, COLOR_TEXT, COLOR_BACKGROUND);
+  if (albumName[0] && ALBUM_Y >= y && ALBUM_Y < y + actualHeight &&
+      METADATA_X >= x && METADATA_X < x + actualWidth) {
+    char line[64];
+    strncpy(line, albumName, sizeof(line) - 1);
+    line[sizeof(line) - 1] = '\0';
+    if (fontRenderer.measureText(line, IBMPlexSans12) > metadataMaxWidth) {
+      int len = strlen(line);
+      while (len > 1) {
+        char test[64];
+        snprintf(test, sizeof(test), "%.*s...", len, line);
+        if (fontRenderer.measureText(test, IBMPlexSans12) <= metadataMaxWidth)
+          break;
+        len--;
+      }
+      snprintf(line, sizeof(line), "%.*s...", len, line);
     }
-
-    // Render track length (right aligned) - only if visible in x range
-    int rightTextX = PROGRESS_BAR_END_X - 40;
-    if (rightTextX >= x && rightTextX < x + actualWidth) {
-      fontRenderer.renderText(lengthText, rightTextX - x, TIME_TEXT_Y - y,
-                              IBMPlexSans16, COLOR_TEXT, COLOR_BACKGROUND);
-    }
+    fontRenderer.renderText(line, METADATA_X - x, ALBUM_Y - y, IBMPlexSans12,
+                            COLOR_MUTED, COLOR_BG);
   }
-  if (tx < 0) {
+
+  if (tx < 0)
     tx = x;
-  }
-  if (ty < 0) {
+  if (ty < 0)
     ty = y;
-  }
-  // Push this chunk to the display using target coordinates
   display->setWindow(tx, ty, tx + actualWidth - 1, ty + actualHeight - 1);
   display->pushPixels(buffer, actualWidth * actualHeight);
   g_buffers.swapBuffers();
 }
 
-
-void NowPlayingComponent::renderVolumeOverlay(ILI9341_GFX *display) {
-  if (!volumeOverlayVisible) {
-    display->fillRect(VOLUME_BAR_X - 2, VOLUME_BAR_Y - 2,
-                      VOLUME_BAR_WIDTH + 4, VOLUME_BAR_HEIGHT + 4,
-                      COLOR_BACKGROUND);
+void NowPlayingComponent::renderBandChunk(ILI9341_GFX *display, int x,
+                                          int width, int tx, int ty) {
+  const int y = BOTTOM_BAND_Y;
+  int actualHeight = (y + CHUNK_HEIGHT > SCREEN_HEIGHT) ? (SCREEN_HEIGHT - y)
+                                                        : CHUNK_HEIGHT;
+  if (x >= SCREEN_WIDTH || width <= 0)
     return;
+  int actualWidth = (width < SCREEN_WIDTH - x) ? width : (SCREEN_WIDTH - x);
+  uint16_t *buffer = g_buffers.getCurrentBuffer();
+
+  const uint16_t bandBg = volumeOverlayVisible ? COLOR_SURFACE : COLOR_BG;
+  for (int i = 0; i < actualWidth * actualHeight; i++) {
+    buffer[i] = bandBg;
   }
-  int level = constrain(volumeLevel, 0, 100);
-  int filled = (VOLUME_BAR_WIDTH * level) / 100;
-  display->fillRect(VOLUME_BAR_X, VOLUME_BAR_Y, VOLUME_BAR_WIDTH,
-                    VOLUME_BAR_HEIGHT, COLOR_HIGHLIGHT);
-  display->fillRect(VOLUME_BAR_X, VOLUME_BAR_Y, filled, VOLUME_BAR_HEIGHT,
-                    COLOR_PRIMARY);
-  display->drawRect(VOLUME_BAR_X - 1, VOLUME_BAR_Y - 1, VOLUME_BAR_WIDTH + 2,
-                    VOLUME_BAR_HEIGHT + 2, COLOR_PRIMARY);
+
+  fontRenderer.setBuffer(buffer, actualWidth, actualHeight);
+  const float frac =
+      (trackLength > 0)
+          ? constrain((float)progress / (float)trackLength, 0.0f, 1.0f)
+          : 0.0f;
+
+  if (volumeOverlayVisible) {
+    // Speaker glyph + volume bar, on a SURFACE panel.
+    blitSprite(buffer, actualWidth, actualHeight, SPR_SPEAKER, 36 - x,
+               220 - y);
+    const int vx = 56, vy = 221, vw = 220, vh = 8;
+    fillRoundedRect(buffer, actualWidth, actualHeight, vx - x, vy - y, vw, vh,
+                    vh / 2, COLOR_LINE);
+    int filled = (vw * constrain(volumeLevel, 0, 100)) / 100;
+    if (filled > 0)
+      fillRoundedRect(buffer, actualWidth, actualHeight, vx - x, vy - y,
+                      filled, vh, vh / 2, COLOR_ACCENT);
+  } else if (seekModeActive) {
+    // Elapsed (accent) + total (muted), seek bar + handle.
+    char elapsed[8];
+    char total[8];
+    int em = progress / 60, es = progress % 60;
+    int tm = trackLength / 60, ts = trackLength % 60;
+    snprintf(elapsed, sizeof(elapsed), "%d:%02d", em, es);
+    snprintf(total, sizeof(total), "%d:%02d", tm, ts);
+
+    fontRenderer.renderText(elapsed, 8 - x, 212 - y, IBMPlexSans12,
+                            COLOR_ACCENT, COLOR_BG);
+    int totalW = fontRenderer.measureText(total, IBMPlexSans12);
+    fontRenderer.renderText(total, 312 - x - totalW, 212 - y, IBMPlexSans12,
+                            COLOR_MUTED, COLOR_BG);
+
+    const int by = 228, bh = 10;
+    fillRoundedRect(buffer, actualWidth, actualHeight, BAR_X - x, by - y,
+                    BAR_W, bh, 2, COLOR_LINE);
+    int fillW = (int)(BAR_W * frac);
+    if (fillW > 0)
+      fillRoundedRect(buffer, actualWidth, actualHeight, BAR_X - x, by - y,
+                      fillW, bh, 2, COLOR_ACCENT_DK);
+    blitSprite(buffer, actualWidth, actualHeight, SPR_HANDLE,
+               BAR_X + fillW - 3 - x, by - 2 - y);
+  } else {
+    // Elapsed + total, progress bar (accent fill on LINE track).
+    char elapsed[8];
+    char total[8];
+    int em = progress / 60, es = progress % 60;
+    int tm = trackLength / 60, ts = trackLength % 60;
+    snprintf(elapsed, sizeof(elapsed), "%d:%02d", em, es);
+    snprintf(total, sizeof(total), "%d:%02d", tm, ts);
+
+    fontRenderer.renderText(elapsed, 8 - x, 212 - y, IBMPlexSans12,
+                            COLOR_TEXT, COLOR_BG);
+    int totalW = fontRenderer.measureText(total, IBMPlexSans12);
+    fontRenderer.renderText(total, 312 - x - totalW, 212 - y, IBMPlexSans12,
+                            COLOR_MUTED, COLOR_BG);
+
+    const int by = 232, bh = 6;
+    fillRoundedRect(buffer, actualWidth, actualHeight, BAR_X - x, by - y,
+                    BAR_W, bh, bh / 2, COLOR_LINE);
+    int fillW = (int)(BAR_W * frac);
+    if (fillW > 0)
+      fillRoundedRect(buffer, actualWidth, actualHeight, BAR_X - x, by - y,
+                      fillW, bh, bh / 2, COLOR_ACCENT);
+  }
+
+  if (tx < 0)
+    tx = x;
+  if (ty < 0)
+    ty = y;
+  display->setWindow(tx, ty, tx + actualWidth - 1, ty + actualHeight - 1);
+  display->pushPixels(buffer, actualWidth * actualHeight);
+  g_buffers.swapBuffers();
 }
 
 void NowPlayingComponent::updateNowPlaying(ILI9341_GFX *display) {
-  // Only update the progress bar and time text areas for efficiency
-  const int UPDATE_END_Y =
-      PROGRESS_BAR_Y + PROGRESS_BAR_HEIGHT + 2 * PROGRESS_BAR_STROKE;
-  for (int y = TIME_TEXT_Y; y < UPDATE_END_Y; y += CHUNK_HEIGHT) {
-    renderChunk(display, 0, y, SCREEN_WIDTH);
-  }
+  // Only the bottom band (progress/seek/volume) moves between progress ticks.
+  renderChunk(display, 0, BOTTOM_BAND_Y, SCREEN_WIDTH);
 }
-void NowPlayingComponent::render(ILI9341_GFX *display, int x,
-                                 int width) {
-  for (int y = BODY_Y; y < SCREEN_HEIGHT; y += CHUNK_HEIGHT) {
-    renderChunk(display, x, y, width);
-  }
+
+void NowPlayingComponent::renderVolumeOverlay(ILI9341_GFX *display) {
+  renderChunk(display, 0, BOTTOM_BAND_Y, SCREEN_WIDTH);
 }
