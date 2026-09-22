@@ -53,17 +53,16 @@ private:
     uint8_t fg_g = (fg >> 5) & 0x3F;
     uint8_t fg_b = fg & 0x1F;
 
-    // Apply gamma correction for more perceptually uniform blending
+    // Blend linearly by coverage. A gamma>1 curve here (e.g. pow(a, 1.8))
+    // crushes partial-coverage pixels toward bgColor - fine for thick glyphs
+    // that are mostly alpha 0/255, but it greys out thin/small fonts whose
+    // anti-aliased pixels are almost all partial coverage.
     for (int alpha = 0; alpha < 256; alpha++) {
       float normalizedAlpha = alpha / 255.0f;
 
-      // Apply gamma curve to alpha for better visual weight consistency
-      float gammaCorrectedAlpha =
-          pow(normalizedAlpha, 1.8f); // Adjust gamma value
-
-      uint8_t r = bg_r + ((fg_r - bg_r) * gammaCorrectedAlpha);
-      uint8_t g = bg_g + ((fg_g - bg_g) * gammaCorrectedAlpha);
-      uint8_t b = bg_b + ((fg_b - bg_b) * gammaCorrectedAlpha);
+      uint8_t r = bg_r + ((fg_r - bg_r) * normalizedAlpha);
+      uint8_t g = bg_g + ((fg_g - bg_g) * normalizedAlpha);
+      uint8_t b = bg_b + ((fg_b - bg_b) * normalizedAlpha);
 
       table[alpha] = (r << 11) | (g << 5) | b;
     }
@@ -132,11 +131,14 @@ public:
           if (alpha == 0) {
             renderBuffer[bufferOffset + dx] = bgColor;
           } else {
-            // Adjust alpha for dark backgrounds to make text appear bolder
+            // Adjust alpha for dark backgrounds to make text appear bolder.
+            // Must be a monotonically increasing curve (screen blend) -
+            // alpha*alpha/180 looked like a boost but actually *reduced*
+            // every alpha below 180, which crushed thin-font anti-aliased
+            // edges toward bgColor instead of making them bolder.
             if (isDarkBackground && alpha > 0 && alpha < 255) {
-              // Curve the alpha to make anti-aliased edges more opaque
-              alpha = std::min(255,
-                          (alpha * alpha) / 180); // Adjust the divisor to taste
+              int inv = 255 - alpha;
+              alpha = 255 - std::min(255, (inv * inv) / 255);
             }
 
             if (alpha == 255) {

@@ -71,7 +71,8 @@ private:
   // Layout constants (dark theme: art on the left, metadata on the right,
   // every animated element in the bottom 30px chunk). Matches
   // docs/ui-builder's box spec: album art 8,40 160x160 (largest square that
-  // leaves a readable 132px metadata column); title 180,40 132x32; album
+  // leaves a readable 132px metadata column); title 180,40 132x32, wrapping
+  // onto a second line (ellipsized) when it doesn't fit in one; album
   // 180,96.
   static const int ALBUM_ART_X = 8;
   static const int ALBUM_ART_Y = 40;
@@ -235,24 +236,62 @@ void NowPlayingComponent::renderBodyChunk(ILI9341_GFX *display, int x, int y,
   fontRenderer.setBuffer(buffer, actualWidth, actualHeight);
   const int metadataMaxWidth = SCREEN_WIDTH - METADATA_X - 8;
 
-  if (TITLE_Y >= y && TITLE_Y < y + actualHeight && METADATA_X >= x &&
+  // Title wraps onto a second line (instead of truncating with "...") when
+  // it doesn't fit in one; only the second line gets ellipsized if it's
+  // still too long. Each renderBodyChunk call only sees one 30px band, so
+  // both candidate line y-positions are checked against this call's range.
+  const int titleLine2Y = TITLE_Y + IBMPlexSans16.lineHeight;
+  bool titleLine1Visible = TITLE_Y >= y && TITLE_Y < y + actualHeight;
+  bool titleLine2Visible = titleLine2Y >= y && titleLine2Y < y + actualHeight;
+  if ((titleLine1Visible || titleLine2Visible) && METADATA_X >= x &&
       METADATA_X < x + actualWidth) {
-    char line[64];
-    strncpy(line, currentTrack ? currentTrack : "", sizeof(line) - 1);
-    line[sizeof(line) - 1] = '\0';
-    if (fontRenderer.measureText(line, IBMPlexSans16) > metadataMaxWidth) {
-      int len = strlen(line);
-      while (len > 1) {
+    char line1[64];
+    char line2[64] = "";
+    strncpy(line1, currentTrack ? currentTrack : "", sizeof(line1) - 1);
+    line1[sizeof(line1) - 1] = '\0';
+    if (fontRenderer.measureText(line1, IBMPlexSans16) > metadataMaxWidth) {
+      // Break at the last space that still fits on line 1; fall back to a
+      // hard break if no space fits.
+      int len = strlen(line1);
+      int fitEnd = 0, lastSpace = -1;
+      for (int i = 0; i < len; i++) {
         char test[64];
-        snprintf(test, sizeof(test), "%.*s...", len, line);
-        if (fontRenderer.measureText(test, IBMPlexSans16) <= metadataMaxWidth)
+        snprintf(test, sizeof(test), "%.*s", i + 1, line1);
+        if (fontRenderer.measureText(test, IBMPlexSans16) > metadataMaxWidth)
           break;
-        len--;
+        fitEnd = i + 1;
+        if (line1[i] == ' ')
+          lastSpace = i;
       }
-      snprintf(line, sizeof(line), "%.*s...", len, line);
+      int splitAt = (lastSpace > 0) ? lastSpace : fitEnd;
+      if (splitAt <= 0)
+        splitAt = 1;
+      int remStart = splitAt;
+      while (line1[remStart] == ' ')
+        remStart++;
+      strncpy(line2, line1 + remStart, sizeof(line2) - 1);
+      line2[sizeof(line2) - 1] = '\0';
+      line1[splitAt] = '\0';
+
+      if (fontRenderer.measureText(line2, IBMPlexSans16) > metadataMaxWidth) {
+        int len2 = strlen(line2);
+        while (len2 > 1) {
+          char test[64];
+          snprintf(test, sizeof(test), "%.*s...", len2, line2);
+          if (fontRenderer.measureText(test, IBMPlexSans16) <=
+              metadataMaxWidth)
+            break;
+          len2--;
+        }
+        snprintf(line2, sizeof(line2), "%.*s...", len2, line2);
+      }
     }
-    fontRenderer.renderText(line, METADATA_X - x, TITLE_Y - y, IBMPlexSans16,
-                            COLOR_TEXT, COLOR_BG);
+    if (titleLine1Visible)
+      fontRenderer.renderText(line1, METADATA_X - x, TITLE_Y - y,
+                              IBMPlexSans16, COLOR_TEXT, COLOR_BG);
+    if (line2[0] && titleLine2Visible)
+      fontRenderer.renderText(line2, METADATA_X - x, titleLine2Y - y,
+                              IBMPlexSans16, COLOR_TEXT, COLOR_BG);
   }
 
   if (albumName[0] && ALBUM_Y >= y && ALBUM_Y < y + actualHeight &&

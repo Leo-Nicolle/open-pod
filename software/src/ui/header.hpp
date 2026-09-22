@@ -73,7 +73,10 @@ void HeaderComponent::render(ILI9341_GFX *display, const char *title,
     snprintf(truncatedTitle, sizeof(truncatedTitle), "%.*s...", len,
              truncatedTitle);
   }
-  fontRenderer.renderText(truncatedTitle, titleX, 7, IBMPlexSans16Bold,
+  // y=10 matches the play/pause glyph's top (both are 11px tall - the
+  // font's cap-height/ascent and the icon's - so their boxes line up and
+  // sit centered in the 30px header row alongside the battery).
+  fontRenderer.renderText(truncatedTitle, titleX, 10, IBMPlexSans16Bold,
                           COLOR_TEXT, COLOR_SURFACE);
 
   // Battery sprite (outline + nub) at (290,9), then its 3 fill cells drawn as
