@@ -19,13 +19,7 @@ Tweak the OpenPod color scheme and export the sprites as RGB565 arrays that
 drop straight into the firmware. The previews render the real 320×240 layouts (now
 playing, track list and search), and every sprite is rasterized from the same
 definitions that the export uses, so what you see is byte-for-byte what you get.
-
-::: tip Panel wiring
-The ILI9341's subpixels are physically BGR, but the MADCTL `BGR` bit already
-compensates for that in hardware, so the firmware sends plain **RGB565** — the same
-convention as `theme.h`'s `HEX_TO_RGB565()` macro. Keep the **Packing** switch on
-*RGB565* for OpenPod; switch to *BGR565* only for a panel configured the other way.
-:::
+Your palette is saved in this browser, so it's still there next time you open the page.
 
 <UIBuilder />
 

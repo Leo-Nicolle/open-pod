@@ -4,7 +4,7 @@
 // same geometry as the firmware (see GEOMETRY in spec.ts). Glyphs and bars go
 // through the sprite definitions so the preview matches the exported arrays.
 
-import type { Palette } from './palette';
+import { hexToRgb, type Palette } from './palette';
 import { drawGlyph, drawSpriteAt, findSprite, rr, type GlyphDef } from './sprites';
 
 export const W = 320;
@@ -216,14 +216,22 @@ export interface NowPlayingOpts {
 }
 
 function coverPlaceholder(ctx: Ctx, p: Palette, x: number, y: number, size: number) {
-  // 135deg stripes, 4px each, measured across the stripe
+  // 135deg stripes, 4px each, measured across the stripe. Written as one
+  // ImageData: per-pixel fillRect is far too slow for live color edits.
+  const img = ctx.createImageData(size, size);
+  const a = hexToRgb(p.surface);
+  const b = hexToRgb(p.ribbon);
   for (let py = 0; py < size; py++) {
     for (let px = 0; px < size; px++) {
-      const t = ((px + py) / Math.SQRT2) % 8;
-      ctx.fillStyle = t < 4 ? p.surface : p.ribbon;
-      ctx.fillRect(x + px, y + py, 1, 1);
+      const c = ((px + py) / Math.SQRT2) % 8 < 4 ? a : b;
+      const o = (py * size + px) * 4;
+      img.data[o] = c[0];
+      img.data[o + 1] = c[1];
+      img.data[o + 2] = c[2];
+      img.data[o + 3] = 255;
     }
   }
+  ctx.putImageData(img, x, y);
   strokeBox(ctx, x, y, size, size, 0, p.line);
   text(ctx, 'cover', x + size / 2, y + size / 2 - 14, `{s} ${MONO}`, 10, p.muted, { align: 'center', lh: 14 });
   text(ctx, '160×160', x + size / 2, y + size / 2, `{s} ${MONO}`, 10, p.muted, { align: 'center', lh: 14 });

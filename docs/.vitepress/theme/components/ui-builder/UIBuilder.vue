@@ -1,7 +1,7 @@
 <script lang="ts" setup>
-import { computed, reactive, ref } from 'vue';
-import { NButton, NSelect, NSwitch, NTag } from 'naive-ui';
-import { DEFAULT_PALETTE, PALETTE_META, PRESETS, normalizeHex, type Palette, type PaletteKey } from './palette';
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
+import { NButton, NSelect, NSwitch } from 'naive-ui';
+import { DEFAULT_PALETTE, PALETTE_META, normalizeHex, type Palette, type PaletteKey } from './palette';
 import { SPRITES } from './sprites';
 import {
   buildSpritesHeader,
@@ -17,21 +17,13 @@ import { KID_A, KID_RESULTS, RADIOHEAD } from './screens';
 import { GEOMETRY, REDRAW_NOTES } from './spec';
 
 const palette = reactive<Palette>({ ...DEFAULT_PALETTE });
-const presetName = ref<string>(PRESETS[1].name);
-// RGB565 by default: the ILI9341's MADCTL BGR bit already compensates for
-// this panel's physically BGR-ordered subpixels in hardware (see
-// .agents/screen-red-problem.md), so software should send plain RGB565.
-// The BGR565 toggle stays available for a panel wired/configured the other
-// way, but it is NOT the default for this hardware - flipping it on is what
-// caused a repeated "why does the UI look wrong again" regression here.
-const bgr = ref(false);
+const STORAGE_KEY = 'openpod-ui-builder-palette';
 const zoom = ref(1);
 const grid = ref(false);
 const playing = ref(true);
 const status = ref('');
 let statusTimer: ReturnType<typeof setTimeout> | undefined;
 
-const presetOptions = PRESETS.map((p) => ({ label: p.name, value: p.name }));
 const zoomOptions = [
   { label: '1×', value: 1 },
   { label: '2×', value: 2 },
@@ -47,14 +39,6 @@ const nowPlaying = computed(() =>
   states.map((s) => ({
     label: s.label,
     screen: { kind: 'nowplaying' as const, opts: { mode: s.key, playing: playing.value, grid: grid.value } },
-  })),
-);
-
-const presetScreens = computed(() =>
-  PRESETS.map((p) => ({
-    preset: p,
-    palette: { ...palette, accent: p.accent, accentDark: p.accentDark, accentAlt: p.accentAlt },
-    screen: { kind: 'nowplaying' as const, opts: { mode: 'seek' as const, playing: playing.value, grid: false } },
   })),
 );
 
@@ -94,31 +78,83 @@ const searches = computed(() => {
 });
 
 function to565(hex: string): string {
-  const v = hexTo565(hex, bgr.value);
+  const v = hexTo565(hex);
   return '0x' + v.toString(16).toUpperCase().padStart(4, '0');
 }
 
+/** Trailing-edge debounce; `cancel` drops a pending call. */
+function debounce<A extends unknown[]>(fn: (...args: A) => void, ms: number) {
+  let t: ReturnType<typeof setTimeout> | undefined;
+  const run = (...args: A) => {
+    if (t) clearTimeout(t);
+    t = setTimeout(() => {
+      t = undefined;
+      fn(...args);
+    }, ms);
+  };
+  run.cancel = () => t && clearTimeout(t);
+  return run;
+}
+
+// A color-picker drag fires `input` continuously and every palette change
+// repaints all screens and sprites, so only apply the value once it settles.
+const colorInputs = new Map<PaletteKey, ReturnType<typeof debounce<[string]>>>();
+
 function setColor(key: PaletteKey, e: Event) {
-  palette[key] = normalizeHex((e.target as HTMLInputElement).value);
+  const value = (e.target as HTMLInputElement).value;
+  let apply = colorInputs.get(key);
+  if (!apply) {
+    apply = debounce((v: string) => (palette[key] = normalizeHex(v)), 40);
+    colorInputs.set(key, apply);
+  }
+  apply(value);
 }
 
 function setHex(key: PaletteKey, e: Event) {
   palette[key] = normalizeHex((e.target as HTMLInputElement).value);
 }
 
-function applyPreset(name: string) {
-  const p = PRESETS.find((x) => x.name === name);
-  if (!p) return;
-  presetName.value = name;
-  palette.accent = p.accent;
-  palette.accentDark = p.accentDark;
-  palette.accentAlt = p.accentAlt;
-}
-
 function reset() {
   Object.assign(palette, DEFAULT_PALETTE);
-  presetName.value = PRESETS[1].name;
 }
+
+// Remember the last palette per browser. Storage can be unavailable (private
+// mode, blocked site data), so every access is guarded. Loaded on mount rather
+// than at setup so SSR and the first client render agree.
+function loadPalette() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? 'null') as Partial<Palette> | null;
+    if (!saved) return;
+    for (const { key } of PALETTE_META) {
+      const v = saved[key];
+      if (typeof v === 'string') palette[key] = normalizeHex(v);
+    }
+  } catch {
+    // ignore unreadable or corrupt storage
+  }
+}
+
+onMounted(() => {
+  loadPalette();
+  watch(palette, savePalette, { deep: true });
+});
+
+function persistPalette() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(palette));
+  } catch {
+    // storage unavailable
+  }
+}
+
+const savePalette = debounce(persistPalette, 300);
+
+onBeforeUnmount(() => {
+  colorInputs.forEach((apply) => apply.cancel());
+  // flush instead of dropping an edit made just before leaving the page
+  savePalette.cancel();
+  persistPalette();
+});
 
 function flash(msg: string) {
   status.value = msg;
@@ -127,12 +163,12 @@ function flash(msg: string) {
 }
 
 function exportSprites() {
-  downloadText('sprites.h', buildSpritesHeader(palette, bgr.value));
-  flash('Downloaded sprites.h (' + (bgr.value ? 'BGR565' : 'RGB565') + ')');
+  downloadText('sprites.h', buildSpritesHeader(palette));
+  flash('Downloaded sprites.h');
 }
 
 function exportTheme() {
-  downloadText('theme.h', buildThemeHeader(palette, bgr.value));
+  downloadText('theme.h', buildThemeHeader(palette));
   flash('Downloaded theme.h');
 }
 
@@ -142,36 +178,19 @@ async function exportPngs() {
 }
 
 async function copySprites() {
-  const ok = await copyToClipboard(buildSpritesHeader(palette, bgr.value));
+  const ok = await copyToClipboard(buildSpritesHeader(palette));
   flash(ok ? 'Copied sprites.h to clipboard' : 'Copy failed');
 }
 
 async function copyTheme() {
-  const ok = await copyToClipboard(buildThemeHeader(palette, bgr.value));
+  const ok = await copyToClipboard(buildThemeHeader(palette));
   flash(ok ? 'Copied theme.h to clipboard' : 'Copy failed');
 }
-
-const packingLabel = computed(() => (bgr.value ? 'BGR565 (blue in high bits)' : 'RGB565 (red in high bits)'));
 </script>
 
 <template>
   <div class="ub">
     <aside class="ub-controls">
-      <section>
-        <h3>Preset</h3>
-        <n-select v-model:value="presetName" :options="presetOptions" @update:value="applyPreset" />
-        <div class="preset-swatches">
-          <button
-            v-for="p in PRESETS"
-            :key="p.name"
-            class="preset-dot"
-            :title="p.name"
-            :style="{ background: p.accent, borderColor: p.accentDark }"
-            @click="applyPreset(p.name)"
-          />
-        </div>
-      </section>
-
       <section>
         <h3>Palette</h3>
         <div class="palette-list">
@@ -199,11 +218,6 @@ const packingLabel = computed(() => (bgr.value ? 'BGR565 (blue in high bits)' : 
 
       <section>
         <h3>Options</h3>
-        <div class="option-row">
-          <span>Packing</span>
-          <n-tag size="small" :type="bgr ? 'success' : 'warning'">{{ packingLabel }}</n-tag>
-          <n-switch v-model:value="bgr" />
-        </div>
         <div class="option-row">
           <span>Screen zoom</span>
           <n-select v-model:value="zoom" :options="zoomOptions" style="width: 90px" />
@@ -243,29 +257,6 @@ const packingLabel = computed(() => (bgr.value ? 'BGR565 (blue in high bits)' : 
           <figure v-for="s in nowPlaying" :key="s.label" class="state">
             <ScreenCanvas :palette="palette" :screen="s.screen" :zoom="zoom" />
             <figcaption>{{ s.label }}</figcaption>
-          </figure>
-        </div>
-      </section>
-
-      <section>
-        <h3>Presets <span class="muted">(same screen, different accents — click to apply)</span></h3>
-        <div class="states">
-          <figure
-            v-for="s in presetScreens"
-            :key="s.preset.name"
-            class="state preset-state"
-            :class="{ active: s.preset.name === presetName }"
-            @click="applyPreset(s.preset.name)"
-          >
-            <ScreenCanvas :palette="s.palette" :screen="s.screen" />
-            <figcaption>
-              <span class="mini-swatches">
-                <i :style="{ background: s.preset.accent }" />
-                <i :style="{ background: s.preset.accentDark }" />
-                <i :style="{ background: s.preset.accentAlt }" />
-              </span>
-              {{ s.preset.name }}
-            </figcaption>
           </figure>
         </div>
       </section>
@@ -386,21 +377,6 @@ section {
   border: 1px solid var(--vp-c-divider);
   border-radius: 10px;
   padding: 20px;
-}
-
-.preset-swatches {
-  display: flex;
-  gap: 6px;
-  margin-top: 10px;
-}
-
-.preset-dot {
-  width: 14px;
-  height: 14px;
-  padding: 0;
-  border-radius: 4px;
-  border: 2px solid;
-  cursor: pointer;
 }
 
 .palette-list {
@@ -553,35 +529,6 @@ section {
   font-size: 13px;
   line-height: 1.6;
   color: var(--vp-c-text-2);
-}
-
-.preset-state {
-  cursor: pointer;
-  padding: 6px;
-  margin: -6px;
-  border-radius: 8px;
-  border: 1px solid transparent;
-}
-
-.preset-state.active {
-  border-color: var(--vp-c-brand-1);
-}
-
-.preset-state figcaption {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.mini-swatches {
-  display: inline-flex;
-  gap: 2px;
-}
-
-.mini-swatches i {
-  width: 10px;
-  height: 10px;
-  border-radius: 2px;
 }
 
 .geometry {

@@ -1,14 +1,12 @@
-// Rasterization + RGB565/BGR565 export for the UI builder.
+// Rasterization + RGB565 export for the UI builder.
 //
 // The firmware's ILI9341 panel is physically BGR-subpixel-ordered, but its
 // MADCTL BGR bit (set in ILI9341_GFX::setRotation) already compensates for
-// that in hardware, transparently - software is supposed to send plain
-// RGB565, matching theme.h's HEX_TO_RGB565 and .ui-work/gen-sprites.py. See
+// that in hardware, transparently - software sends plain RGB565, matching
+// theme.h's HEX_TO_RGB565 and .ui-work/gen-sprites.py. See
 // .agents/screen-red-problem.md for the full diagnosis (D14/D15 pin damage
 // was the actual root cause of the original "everything is blue" symptom,
-// not a BGR/RGB mismatch). The UI still exposes a BGR565 toggle for a panel
-// genuinely wired/configured the other way, but it defaults OFF (RGB565)
-// for this reason - don't flip its default back to BGR565.
+// not a BGR/RGB mismatch).
 
 import type { Palette } from './palette';
 import { hexToRgb, PALETTE_META } from './palette';
@@ -17,17 +15,14 @@ import { SPRITES, type SpriteDef, type GlyphDef, type OpaqueDef } from './sprite
 export const SUPERSAMPLE = 4;
 
 /** Pack an 8-bit RGB triple into a 16-bit 565 word. */
-export function pack565(r: number, g: number, b: number, bgr: boolean): number {
-  if (bgr) {
-    return (((b & 0xf8) << 8) | ((g & 0xfc) << 3) | (r >> 3)) & 0xffff;
-  }
+export function pack565(r: number, g: number, b: number): number {
   return (((r & 0xf8) << 8) | ((g & 0xfc) << 3) | (b >> 3)) & 0xffff;
 }
 
 /** Pack a "#RRGGBB" color directly into a 16-bit 565 word. */
-export function hexTo565(hex: string, bgr: boolean): number {
+export function hexTo565(hex: string): number {
   const [r, g, b] = hexToRgb(hex);
-  return pack565(r, g, b, bgr);
+  return pack565(r, g, b);
 }
 
 export interface RasterResult {
@@ -49,9 +44,9 @@ function packMask(bits: number[]): Uint8Array {
   return out;
 }
 
-function rasterizeGlyph(def: GlyphDef, p: Palette, bgr: boolean): RasterResult {
+function rasterizeGlyph(def: GlyphDef, p: Palette): RasterResult {
   const { w, h, rows, tint } = def;
-  const tint565 = hexTo565(p[tint], bgr);
+  const tint565 = hexTo565(p[tint]);
   const [tr, tg, tb] = hexToRgb(p[tint]);
   const pixels = new Array<number>(w * h).fill(0);
   const rgba = new Uint8ClampedArray(w * h * 4);
@@ -76,7 +71,7 @@ function rasterizeGlyph(def: GlyphDef, p: Palette, bgr: boolean): RasterResult {
   return { w, h, pixels, mask: packMask(bits), rgba };
 }
 
-function rasterizeOpaque(def: OpaqueDef, p: Palette, bgr: boolean): RasterResult {
+function rasterizeOpaque(def: OpaqueDef, p: Palette): RasterResult {
   const { w, h, draw } = def;
   const S = SUPERSAMPLE;
   const canvas = document.createElement('canvas');
@@ -130,7 +125,7 @@ function rasterizeOpaque(def: OpaqueDef, p: Palette, bgr: boolean): RasterResult
         rgba[i * 4 + 1] = G;
         rgba[i * 4 + 2] = B;
         rgba[i * 4 + 3] = Math.round(A);
-        pixels[i] = pack565(R, G, B, bgr);
+        pixels[i] = pack565(R, G, B);
         bits[i] = A >= 128 ? 1 : 0;
         if (A < 128) hasTransparency = true;
       }
@@ -139,8 +134,8 @@ function rasterizeOpaque(def: OpaqueDef, p: Palette, bgr: boolean): RasterResult
   return { w, h, pixels, mask: hasTransparency ? packMask(bits) : undefined, rgba };
 }
 
-export function rasterize(def: SpriteDef, p: Palette, bgr: boolean): RasterResult {
-  return def.kind === 'glyph' ? rasterizeGlyph(def, p, bgr) : rasterizeOpaque(def, p, bgr);
+export function rasterize(def: SpriteDef, p: Palette): RasterResult {
+  return def.kind === 'glyph' ? rasterizeGlyph(def, p) : rasterizeOpaque(def, p);
 }
 
 // --- C header generation ------------------------------------------------------
@@ -182,43 +177,38 @@ function hexLiteral(hex: string): string {
 }
 
 /** Generate the firmware theme.h with the current palette. */
-export function buildThemeHeader(p: Palette, bgr: boolean): string {
-  const macro = bgr ? 'HEX_TO_BGR565' : 'HEX_TO_RGB565';
+export function buildThemeHeader(p: Palette): string {
   const lines: string[] = [];
   lines.push('#pragma once');
   lines.push('// Auto-generated Now Playing theme (see docs/ui-builder).');
-  lines.push('// Packing: ' + (bgr ? 'BGR565 (blue in high bits)' : 'RGB565 (red in high bits)') + '.');
+  lines.push('// Packing: RGB565 (red in high bits).');
   lines.push('');
   // Every parameter use is individually parenthesized - not just each term -
-  // because HEX_TO_RGB565/HEX_TO_BGR565 below pass an unshifted `(hex) & 0xFF`
-  // for whichever channel lands in the `>> 3` slot here. Since `>>` binds
+  // because HEX_TO_RGB565 below passes an unshifted `(hex) & 0xFF`
+  // for the channel that lands in the `>> 3` slot here. Since `>>` binds
   // tighter than `&` in C, an unparenthesized `(x >> 3)` receiving that text
   // becomes `hex & (0xFF >> 3)` = `hex & 0x1F` - masking the whole 24-bit hex
   // value instead of shifting the already-extracted byte. See
   // .agents/screen-red-problem.md - a version of this file without the extra
   // parens shipped that exact bug.
   lines.push('#define RGB565(r, g, b) ((((r) & 0xF8) << 8) | (((g) & 0xFC) << 3) | ((b) >> 3))');
-  lines.push('#define BGR565(r, g, b) ((((b) & 0xF8) << 8) | (((g) & 0xFC) << 3) | ((r) >> 3))');
   lines.push('#define HEX_TO_RGB565(hex) RGB565(((hex) >> 16) & 0xFF, ((hex) >> 8) & 0xFF, (hex) & 0xFF)');
-  lines.push('#define HEX_TO_BGR565(hex) BGR565(((hex) >> 16) & 0xFF, ((hex) >> 8) & 0xFF, (hex) & 0xFF)');
   lines.push('');
   for (const meta of PALETTE_META) {
-    lines.push(`#define ${meta.name.padEnd(17)} ${macro}(${hexLiteral(p[meta.key])})`);
+    lines.push(`#define ${meta.name.padEnd(17)} HEX_TO_RGB565(${hexLiteral(p[meta.key])})`);
   }
   lines.push('');
   return lines.join('\n');
 }
 
 /** Generate the firmware sprites.h with the current palette. */
-export function buildSpritesHeader(p: Palette, bgr: boolean): string {
-  const results = SPRITES.map((def) => ({ def, data: rasterize(def, p, bgr) }));
+export function buildSpritesHeader(p: Palette): string {
+  const results = SPRITES.map((def) => ({ def, data: rasterize(def, p) }));
 
   const lines: string[] = [];
   lines.push('#pragma once');
   lines.push('// Auto-generated Now Playing sprites (see docs/ui-builder).');
-  lines.push(
-    '// Packing: ' + (bgr ? 'BGR565 (blue in high bits)' : 'RGB565 (red in high bits)') + '.',
-  );
+  lines.push('// Packing: RGB565 (red in high bits).');
   lines.push('// Const arrays live in flash (.rodata) and are read directly.');
   lines.push('#include <stdint.h>');
   lines.push('');
@@ -358,7 +348,7 @@ export function spriteToPngBlob(def: SpriteDef, data: RasterResult, zoom = 8): P
 /** Export every sprite as a PNG, triggering one download per file. */
 export async function exportAllPngs(p: Palette): Promise<void> {
   for (const def of SPRITES) {
-    const data = rasterize(def, p, true);
+    const data = rasterize(def, p);
     const blob = await spriteToPngBlob(def, data, 8);
     downloadBlob(`sprite-${def.id}.png`, blob);
   }

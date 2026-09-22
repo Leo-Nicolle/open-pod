@@ -1,8 +1,8 @@
 // Color palette model for the Now Playing UI builder.
 //
-// The screen (ILI9341, 320x240, RGB565) is themed by 13 colors. Ten of them are
-// "structural" (background, surfaces, text levels, list chrome) and three are
-// the accent family that changes between presets. All of them are editable here.
+// The screen (ILI9341, 320x240, RGB565) is themed by 13 colors: ten
+// "structural" ones (background, surfaces, text levels, list chrome) and the
+// three-color accent family. All of them are editable here.
 
 export type PaletteKey =
   | 'bg'
@@ -75,20 +75,6 @@ export const DEFAULT_PALETTE: Palette = {
   accentDark: '#6C1A1A',
   accentAlt: '#F8E0A4',
 };
-
-export interface Preset {
-  name: string;
-  accent: string;
-  accentDark: string;
-  accentAlt: string;
-}
-
-export const PRESETS: Preset[] = [
-  { name: 'Amber', accent: '#F2A33C', accentDark: '#7A4F16', accentAlt: '#F2A33C' },
-  { name: 'Teal / oxblood', accent: '#31AAA9', accentDark: '#6C1A1A', accentAlt: '#F8E0A4' },
-  { name: 'Oxblood / sand', accent: '#A82020', accentDark: '#6C1A1A', accentAlt: '#F8E0A4' },
-  { name: 'Sand', accent: '#F8E0A4', accentDark: '#6C1A1A', accentAlt: '#31AAA9' },
-];
 
 /** Parse a "#RRGGBB" (or "#RGB") string into [r, g, b] 0-255. */
 export function hexToRgb(hex: string): [number, number, number] {
