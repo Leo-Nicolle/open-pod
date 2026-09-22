@@ -2,6 +2,24 @@
 #include <Adafruit_GFX.h>
 #include <Arduino.h>
 
+// BROKEN_NUCLEO: workaround for one specific hand-soldered prototype board,
+// NOT a general hardware feature. On that board, PC14/PC15 (D14/D15) were
+// confirmed dead at the silicon level - continuity from the panel FPC to the
+// Nucleo header is fine, no oscillator/solder-bridge connection exists to
+// those pins, and a direct pin-toggle test showed the voltage never moves no
+// matter what firmware writes. See .agents/screen-red-problem.md for the
+// full diagnosis. On any other/working Nucleo, leave this undefined (default)
+// and the original single-`GPIOC->ODR`-write bus stays intact.
+//
+// Toggle via `-DBROKEN_NUCLEO=1` in platformio.ini's build_flags, not by
+// editing this file, so switching boards doesn't require touching source.
+//
+// When defined: D14 -> PA0, D15 -> PA1 (physically adjacent to PC14/PC15 on
+// the Morpho CN7 connector: pins 25/27/28/30, so the rewire is short). Those
+// two lines are driven through GPIOA->BSRR (atomic set/reset of a single
+// bit) rather than a raw GPIOA->ODR write, because GPIOA also carries the
+// VS1053/SD card SPI1 pins (PA4-PA11) that an ODR overwrite would clobber.
+
 class ILI9341_Driver {
 public:
   // Pin definitions - CORRECTED
@@ -33,7 +51,30 @@ public:
     // Set all data pins to push-pull, high speed
     GPIOC->OTYPER = 0x0000;      // All push-pull
     GPIOC->OSPEEDR = 0xFFFFFFFF; // All high speed
+
+#ifdef BROKEN_NUCLEO
+    // D14/D15 relocated to PA0/PA1 - see the BROKEN_NUCLEO note at the top of
+    // this file. Configured with individual bit ops (not a raw MODER/OSPEEDR
+    // write like GPIOC above) because GPIOA also carries the VS1053/SD SPI1
+    // pins (PA4-PA11), which a full-register write would clobber.
+    RCC->AHB1ENR |= RCC_AHB1ENR_GPIOAEN;
+    GPIOA->MODER = (GPIOA->MODER & ~0xFu) | 0x5u; // PA0,PA1 -> output (01)
+    GPIOA->OTYPER &= ~0x3u;                       // PA0,PA1 -> push-pull
+    GPIOA->OSPEEDR |= 0xFu;                       // PA0,PA1 -> high speed
+#endif
   }
+
+#ifdef BROKEN_NUCLEO
+  // Drives the two relocated data lines. BSRR sets/resets one bit atomically
+  // (no read-modify-write), so this is safe to call right next to the SPI1
+  // traffic sharing GPIOA.
+  inline void writeBrokenBits(uint16_t data) {
+    uint32_t bsrr = 0;
+    bsrr |= (data & (1 << 14)) ? (1u << 0) : (1u << 16); // D14 -> PA0
+    bsrr |= (data & (1 << 15)) ? (1u << 1) : (1u << 17); // D15 -> PA1
+    GPIOA->BSRR = bsrr;
+  }
+#endif
 
   inline void pulseWR() {
     // GPIOB->BSRR = (1 << (9 + 16));
@@ -47,7 +88,11 @@ public:
   }
 
   inline void write16(uint16_t data) {
-    GPIOC->ODR = data; // Set data
+    GPIOC->ODR = data; // Set data (D14/D15 land on the dead PC14/PC15 pins
+                        // under BROKEN_NUCLEO - harmless, nothing listens)
+#ifdef BROKEN_NUCLEO
+    writeBrokenBits(data);
+#endif
     __NOP();
     __NOP(); // Data setup time
     pulseWR();
@@ -63,7 +108,12 @@ public:
   }
 
   uint16_t readBus16() {
-    //  Direct 16-bit read from PC0-PC15
+    //  Direct 16-bit read from PC0-PC15.
+    // NOTE: under BROKEN_NUCLEO this does NOT read back D14/D15 from their
+    // relocated PA0/PA1 pins - it still reads the dead PC14/PC15 bits. Left
+    // as-is because the only callers (detectController()/printRegister(),
+    // panel ID reads) aren't used in the running app and don't depend on the
+    // top 2 bits; revisit if that changes.
     return GPIOC->IDR & 0xFFFF;
   }
 

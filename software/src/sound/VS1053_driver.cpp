@@ -153,6 +153,13 @@ void VS1053_driver::waitForDREQFast() {
 uint16_t VS1053_driver::readRegister(uint8_t addr) {
   waitForDREQ();
 
+  // No noInterrupts() here: no DREQ ISR is currently attached anywhere
+  // (AudioPlayer::useInterrupt() is never called), so there's nothing for
+  // this SCI transaction to race with. Disabling global interrupts around
+  // every register access would silence SysTick (millis()) and the
+  // interrupt-driven Serial TX drain for no live benefit - see
+  // flac-feed-problem.md. Re-add it, scoped the same way, only if/when a
+  // DREQ ISR is actually wired up.
   beginSCITransaction();
   spiWrite(VS1053_SCI_READ);
   spiWrite(addr);
@@ -176,17 +183,29 @@ void VS1053_driver::sendData(const uint8_t *data, size_t len) {
   if (len == 0)
     return;
 
-  // Process in 32-byte chunks for optimal performance
+  // One SPI transaction for the whole send. Between 32-byte bursts we toggle
+  // XDCS (datasheet: burst up to 32 bytes, then toggle XDCS to resync). The
+  // previous version re-acquired SPI.beginTransaction/endTransaction per
+  // 32-byte burst, which was most of the per-byte feeding overhead.
+  if (_useHardwareSPI) {
+    SPI.beginTransaction(SPISettings(_spiFreq, MSBFIRST, SPI_MODE0));
+  }
+  dataDeselect(); // XDCS high before the first DREQ wait
+
   size_t offset = 0;
   while (offset < len) {
     waitForDREQFast();
-    beginSDITransaction();
+    dataSelect();
     size_t toSend = min(len - offset, (size_t)32);
     for (int i = 0; i < toSend; i++) {
       spiWrite(data[offset + i]);
     }
     offset += toSend;
-    endSDITransaction();
+    dataDeselect();
+  }
+
+  if (_useHardwareSPI) {
+    SPI.endTransaction();
   }
 }
 

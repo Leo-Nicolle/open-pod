@@ -1,5 +1,7 @@
 #pragma once
 #include "rendering/ILI9341_driver.h"
+#include "ui/theme.h" // diagnostic-only: lets runDisplayDiagnostics() test the
+                       // app's actual COLOR_* values, not just generic test colors
 #include <Adafruit_GFX.h>
 #include <Arduino.h>
 
@@ -54,6 +56,14 @@ public:
     // Optimized fill using 16-bit parallel interface
     digitalWrite(TFT_DC, HIGH); // Data mode
 
+#ifdef BROKEN_NUCLEO
+    // color is constant for the whole fill, so (unlike pushPixels) the
+    // relocated D14/D15 pins only need setting once, before the loop - the
+    // pins hold their level across every pulseWR() below. See the
+    // BROKEN_NUCLEO note in ILI9341_driver.h.
+    writeBrokenBits(color);
+#endif
+
     // Unroll loop for better performance
     uint32_t pixels = (uint32_t)w * h;
     while (pixels >= 8) {
@@ -87,6 +97,19 @@ public:
   void pushPixels(uint16_t *colors, uint32_t count) {
     digitalWrite(TFT_DC, HIGH); // Data mode
 
+#ifdef BROKEN_NUCLEO
+    // Unlike fillRect()/fillScreen(), the color changes every pixel here, so
+    // D14/D15 (relocated to PA0/PA1, see ILI9341_driver.h) need a fresh
+    // writeBrokenBits() call each iteration - not unrolled like the normal
+    // path below, since that extra register write already dominates the
+    // per-pixel cost more than loop overhead would.
+    while (count--) {
+      uint16_t px = *colors++;
+      GPIOC->ODR = px;
+      writeBrokenBits(px);
+      pulseWR();
+    }
+#else
     // Unrolled loop for maximum speed
     while (count >= 8) {
       GPIOC->ODR = *colors++;
@@ -113,6 +136,7 @@ public:
       GPIOC->ODR = *colors++;
       pulseWR();
     }
+#endif
   }
 
   // Push pixels with DMA support (if you add DMA later)
@@ -164,6 +188,11 @@ public:
     setWindow(0, 0, _width - 1, _height - 1);
 
     digitalWrite(TFT_DC, HIGH);
+
+#ifdef BROKEN_NUCLEO
+    // Set once, not per pixel - see the matching note in fillRect() above.
+    writeBrokenBits(color);
+#endif
 
     // Ultra-fast screen fill
     uint32_t pixels = (uint32_t)_width * _height;
@@ -262,6 +291,97 @@ public:
   }
 
   void invertDisplay(bool i) { writeCommand(i ? 0x21 : 0x20); }
+
+  // Hardware bring-up diagnostics for a hand-wired 16-bit parallel bus.
+  // Two independent checks, run slowly enough to read off a photo/serial log:
+  //
+  // 1) Solid-color pass: confirms the panel's RGB/BGR subpixel order matches
+  //    the MADCTL BGR bit setRotation() writes (see setRotation() above, bit
+  //    0x08 in every mode). If RED prints but the panel shows blue (and BLUE
+  //    shows red), the wiring/bus is fine and it's a MADCTL BGR-vs-RGB
+  //    mismatch for that specific panel — flip bit 0x08 in setRotation() for
+  //    that panel rather than re-checking wiring.
+  //
+  // 2) Data-bus walk: draws one vertical stripe per data line, D0 (left) to
+  //    D15 (right), each stripe lit by only that bit (color = 1 << bit). A
+  //    stripe that stays black means that line isn't reaching the panel
+  //    (bad solder joint, unseated FPC pin, or broken wire) — read off which
+  //    bit is dark to know exactly which physical pin to re-check. D0-D4 and
+  //    part of D5-D10 are Blue/Green (low half of the bus, PC0-PC7); D8-D15
+  //    carry the rest of Green plus all of Red (PC8-PC15) — a bad line up
+  //    there reads as "everything is too blue" even when D0-D7 are perfect.
+  void runDisplayDiagnostics() {
+    struct Solid {
+      uint16_t color;
+      const char *name;
+    };
+    Solid solids[] = {
+        {0xF800, "RED"},   {0x07E0, "GREEN"}, {0x001F, "BLUE"},
+        {0xFFFF, "WHITE"}, {0x8410, "GREY (50%)"}, {0x0000, "BLACK"},
+    };
+
+    Serial.println("=== Display diagnostics: solid color pass ===");
+    for (auto &s : solids) {
+      Serial.print("Filling screen with ");
+      Serial.println(s.name);
+      fillScreen(s.color);
+      delay(2000);
+    }
+
+    // Test the app's ACTUAL theme.h macro values directly, not just generic
+    // test colors above - narrows whether this is about "near-black/white
+    // in general" (already tested and clean) vs "this specific computed
+    // value" (COLOR_BG, COLOR_TEXT etc. - what the real UI uses).
+    Solid themed[] = {
+        {COLOR_BG, "COLOR_BG"},       {COLOR_TEXT, "COLOR_TEXT"},
+        {COLOR_DIM, "COLOR_DIM"},     {COLOR_MUTED, "COLOR_MUTED"},
+        {COLOR_SURFACE, "COLOR_SURFACE"}, {COLOR_ACCENT, "COLOR_ACCENT"},
+    };
+    Serial.println("=== Display diagnostics: theme.h macro pass ===");
+    for (auto &s : themed) {
+      Serial.print("Filling screen with ");
+      Serial.print(s.name);
+      Serial.print(" = 0x");
+      Serial.println(s.color, HEX);
+      fillScreen(s.color);
+      delay(2000);
+    }
+
+    // pushPixels() is the ONLY path real UI content takes (nowplaying.hpp
+    // composites background+text+art into a buffer, then does ONE
+    // setWindow()+pushPixels() per chunk) - unlike fillScreen()/fillRect(),
+    // which call writeBrokenBits() ONCE before their loop, pushPixels()
+    // calls it PER PIXEL in a tight loop under BROKEN_NUCLEO. The solid
+    // pass above never exercises that per-pixel path at all, so it can't
+    // catch a bug specific to it (e.g. a setup-time issue when D14/D15
+    // toggle every single pixel, as they do at a hard white-text-on-black
+    // edge). This test forces exactly that: a fine black/white checkerboard
+    // sent through pushPixels(), maximally alternating bits 14/15 on every
+    // pixel.
+    Serial.println("=== Display diagnostics: pushPixels rapid black/white alternation ===");
+    {
+      static uint16_t checkerRow[320];
+      for (int i = 0; i < _width; i++) {
+        checkerRow[i] = (i % 2 == 0) ? 0xFFFF : 0x0000;
+      }
+      setWindow(0, 0, _width - 1, 39);
+      for (int row = 0; row < 40; row++) {
+        pushPixels(checkerRow, _width);
+      }
+      delay(2000);
+    }
+
+    Serial.println("=== Display diagnostics: data bus walk (D0..D15, PC0-PC15) ===");
+    Serial.println("Left-most stripe = D0, right-most = D15. A black stripe = that line isn't getting through.");
+    fillScreen(0x0000);
+    int stripeWidth = _width / 16;
+    for (int bit = 0; bit < 16; bit++) {
+      fillRect(bit * stripeWidth, 0, stripeWidth, _height, (uint16_t)(1 << bit));
+    }
+    delay(2000);
+
+    Serial.println("=== Display diagnostics done ===");
+  }
 
   // Performance testing
   uint32_t testFillRate() {

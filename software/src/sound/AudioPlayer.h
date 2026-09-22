@@ -94,10 +94,22 @@ public:
   bool useInterrupt(uint8_t type);
   void loop();
 
+  // Off by default: the periodic starvation-monitor Serial.printf() (see
+  // AUDIO_MONITOR_INTERVAL_MS below) is bigger than the STM32 core's 64-byte
+  // TX ring buffer (Serial.h SERIAL_TX_BUFFER_SIZE), so printing it every
+  // second costs a real, blocking write() stall once a second - on every
+  // codec, not just FLAC. Enable only while actively debugging the feed path
+  // (see flac-feed-problem.md).
+  void setDebugMonitorEnabled(bool enabled) { _monitorEnabled = enabled; }
+
   // OPTIMIZED: Buffer management methods
   bool primeBuffer();
   bool primeBufferEnhanced(bool isHighQuality);
   bool feedBuffer();
+  // Feeds the VS1053 from the DREQ interrupt: reads one SDI burst (32 bytes)
+  // out of the PSRAM ring buffer and sends it. Kept minimal - no locks, no
+  // EOF handling - the main loop owns refill + end-of-track detection.
+  void feedFromISR();
   void sendEndFillSequence();
 
   // ISR methods
@@ -128,8 +140,48 @@ private:
   static const unsigned long SEEK_DUCK_RESTORE_DELAY = 150; // ms
   void restoreVolumeFromDuck();
 
+  // --- Audio buffer starvation monitoring -----------------------------------
+  // Counters accumulate every loop tick, but a compact summary is only
+  // printed every AUDIO_MONITOR_INTERVAL_MS - no per-tick serial spam.
+  static const unsigned long AUDIO_MONITOR_INTERVAL_MS = 1000;
+  bool _monitorEnabled = false; // see setDebugMonitorEnabled()
+  uint32_t _monitorUnderflows = 0; // feedBuffer() hit an empty ring buffer
+  uint32_t _monitorLowCount = 0;   // ticks spent below the low watermark
+  size_t _monitorMinBuffered = (size_t)-1;
+  size_t _monitorMaxBuffered = 0;
+  unsigned long _monitorLastReport = 0;
+  // Timing (per window): time in load()/prefetchNextTrack(), time in the
+  // feed while-loop, and the largest gap between loop() calls (reveals how
+  // fast the whole main loop is actually running).
+  uint32_t _monitorLoadUs = 0;
+  uint32_t _monitorFeedUs = 0;
+  unsigned long _monitorLoopMaxMs = 0;
+  unsigned long _monitorPrevLoopMs = 0;
+
+  // Bound the feed loop so the main loop stays responsive. The VS1053's DREQ
+  // stays high for a long time at the 4.5x FLAC clock, so an unbounded feed
+  // loop blocks the UI for seconds. Feeding ~100ms per tick keeps the UI
+  // responsive while the (healthy) ring buffer absorbs any transient shortfall.
+  static const unsigned long AUDIO_MAX_FEED_MS = 100;
+
+  // Bounded prime: buffer this many bytes before flipping _playing, so the
+  // VS1053 has slack from sample one instead of stuttering while the
+  // per-tick refill catches up (see memory-improvements.md).
+  static const size_t AUDIO_PRIME_BYTES = 512 * 1024; // ~4s of 44.1k/16 FLAC
+  static const unsigned long AUDIO_PRIME_TIMEOUT_MS = 5000;
+
+  // Feed the VS1053 from a larger RAM buffer rather than 32 bytes at a time.
+  // sendData() still bursts to the chip in 32-byte SDI chunks (datasheet
+  // limit), but readData() then pulls this many bytes out of the PSRAM ring
+  // buffer in one transaction instead of dozens - the 8 MHz SPI PSRAM has
+  // heavy per-transaction overhead and 32-byte reads were leaving it
+  // saturated (see memory-improvements.md §monitoring).
+  static const size_t AUDIO_FEED_BUFFER_LEN = 512;
+
   // Buffer for audio data
-  uint8_t _feedBuffer[AUDIO_DATABUFFERLEN];
+  uint8_t _feedBuffer[AUDIO_FEED_BUFFER_LEN];
+  // Small dedicated buffer used by the DREQ ISR (one 32-byte SDI burst).
+  uint8_t _isrFeedBuffer[32];
 
   // Static instance for ISR access
   static AudioPlayer *_instance;

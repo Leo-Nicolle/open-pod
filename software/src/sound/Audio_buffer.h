@@ -8,6 +8,7 @@
 
 #include <Arduino.h>
 #include <SdFat.h>
+#include <functional>
 #include "../pinout.h"
 
 #include "../storage/PSRAM_controller.hpp"
@@ -32,7 +33,21 @@
 // Each load() call performs at most this many SD reads before returning, so
 // a large refill (from the low watermark up to the target) spreads across
 // many main-loop ticks instead of blocking it in one big synchronous burst.
-#define AUDIO_MAX_CHUNKS_PER_LOAD_CALL 4
+// 16 chunks (64 KB) keeps the refill rate above the VS1053's burst drain.
+#define AUDIO_MAX_CHUNKS_PER_LOAD_CALL 16
+// Wall-clock backstop on top of the chunk-count cap above. load() now feeds
+// the VS1053 between chunks (see the onChunkLoaded doc comment below), which
+// fixed FIFO starvation during a refill burst - but that interleaved feeding
+// is itself extra time spent inside a single AudioPlayer::loop() call, on
+// top of the SD reads. AudioPlayer::loop() runs after the wheel/UI are
+// polled each main-loop tick (see main.cpp), so a load() call that runs too
+// long (slow SD card, or a lot of FIFO to top up) delays the next tick's
+// wheel/UI polling by the same amount - felt as sluggish wheel input while
+// playing. Capping load()'s total wall time, independent of chunk count,
+// bounds that per-tick cost the same way AUDIO_MAX_FEED_MS already bounds
+// the plain feed loop; the rest of the refill just continues on the next
+// tick(s), same as when the chunk-count cap alone stops it early.
+#define AUDIO_MAX_LOAD_MS 40
 // Bounded refill used right after a seek: just enough to bridge until the
 // next couple of loop() ticks top the buffer back up to the full target
 // above. Filling all the way to AUDIO_TARGET_BUFFERED_BYTES synchronously
@@ -76,8 +91,23 @@ public:
   // Tops the ring buffer up to targetBufferedBytes (default: the full
   // streaming target). Pass a smaller value for a bounded refill, e.g.
   // right after a seek (see AUDIO_SEEK_PRIME_BYTES).
-  bool load(size_t targetBufferedBytes = AUDIO_TARGET_BUFFERED_BYTES);
+  //
+  // onChunkLoaded, if given, is invoked after every SD chunk this call
+  // lands (not just once the whole refill is done). A multi-chunk refill
+  // burst (AUDIO_MAX_CHUNKS_PER_LOAD_CALL) can otherwise run for a while
+  // with nothing feeding the VS1053, and its onboard FIFO is only ~2KB - it
+  // starves during that gap regardless of codec/bitrate. The caller (e.g.
+  // AudioPlayer::loop()) passes a callback that drains the VS1053 as far as
+  // DREQ allows, so refilling never blocks feeding for more than one
+  // chunk's worth of time (see flac-feed-problem.md).
+  bool load(size_t targetBufferedBytes = AUDIO_TARGET_BUFFERED_BYTES,
+           const std::function<void()> &onChunkLoaded = nullptr);
   size_t readData(uint8_t *buffer, size_t maxLen);
+  // ISR-safe read: same as readData() but does NOT touch interrupts, for use
+  // from the DREQ interrupt handler (where interrupts are already off and
+  // re-enabling them would allow re-entrancy). The main loop must make its own
+  // PSRAM/SD access atomic (see SDtoPSRAM) so this never races it.
+  size_t readDataForISR(uint8_t *buffer, size_t maxLen);
   SdFat &getSD() { return _sd; }
   void resetRingBuffer();
   // Track length in seconds as supplied via setFileName()/prepareNextTrack()
@@ -92,6 +122,12 @@ public:
   // calling load() below AUDIO_LOW_WATERMARK_BYTES) without reaching into
   // protected ring-buffer internals.
   size_t getBufferedBytes() { return getPSRAMDataSize(); }
+
+  // True when the current track is genuinely over: the source file has been
+  // fully read AND the ring buffer is empty. False when the buffer is merely
+  // empty because SDtoPSRAM() hasn't topped it back up yet - the caller must
+  // keep streaming and refill rather than treat that gap as end-of-track.
+  bool isFileExhausted();
 
   // --- Next-track prefetch (see memory-improvements.md §3) ---
   // Call once the current track starts playing, with the filename/duration

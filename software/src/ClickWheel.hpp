@@ -17,6 +17,12 @@ public:
   static const int16_t DEGREES_PER_TRACK = 10;  // Reduced from 20 - more sensitive
   static const int16_t WHEEL_ANGLE_PER_TICK = 10; // Reduced from 20 - more sensitive
 
+  // Software touch thresholds applied to the baseline-compensated delta in
+  // getWheelAngle() (separate from the MPR121's own hardware touch
+  // threshold, which is what touched()/getTouchedMask() reflects).
+  static const int16_t TOUCH_THRESHOLD = 6;       // min dominant-pad delta to count as a wheel touch
+  static const int16_t SECOND_PAD_THRESHOLD = 3;  // min 2nd-pad delta to interpolate instead of snapping
+
 private:
   // Hardware
   Adafruit_MPR121 *mpr121;
@@ -114,10 +120,10 @@ public:
     }
 
     // Check for sufficient touch
-    if (firstMaxVal < 6) return -1;
+    if (firstMaxVal < TOUCH_THRESHOLD) return -1;
 
     // Single pad active - return center angle
-    if (secondMaxVal < 3 || secondMaxIdx == -1) {
+    if (secondMaxVal < SECOND_PAD_THRESHOLD || secondMaxIdx == -1) {
       return (int16_t)angleForElectrode(wheelPads[firstMaxIdx]);
     }
 
@@ -289,7 +295,14 @@ public:
   bool isBottomPressed() const { return bottomPressed; }
   bool wasBottomJustPressed() const { return bottomPressFired; }
   bool isCalibrating() const { return calibrationState == CALIB_RUNNING; }
-  
+
+  // Debug/HUD interface: raw MPR121 hardware touch bits (independent of the
+  // software delta threshold above) and the in-progress tap/scroll
+  // disambiguation state, so a caller can see *why* a tap did or didn't fire.
+  uint16_t getTouchedMask() const { return mpr121->touched(); }
+  bool isTopTapCandidate() const { return topTapCandidate; }
+  bool isBottomTapCandidate() const { return bottomTapCandidate; }
+
   // Scroll interface
   float getScrollDegrees() const { return scrollAccumulator; }
   int getScrollClicks() const { return (int)(scrollAccumulator / DEGREES_PER_TRACK); }
