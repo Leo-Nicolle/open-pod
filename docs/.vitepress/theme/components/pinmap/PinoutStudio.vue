@@ -900,8 +900,8 @@ function onCopy() {
         
         class="board-container"
         >
-          <div v-for="cn in boardLeft" :key="cn.id" 
-          :class="`${cn.id}`"
+          <div v-for="(cn, i) in boardLeft" :key="cn.id"
+          :class="`slot-left-${i}`"
           style="display: flex; flex-direction: column; gap: 6px">
             <span
               style="
@@ -929,8 +929,8 @@ function onCopy() {
               </button>
             </div>
           </div>
-          <div v-for="cn in boardRight"
-          :class="`${cn.id}`"
+          <div v-for="(cn, i) in boardRight"
+          :class="`slot-right-${i}`"
           :key="cn.id" style="display: flex; flex-direction: column; gap: 6px">
             <span
               style="
@@ -1430,26 +1430,31 @@ function onCopy() {
   align-items: start;
   gap: 12px;
 }
-.CN7{
+/* Slots are positional (index within boardLeft/boardRight), not tied to a
+   connector id — boardLeft/boardRight already reorder on flip, so the same
+   four slots (tall left, stacked left, stacked right, tall right) just get
+   filled by different connectors in bottom view instead of needing a
+   separate flipped ruleset. */
+.slot-left-0{
   grid-area: 1 / 1 / 3 / 2 ;
 }
-.CN6{
+.slot-left-1{
  grid-area: 1 / 2 / 2 / 3;
 }
-.CN8{
+.slot-left-2{
  grid-area: 2 / 2 / 3 / 3;
 
 }
 
-.CN5{
+.slot-right-0{
  grid-area: 1 / 3 / 2 / 4;
 
 }
-.CN9{
+.slot-right-1{
  grid-area: 2 / 3 / 3 / 4;
 
 }
-.CN10{
+.slot-right-2{
   grid-area: 1 / 4 / 3 / 5 ;
 
 }

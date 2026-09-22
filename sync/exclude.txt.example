@@ -1,0 +1,8 @@
+# Copy to sync/exclude.txt and list folders to skip, one library-relative
+# path per line. '#' starts a comment. Anything under an excluded path is
+# skipped (and removed from the SD card on the next sync).
+#
+# Examples:
+#   Podcasts
+#   Various Artists/Bootlegs
+#   audiobooks

@@ -4,6 +4,7 @@ export interface AssignmentPin {
   pin: string;
   role: string;
   macro?: string;
+  note?: string;
 }
 
 export interface Assignment {

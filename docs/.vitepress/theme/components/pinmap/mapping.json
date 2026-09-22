@@ -54,8 +54,16 @@
       { "pin": "PC11", "role": "D11" },
       { "pin": "PC12", "role": "D12" },
       { "pin": "PC13", "role": "D13" },
-      { "pin": "PC14", "role": "D14" },
-      { "pin": "PC15", "role": "D15" }
+      {
+        "pin": "PC14",
+        "role": "D14",
+        "note": "Default mapping for a working Nucleo. On one specific hand-soldered prototype this pin is dead at the silicon level (see .agents/screen-red-problem.md) - that board reroutes D14 to PA0 under the BROKEN_NUCLEO build flag in platformio.ini. Not a general hardware issue; leave this as PC14 unless you know your board is that prototype."
+      },
+      {
+        "pin": "PC15",
+        "role": "D15",
+        "note": "Default mapping for a working Nucleo. Dead on the same hand-soldered prototype as PC14 above - rerouted to PA1 under the BROKEN_NUCLEO build flag. See .agents/screen-red-problem.md."
+      }
     ]
   },
   {

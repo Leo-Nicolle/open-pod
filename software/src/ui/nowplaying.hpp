@@ -69,13 +69,16 @@ private:
   bool coverValid;
 
   // Layout constants (dark theme: art on the left, metadata on the right,
-  // every animated element in the bottom 30px chunk).
-  static const int ALBUM_ART_X = 16;
-  static const int ALBUM_ART_Y = 56;
-  static const int ALBUM_ART_SIZE = 128; // matches the generated thumbnail size
-  static const int METADATA_X = 160;
-  static const int TITLE_Y = 64;
-  static const int ALBUM_Y = 90;
+  // every animated element in the bottom 30px chunk). Matches
+  // docs/ui-builder's box spec: album art 8,40 160x160 (largest square that
+  // leaves a readable 132px metadata column); title 180,40 132x32; album
+  // 180,96.
+  static const int ALBUM_ART_X = 8;
+  static const int ALBUM_ART_Y = 40;
+  static const int ALBUM_ART_SIZE = 160; // matches the generated thumbnail size
+  static const int METADATA_X = 180;
+  static const int TITLE_Y = 40;
+  static const int ALBUM_Y = 96;
   static const int BOTTOM_BAND_Y = 210; // one CHUNK_HEIGHT boundary (7 * 30)
 
   // Bottom band geometry.

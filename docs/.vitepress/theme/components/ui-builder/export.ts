@@ -1,10 +1,14 @@
 // Rasterization + RGB565/BGR565 export for the UI builder.
 //
-// The firmware's ILI9341 is wired BGR (MADCTL BGR bit set), so sprites are
-// packed with blue in the high bits — the same convention as theme.h's
-// BGR565() macro and scripts/gen-sprites.py. The UI exposes a toggle between
-// that BGR565 packing and plain RGB565 (RGB-ordered) for panels wired the
-// other way.
+// The firmware's ILI9341 panel is physically BGR-subpixel-ordered, but its
+// MADCTL BGR bit (set in ILI9341_GFX::setRotation) already compensates for
+// that in hardware, transparently - software is supposed to send plain
+// RGB565, matching theme.h's HEX_TO_RGB565 and .ui-work/gen-sprites.py. See
+// .agents/screen-red-problem.md for the full diagnosis (D14/D15 pin damage
+// was the actual root cause of the original "everything is blue" symptom,
+// not a BGR/RGB mismatch). The UI still exposes a BGR565 toggle for a panel
+// genuinely wired/configured the other way, but it defaults OFF (RGB565)
+// for this reason - don't flip its default back to BGR565.
 
 import type { Palette } from './palette';
 import { hexToRgb, PALETTE_META } from './palette';
@@ -185,8 +189,16 @@ export function buildThemeHeader(p: Palette, bgr: boolean): string {
   lines.push('// Auto-generated Now Playing theme (see docs/ui-builder).');
   lines.push('// Packing: ' + (bgr ? 'BGR565 (blue in high bits)' : 'RGB565 (red in high bits)') + '.');
   lines.push('');
-  lines.push('#define RGB565(r, g, b) (((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3))');
-  lines.push('#define BGR565(r, g, b) (((b & 0xF8) << 8) | ((g & 0xFC) << 3) | (r >> 3))');
+  // Every parameter use is individually parenthesized - not just each term -
+  // because HEX_TO_RGB565/HEX_TO_BGR565 below pass an unshifted `(hex) & 0xFF`
+  // for whichever channel lands in the `>> 3` slot here. Since `>>` binds
+  // tighter than `&` in C, an unparenthesized `(x >> 3)` receiving that text
+  // becomes `hex & (0xFF >> 3)` = `hex & 0x1F` - masking the whole 24-bit hex
+  // value instead of shifting the already-extracted byte. See
+  // .agents/screen-red-problem.md - a version of this file without the extra
+  // parens shipped that exact bug.
+  lines.push('#define RGB565(r, g, b) ((((r) & 0xF8) << 8) | (((g) & 0xFC) << 3) | ((b) >> 3))');
+  lines.push('#define BGR565(r, g, b) ((((b) & 0xF8) << 8) | (((g) & 0xFC) << 3) | ((r) >> 3))');
   lines.push('#define HEX_TO_RGB565(hex) RGB565(((hex) >> 16) & 0xFF, ((hex) >> 8) & 0xFF, (hex) & 0xFF)');
   lines.push('#define HEX_TO_BGR565(hex) BGR565(((hex) >> 16) & 0xFF, ((hex) >> 8) & 0xFF, (hex) & 0xFF)');
   lines.push('');

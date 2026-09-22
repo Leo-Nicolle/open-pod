@@ -16,7 +16,13 @@ import SpriteStage from './SpriteStage.vue';
 
 const palette = reactive<Palette>({ ...DEFAULT_PALETTE });
 const presetName = ref<string>(PRESETS[1].name);
-const bgr = ref(true); // BGR565 by default (panel is wired BGR)
+// RGB565 by default: the ILI9341's MADCTL BGR bit already compensates for
+// this panel's physically BGR-ordered subpixels in hardware (see
+// .agents/screen-red-problem.md), so software should send plain RGB565.
+// The BGR565 toggle stays available for a panel wired/configured the other
+// way, but it is NOT the default for this hardware - flipping it on is what
+// caused a repeated "why does the UI look wrong again" regression here.
+const bgr = ref(false);
 const zoom = ref(1);
 const grid = ref(false);
 const playing = ref(true);
