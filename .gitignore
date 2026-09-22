@@ -21,5 +21,8 @@ scripts/*.zip
 scripts/*.h
 sd-card/
 
+# Scratch copy of software/ used for the UI redesign (docs/ui-builder work).
+.ui-work/
+
 # graft's local graph cache — regenerable, not committed (run `graft build`).
 /graft/
