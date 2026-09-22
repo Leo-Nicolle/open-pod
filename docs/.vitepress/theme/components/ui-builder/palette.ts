@@ -1,8 +1,8 @@
 // Color palette model for the Now Playing UI builder.
 //
-// The screen (ILI9341, 320x240, RGB565) is themed by 9 colors. Six of them are
-// "structural" (background, surfaces, text levels) and three are the accent
-// family that changes between presets. All of them are editable here.
+// The screen (ILI9341, 320x240, RGB565) is themed by 13 colors. Ten of them are
+// "structural" (background, surfaces, text levels, list chrome) and three are
+// the accent family that changes between presets. All of them are editable here.
 
 export type PaletteKey =
   | 'bg'
@@ -11,6 +11,10 @@ export type PaletteKey =
   | 'text'
   | 'dim'
   | 'muted'
+  | 'textHi'
+  | 'separator'
+  | 'scrollTrack'
+  | 'ribbon'
   | 'accent'
   | 'accentDark'
   | 'accentAlt';
@@ -22,6 +26,10 @@ export interface Palette {
   text: string;
   dim: string;
   muted: string;
+  textHi: string;
+  separator: string;
+  scrollTrack: string;
+  ribbon: string;
   accent: string;
   accentDark: string;
   accentAlt: string;
@@ -43,6 +51,10 @@ export const PALETTE_META: PaletteMeta[] = [
   { key: 'text', name: 'COLOR_TEXT', label: 'Text', description: 'Title, elapsed time, clock' },
   { key: 'dim', name: 'COLOR_DIM', label: 'Dim', description: 'Artist, secondary numbers' },
   { key: 'muted', name: 'COLOR_MUTED', label: 'Muted', description: 'Album, total time, inactive chips' },
+  { key: 'textHi', name: 'COLOR_TEXT_HI', label: 'Text high', description: 'Title of the selected list row' },
+  { key: 'separator', name: 'COLOR_SEPARATOR', label: 'Separator', description: 'List row separators, one shade above BG' },
+  { key: 'scrollTrack', name: 'COLOR_SCROLL_TRACK', label: 'Scroll track', description: 'List scrollbar track' },
+  { key: 'ribbon', name: 'COLOR_RIBBON', label: 'Ribbon', description: 'Search letter ribbon, cover placeholder' },
   { key: 'accent', name: 'COLOR_ACCENT', label: 'Accent', description: 'Progress fill, active state' },
   { key: 'accentDark', name: 'COLOR_ACCENT_DK', label: 'Accent dark', description: 'Seek track fill behind the handle' },
   { key: 'accentAlt', name: 'COLOR_ACCENT_ALT', label: 'Accent alt', description: 'Seek handle, SEEK chip' },
@@ -55,6 +67,10 @@ export const DEFAULT_PALETTE: Palette = {
   text: '#F2EDE6',
   dim: '#9B918A',
   muted: '#6E655F',
+  textHi: '#FFFFFF',
+  separator: '#1B1917',
+  scrollTrack: '#23201E',
+  ribbon: '#171513',
   accent: '#31AAA9',
   accentDark: '#6C1A1A',
   accentAlt: '#F8E0A4',
