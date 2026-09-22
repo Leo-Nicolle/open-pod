@@ -24,6 +24,120 @@ function getOrAdd<T>(
   return map.get(key)!;
 }
 
+// Builds an old-id -> new-id map that relabels entries 0..N-1 in
+// alphabetical order of their name. Ids are reassigned (rather than just
+// sorted at export time) so that the *numeric* id order - which is what both
+// the firmware's binary search over id arrays and its positional "browse
+// all" reads rely on - already is alphabetical order, with no firmware
+// changes required.
+function buildAlphabeticalRemap(
+  indexToName: Map<number, string>
+): Map<number, number> {
+  const sortedIds = Array.from(indexToName.keys()).sort((a, b) =>
+    indexToName
+      .get(a)!
+      .localeCompare(indexToName.get(b)!, undefined, { sensitivity: "base" })
+  );
+  const remap = new Map<number, number>();
+  sortedIds.forEach((oldId, newId) => remap.set(oldId, newId));
+  return remap;
+}
+
+function remapMapKeys<V>(
+  map: Map<number, V>,
+  remap: Map<number, number>
+): Map<number, V> {
+  const result = new Map<number, V>();
+  for (const [oldId, value] of map.entries()) {
+    result.set(remap.get(oldId)!, value);
+  }
+  return result;
+}
+
+function remapRelationshipMap(
+  map: Map<number, Set<number>>,
+  sourceRemap: Map<number, number>,
+  targetRemap: Map<number, number>
+): Map<number, Set<number>> {
+  const result = new Map<number, Set<number>>();
+  for (const [oldSourceId, targets] of map.entries()) {
+    const newTargets = new Set<number>();
+    for (const oldTargetId of targets) {
+      newTargets.add(targetRemap.get(oldTargetId)!);
+    }
+    result.set(sourceRemap.get(oldSourceId)!, newTargets);
+  }
+  return result;
+}
+
+// Relabels every id in the crawl result so that artists, albums, genres and
+// tracks are each numbered in alphabetical order of their name. Because the
+// exported binary indexes are always written in ascending-id order (see
+// exportStringIndexToBinary/exportRelationshipMapToBinary in
+// music-indexes.ts) and the firmware browses/binary-searches those arrays by
+// that same id order, this makes the "browse all artists/albums/genres/
+// tracks" lists come out alphabetical on-device with no firmware change.
+// Tracks within an album stay ordered by (now-alphabetical) track id, since
+// album_to_tracks targets are already sorted ascending on export.
+export function sortIndexesAlphabetically(indexes: CrawlIndex): CrawlIndex {
+  const artistRemap = buildAlphabeticalRemap(indexes.indexToArtist);
+  const albumRemap = buildAlphabeticalRemap(indexes.indexToAlbum);
+  const genreRemap = buildAlphabeticalRemap(indexes.indexToGenre);
+  const trackRemap = buildAlphabeticalRemap(indexes.indexToTrack);
+
+  const trackToAlbum = new Map<number, number>();
+  for (const [oldTrackId, oldAlbumId] of indexes.trackToAlbum.entries()) {
+    trackToAlbum.set(
+      trackRemap.get(oldTrackId)!,
+      albumRemap.get(oldAlbumId)!
+    );
+  }
+
+  return {
+    indexToTrack: remapMapKeys(indexes.indexToTrack, trackRemap),
+    indexToArtist: remapMapKeys(indexes.indexToArtist, artistRemap),
+    indexToAlbum: remapMapKeys(indexes.indexToAlbum, albumRemap),
+    indexToGenre: remapMapKeys(indexes.indexToGenre, genreRemap),
+    indexToPath: remapMapKeys(indexes.indexToPath, trackRemap),
+    metadataByTrackIndex: remapMapKeys(
+      indexes.metadataByTrackIndex,
+      trackRemap
+    ),
+    artistToAlbums: remapRelationshipMap(
+      indexes.artistToAlbums,
+      artistRemap,
+      albumRemap
+    ),
+    albumToTracks: remapRelationshipMap(
+      indexes.albumToTracks,
+      albumRemap,
+      trackRemap
+    ),
+    artistToTracks: remapRelationshipMap(
+      indexes.artistToTracks,
+      artistRemap,
+      trackRemap
+    ),
+    genreToAlbums: remapRelationshipMap(
+      indexes.genreToAlbums,
+      genreRemap,
+      albumRemap
+    ),
+    genreToTracks: remapRelationshipMap(
+      indexes.genreToTracks,
+      genreRemap,
+      trackRemap
+    ),
+    genreToArtists: remapRelationshipMap(
+      indexes.genreToArtists,
+      genreRemap,
+      artistRemap
+    ),
+    albumThumbnails: remapMapKeys(indexes.albumThumbnails, albumRemap),
+    trackToAlbum,
+  };
+}
+
 export async function crawl(
   root: string,
   callback?: CrawlCallback
@@ -187,7 +301,7 @@ export async function readMetadata(
   });
 
   // Optionally, you can serialize this to a JSON or binary format here
-  return {
+  return sortIndexesAlphabetically({
     indexToTrack,
     indexToArtist,
     indexToAlbum,
@@ -202,7 +316,7 @@ export async function readMetadata(
     genreToArtists,
     albumThumbnails,
     trackToAlbum,
-  };
+  });
 }
 
 export function serialize(indexes: CrawlIndex): string {

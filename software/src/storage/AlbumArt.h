@@ -22,7 +22,7 @@ class AlbumArt {
 private:
   FsFile thumbsFile;
   bool ready = false;
-  static const uint32_t COVER_WIDTH = 128;
+  static const uint32_t COVER_WIDTH = 160; // matches indexer's THUMB_SIZE
   static const uint32_t ROW_BYTES = COVER_WIDTH * 2; // raw565: 2 bytes/pixel
 
 public:

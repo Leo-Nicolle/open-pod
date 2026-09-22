@@ -57,7 +57,7 @@ async function makeFlatLogoPng(): Promise<Buffer> {
 }
 
 describe("thumbnails pipeline", () => {
-  it("produces a 128x128 QOI thumbnail from a photographic source", async () => {
+  it("produces a THUMB_SIZE x THUMB_SIZE QOI thumbnail from a photographic source", async () => {
     const source = await makeGradientCoverJpeg();
     const result = await generateAlbumThumbnail({
       source,
@@ -217,7 +217,7 @@ describe("thumbnails pipeline", () => {
     expect(canReuseCachedThumbnail(undefined, hash1)).toBe(false);
   });
 
-  it("generatePlaceholderRGB always fills a full 128x128 buffer", () => {
+  it("generatePlaceholderRGB always fills a full THUMB_SIZE x THUMB_SIZE buffer", () => {
     const rgb = generatePlaceholderRGB();
     expect(rgb.length).toBe(THUMB_SIZE * THUMB_SIZE * 3);
   });

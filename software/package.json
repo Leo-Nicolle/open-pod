@@ -19,6 +19,5 @@
     "test:report": "../scripts/pio.sh test -e test_native -v | ../scripts/reporter.js"
   },
   "author": "Leo Nicolle",
-  "license": "MIT",
-  "devDependencies": {}
+  "license": "MIT"
 }

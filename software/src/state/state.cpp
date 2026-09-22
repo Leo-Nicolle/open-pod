@@ -195,16 +195,26 @@ void State::loadCurrentRouteData(MusicLookup &musicLookup) {
         count = musicLookup.getTracksByArtist(
             currentRoute.entityId, elementsBuffer, ELEMENTS_BUFFER_SIZE,
             stringPointers, MAX_STRING_POINTERS);
+        currentRoute.hasMore = false; // Relationship lookups return all results
       } else if (parentRoute.type == Route_t::ALBUMS) {
         count = musicLookup.getTracksByAlbum(
             currentRoute.entityId, elementsBuffer, ELEMENTS_BUFFER_SIZE,
             stringPointers, MAX_STRING_POINTERS);
+        currentRoute.hasMore = false; // Relationship lookups return all results
       } else if (parentRoute.type == Route_t::GENRES) {
         count = musicLookup.getTracksByGenre(
             currentRoute.entityId, elementsBuffer, ELEMENTS_BUFFER_SIZE,
             stringPointers, MAX_STRING_POINTERS);
+        currentRoute.hasMore = false; // Relationship lookups return all results
+      } else {
+        // Reached directly from ROOT ("Tracks" root menu item) - browse the
+        // full track catalog rather than a relationship-scoped subset.
+        count = musicLookup.getAllTracks(
+            elementsBuffer, ELEMENTS_BUFFER_SIZE, stringPointers,
+            MAX_STRING_POINTERS,
+            currentRoute.currentPage * MAX_STRING_POINTERS);
+        currentRoute.hasMore = (count == MAX_STRING_POINTERS);
       }
-      currentRoute.hasMore = false; // Relationship lookups return all results
     }
     break;
 
@@ -351,8 +361,8 @@ void State::goToSelected(MusicLookup &musicLookup) {
   case Route_t::ROOT: {
     const MenuItem &selectedItem = rootMenu.getItem(selectedIndex);
     switch (selectedItem.id) {
-    case 1: // Tracks - go to all tracks view
-      // TODO: Implement all tracks browsing
+    case 1: // Tracks - browse the full track catalog
+      newRouteType = Route_t::TRACKS;
       break;
     case 2: // Artists
       newRouteType = Route_t::ARTISTS;
@@ -405,7 +415,12 @@ void State::goToSelected(MusicLookup &musicLookup) {
     musicLookup.getGenreName(genreId, name, sizeof(name));
     entityId = genreId;
     entityName = name;
-    newRouteType = Route_t::ARTISTS;
+    // Genre -> Albums (scoped via getAlbumsByGenre/getAlbumIdByGenreAtIndex),
+    // mirroring the Artist -> Albums step. Genre -> Artists is not wired up
+    // (genre_to_artists is never loaded from SD - see MusicLookup::init()),
+    // so routing here used to silently drop the genre scope and fall through
+    // to the unfiltered "all artists" list.
+    newRouteType = Route_t::ALBUMS;
     break;
   }
 
@@ -592,6 +607,9 @@ uint32_t State::getSelectedEntityId(MusicLookup &musicLookup) {
         return musicLookup.getTrackIdByGenreAtIndex(currentRoute.entityId,
                                                     selectedIndex);
       }
+      // Reached directly from ROOT ("Tracks" root menu item) - selectedIndex
+      // indexes the flat track catalog, not a relationship-scoped subset.
+      return musicLookup.getTrackIdAtIndex(selectedIndex);
     }
     break;
 
@@ -615,6 +633,10 @@ uint32_t State::resolveTrackId(MusicLookup &musicLookup, int index) {
     return musicLookup.getTrackIdByAlbumAtIndex(playingListEntityId, index);
   case Route_t::GENRES:
     return musicLookup.getTrackIdByGenreAtIndex(playingListEntityId, index);
+  case Route_t::ROOT:
+    // Played from the flat "Tracks" root menu list - index is absolute into
+    // the full track catalog, not scoped to any artist/album/genre.
+    return musicLookup.getTrackIdAtIndex(index);
   default:
     return UINT32_MAX; // Not found - 0 is a valid id, can't mean "not found"
   }

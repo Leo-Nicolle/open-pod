@@ -1,10 +1,10 @@
-// Generates display-ready 128x128 album-art thumbnails for the U5 firmware.
+// Generates display-ready 160x160 album-art thumbnails for the U5 firmware.
 // See .agents/thumbnails-plan.md for the full design rationale.
 //
 // MCU decode contract (must stay in sync with the firmware):
-//   - QOI blobs: standard QOI, 3-channel, sRGB, 128x128, pixel values already
+//   - QOI blobs: standard QOI, 3-channel, sRGB, 160x160, pixel values already
 //     quantized to 5/6/5 levels (so 888->565 packing on the MCU is lossless).
-//   - raw565 blobs: little-endian RGB565, 128x128, row-major, no header.
+//   - raw565 blobs: little-endian RGB565, 160x160, row-major, no header.
 //   - Row order is top-left origin, row-major, matching the panel window write.
 //   - 565 packing: (R&0xF8)<<8 | (G&0xFC)<<3 | (B>>3)
 import fs from "fs/promises";
@@ -13,10 +13,12 @@ import { createHash } from "crypto";
 import sharp from "sharp";
 import { parseFile } from "music-metadata";
 
-export const THUMB_SIZE = 128;
+// 160x160 (docs/ui-builder: "largest square that leaves a readable 132px
+// metadata column" - see software/src/ui/nowplaying.hpp's ALBUM_ART_SIZE).
+export const THUMB_SIZE = 160;
 // Bump when resize kernel / quantization / format assumptions change so a
 // stale thumbs.bin can be detected and fully rebuilt.
-export const THUMBNAIL_PIPELINE_VERSION = 1;
+export const THUMBNAIL_PIPELINE_VERSION = 2; // 2: THUMB_SIZE 128 -> 160
 
 export type ThumbnailFormat = "qoi" | "raw565";
 
