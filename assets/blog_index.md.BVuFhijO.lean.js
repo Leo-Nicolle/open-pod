@@ -1,0 +1,1 @@
+import{_ as e,a as i,o as l,Y as t}from"./chunks/framework.BFAekxW2.js";const m=JSON.parse('{"title":"Blog","description":"","frontmatter":{},"headers":[],"relativePath":"blog/index.md","filePath":"blog/index.md"}'),r={name:"blog/index.md"};function o(n,a,h,s,d,c){return l(),i("div",null,a[0]||(a[0]=[t("",7)]))}const f=e(r,[["render",o]]);export{m as __pageData,f as default};

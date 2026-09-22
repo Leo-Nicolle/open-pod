@@ -1,0 +1,1 @@
+import{_ as a,a as n,o as i,Y as p}from"./chunks/framework.BFAekxW2.js";const o=JSON.parse('{"title":"Covers","description":"","frontmatter":{},"headers":[],"relativePath":"blog/20-09.md","filePath":"blog/20-09.md"}'),e={name:"blog/20-09.md"};function l(t,s,h,k,r,d){return i(),n("div",null,s[0]||(s[0]=[p("",26)]))}const E=a(e,[["render",l]]);export{o as __pageData,E as default};

@@ -1,0 +1,1 @@
+import{_ as r,a,o as t,Y as s}from"./chunks/framework.BFAekxW2.js";const _=JSON.parse('{"title":"","description":"","frontmatter":{},"headers":[],"relativePath":"notes.md","filePath":"notes.md"}'),l={name:"notes.md"};function o(i,e,n,c,d,f){return t(),a("div",null,e[0]||(e[0]=[s("",4)]))}const p=r(l,[["render",o]]);export{_ as __pageData,p as default};
