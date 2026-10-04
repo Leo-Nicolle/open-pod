@@ -1,6 +1,7 @@
 #include "Adafruit_MPR121.h"
 #include "ClickWheel.hpp"
 #include "WheelTrace.hpp"
+#include "pinout.h"
 #include "rendering/ILI9341_GFX.h"
 #include "sound/player.h"
 #include "state/state.h"
@@ -25,7 +26,7 @@ ClickWheel wheel(&cap);
 WheelTrace trace;
 
 // Control settings
-bool enableTeleplot = false;
+bool enableTeleplot = true;
 bool enableTrace = false;
 // Runs ILI9341_GFX::runDisplayDiagnostics() right after display.begin() and
 // before the ClickWheel/MPR121 init (which halts setup() if that hardware
@@ -124,7 +125,7 @@ void setup()
   Wire3.begin();
   Wire3.setClock(100000);
 
-  if (!cap.begin(0x5A, &Wire3))
+  if (!cap.begin(MPR121_ADDR, &Wire3))
   {
     Serial.println("❌ MPR121 not found!");
     while (1)
@@ -461,6 +462,7 @@ bool shouldUpdateTelemetry()
 void sendTelemetry()
 {
   // Send telemetry data for debugging
+  return;
   Serial.print(">delta_top:");
   Serial.println(wheel.getDelta(ClickWheel::TOP));
   Serial.print(">delta_right:");

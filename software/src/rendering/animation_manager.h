@@ -83,6 +83,16 @@ public:
     // Remove completed animations to make room
     cleanupAnimations();
 
+    // lastFrameTime only advances while update() is actively ticking an
+    // animation - if nothing was animating, it's stale from whenever the
+    // last one finished. Without resetting it here, this new animation's
+    // very first tick would measure "time since the last animation ended"
+    // (which can be seconds) as its frameTime, swamping
+    // getPerformanceStats()'s avg/max with a bogus outlier every time.
+    if (!isAnimating) {
+      lastFrameTime = micros();
+    }
+
     Animation anim;
     anim.id = nextAnimId++;
     anim.type = type;

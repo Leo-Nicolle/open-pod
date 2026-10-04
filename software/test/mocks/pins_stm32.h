@@ -36,3 +36,5 @@
 #define PB13 29
 #define PB14 30
 #define PB15 31
+
+#define PD2 50
