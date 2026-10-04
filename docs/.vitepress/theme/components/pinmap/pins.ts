@@ -1,4 +1,4 @@
-import raw from "./pins.json";
+import raw from "../../../../public/pins.json";
 
 export type PinType = "Power" | "I/O" | "Reset" | "Boot";
 

@@ -1,4 +1,4 @@
-import raw from "./mapping.json";
+import raw from "../../../../public/mapping.json";
 
 export interface AssignmentPin {
   pin: string;

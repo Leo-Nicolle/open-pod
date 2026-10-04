@@ -10,7 +10,7 @@ import { dirname, join } from "node:path";
 const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, "..");
 const pins = JSON.parse(
-  readFileSync(join(root, "docs/.vitepress/theme/components/pinmap/pins.json"), "utf8")
+  readFileSync(join(root, "docs/public/pins.json"), "utf8")
 );
 
 const io = (p) => {
