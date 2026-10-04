@@ -23,6 +23,13 @@
       },
       "enabled": true,
       "timeout": 30000
+    },
+    "blender": {
+      "type": "local",
+      "command": [
+        "blender-mcp"
+      ],
+      "enabled": true
     }
   }
 }
