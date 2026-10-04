@@ -20,6 +20,12 @@ scripts/*.png
 scripts/*.zip
 scripts/*.h
 sd-card/
+hardware/*/*.stl
+hardware/*/*auto_saved_files*
+hardware/*/*autosave*
+hardware/*/\~*
+hardware/*/*.lck
+hardware/*/*.blend1
 
 # Scratch copy of software/ used for the UI redesign (docs/ui-builder work).
 .ui-work/
