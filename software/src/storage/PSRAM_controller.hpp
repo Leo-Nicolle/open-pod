@@ -12,7 +12,7 @@
 // sync with SPI_PSRAM::getCapacity() below, which was already correct.
 #define PSRAM_SIZE                (8 * 1024 * 1024) // 8 MB PSRAM chip size
 #define AUDIO_BUFFER_BASE_ADDRESS 0x000
-// Current-track ring buffer. See memory-improvements.md for the full 8 MB
+// Current-track ring buffer. See docs/blog/09-10.md for the full 8 MB
 // budget (4 MB current-track + 1 MB cover buffer + 1 MB next-track prefetch
 // + 2 MB music index). 1 MB was reallocated from this buffer (was 5 MB) to
 // COVER_BUFFER_SIZE below for the on-device QOI-vs-raw565 cover benchmark.

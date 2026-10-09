@@ -70,7 +70,7 @@ public:
   // Advanced configuration
   bool configureAudioQuality(uint32_t targetSampleRate = 48000);
 
-  // Next-track prefetch (see memory-improvements.md §3): call once the
+  // Next-track prefetch (see docs/blog/09-10.md, "Buffers"): call once the
   // current track starts, with whatever comes next (if known), so its
   // opening bytes get pulled into PSRAM ahead of time and the eventual
   // track change usually needs zero fresh SD activity.

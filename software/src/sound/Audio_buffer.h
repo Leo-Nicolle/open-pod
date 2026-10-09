@@ -22,7 +22,7 @@
 // Sized to use most of the 4 MB AUDIO_BUFFER_SIZE reservation (leaving some
 // headroom rather than the exact byte capacity, same ~0.5 MB margin as
 // before 1 MB was reallocated to COVER_BUFFER_SIZE - see
-// PSRAM_controller.hpp and memory-improvements.md).
+// PSRAM_controller.hpp and docs/blog/09-10.md).
 #define AUDIO_TARGET_BUFFERED_BYTES (3584UL * 1024UL) // 3.5 MB
 // AudioPlayer::loop() only triggers a refill once the buffer has drained
 // below this low watermark, instead of topping up on every tick. This is
@@ -149,7 +149,7 @@ public:
   // ring buffer may still hold some of it).
   bool isFileFullyRead() { return file.isOpen() && (size_t)filePos >= fileSize; }
 
-  // --- Next-track prefetch (see memory-improvements.md §3) ---
+  // --- Next-track prefetch (see docs/blog/09-10.md, "Buffers") ---
   // Call once the current track starts playing, with the filename/duration
   // of whatever comes next (if known). Begins background prefetching of its
   // opening bytes into the dedicated NEXT_TRACK_BUFFER_SIZE region via

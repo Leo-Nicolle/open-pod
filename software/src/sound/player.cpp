@@ -82,8 +82,8 @@ void PodPlayer::startPendingTrack() {
     return;
   }
 
-  // Kick off background prefetch of whatever plays next (memory-improvements
-  // .md §3), so the eventual track change usually needs zero fresh SD
+  // Kick off background prefetch of whatever plays next (docs/blog/09-10.md,
+  // "Buffers"), so the eventual track change needs less fresh SD
   // activity. If there's no next track (end of list), drop any stale guess
   // left over from a previous playlist/track.
   uint32_t nextTrackId;
