@@ -37,9 +37,9 @@ public:
   static const unsigned long VERY_LONG_PRESS_MS = 2000;
 
   // Configuration
-  bool smoothingEnabled = true;
-  static const int16_t DEGREES_PER_TRACK = 10;  // Reduced from 20 - more sensitive
-  static const int16_t WHEEL_ANGLE_PER_TICK = 10; // Reduced from 20 - more sensitive
+  // Wheel travel per Scroll click. The finger angle is accumulated
+  // losslessly, so this is the real angle per click (15 -> 24 clicks/turn).
+  static constexpr float DEFAULT_DEGREES_PER_CLICK = 15.0;
 
   // Software touch thresholds applied to the baseline-compensated delta in
   // getWheelAngle() (separate from the MPR121's own hardware touch
@@ -80,7 +80,7 @@ private:
   uint8_t queueCount = 0;
 
   // Touch state
-  bool wheelTouched = false; // any wheel electrode touched (MPR121 HW bits)
+  bool wheelTouched = false; // finger on the wheel (software threshold, see update())
   
   // Wheel state
   int16_t wheelBaseline[12]; // Full baseline array for all 12 electrodes
@@ -88,7 +88,8 @@ private:
   bool baselineTaken = false;
   
   // Scroll tracking
-  float scrollAccumulator = 0.0;
+  float scrollAccumulator = 0.0; // degrees not yet turned into clicks
+  float degreesPerClick = DEFAULT_DEGREES_PER_CLICK;
   
   // Calibration state
   enum CalibState { CALIB_IDLE, CALIB_RUNNING, CALIB_COMPLETE };
@@ -185,39 +186,32 @@ public:
     return finalAngle;
   }
 
-  int16_t getWheelIncrement() {
-    int16_t curWheelAngle = getWheelAngle();
-
-    if (curWheelAngle == -1) {
+  // Signed degrees the finger moved since the previous sample (positive =
+  // counter-clockwise, the angle convention of getWheelAngle()). The
+  // reference follows every sample, so no movement is ever dropped.
+  int16_t getWheelIncrement(int16_t curWheelAngle) {
+    if (curWheelAngle == -1 || lastWheelAngle == -1) {
       lastWheelAngle = curWheelAngle;
       return 0;
     }
 
-    if ((lastWheelAngle == -1) && (curWheelAngle > -1)) {
-      lastWheelAngle = curWheelAngle;
-      return 0;
-    }
+    // Shortest way round, so crossing 0/360 isn't a full turn
+    int16_t delta = curWheelAngle - lastWheelAngle;
+    if (delta > 180) delta -= 360;
+    else if (delta < -180) delta += 360;
 
-    // Handle wrap-around for increment calculation
-    int16_t curWheelAngleAdj = curWheelAngle;
-    if (curWheelAngleAdj < (lastWheelAngle - 180)) {
-      curWheelAngleAdj += 360;
-    } else if (curWheelAngleAdj > (lastWheelAngle + 180)) {
-      curWheelAngleAdj -= 360;
-    }
-
-    int16_t delta = (curWheelAngleAdj - lastWheelAngle) / WHEEL_ANGLE_PER_TICK;
-    if (delta != 0) {
-      lastWheelAngle = curWheelAngle;
-    }
-
+    lastWheelAngle = curWheelAngle;
     return delta;
   }
 
   // Optional: MPR121 ~IRQ pin. When set, update() skips the I2C reads while
   // nothing is touched and IRQ is high (no touch-status change). While
   // anything is touched it keeps polling, because the scroll angle comes
-  // from filteredData(), and IRQ doesn't fire when that changes.
+  // from filteredData(), and IRQ doesn't fire when that changes. "Touched"
+  // includes our own software touch (lastWheelAngle != -1): the MPR121's
+  // auto-baseline slowly absorbs a finger that keeps moving around the wheel,
+  // so its hardware touch bits drop out mid-scroll while the finger is still
+  // clearly visible against our fixed wheelBaseline.
   void setIrqPin(int pin) {
     irqPin = pin;
     pinMode(irqPin, INPUT_PULLUP);
@@ -237,15 +231,19 @@ public:
     // short-circuits the capacitive reads.
     updateButtons();
 
-    if (irqPin >= 0 && lastTouchedMask == 0 && digitalRead(irqPin) == HIGH) {
+    if (irqPin >= 0 && lastTouchedMask == 0 && lastWheelAngle == -1 &&
+        digitalRead(irqPin) == HIGH) {
       return;
     }
 
-    uint16_t touched = mpr121->touched();
-    lastTouchedMask = touched;
-    const uint16_t wheelMask =
-        (1 << RIGHT) | (1 << TOP) | (1 << BOTTOM) | (1 << LEFT);
-    bool wheelTouchedNow = (touched & wheelMask) != 0;
+    // Reading the touch status also releases ~IRQ.
+    lastTouchedMask = mpr121->touched();
+
+    // Touch start/end follow the same software reading as the scroll, not
+    // the hardware touch bits (see setIrqPin()), so a scroll is never cut by
+    // a hardware release while the finger is still turning.
+    int16_t angle = getWheelAngle();
+    bool wheelTouchedNow = angle != -1;
 
     if (wheelTouchedNow && !wheelTouched) {
       resetScroll();
@@ -255,17 +253,9 @@ public:
     }
     wheelTouched = wheelTouchedNow;
 
-    // Process wheel increment
-    int16_t wheelIncrement = getWheelIncrement();
-    if (wheelIncrement != 0) {
-      float scrollAmount = wheelIncrement * DEGREES_PER_TRACK;
-      
-      if (smoothingEnabled) {
-        scrollAccumulator = 0.7 * scrollAccumulator + 0.3 * (scrollAccumulator + scrollAmount);
-      } else {
-        scrollAccumulator += scrollAmount;
-      }
-    }
+    // Clicks are cut from the accumulated angle; the remainder carries over,
+    // and a jittering finger has to travel a full click back to undo one.
+    scrollAccumulator += getWheelIncrement(angle);
 
     int clicks = consumeScrollClicks();
     if (clicks != 0) {
@@ -371,6 +361,8 @@ public:
 
   // Scroll interface (scroll clicks are delivered as Scroll events)
   float getScrollDegrees() const { return scrollAccumulator; }
+  void setDegreesPerClick(float deg) { degreesPerClick = deg; }
+  float getDegreesPerClick() const { return degreesPerClick; }
 
   // Debug methods
   int16_t getDelta(uint8_t electrode) const {
@@ -387,8 +379,8 @@ public:
   }
 
 private:
-  int getScrollClicks() const { return (int)(scrollAccumulator / DEGREES_PER_TRACK); }
-  int consumeScrollClicks() { int c = getScrollClicks(); scrollAccumulator -= c * DEGREES_PER_TRACK; return c; }
+  int getScrollClicks() const { return (int)(scrollAccumulator / degreesPerClick); }
+  int consumeScrollClicks() { int c = getScrollClicks(); scrollAccumulator -= c * degreesPerClick; return c; }
   void resetScroll() { scrollAccumulator = 0.0; }
 
   void pushEvent(const Event &e) {
