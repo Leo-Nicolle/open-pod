@@ -6,12 +6,36 @@
 class ClickWheel {
 public:
   // Electrode constants (hardware mapping)
-  static const int RIGHT = 1;
+  static const int RIGHT = 0;
   static const int TOP = 2;
   static const int BOTTOM = 3;
-  static const int LEFT = 4;
-  static const uint8_t CENTER_ELECTRODE = 0;
-  
+  static const int LEFT = 1;
+
+  // Mechanical buttons (Alps SKQGAKE010, see BTN_* in pinout.h)
+  enum class Button : uint8_t { Center, Top, Right, Bottom, Left, Count };
+  static const uint8_t BUTTON_COUNT = (uint8_t)Button::Count;
+
+  enum class EventType : uint8_t {
+    ButtonDown,    // debounced press edge
+    ButtonUp,      // debounced release edge
+    Click,         // released before LONG_PRESS_MS
+    LongPress,     // held >= LONG_PRESS_MS (once per hold, while still held)
+    VeryLongPress, // held >= VERY_LONG_PRESS_MS (once per hold)
+    Scroll,        // value = signed scroll clicks
+    TouchStart,    // capacitive wheel touch began
+    TouchEnd       // capacitive wheel touch ended
+  };
+
+  struct Event {
+    EventType type;
+    Button button; // valid for button events only
+    int16_t value; // scroll clicks for Scroll, 0 otherwise
+  };
+
+  static const unsigned long DEBOUNCE_MS = 20;
+  static const unsigned long LONG_PRESS_MS = 800;
+  static const unsigned long VERY_LONG_PRESS_MS = 2000;
+
   // Configuration
   bool smoothingEnabled = true;
   static const int16_t DEGREES_PER_TRACK = 10;  // Reduced from 20 - more sensitive
@@ -26,6 +50,8 @@ public:
 private:
   // Hardware
   Adafruit_MPR121 *mpr121;
+  int irqPin = -1;              // MPR121 ~IRQ, -1 = not wired (always poll)
+  uint16_t lastTouchedMask = 0; // last touched() result, gates the IRQ skip
   static const uint8_t WHEEL_ELECTRODES = 4;
   
   // Electrode mapping in clockwise order starting from TOP
@@ -35,16 +61,26 @@ private:
   float electrodeSensitivity[WHEEL_ELECTRODES] = {1.0, 1.0, 1.0, 1.0};
   bool sensitivityCalibrated = false;
   
+  // Button state (pins are active low, INPUT_PULLUP)
+  struct ButtonState {
+    int pin = -1;                    // -1 = not wired
+    bool rawPressed = false;         // last raw sample
+    unsigned long lastRawChange = 0; // when rawPressed last flipped
+    bool pressed = false;            // debounced
+    unsigned long pressStart = 0;
+    bool longFired = false;
+    bool veryLongFired = false;
+  };
+  ButtonState buttons[BUTTON_COUNT];
+
+  // Event queue (ring buffer, newest dropped on overflow)
+  static const uint8_t EVENT_QUEUE_SIZE = 16;
+  Event eventQueue[EVENT_QUEUE_SIZE];
+  uint8_t queueHead = 0;
+  uint8_t queueCount = 0;
+
   // Touch state
-  bool centerPressed = false;
-  bool lastCenterPressed = false;
-  bool topPressed = false;       // TOP electrode currently touched (raw)
-  bool topPressFired = false;    // one-shot: a top TAP completed (fires on release)
-  bool bottomPressed = false;    // BOTTOM electrode currently touched (raw)
-  bool bottomPressFired = false; // one-shot: a bottom TAP completed (fires on release)
-  bool wheelTouched = false;     // any wheel electrode currently touched
-  bool topTapCandidate = false;  // current wheel touch started on TOP
-  bool bottomTapCandidate = false; // current wheel touch started on BOTTOM
+  bool wheelTouched = false; // any wheel electrode touched (MPR121 HW bits)
   
   // Wheel state
   int16_t wheelBaseline[12]; // Full baseline array for all 12 electrodes
@@ -178,45 +214,46 @@ public:
     return delta;
   }
 
+  // Optional: MPR121 ~IRQ pin. When set, update() skips the I2C reads while
+  // nothing is touched and IRQ is high (no touch-status change). While
+  // anything is touched it keeps polling, because the scroll angle comes
+  // from filteredData(), and IRQ doesn't fire when that changes.
+  void setIrqPin(int pin) {
+    irqPin = pin;
+    pinMode(irqPin, INPUT_PULLUP);
+  }
+
+  void setButtonPins(int center, int top, int right, int bottom, int left) {
+    const int pins[BUTTON_COUNT] = {center, top, right, bottom, left};
+    for (uint8_t i = 0; i < BUTTON_COUNT; i++) {
+      buttons[i] = ButtonState();
+      buttons[i].pin = pins[i];
+      if (pins[i] >= 0) pinMode(pins[i], INPUT_PULLUP);
+    }
+  }
+
   void update() {
-    lastCenterPressed = centerPressed;
+    // Buttons first: they must keep working while the IRQ skip below
+    // short-circuits the capacitive reads.
+    updateButtons();
+
+    if (irqPin >= 0 && lastTouchedMask == 0 && digitalRead(irqPin) == HIGH) {
+      return;
+    }
 
     uint16_t touched = mpr121->touched();
-    centerPressed = (touched & (1 << CENTER_ELECTRODE)) != 0;
-    bool topTouched = (touched & (1 << TOP)) != 0;
-    bool bottomTouched = (touched & (1 << BOTTOM)) != 0;
+    lastTouchedMask = touched;
     const uint16_t wheelMask =
         (1 << RIGHT) | (1 << TOP) | (1 << BOTTOM) | (1 << LEFT);
     bool wheelTouchedNow = (touched & wheelMask) != 0;
 
-    // Top/Bottom TAP detection:
-    // - a press is only registered when the touch ENDS,
-    // - and only if the touch STARTED on that electrode (a roll/scroll that
-    //   starts elsewhere or rolls off it cancels the candidate).
-    topPressFired = false;
-    bottomPressFired = false;
     if (wheelTouchedNow && !wheelTouched) {
-      // wheel touch just started
-      topTapCandidate = topTouched;
-      bottomTapCandidate = bottomTouched;
-    } else if (wheelTouchedNow && wheelTouched) {
-      if (topTapCandidate && !topTouched) {
-        // finger rolled off TOP -> it's a scroll, not a tap
-        topTapCandidate = false;
-      }
-      if (bottomTapCandidate && !bottomTouched) {
-        bottomTapCandidate = false;
-      }
+      resetScroll();
+      pushEvent({EventType::TouchStart, Button::Count, 0});
     } else if (!wheelTouchedNow && wheelTouched) {
-      // wheel touch ended -> confirm a tap only if it started on that electrode
-      topPressFired = topTapCandidate;
-      bottomPressFired = bottomTapCandidate;
-      topTapCandidate = false;
-      bottomTapCandidate = false;
+      pushEvent({EventType::TouchEnd, Button::Count, 0});
     }
     wheelTouched = wheelTouchedNow;
-    topPressed = topTouched;
-    bottomPressed = bottomTouched;
 
     // Process wheel increment
     int16_t wheelIncrement = getWheelIncrement();
@@ -229,6 +266,20 @@ public:
         scrollAccumulator += scrollAmount;
       }
     }
+
+    int clicks = consumeScrollClicks();
+    if (clicks != 0) {
+      pushEvent({EventType::Scroll, Button::Count, (int16_t)clicks});
+    }
+  }
+
+  // Pops the oldest pending event; returns false when the queue is empty.
+  bool pollEvent(Event &e) {
+    if (queueCount == 0) return false;
+    e = eventQueue[queueHead];
+    queueHead = (queueHead + 1) % EVENT_QUEUE_SIZE;
+    queueCount--;
+    return true;
   }
 
   // Calibration methods
@@ -286,29 +337,40 @@ public:
   }
 
   // Public interface
-  bool isWheelTouched() const { return const_cast<ClickWheel*>(this)->getWheelAngle() != -1; }
-  bool isCenterPressed() const { return centerPressed; }
-  bool wasCenterJustPressed() const { return centerPressed && !lastCenterPressed; }
-  bool wasCenterJustReleased() const { return !centerPressed && lastCenterPressed; }
-  bool isTopPressed() const { return topPressed; }
-  bool wasTopJustPressed() const { return topPressFired; }
-  bool isBottomPressed() const { return bottomPressed; }
-  bool wasBottomJustPressed() const { return bottomPressFired; }
+  bool isWheelTouched() const { return wheelTouched; }
   bool isCalibrating() const { return calibrationState == CALIB_RUNNING; }
 
-  // Debug/HUD interface: raw MPR121 hardware touch bits (independent of the
-  // software delta threshold above) and the in-progress tap/scroll
-  // disambiguation state, so a caller can see *why* a tap did or didn't fire.
-  uint16_t getTouchedMask() const { return mpr121->touched(); }
-  bool isTopTapCandidate() const { return topTapCandidate; }
-  bool isBottomTapCandidate() const { return bottomTapCandidate; }
+  // Button state
+  bool isPressed(Button b) const { return buttons[(uint8_t)b].pressed; }
+  unsigned long pressedDuration(Button b) const {
+    const ButtonState &s = buttons[(uint8_t)b];
+    return s.pressed ? millis() - s.pressStart : 0;
+  }
+  // Bit i set = Button(i) pressed
+  uint8_t pressedMask() const {
+    uint8_t mask = 0;
+    for (uint8_t i = 0; i < BUTTON_COUNT; i++) {
+      if (buttons[i].pressed) mask |= (1 << i);
+    }
+    return mask;
+  }
+  static const char *buttonName(Button b) {
+    switch (b) {
+    case Button::Center: return "CENTER";
+    case Button::Top:    return "TOP";
+    case Button::Right:  return "RIGHT";
+    case Button::Bottom: return "BOTTOM";
+    case Button::Left:   return "LEFT";
+    default:             return "?";
+    }
+  }
 
-  // Scroll interface
+  // Debug/HUD interface: raw MPR121 hardware touch bits (independent of the
+  // software delta threshold above).
+  uint16_t getTouchedMask() const { return mpr121->touched(); }
+
+  // Scroll interface (scroll clicks are delivered as Scroll events)
   float getScrollDegrees() const { return scrollAccumulator; }
-  int getScrollClicks() const { return (int)(scrollAccumulator / DEGREES_PER_TRACK); }
-  float consumeScrollDegrees() { float s = scrollAccumulator; scrollAccumulator = 0.0; return s; }
-  int consumeScrollClicks() { int c = getScrollClicks(); scrollAccumulator -= c * DEGREES_PER_TRACK; return c; }
-  void resetScroll() { scrollAccumulator = 0.0; }
 
   // Debug methods
   int16_t getDelta(uint8_t electrode) const {
@@ -320,11 +382,62 @@ public:
     int16_t angle = getWheelAngle();
     Serial.print("Angle: ");
     Serial.print(angle);
-    Serial.print("° Center: ");
-    Serial.println(centerPressed ? "PRESSED" : "Released");
+    Serial.print("° Buttons: 0x");
+    Serial.println(pressedMask(), HEX);
   }
 
 private:
+  int getScrollClicks() const { return (int)(scrollAccumulator / DEGREES_PER_TRACK); }
+  int consumeScrollClicks() { int c = getScrollClicks(); scrollAccumulator -= c * DEGREES_PER_TRACK; return c; }
+  void resetScroll() { scrollAccumulator = 0.0; }
+
+  void pushEvent(const Event &e) {
+    if (queueCount >= EVENT_QUEUE_SIZE) return; // full: drop newest
+    eventQueue[(queueHead + queueCount) % EVENT_QUEUE_SIZE] = e;
+    queueCount++;
+  }
+
+  void updateButtons() {
+    unsigned long now = millis();
+    for (uint8_t i = 0; i < BUTTON_COUNT; i++) {
+      ButtonState &b = buttons[i];
+      if (b.pin < 0) continue;
+      Button id = (Button)i;
+
+      bool raw = digitalRead(b.pin) == LOW; // active low
+      if (raw != b.rawPressed) {
+        b.rawPressed = raw;
+        b.lastRawChange = now;
+      }
+
+      // Debounce: accept a level only once it has been stable long enough
+      if (b.rawPressed != b.pressed && now - b.lastRawChange >= DEBOUNCE_MS) {
+        b.pressed = b.rawPressed;
+        if (b.pressed) {
+          b.pressStart = now;
+          b.longFired = false;
+          b.veryLongFired = false;
+          pushEvent({EventType::ButtonDown, id, 0});
+        } else {
+          pushEvent({EventType::ButtonUp, id, 0});
+          if (!b.longFired) pushEvent({EventType::Click, id, 0});
+        }
+      }
+
+      if (b.pressed) {
+        unsigned long held = now - b.pressStart;
+        if (!b.longFired && held >= LONG_PRESS_MS) {
+          b.longFired = true;
+          pushEvent({EventType::LongPress, id, 0});
+        }
+        if (!b.veryLongFired && held >= VERY_LONG_PRESS_MS) {
+          b.veryLongFired = true;
+          pushEvent({EventType::VeryLongPress, id, 0});
+        }
+      }
+    }
+  }
+
   void printCurrentCalibInstruction() {
     const char* names[] = {"TOP", "RIGHT", "BOTTOM", "LEFT"};
     Serial.print("Touch ");

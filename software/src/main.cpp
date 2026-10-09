@@ -1,101 +1,34 @@
-#include "Adafruit_MPR121.h"
-#include "ClickWheel.hpp"
-#include "WheelTrace.hpp"
+// DRV2605L bring-up sketch. The full firmware is parked in main_save.cpp
+// (excluded from the build in platformio.ini).
+//
+// Scans I2C3 (expect 0x5A DRV2605L + 0x5B MPR121), then plays every built-in
+// effect (1..123) one after another, printing its number.
+#include "Adafruit_DRV2605.h"
 #include "pinout.h"
-#include "rendering/ILI9341_GFX.h"
-#include "sound/player.h"
-#include "state/state.h"
-#include "storage/AlbumArt.h"
-#include "storage/Music_index.h"
-#include "storage/Music_lookup.h"
-#include "ui/ui_engine.hpp"
 #include <Arduino.h>
 #include <Wire.h>
-MusicIndex musicIndex;
-MusicLookup musicLookup;
-AlbumArt albumArt;
-// Display and UI instances
-ILI9341_GFX display;
-PodPlayer player;
-OpenPodUIEngine ui(&display);
 
-// ClickWheel instances
-TwoWire Wire3(PB4, PA8);
-Adafruit_MPR121 cap = Adafruit_MPR121();
-ClickWheel wheel(&cap);
-WheelTrace trace;
+// ERM (coin/eccentric motor) by default. Set to true for an LRA.
+const bool USE_LRA = false;
 
-// Control settings
-bool enableTeleplot = true;
-bool enableTrace = false;
-// Runs ILI9341_GFX::runDisplayDiagnostics() right after display.begin() and
-// before the ClickWheel/MPR121 init (which halts setup() if that hardware
-// isn't present) — lets the screen be bring-up tested on its own. See
-// runDisplayDiagnostics() for what each phase checks.
-bool enableDisplayDiagnostics = false;
-// Off by default: prints a starvation-monitor line once a second on the
-// audio hot path, which costs a real blocking Serial write() stall (see
-// AudioPlayer::setDebugMonitorEnabled() and flac-feed-problem.md). Flip to
-// true only while actively debugging the feed path.
-bool enableAudioMonitor = false;
+TwoWire Wire3(I2C3_SDA, I2C3_SCL);
+Adafruit_DRV2605 drv;
 
-// Tracks whether a route-transition animation is currently playing, kept in
-// sync via EVENT_ANIMATION_STARTED/FINISHED (see onNavigationStateEvent
-// below) rather than polled from state.getIsAnimating() each tick.
-static bool navigationBusy = false;
+uint8_t effect = 1;
 
-void onNavigationStateEvent(int eventType, void *eventData,
-                            EventTarget *source)
+void scanI2C()
 {
-  if (eventType == EVENT_ANIMATION_STARTED)
+  Serial.println("I2C3 scan:");
+  for (uint8_t addr = 1; addr < 127; addr++)
   {
-    navigationBusy = true;
-  }
-  else if (eventType == EVENT_ANIMATION_FINISHED)
-  {
-    navigationBusy = false;
+    Wire3.beginTransmission(addr);
+    if (Wire3.endTransmission() == 0)
+    {
+      Serial.print("  found 0x");
+      Serial.println(addr, HEX);
+    }
   }
 }
-unsigned long lastUIUpdate = 0;
-const unsigned long UI_UPDATE_INTERVAL = 50; // 20Hz
-
-// Center button two-stage hold: short hold jumps to Now Playing, longer
-// hold (unchanged threshold) recalibrates the wheel. Both fire once per
-// physical hold.
-unsigned long centerHoldStart = 0;
-bool centerHoldActive = false;
-bool jumpToNowPlayingFired = false;
-bool recalibFired = false;
-const unsigned long NOWPLAYING_JUMP_HOLD_TIME = 800; // 0.8 seconds
-const unsigned long RECALIB_HOLD_TIME = 2000;        // 2 seconds
-
-// Now Playing seek-mode: active while the countdown below hasn't elapsed.
-unsigned long seekModeLastInteraction = 0;
-const unsigned long SEEK_MODE_DELAY = 3000; // 3 seconds
-const int SEEK_SECONDS_PER_CLICK = 3;
-
-// Scrolling while seeking only previews a target position (moves the
-// displayed time/progress bar); the actual file seek is deferred until
-// scrolling pauses, so a long scrub doesn't re-seek the file on every tick.
-bool seekPending = false;
-int pendingSeekTarget = 0; // seconds, valid only while seekPending
-unsigned long lastSeekScrollTime = 0;
-const unsigned long SEEK_COMMIT_DELAY = 400; // ms of no scrolling
-
-// Audio progress tracking
-unsigned long lastProgressUpdate = 0;
-const unsigned long PROGRESS_UPDATE_INTERVAL = 1000; // 1 second
-
-// Function declarations
-void handleWheelInput();
-void checkCenterHold();
-void checkSeekModeTimeout();
-void commitPendingSeek();
-void drawTraceVisualization();
-bool shouldUpdateTelemetry();
-void sendTelemetry();
-void demoAnimations();
-void updateAudioProgress();
 
 void setup()
 {
@@ -103,396 +36,47 @@ void setup()
   while (!Serial)
     delay(10);
 
-  Serial.println("=== OpenPod with ClickWheel (Event-Driven) ===");
-
-  state.addEventListener(onNavigationStateEvent);
-
-  // Initialize hardware
-  player.setup();
-  player.audioPlayer.setDebugMonitorEnabled(enableAudioMonitor);
-  musicLookup.init();
-  albumArt.init(musicLookup.getSD());
-  display.begin();
-  Serial.println("✅ Display initialized!");
-  delay(100);
-  if (enableDisplayDiagnostics)
-  {
-    display.runDisplayDiagnostics();
-  }
-
-  display.setupScroll(0, SCREEN_WIDTH, 0);
+  Serial.println("=== DRV2605L test ===");
 
   Wire3.begin();
   Wire3.setClock(100000);
+  scanI2C();
 
-  if (!cap.begin(MPR121_ADDR, &Wire3))
+  // The library always talks to 0x5A (DRV2605_ADDR).
+  if (!drv.begin(&Wire3))
   {
-    Serial.println("❌ MPR121 not found!");
+    Serial.println("❌ DRV2605L not found!");
     while (1)
       delay(1000);
   }
+  Serial.println("✅ DRV2605L initialized!");
 
-  if (!wheel.begin())
+  if (USE_LRA)
   {
-    Serial.println("❌ ClickWheel initialization failed!");
-    while (1)
-      delay(1000);
+    drv.useLRA();
+    drv.selectLibrary(6);
   }
-
-  Serial.println("✅ ClickWheel initialized!");
-  Serial.println("Keep hands off wheel for baseline...");
-  wheel.takeBaseline();
-  wheel.setSensitivities(0.896, 1.0, 0.950, 0.913);
-  // --- MusicIndex initialization and artist/track search ---
-  if (!musicIndex.init(musicLookup.getLastPSRAMAddress()))
+  else
   {
-    Serial.println("❌ Failed to initialize MusicIndex!");
+    drv.useERM();
+    drv.selectLibrary(1);
   }
-  delay(100);
-  ui.begin();
-  state.loadCurrentRouteData(musicLookup);
-
-  Serial.println("🎮 Ready! Controls:");
-  Serial.println("- Scroll: Navigate list / adjust volume / seek");
-  Serial.println("- Center press: Select / enter Now Playing seek-mode");
-  Serial.println("- Bottom press: Play/pause (Now Playing)");
-  Serial.println("- Top press: Back / exit seek-mode");
-  Serial.println("- Center hold 0.8s: Jump to Now Playing");
-  Serial.println("- Center hold 2s: Recalibrate wheel");
-  Serial.println("=====================================");
+  // Effects are fired by drv.go() over I2C; the IN pin is unused.
+  drv.setMode(DRV2605_MODE_INTTRIG);
 }
 
 void loop()
 {
-  // Handle calibration mode
-  if (wheel.isCalibrating())
-  {
-    wheel.updateCalibration();
-    return;
-  }
+  Serial.print("Effect #");
+  Serial.println(effect);
 
-  // Update wheel state
-  wheel.update();
+  drv.setWaveform(0, effect); // slot 0: the effect
+  drv.setWaveform(1, 0);      // slot 1: end of sequence
+  drv.go();
 
-  // Handle input
-  handleWheelInput();
-  checkCenterHold();
-  checkSeekModeTimeout();
+  delay(1000);
 
-  // Update UI (handles animations and event processing)
-  ui.update();
-
-  // Feed audio data to the VS1053 (this is what actually makes sound)
-  player.loop();
-
-  // Update audio progress periodically
-  updateAudioProgress();
-
-  // Optional trace visualization
-  if (enableTrace)
-  {
-    drawTraceVisualization();
-  }
-
-  // Optional telemetry
-  if (enableTeleplot && shouldUpdateTelemetry())
-  {
-    sendTelemetry();
-  }
-
-  // No fixed delay: audioPlayer.loop() bounds its own feed work, and the
-  // clickwheel/UI are polled every iteration. A delay(20) here only added to
-  // the gap between VS1053 feeds (starving its FIFO).
-}
-
-void handleWheelInput()
-{
-  // A route change (goToSelected/back) kicks off an 800ms slide animation
-  // that owns shared state (OpenPodUIEngine::lastDrawnOffset) for its whole
-  // duration. Starting a second one before the first finishes runs two
-  // animations against that same shared state at once and corrupts the
-  // display buffer / can hang the MCU - so drop navigation input while a
-  // transition is still playing (tracked via EVENT_ANIMATION_STARTED/
-  // FINISHED, see onNavigationStateEvent), rather than queuing/stacking it.
-
-  bool onNowPlaying =
-      state.getCurrentRoute().type == Route_t::RouteType::NOW_PLAYING;
-
-  // Center press: enter menu / navigate forward, or enter seek-mode on Now
-  // Playing (play/pause moved to the bottom button, see below).
-  if (wheel.wasCenterJustPressed())
-  {
-    Serial.println("🔘 Center pressed");
-    if (onNowPlaying)
-    {
-      if (!state.getSeekModeActive())
-      {
-        state.enterSeekMode();
-        seekModeLastInteraction = millis();
-        seekPending = false; // start each seek session from the real position
-      }
-    }
-    else if (!navigationBusy)
-    {
-      state.goToSelected(musicLookup);
-    }
-  }
-
-  // Bottom press: play/pause on Now Playing
-  if (wheel.wasBottomJustPressed())
-  {
-    Serial.println("⬇️ Bottom pressed");
-    if (onNowPlaying)
-    {
-      state.togglePlayback();
-    }
-  }
-
-  // Top press: exit seek-mode if active, otherwise go back one level
-  if (wheel.wasTopJustPressed())
-  {
-    Serial.println("⬆️ Top pressed - back");
-    if (onNowPlaying && state.getSeekModeActive())
-    {
-      commitPendingSeek(); // don't lose an in-flight scrub on exit
-      state.exitSeekMode();
-    }
-    else if (!navigationBusy)
-    {
-      state.back(musicLookup);
-    }
-  }
-
-  // Scroll wheel: seek (seek-mode) / volume (Now Playing) / list navigation
-  int scrollClicks = wheel.consumeScrollClicks();
-  if (scrollClicks != 0)
-  {
-    Serial.print("🔄 Scroll: ");
-    Serial.println(scrollClicks);
-    if (onNowPlaying && state.getSeekModeActive())
-    {
-      // Scroll direction is reversed vs. list navigation: scrolling "up"
-      // seeks backward, "down" seeks forward.
-      int base = seekPending ? pendingSeekTarget
-                             : (int)player.audioPlayer.getDecodeTime();
-      int duration = (int)player.audioPlayer.getDurationSeconds();
-      pendingSeekTarget = constrain(
-          base - scrollClicks * SEEK_SECONDS_PER_CLICK, 0, duration);
-      seekPending = true;
-      state.updateProgress(pendingSeekTarget); // preview only, no file seek yet
-      seekModeLastInteraction = millis();
-      lastSeekScrollTime = millis();
-    }
-    else if (onNowPlaying)
-    {
-      // Reversed vs. list navigation, same as seeking above.
-      for (int i = 0; i < abs(scrollClicks); i++)
-      {
-        if (scrollClicks < 0)
-        {
-          state.increaseVolume();
-        }
-        else
-        {
-          state.decreaseVolume();
-        }
-      }
-    }
-    else if (abs(scrollClicks) > 1)
-    {
-      if (scrollClicks < 0)
-      {
-        state.pageDown(); // Fast scroll down
-      }
-      else
-      {
-        state.pageUp(); // Fast scroll up
-      }
-    }
-    else
-    {
-
-      // Handle multiple clicks at once for smooth scrolling
-      for (int i = 0; i < abs(scrollClicks); i++)
-      {
-        if (scrollClicks < 0)
-        {
-          state.scrollDown();
-        }
-        else
-        {
-          state.scrollUp();
-        }
-      }
-    }
-  }
-
-  // Touch events for visual feedback
-  static bool wasWheelTouched = false;
-  bool wheelTouched = wheel.isWheelTouched();
-
-  if (wheelTouched && !wasWheelTouched)
-  {
-    Serial.println("👆 Wheel touch start");
-    wheel.resetScroll();
-  }
-
-  if (!wheelTouched && wasWheelTouched)
-  {
-    Serial.println("👋 Wheel touch end");
-    float totalScroll = wheel.consumeScrollDegrees();
-    if (abs(totalScroll) > 10)
-    {
-      Serial.print("📊 Total scroll: ");
-      Serial.print(totalScroll, 1);
-      Serial.println("°");
-    }
-  }
-
-  wasWheelTouched = wheelTouched;
-}
-
-void checkCenterHold()
-{
-  if (wheel.isCenterPressed())
-  {
-    if (!centerHoldActive)
-    {
-      centerHoldActive = true;
-      centerHoldStart = millis();
-      jumpToNowPlayingFired = false;
-      recalibFired = false;
-    }
-    unsigned long held = millis() - centerHoldStart;
-    if (!jumpToNowPlayingFired && held >= NOWPLAYING_JUMP_HOLD_TIME)
-    {
-      jumpToNowPlayingFired = true;
-      if (!navigationBusy)
-      {
-        Serial.println("⏭️ Jumping to Now Playing");
-        state.goToNowPlaying(musicLookup);
-      }
-    }
-    if (!recalibFired && held >= RECALIB_HOLD_TIME)
-    {
-      recalibFired = true;
-      Serial.println("🔁 Recalibrating wheel baseline...");
-      wheel.takeBaseline();
-    }
-  }
-  else
-  {
-    centerHoldActive = false;
-  }
-}
-
-void commitPendingSeek()
-{
-  if (seekPending)
-  {
-    player.audioPlayer.seekToSeconds((uint32_t)pendingSeekTarget);
-    seekPending = false;
-  }
-}
-
-void checkSeekModeTimeout()
-{
-  if (!state.getSeekModeActive())
-  {
-    return;
-  }
-  // Commit the actual file seek once scrolling has paused, rather than on
-  // every scroll tick, so a long scrub doesn't repeatedly re-seek the file.
-  if (seekPending && millis() - lastSeekScrollTime >= SEEK_COMMIT_DELAY)
-  {
-    commitPendingSeek();
-  }
-  if (millis() - seekModeLastInteraction > SEEK_MODE_DELAY)
-  {
-    commitPendingSeek(); // don't lose an in-flight scrub on idle-exit
-    state.exitSeekMode();
-  }
-}
-
-void updateAudioProgress()
-{
-  // Update progress periodically if playing. Skip while seek-mode is
-  // active: the scroll handler already previews the pending target
-  // position (bar + timestamp), and this periodic poll would otherwise
-  // fight it - overwriting the preview with the real, not-yet-committed
-  // decode time every second and making the bar jump back and forth.
-  if (state.getIsPlaying() && !state.getSeekModeActive())
-  {
-    unsigned long now = millis();
-    if (now - lastProgressUpdate >= PROGRESS_UPDATE_INTERVAL)
-    {
-      lastProgressUpdate = now;
-
-      int currentPosition = player.audioPlayer.getDecodeTime();
-      state.updateProgress(currentPosition); // This triggers
-                                             // EVENT_PROGRESS_UPDATED
-    }
-  }
-}
-
-void drawTraceVisualization()
-{
-  int angle = wheel.getWheelAngle();
-  if (angle != -1)
-  {
-    trace.add(angle);
-  }
-
-  display.fillScreen(0x0000); // Black background
-  trace.draw(display, 70, 120, 55);
-  trace.drawDebugHUD(display, wheel, 140, 15);
-}
-
-bool shouldUpdateTelemetry()
-{
-  unsigned long now = millis();
-  if (now - lastUIUpdate >= UI_UPDATE_INTERVAL)
-  {
-    lastUIUpdate = now;
-    return true;
-  }
-  return false;
-}
-
-void sendTelemetry()
-{
-  // Send telemetry data for debugging
-  return;
-  Serial.print(">delta_top:");
-  Serial.println(wheel.getDelta(ClickWheel::TOP));
-  Serial.print(">delta_right:");
-  Serial.println(wheel.getDelta(ClickWheel::RIGHT));
-  Serial.print(">delta_bottom:");
-  Serial.println(wheel.getDelta(ClickWheel::BOTTOM));
-  Serial.print(">delta_left:");
-  Serial.println(wheel.getDelta(ClickWheel::LEFT));
-
-  Serial.print(">wheel_touched:");
-  Serial.println(wheel.isWheelTouched() ? 200 : 0);
-  Serial.print(">center_pressed:");
-  Serial.println(wheel.isCenterPressed() ? 300 : 0);
-  Serial.print(">scroll_degrees:");
-  Serial.println(wheel.getScrollDegrees());
-
-  // Add state telemetry
-  // Serial.print(">selected_track:");
-  // Serial.println(state.getSelectedIndex());
-  Serial.print(">playing_track:");
-  Serial.println(state.getPlayingTrackIndex());
-  Serial.print(">is_playing:");
-  Serial.println(state.getIsPlaying() ? 100 : 0);
-  Serial.print(">ui_state:");
-  // Serial.println(state.getCurrentShowing());
-}
-
-void demoAnimations()
-{
-  Serial.println("🎬 Demo: Event-driven transitions...");
-
-  Serial.println("✅ Demo complete - UI is now event-driven!");
+  effect++;
+  if (effect > 123)
+    effect = 1;
 }

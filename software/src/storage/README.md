@@ -108,7 +108,7 @@ void searchMusic(const char* query) {
 
 ### PSRAM Connection (SPI2)
 
-- **CS**: PB6
+- **CS**: PD2
 - **CLK**: PB13
 - **MISO**: PB14
 - **MOSI**: PB15

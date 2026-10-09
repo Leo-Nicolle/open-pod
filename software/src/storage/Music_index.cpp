@@ -18,6 +18,13 @@ bool MusicIndex::init(uint32_t base_address) {
   Serial.print("Loading index from: ");
   Serial.println(index_filename);
 
+  // The index lives in PSRAM: make sure it's up (idempotent) rather than
+  // relying on another subsystem having initialized it first.
+  if (!psram.init()) {
+    Serial.println("ERROR: PSRAM initialization failed");
+    return false;
+  }
+
   // Initialize SD card with default SPI configuration
   if (!sd.begin(SdSpiConfig(CARDCS, SHARED_SPI, SD_SCK_MHZ(25)))) {
     Serial.println("ERROR: SD card initialization failed");
@@ -55,6 +62,13 @@ bool MusicIndex::initWithSDConfig(SdSpiConfig sdConfig, const char *index_filena
   Serial.println("=== MUSIC INDEX INIT WITH CUSTOM CONFIG ===");
   Serial.print("Loading index from: ");
   Serial.println(index_filename);
+
+  // The index lives in PSRAM: make sure it's up (idempotent) rather than
+  // relying on another subsystem having initialized it first.
+  if (!psram.init()) {
+    Serial.println("ERROR: PSRAM initialization failed");
+    return false;
+  }
 
   // Initialize SD card with custom configuration
   if (!sd.begin(sdConfig)) {

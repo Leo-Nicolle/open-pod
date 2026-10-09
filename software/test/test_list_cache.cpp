@@ -193,7 +193,7 @@ TEST_CASE_FIXTURE(ListCacheTestFixture, "Edge cases") {
         // Most pixels should be background color
         int backgroundCount = 0;
         for (int i = 0; i < cache->cacheWidth * ELEMENT_HEIGHT; i++) {
-            if (displayBuffer[i] == COLOR_BACKGROUND) {
+            if (displayBuffer[i] == COLOR_BG) {
                 backgroundCount++;
             }
         }
@@ -218,7 +218,7 @@ TEST_CASE_FIXTURE(ListCacheTestFixture, "Edge cases") {
         // Should handle null tracks gracefully - all background
         bool allBackground = true;
         for (int i = 0; i < cache->cacheWidth * ELEMENT_HEIGHT; i++) {
-            if (displayBuffer[i] != COLOR_BACKGROUND) {
+            if (displayBuffer[i] != COLOR_BG) {
                 allBackground = false;
                 break;
             }

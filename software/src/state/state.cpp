@@ -110,6 +110,31 @@ bool State::getNextTrackId(MusicLookup &musicLookup, uint32_t &nextTrackId) {
   return false;
 }
 
+bool State::nextTrack(MusicLookup &musicLookup) {
+  uint32_t nextTrackId;
+  if (!getNextTrackId(musicLookup, nextTrackId)) {
+    return false;
+  }
+  startPlayback(playingTrackIndex + 1, nextTrackId, musicLookup);
+  return true;
+}
+
+bool State::previousTrack(MusicLookup &musicLookup) {
+  if (playingTrackIndex < 0) {
+    return false;
+  }
+  if (playbackPosition <= PREVIOUS_RESTART_SECONDS && playingTrackIndex > 0) {
+    uint32_t prevTrackId = resolveTrackId(musicLookup, playingTrackIndex - 1);
+    if (prevTrackId != UINT32_MAX) {
+      startPlayback(playingTrackIndex - 1, prevTrackId, musicLookup);
+      return true;
+    }
+  }
+  // Restart the current track
+  startPlayback(playingTrackIndex, (uint32_t)playingTrackId, musicLookup);
+  return true;
+}
+
 void State::setAnimating(bool animating, uint32_t animId) {
   if (animating != isAnimating) {
     isAnimating = animating;

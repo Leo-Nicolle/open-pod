@@ -180,6 +180,14 @@ public:
   // playing. Used to prefetch the next track's data ahead of time instead of
   // only resolving it reactively once the current track ends.
   bool getNextTrackId(MusicLookup &musicLookup, uint32_t &nextTrackId);
+  // Skip to the next track in the active play list; false (no-op) at end of
+  // list or if nothing is playing.
+  bool nextTrack(MusicLookup &musicLookup);
+  // iPod-style previous: restarts the current track if it has played for
+  // more than PREVIOUS_RESTART_SECONDS (or is the first one), otherwise goes
+  // to the previous track. False if nothing is playing.
+  bool previousTrack(MusicLookup &musicLookup);
+  static const int PREVIOUS_RESTART_SECONDS = 3;
 
   // Volume control (Now Playing wheel scroll)
   void setVolume(int vol);

@@ -14,9 +14,17 @@
 #define PSRAM_MISO PB14
 #define PSRAM_MOSI PB15
 
+// I2C3 bus: shared by the MPR121 and the DRV2605L
+#define I2C3_SDA PB4
+#define I2C3_SCL PA8
+
 // MPR121 touch wheel (I2C3: SDA PB4, SCL PA8). ADDR pin tied to 3.3V -> 0x5B,
 // because the DRV2605L on the same bus has a fixed 0x5A address.
 #define MPR121_ADDR 0x5B
+// MPR121 ~IRQ: open-drain, active low, held low until the touch status is
+// read. PH1 is free on the Nucleo: the clock runs from HSI, so OSC_OUT is unused
+// (morpho CN7-31). No external pull-up on the line -> INPUT_PULLUP.
+#define MPR121_IRQ PH1
 
 // DRV2605L haptic driver: shares I2C3 with the MPR121, fixed address 0x5A
 #define DRV2605_ADDR 0x5A

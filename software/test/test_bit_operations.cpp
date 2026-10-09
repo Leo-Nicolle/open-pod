@@ -242,7 +242,7 @@ TEST_CASE_FIXTURE(BitOperationsTestFixture, "Bit boundary handling") {
 
 TEST_CASE_FIXTURE(BitOperationsTestFixture, "Color blending accuracy") {
   // Test that color blending produces an expected intermediate value.
-  // renderRect() blends between the theme's COLOR_BACKGROUND and
+  // renderRect() blends between the theme's COLOR_BG and
   // COLOR_TEXT (not arbitrary black/white), so the expected bounds below
   // are derived from those actual theme colors rather than hardcoded ones.
   int width = cache4bpp->cacheWidth;
@@ -272,7 +272,7 @@ TEST_CASE_FIXTURE(BitOperationsTestFixture, "Color blending accuracy") {
   uint8_t bgR, bgG, bgB;
   uint8_t fgR, fgG, fgB;
   extract(blendedColor, r, g, b);
-  extract(COLOR_BACKGROUND, bgR, bgG, bgB);
+  extract(COLOR_BG, bgR, bgG, bgB);
   extract(COLOR_TEXT, fgR, fgG, fgB);
 
   // A partial blend should land between (inclusive) the background and text

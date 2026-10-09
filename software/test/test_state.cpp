@@ -529,6 +529,54 @@ TEST_SUITE("State Playback Tests") {
 
     CHECK(state.getNextTrackId(lookup, nextTrackId) == false);
   }
+
+  TEST_CASE("State - Next Track") {
+    setupCatalog();
+    MusicLookup lookup;
+    REQUIRE(lookup.init());
+
+    State state;
+    CHECK(state.nextTrack(lookup) == false); // Nothing playing
+
+    navigateToTracks(state, lookup);
+    state.goToSelected(lookup); // Start playback of track 0
+
+    CHECK(state.nextTrack(lookup) == true);
+    CHECK(state.getPlayingTrackIndex() == 1);
+    CHECK(state.getIsPlaying() == true);
+    CHECK(strcmp(state.getPlayingTrackName(), "Second Song") == 0);
+
+    CHECK(state.nextTrack(lookup) == false); // Already on the last track
+    CHECK(state.getPlayingTrackIndex() == 1);
+  }
+
+  TEST_CASE("State - Previous Track") {
+    setupCatalog();
+    MusicLookup lookup;
+    REQUIRE(lookup.init());
+
+    State state;
+    CHECK(state.previousTrack(lookup) == false); // Nothing playing
+
+    navigateToTracks(state, lookup);
+    state.goToSelected(lookup); // Start playback of track 0
+    state.nextTrack(lookup);    // Track 1
+    state.setTrackDuration(180);
+
+    // Played past the restart threshold: restart the current track
+    state.updateProgress(10);
+    CHECK(state.previousTrack(lookup) == true);
+    CHECK(state.getPlayingTrackIndex() == 1);
+    CHECK(state.getPlaybackPosition() == 0);
+
+    // Near the start: go to the previous track
+    CHECK(state.previousTrack(lookup) == true);
+    CHECK(state.getPlayingTrackIndex() == 0);
+
+    // First track: restart it
+    CHECK(state.previousTrack(lookup) == true);
+    CHECK(state.getPlayingTrackIndex() == 0);
+  }
 }
 
 TEST_SUITE("State UI and Animation Tests") {

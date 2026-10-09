@@ -47,11 +47,6 @@ struct Coords {
   }
 };
 
-// Forward declaration for theme colors
-#ifndef COLOR_BG
-#define COLOR_BG 0x0000
-#endif
-
 // Centralized buffer management for efficient rendering
 class BufferManager {
 private:

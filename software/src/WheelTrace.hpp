@@ -27,9 +27,10 @@ private:
   // Click/tap flash state for the debug HUD: a tap fires for only one loop
   // iteration (see ClickWheel::update()'s one-shot *PressFired flags), which
   // is too brief to see on screen, so latch a timestamp and fade it out.
-  unsigned long centerFlashTime = 0;
-  unsigned long topFlashTime = 0;
-  unsigned long bottomFlashTime = 0;
+  // Per-button press-edge time, indexed by ClickWheel::Button. Edges come
+  // from pressedMask() changes so the HUD never consumes the event queue.
+  unsigned long buttonFlashTime[ClickWheel::BUTTON_COUNT] = {};
+  uint8_t lastButtonMask = 0;
   static const unsigned long FLASH_DURATION_MS = 400;
 
 public:
@@ -75,17 +76,20 @@ public:
   void clear() { count = 0; index = 0; }
 
   // Debug HUD: per-electrode raw delta vs. the software touch threshold(s),
-  // plus click/tap state, so mis-scrolls/mis-clicks can be traced back to
-  // whether the touch/tap logic saw what the finger actually did.
+  // plus mechanical button state, so mis-scrolls/mis-clicks can be traced
+  // back to what the wheel actually saw.
   void drawDebugHUD(ILI9341_GFX &display, ClickWheel &wheel, int x, int y) {
     unsigned long now = millis();
-    if (wheel.wasCenterJustPressed()) centerFlashTime = now;
-    if (wheel.wasTopJustPressed()) topFlashTime = now;
-    if (wheel.wasBottomJustPressed()) bottomFlashTime = now;
+    uint8_t buttonMask = wheel.pressedMask();
+    uint8_t justPressed = buttonMask & ~lastButtonMask;
+    for (uint8_t i = 0; i < ClickWheel::BUTTON_COUNT; i++) {
+      if (justPressed & (1 << i)) buttonFlashTime[i] = now;
+    }
+    lastButtonMask = buttonMask;
 
     struct ElectrodeInfo { const char *name; uint8_t electrode; };
-    const ElectrodeInfo electrodes[5] = {
-      {"CTR", ClickWheel::CENTER_ELECTRODE},
+    const int electrodeCount = 4;
+    const ElectrodeInfo electrodes[electrodeCount] = {
       {"TOP", ClickWheel::TOP},
       {"RGT", ClickWheel::RIGHT},
       {"BTM", ClickWheel::BOTTOM},
@@ -97,7 +101,7 @@ public:
     const int barMaxH = 50;
     const int16_t deltaScaleMax = 40; // deltas beyond this just fill the bar
     const int barBaseY = y + barMaxH;
-    const int panelW = 5 * (barW + barGap) + 12;
+    const int panelW = electrodeCount * (barW + barGap) + 12;
     const int panelH = 170;
 
     display.fillRect(x - 10, y - 14, panelW, panelH, 0x0000); // clear panel
@@ -111,7 +115,7 @@ public:
 
     uint16_t touchedMask = wheel.getTouchedMask();
 
-    for (int i = 0; i < 5; i++) {
+    for (int i = 0; i < electrodeCount; i++) {
       int16_t delta = wheel.getDelta(electrodes[i].electrode);
       int16_t clamped = delta > deltaScaleMax ? deltaScaleMax : delta;
       int barH = (barMaxH * clamped) / deltaScaleMax;
@@ -127,15 +131,6 @@ public:
         display.fillRect(bx + 1, barBaseY - barH, barW - 2, barH - 1, barColor);
       }
 
-      // TOP/BOTTOM also drive tap-vs-scroll disambiguation: mark whether the
-      // current touch is still a live tap candidate for that electrode.
-      bool tapCandidate = (electrodes[i].electrode == ClickWheel::TOP && wheel.isTopTapCandidate()) ||
-                           (electrodes[i].electrode == ClickWheel::BOTTOM && wheel.isBottomTapCandidate());
-      if (electrodes[i].electrode == ClickWheel::TOP || electrodes[i].electrode == ClickWheel::BOTTOM) {
-        uint16_t dotColor = tapCandidate ? 0x07FF : 0x2104; // cyan when a tap is still "live"
-        display.fillRect(bx + barW / 2 - 2, y - 8, 4, 4, dotColor);
-      }
-
       display.setTextSize(1);
       display.setTextColor(0xFFFF);
       display.setCursor(bx, barBaseY + 4);
@@ -145,9 +140,12 @@ public:
     }
 
     int clickY = barBaseY + 30;
-    drawClickIndicator(display, x, clickY, "CTR", wheel.isCenterPressed(), centerFlashTime, now);
-    drawClickIndicator(display, x + 55, clickY, "TOP", wheel.isTopPressed(), topFlashTime, now);
-    drawClickIndicator(display, x + 110, clickY, "BOT", wheel.isBottomPressed(), bottomFlashTime, now);
+    // Same order as ClickWheel::Button
+    const char *buttonLabels[ClickWheel::BUTTON_COUNT] = {"CTR", "TOP", "RGT", "BTM", "LFT"};
+    for (uint8_t i = 0; i < ClickWheel::BUTTON_COUNT; i++) {
+      drawClickIndicator(display, x + i * 26, clickY, buttonLabels[i],
+                         (buttonMask & (1 << i)) != 0, buttonFlashTime[i], now);
+    }
 
     int16_t angle = wheel.getWheelAngle();
     display.setTextSize(1);

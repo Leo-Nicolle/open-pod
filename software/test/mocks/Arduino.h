@@ -13,6 +13,7 @@
 #include <chrono>
 
 #include "fake_psram.h"
+#include "../../src/pinout.h" // PSRAM_CS
 
 #ifndef HIGH
 #define HIGH 0x1
@@ -98,8 +99,8 @@ inline void pinMode(uint8_t, uint8_t) {}
 
 inline void digitalWrite(uint8_t pin, uint8_t val) {
   // The only digitalWrite in the storage layer drives the PSRAM chip select
-  // (PSRAM_CS == PB6, see src/pinout.h).
-  if (pin == PB6) {
+  // (PSRAM_CS, see src/pinout.h).
+  if (pin == PSRAM_CS) {
     openpod_test::fakePsram().select(val == LOW);
   }
 }
