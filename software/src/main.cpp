@@ -74,6 +74,10 @@ int pendingSeekTarget = 0; // seconds, valid only while seekPending
 unsigned long lastSeekScrollTime = 0;
 const unsigned long SEEK_COMMIT_DELAY = 400; // ms of no scrolling
 
+// Fast scrolling jumps a whole screen per tick; on short lists that overshoots,
+// so it is only enabled when the list spans more than this many screens.
+const int FAST_SCROLL_MIN_PAGES = 3;
+
 // Audio progress tracking
 unsigned long lastProgressUpdate = 0;
 const unsigned long PROGRESS_UPDATE_INTERVAL = 1000; // 1 second
@@ -386,7 +390,8 @@ void onScroll(int scrollClicks)
       }
     }
   }
-  else if (abs(scrollClicks) > 1)
+  else if (abs(scrollClicks) > 1 &&
+           state.getTotalElements() > FAST_SCROLL_MIN_PAGES * ELEMENTS_PER_SCREEN)
   {
     if (scrollClicks < 0)
     {

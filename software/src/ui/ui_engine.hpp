@@ -592,7 +592,7 @@ void OpenPodUIEngine::updateScrollbar()
 
 void OpenPodUIEngine::updateTrackListScroll()
 {
-  elementList.setScroll(state.getTotalElements(), state.getTopVisibleIndex());
+  elementList.setScroll(state.getSelectedIndex(), state.getTopVisibleIndex());
 }
 
 // Transition methods (triggered by UI state change events)

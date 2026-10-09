@@ -79,9 +79,9 @@ public:
                          int yOffset = BODY_Y,
                          int width = SCREEN_WIDTH - SCROLLBAR_WIDTH) {
     // Use global buffer for efficient rendering
+    // No clear-to-background first: every row below is fully overwritten, and
+    // a clear makes rows flash black (visible tearing while scrolling fast).
     uint16_t *buffer = g_buffers.getCurrentBuffer();
-    display->fillRect(xOffset, yOffset, width, ELEMENTS_PER_SCREEN * ELEMENT_HEIGHT,
-                      COLOR_BG);
     for (int i = 0; i < ELEMENTS_PER_SCREEN; i++) {
       int elementIndex = topVisibleElement + i;
       bool isVisible = (elementIndex < numElements);
