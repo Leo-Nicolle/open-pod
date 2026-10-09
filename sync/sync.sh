@@ -52,6 +52,11 @@ STAGING="${STAGING%/}"
 LOG="$REPO_ROOT/sync/conversions.log"
 INDEXER_DIR="$REPO_ROOT/indexer"
 CONVERT="$SCRIPT_DIR/convert-flac.sh"
+# Bump whenever convert-flac.sh starts converting files it used to copy as-is,
+# so FLACs already staged under the old rules get re-checked once.
+#   2: re-encode FLACs past the LPC order 12 subset limit
+CONVERT_POLICY=2
+POLICY_STAMP="$STAGING/openpod/.convert-policy"
 
 # --- exclusion list: OPENPOD_EXCLUDE (':' separated) + sync/exclude.txt ---
 EXCLUDE_PATHS=()
@@ -151,6 +156,11 @@ while IFS= read -r -d '' src; do
 done < <(find "$LIB" -type f \( -iname '*.flac' -o -iname '*.fla' \) -print0)
 
 total=${#flac_files[@]}
+recheck=0
+if [ "$(cat "$POLICY_STAMP" 2>/dev/null || true)" != "$CONVERT_POLICY" ]; then
+  recheck=1
+  echo "==> Conversion rules changed: re-checking already staged FLAC files"
+fi
 done=0
 converted=0
 converted_list=()
@@ -159,7 +169,15 @@ echo "==> [2/4] Syncing FLAC files ($total total)"
 for src in "${flac_files[@]}"; do
   rel="${src#"$LIB"/}"
   dst="$STAGING/$rel"
+  stale=0
   if [ ! -e "$dst" ] || [ "$src" -nt "$dst" ]; then
+    stale=1
+  elif [ "$recheck" -eq 1 ]; then
+    # Staged under older rules: only the LPC order check is new (policy 2).
+    lpc=$(python3 -I "$SCRIPT_DIR/flac-max-lpc-order.py" "$dst" || echo 0)
+    [ "${lpc:-0}" -gt 12 ] 2>/dev/null && stale=1
+  fi
+  if [ "$stale" -eq 1 ]; then
     out=""
     if ! out="$("$CONVERT" "$src" "$dst" "$LOG")"; then
       echo "warning: failed to sync '$rel' — continuing" >&2
@@ -174,6 +192,8 @@ for src in "${flac_files[@]}"; do
 done
 
 if [ "$BAR_ONLY_TTY" -eq 1 ]; then printf '\n'; fi
+mkdir -p "$(dirname "$POLICY_STAMP")"
+printf '%s\n' "$CONVERT_POLICY" > "$POLICY_STAMP"
 
 if [ "$converted" -gt 0 ]; then
   echo "Converted $converted FLAC file(s):"

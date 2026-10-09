@@ -5,6 +5,8 @@
 #include "pinout.h"
 #include "rendering/ILI9341_GFX.h"
 #include "sound/player.h"
+#include "sound/AudioProfiler.h"
+#include "sound/LinkBench.hpp"
 #include "state/state.h"
 #include "storage/AlbumArt.h"
 #include "storage/Music_index.h"
@@ -35,11 +37,13 @@ bool enableTrace = false;
 // isn't present) — lets the screen be bring-up tested on its own. See
 // runDisplayDiagnostics() for what each phase checks.
 bool enableDisplayDiagnostics = false;
-// Off by default: prints a starvation-monitor line once a second on the
-// audio hot path, which costs a real blocking Serial write() stall (see
-// AudioPlayer::setDebugMonitorEnabled() and flac-feed-problem.md). Flip to
-// true only while actively debugging the feed path.
-bool enableAudioMonitor = false;
+// Prints, once a second, the buffer monitor line and the audio profiler line
+// (time spent per link: SD, PSRAM, VS1053 clocking vs DREQ wait, UI; worst
+// main-loop gap). Off by default: it's ~200 bytes of Serial per second.
+bool enableAudioMonitor = true;
+// Runs the SD / PSRAM / VS1053 link throughput bench at boot (see
+// LinkBench.hpp), then continues normally.
+bool enableLinkBench = false;
 
 // Tracks whether a route-transition animation is currently playing, kept in
 // sync via EVENT_ANIMATION_STARTED/FINISHED (see onNavigationStateEvent
@@ -106,11 +110,17 @@ void setup()
 
   state.addEventListener(onNavigationStateEvent);
 
+  audioprof::begin();
+
   // Initialize hardware
   player.setup();
   player.audioPlayer.setDebugMonitorEnabled(enableAudioMonitor);
   musicLookup.init();
   albumArt.init(musicLookup.getSD());
+  if (enableLinkBench)
+  {
+    runLinkBench(player.audioPlayer, musicLookup);
+  }
   display.begin();
   Serial.println("✅ Display initialized!");
   delay(100);
@@ -192,11 +202,21 @@ void loop()
   handleWheelInput();
   checkSeekModeTimeout();
 
+  audioprof::markLoop();
+
   // Update UI (handles animations and event processing)
+  uint32_t uiStart = audioprof::now();
   ui.update();
+  audioprof::add(audioprof::UI_UPDATE, uiStart);
 
   // Feed audio data to the VS1053 (this is what actually makes sound)
+  uint32_t audioStart = audioprof::now();
   player.loop();
+  audioprof::add(audioprof::AUDIO_LOOP, audioStart);
+  if (enableAudioMonitor)
+  {
+    audioprof::report();
+  }
 
   // Update audio progress periodically
   updateAudioProgress();

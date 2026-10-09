@@ -9,16 +9,14 @@ AudioPlayer *AudioPlayer::_instance = nullptr;
 AudioPlayer::AudioPlayer(uint8_t rst, uint8_t cs, uint8_t dcs, uint8_t dreq,
                          uint8_t sdCS)
     : _driver(rst, cs, dcs, dreq), _buffer(sdCS), _playing(false),
-      _paused(false), _looping(false), _usingInterrupts(false),
-      _needsFeeding(false) {
+      _paused(false), _looping(false) {
   _instance = this;
 }
 
 AudioPlayer::AudioPlayer(uint8_t mosi, uint8_t miso, uint8_t sclk, uint8_t rst,
                          uint8_t cs, uint8_t dcs, uint8_t dreq, uint8_t sdCS)
     : _driver(mosi, miso, sclk, rst, cs, dcs, dreq), _buffer(sdCS),
-      _playing(false), _paused(false), _looping(false), _usingInterrupts(false),
-      _needsFeeding(false) {
+      _playing(false), _paused(false), _looping(false) {
   _instance = this;
 }
 
@@ -96,31 +94,12 @@ bool AudioPlayer::startPlaying(const char *filename,
   return true;
 }
 
-bool AudioPlayer::playFile(const char *filename) {
-  if (!startPlaying(filename))
-    return false;
-
-  while (_playing) {
-    if (!_usingInterrupts && _driver.readyForData()) {
-      feedBuffer(); 
-      _buffer.load(); 
-    }
-  }
-  return true;
-}
-
 void AudioPlayer::stopPlaying() {
   _playing = false;
   _paused = false;
-  _needsFeeding = false;
-
-  // Disable interrupts first
-  if (_usingInterrupts) {
-    detachInterrupt(digitalPinToInterrupt(_driver.getDREQPin()));
-    _usingInterrupts = false;
-  }
 
   _buffer.resetRingBuffer();
+  dropPendingFeed();
   if (_decoderDirty) {
     sendEndFillSequence();
   }
@@ -137,20 +116,6 @@ bool AudioPlayer::isPaused() { return _paused; }
 void AudioPlayer::setLoop(bool loop) { _looping = loop; }
 
 bool AudioPlayer::isLooping() { return _looping; }
-
-void AudioPlayer::forward() {
-  // For now, just restart the file
-  // Could be enhanced to skip to next track or fast forward
-  if (_playing) {
-    _buffer.resetRingBuffer();
-  }
-}
-
-void AudioPlayer::rewind() {
-  if (_playing) {
-    _buffer.resetRingBuffer();
-  }
-}
 
 void AudioPlayer::setVolume(uint8_t left, uint8_t right) {
   _driver.setVolume(left, right);
@@ -191,28 +156,36 @@ void AudioPlayer::loop() {
   if (buffered > _monitorMaxBuffered) _monitorMaxBuffered = buffered;
   if (buffered < AUDIO_LOW_WATERMARK_BYTES) _monitorLowCount++;
 
-  // Hysteresis: only touch the SD card for a big burst refill once the
-  // buffer has actually drained below the low watermark, instead of
-  // topping up on every tick. That's what turns "continuous small SD reads
-  // for the whole track" into "one big burst, then idle for minutes" - see
-  // memory-improvements.md §1/§2.
+  // Hysteresis: a refill starts once the buffer drains below the low
+  // watermark and keeps going, a few chunks per tick, until the buffer
+  // reaches the target (or the file is fully read). Then the SD card stays
+  // idle until the next crossing. Without the latch, a refill stopped as
+  // soon as one tick lifted the buffer back above the low watermark, so the
+  // buffer hovered there and refilled several times a second.
   //
-  // load() itself has no wall-clock bound - only a chunk-count cap
-  // (AUDIO_MAX_CHUNKS_PER_LOAD_CALL) - so a refill burst can run for the
-  // time it takes to do up to that many SD+PSRAM transfers back to back.
-  // Unlike the feed while-loop below, nothing was feeding the VS1053 during
-  // that whole burst, so its onboard ~2KB FIFO could starve regardless of
-  // codec every time the low watermark was crossed - worse the larger
-  // AUDIO_MAX_CHUNKS_PER_LOAD_CALL is. Pass a callback so load() drains the
-  // VS1053 after every SD chunk it lands, not just once the whole burst is
-  // done (see flac-feed-problem.md).
+  // Per-tick budget: short while there's plenty buffered, so the UI keeps
+  // running between chunks; long when the buffer is actually low. load()
+  // feeds the VS1053 between chunks either way.
   unsigned long loadUsStart = micros();
   if (buffered < AUDIO_LOW_WATERMARK_BYTES) {
-    _buffer.load(AUDIO_TARGET_BUFFERED_BYTES, [this]() {
-      while (_playing && !_paused && _driver.readyForData()) {
-        if (!feedBuffer()) break;
-      }
-    });
+    _refilling = true;
+  }
+  if (_refilling) {
+    unsigned long budgetMs = buffered < AUDIO_URGENT_BYTES
+                                 ? AUDIO_MAX_LOAD_MS
+                                 : AUDIO_RELAXED_LOAD_MS;
+    _buffer.load(
+        AUDIO_TARGET_BUFFERED_BYTES,
+        [this]() {
+          while (_playing && !_paused && _driver.readyForData()) {
+            if (!feedBuffer()) break;
+          }
+        },
+        budgetMs);
+    if (_buffer.getBufferedBytes() >= AUDIO_TARGET_BUFFERED_BYTES ||
+        _buffer.isFileFullyRead() || _buffer.openFailed()) {
+      _refilling = false;
+    }
   } else {
     // Buffer is healthy: use the otherwise-idle SD bus to make background
     // progress on the next track's prefetch instead (memory-improvements.md
@@ -265,19 +238,15 @@ void AudioPlayer::prepareNextTrack(const char *filename,
 void AudioPlayer::invalidateNextTrack() { _buffer.invalidateNextTrack(); }
 
 bool AudioPlayer::feedBuffer() {
-  size_t bytesRead = _buffer.readData(_feedBuffer, AUDIO_FEED_BUFFER_LEN);
-  if (bytesRead > 0) {
-    _driver.sendData(_feedBuffer, bytesRead);
-    return true;
-  } else {
-    // Ring buffer is empty. Only treat this as the end of the track when the
-    // source file has actually been fully read; otherwise the buffer just
-    // drained faster than SDtoPSRAM() topped it back up (far more likely with
-    // FLAC's higher bitrate), and loop() will refill it on the next tick.
-    // Treating a transient gap as EOF was what made FLAC tracks "skip" the
-    // instant they started.
+  if (_feedPos >= _feedLen) {
+    _feedPos = 0;
+    _feedLen = _buffer.readData(_feedBuffer, AUDIO_FEED_BUFFER_LEN);
+  }
+  if (_feedLen == 0) {
+    // Ring buffer is empty. It's only the end of the track once the source
+    // file has been fully read; otherwise the refill is just behind.
     if (!_buffer.isFileExhausted()) {
-      _monitorUnderflows++; // transient refill gap, not end-of-file
+      _monitorUnderflows++;
       return false;
     }
 
@@ -293,6 +262,10 @@ bool AudioPlayer::feedBuffer() {
       return false;
     }
   }
+  size_t sent =
+      _driver.sendIfReady(_feedBuffer + _feedPos, _feedLen - _feedPos);
+  _feedPos += sent;
+  return sent > 0;
 }
 
 bool AudioPlayer::consumeTrackEnded() {
@@ -331,6 +304,7 @@ bool AudioPlayer::seekToSeconds(uint32_t targetSeconds) {
     restoreVolumeFromDuck();
     return false;
   }
+  dropPendingFeed();
   // Bounded prime, not a full refill to AUDIO_TARGET_BUFFERED_BYTES: this
   // runs while playback is actively draining the VS1053, so a long
   // synchronous SD refill here would starve its internal FIFO (audible
@@ -409,56 +383,6 @@ void AudioPlayer::sendEndFillSequence() {
                 millis() - startMs);
 }
 
-bool AudioPlayer::useInterrupt(uint8_t type) {
-  if (type == AUDIOPLAYER_PIN_INT) {
-    attachInterrupt(digitalPinToInterrupt(_driver.getDREQPin()),
-                    &AudioPlayer::pinISR, RISING);
-    _usingInterrupts = true;
-    _interruptType = type;
-    return true;
-  } else if (type == 0) {
-    detachInterrupt(digitalPinToInterrupt(_driver.getDREQPin()));
-    _usingInterrupts = false;
-    return true;
-  }
-  return false;
-}
-
-// ISR methods - OPTIMIZED for minimal overhead
-void AudioPlayer::timerISR() {
-  if (_instance) {
-    _instance->handleInterrupt();
-  }
-}
-
-void AudioPlayer::pinISR() {
-  // Minimal ISR - just set flag for deferred processing
-  if (_instance && _instance->_playing && !_instance->_paused) {
-    _instance->_needsFeeding = true; // Defer actual work
-  }
-}
-
-void AudioPlayer::feedFromISR() {
-  if (!_playing || _paused) {
-    return;
-  }
-  size_t n = _buffer.readDataForISR(_isrFeedBuffer, sizeof(_isrFeedBuffer));
-  if (n > 0) {
-    _driver.sendData(_isrFeedBuffer, n);
-  } else {
-    // Ring buffer empty. Do NOT stop the track here (stopPlaying() does
-    // Serial + delay, neither ISR-safe); just count it and let loop() detect
-    // real end-of-file once the source is exhausted.
-    _monitorUnderflows++;
-  }
-}
-
-void AudioPlayer::handleInterrupt() {
-  if (_playing && !_paused) {
-    _needsFeeding = true; // Defer to main loop
-  }
-}
-
 bool AudioPlayer::configureAudioQuality(uint32_t targetSampleRate) {
   Serial.printf("Configuring audio quality for %lu Hz target sample rate\n",
                 targetSampleRate);
@@ -535,121 +459,8 @@ bool AudioPlayer::testBasicPlayback() {
   return true;
 }
 
-bool AudioPlayer::startPlayingSimple(const char *filename) {
-  Serial.printf("Starting SIMPLE playback: %s\n", filename);
-  stopPlaying();
-
-  // Check if it's a FLAC file and prepare accordingly
-  bool isFlac = isFLACFile(filename);
-  if (isFlac) {
-    Serial.println("FLAC file detected - preparing FLAC playback");
-    if (!_driver.prepareFLACPlayback()) {
-      Serial.println("Failed to prepare FLAC playback");
-      return false;
-    }
-  }
-
-  Serial.println("Opening file for simple direct reading...");
-  _buffer.setFileName(filename);
-  if (_buffer.load()) {
-    Serial.printf("File opened successfully: %s\n", filename);
-    _playing = true;
-    _paused = false;
-
-    for (int i = 0; i < 8; i++) { 
-      if (_driver.readyForData()) {
-        size_t bytesRead = _buffer.readData(_feedBuffer, AUDIO_DATABUFFERLEN);
-        if (bytesRead > 0) {
-          _driver.sendData(_feedBuffer, bytesRead);
-        }
-      }
-    }
-
-    Serial.println("Simple playback started - no interrupts, polling only");
-    return true;
-  } else {
-    Serial.printf("Failed to open file: %s\n", filename);
-    return false;
-  }
-}
-
-bool AudioPlayer::startPlayingEnhanced(const char *filename) {
-  Serial.printf("Starting ENHANCED playback: %s\n", filename);
-  stopPlaying();
-
-  // Check file type and configure accordingly
-  bool isFlac = isFLACFile(filename);
-  if (isFlac) {
-    Serial.println(
-        "FLAC file detected - preparing for high-quality FLAC playback");
-    if (!_driver.prepareFLACPlayback()) {
-      Serial.println("Failed to prepare FLAC playback");
-      return false;
-    }
-
-    Serial.println("FLAC preparation completed successfully");
-  } else {
-    Serial.println("Non-FLAC file - using standard configuration");
-  }
-
-  // Try PSRAM preload for high-quality files
-  Serial.println("Attempting PSRAM preload for enhanced quality...");
-  _buffer.setFileName(filename);
-  if (_buffer.load()) {
-    Serial.println("PSRAM preload successful");
-    _playing = true;
-    _paused = false;
-    if (primeBufferEnhanced(isFlac)) {
-      Serial.println("Enhanced buffer primed successfully (PSRAM mode)");
-      return true;
-    } else {
-      Serial.println("Enhanced buffer priming failed (PSRAM mode)");
-    }
-  } else {
-    Serial.println("PSRAM preload failed, falling back to direct file reading");
-  }
-  return false;
-}
-
 bool AudioPlayer::isFLACFile(const char *filename) {
   const char *ext = strrchr(filename, '.');
   return ext && (strcasecmp(ext, ".flac") == 0 || strcasecmp(ext, ".fla") == 0);
 }
 
-bool AudioPlayer::primeBufferEnhanced(bool isHighQuality) {
-  // Enhanced buffer priming for high-quality audio (FLAC, high-bitrate MP3)
-  int feedCount = 0;
-  const int maxFeeds = isHighQuality ? 30 : 20; // More feeds for FLAC
-
-  Serial.printf("Enhanced priming for %s quality audio...\n",
-                isHighQuality ? "high" : "standard");
-
-  for (int i = 0; i < maxFeeds; i++) {
-    if (_driver.readyForData()) {
-      size_t bytesRead = _buffer.readData(_feedBuffer, AUDIO_DATABUFFERLEN);
-      if (bytesRead > 0) {
-        _driver.sendData(_feedBuffer, bytesRead);
-        feedCount++;
-
-        // For high-quality audio, feed more aggressively if VS1053 can accept
-        // it
-        if (isHighQuality && _driver.readyForData() && i < maxFeeds - 1) {
-          size_t extraBytes =
-              _buffer.readData(_feedBuffer, AUDIO_DATABUFFERLEN);
-          if (extraBytes > 0) {
-            _driver.sendData(_feedBuffer, extraBytes);
-            feedCount++;
-            i++; // Account for the extra feed
-          }
-        }
-
-        delayMicroseconds(25); // Reduced from 50μs for faster priming
-      }
-    } else {
-      break;
-    }
-  }
-
-  Serial.printf("Enhanced priming completed with %d feeds\n", feedCount);
-  return feedCount > 0;
-}

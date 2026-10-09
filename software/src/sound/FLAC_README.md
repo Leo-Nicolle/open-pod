@@ -9,7 +9,7 @@ This implementation provides FLAC (Free Lossless Audio Codec) support for the VS
 ### Current Implementation
 
 - ✅ FLAC plugin loading framework
-- ✅ Proper clock configuration (0x8800 - 3.5x + 1.0x multiplier)
+- ✅ Clock configuration 0xC000 (4.5x = 55.3 MHz; SC_ADD only helps WMA/AAC, so the old 0x8800 ran FLAC at 3.5x)
 - ✅ Plugin verification methods
 - ✅ Integration with AudioPlayer class
 - ⚠️ **Placeholder plugin data** (demonstration only)
@@ -23,7 +23,7 @@ This implementation provides FLAC (Free Lossless Audio Codec) support for the VS
 
 ### Plugin Loading Process
 
-1. **Clock Configuration**: Set VS1053b clock to 0x8800 (3.5x + 1.0x multiplier)
+1. **Clock Configuration**: Set VS1053b clock to 0xC000 (4.5x multiplier)
 2. **Plugin Loading**: Iterate through 8208 data words:
    ```cpp
    for (uint16_t i = 0; i < 8208; i++) {
@@ -99,14 +99,14 @@ if (isFlac) {
 
 ```cpp
 // Test FLAC playback
-audioPlayer.startPlayingEnhanced("track.flac");
+audioPlayer.startPlaying("track.flac");
 ```
 
 ## Technical Details
 
 ### Clock Configuration
 
-- **FLAC Clock**: 0x8800 (3.5x + 1.0x multiplier)
+- **FLAC Clock**: 0xC000 (4.5x multiplier)
 - **Internal Clock**: ~55MHz with 12.288MHz crystal
 - **Purpose**: Provides sufficient processing power for FLAC decoding
 
@@ -148,7 +148,7 @@ audioPlayer.startPlayingEnhanced("track.flac");
 ### Common Issues
 
 1. **Plugin Not Loading**: Check SPI communication and DREQ timing
-2. **Clock Issues**: Verify 0x8800 clock configuration
+2. **Clock Issues**: Verify 0xC000 clock configuration
 3. **Memory Issues**: Ensure sufficient Arduino memory for plugin arrays
 
 ### Debug Output

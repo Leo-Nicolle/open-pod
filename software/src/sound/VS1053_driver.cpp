@@ -5,6 +5,7 @@
 
 #include "VS1053_driver.h"
 #include "VS1053_FLAC_plugin.h"
+#include "AudioProfiler.h"
 
 VS1053_driver::VS1053_driver(uint8_t rst, uint8_t cs, uint8_t dcs, uint8_t dreq)
     : _rst(rst), _cs(cs), _dcs(dcs), _dreq(dreq), _useHardwareSPI(true) {}
@@ -17,7 +18,8 @@ VS1053_driver::VS1053_driver(uint8_t mosi, uint8_t miso, uint8_t sclk,
 VS1053_driver::~VS1053_driver() {}
 
 bool VS1053_driver::begin(uint32_t spiFreq) {
-  _spiFreq = spiFreq;
+  _sciFreq = spiFreq;
+  _sdiFreq = spiFreq;
 
   pinMode(_rst, OUTPUT);
   pinMode(_cs, OUTPUT);
@@ -57,9 +59,20 @@ void VS1053_driver::initSPI() {
     // is a no-op (configSpi() skips spi_init() because _spiSettings already
     // equals the defaults). Force the peripheral to actually initialize by
     // issuing a transaction with our (non-default) frequency.
-    SPI.beginTransaction(SPISettings(_spiFreq, MSBFIRST, SPI_MODE0));
+    SPI.beginTransaction(SPISettings(_sciFreq, MSBFIRST, SPI_MODE0));
     SPI.endTransaction();
   }
+}
+
+// CLKI = XTALI x SC_MULT (SC_ADD only kicks in for WMA/AAC, so it isn't
+// counted). The STM32 core rounds a requested SPI clock down to
+// 90 MHz / 2^k, e.g. CLOCKF 0x6000 (CLKI 36.9 MHz) gives SCI 2.8 MHz and
+// SDI 5.6 MHz; straight out of reset (CLKI 12.288 MHz) 1.4 / 2.8 MHz.
+void VS1053_driver::updateClockSpeeds(uint16_t clockf) {
+  static const uint8_t multX2[8] = {2, 4, 5, 6, 7, 8, 9, 10};
+  uint32_t clki = VS1053_XTALI_12_288MHZ / 2 * multX2[clockf >> 13];
+  _sciFreq = clki / 7;
+  _sdiFreq = clki / 4;
 }
 
 void VS1053_driver::reset() {
@@ -73,17 +86,22 @@ void VS1053_driver::reset() {
   while (!digitalRead(_dreq) && millis() < timeout) {
     delay(1);
   }
+  updateClockSpeeds(0); // CLKI = XTALI until CLOCKF is written
 }
 
 void VS1053_driver::softReset() {
   writeRegister(VS1053_REG_MODE, VS1053_MODE_SM_SDINEW | VS1053_MODE_SM_RESET);
   delay(50); // Reduced delay
+  // Re-derive the SPI clocks from whatever CLOCKF holds after the reset,
+  // reading it at the slowest safe speed first.
+  updateClockSpeeds(0);
+  updateClockSpeeds(readRegister(VS1053_REG_CLOCKF));
 }
 
 // FIXED: Simplified SPI transaction management
 void VS1053_driver::beginSCITransaction() {
   if (_useHardwareSPI) {
-    SPI.beginTransaction(SPISettings(_spiFreq, MSBFIRST, SPI_MODE0));
+    SPI.beginTransaction(SPISettings(_sciFreq, MSBFIRST, SPI_MODE0));
   }
   controlSelect();
 }
@@ -97,7 +115,7 @@ void VS1053_driver::endSCITransaction() {
 
 void VS1053_driver::beginSDITransaction() {
   if (_useHardwareSPI) {
-    SPI.beginTransaction(SPISettings(_spiFreq, MSBFIRST, SPI_MODE0));
+    SPI.beginTransaction(SPISettings(_sdiFreq, MSBFIRST, SPI_MODE0));
   }
   dataSelect();
 }
@@ -178,35 +196,75 @@ void VS1053_driver::writeRegister(uint8_t addr, uint16_t data) {
   spiWrite(data >> 8);
   spiWrite(data & 0xFF);
   endSCITransaction();
+  if (addr == VS1053_REG_CLOCKF) {
+    // The new clock only applies once the chip has settled (DREQ high).
+    waitForDREQ();
+    updateClockSpeeds(data);
+  }
 }
 void VS1053_driver::sendData(const uint8_t *data, size_t len) {
   if (len == 0)
     return;
 
-  // One SPI transaction for the whole send. Between 32-byte bursts we toggle
-  // XDCS (datasheet: burst up to 32 bytes, then toggle XDCS to resync). The
-  // previous version re-acquired SPI.beginTransaction/endTransaction per
-  // 32-byte burst, which was most of the per-byte feeding overhead.
+  // One SPI transaction for the whole send; XDCS is toggled between 32-byte
+  // bursts (datasheet: DREQ high guarantees room for 32 bytes).
   if (_useHardwareSPI) {
-    SPI.beginTransaction(SPISettings(_spiFreq, MSBFIRST, SPI_MODE0));
+    SPI.beginTransaction(SPISettings(_sdiFreq, MSBFIRST, SPI_MODE0));
   }
   dataDeselect(); // XDCS high before the first DREQ wait
 
   size_t offset = 0;
   while (offset < len) {
+    uint32_t t0 = audioprof::now();
     waitForDREQFast();
-    dataSelect();
+    audioprof::add(audioprof::VS_DREQ_WAIT, t0);
     size_t toSend = min(len - offset, (size_t)32);
-    for (int i = 0; i < toSend; i++) {
-      spiWrite(data[offset + i]);
-    }
+    sendBurst(data + offset, toSend);
     offset += toSend;
-    dataDeselect();
   }
 
   if (_useHardwareSPI) {
     SPI.endTransaction();
   }
+}
+
+size_t VS1053_driver::sendIfReady(const uint8_t *data, size_t len) {
+  if (len == 0 || !readyForData())
+    return 0;
+
+  if (_useHardwareSPI) {
+    SPI.beginTransaction(SPISettings(_sdiFreq, MSBFIRST, SPI_MODE0));
+  }
+  dataDeselect();
+
+  size_t offset = 0;
+  while (offset < len && readyForData()) {
+    size_t toSend = min(len - offset, (size_t)32);
+    sendBurst(data + offset, toSend);
+    offset += toSend;
+  }
+
+  if (_useHardwareSPI) {
+    SPI.endTransaction();
+  }
+  return offset;
+}
+
+// One XDCS-framed SDI burst of at most 32 bytes. The caller holds the SPI
+// transaction and has checked DREQ.
+void VS1053_driver::sendBurst(const uint8_t *data, size_t len) {
+  uint32_t t0 = audioprof::now();
+  dataSelect();
+  if (_useHardwareSPI) {
+    SPI.transfer(data, nullptr, len);
+  } else {
+    for (size_t i = 0; i < len; i++) {
+      spiWrite(data[i]);
+    }
+  }
+  dataDeselect();
+  audioprof::add(audioprof::VS_CLOCK, t0);
+  audioprof::addBytes(audioprof::VS_CLOCK, len);
 }
 
 bool VS1053_driver::readyForData() { return digitalRead(_dreq); }
@@ -303,10 +361,8 @@ bool VS1053_driver::configureFLACClock() {
   }
   Serial.println("Configuring VS1053 clock for FLAC playback");
 
-  // Use the same aggressive clock configuration as the working code
-  // 0x8800 = SC_MULT = 4 (4.5x multiplier) + SC_ADD = 0
-  // This gives 12.288MHz * 4.5 = 55.296MHz internal clock
-  // writeRegister(VS1053_REG_CLOCKF, 0x8800);
+  // SC_MULT 4.5x: 12.288 MHz * 4.5 = 55.3 MHz, the chip's maximum. FLAC
+  // decoding is CPU-bound in the plugin, so it gets all of it.
   writeRegister(VS1053_REG_CLOCKF, VS1053_FLAC_SPEED);
 
   // Critical: Wait for DREQ after clock change
@@ -320,14 +376,9 @@ bool VS1053_driver::configureFLACClock() {
     return false;
   }
 
-  // Optimize SPI speed for the higher internal clock
-  // At 4.5x multiplier, we can use higher SPI speeds
-  uint32_t newSpiFreq =
-      min(7000000UL, _spiFreq * 2); // Up to 7MHz for 4.5x clock
-  _spiFreq = newSpiFreq;
-
-  Serial.printf("FLAC clock configured: 4.5x multiplier, SPI: %lu Hz\n",
-                _spiFreq);
+  // writeRegister() already re-derived the SPI clocks from the new CLOCKF.
+  Serial.printf("FLAC clock configured: SCI %lu Hz, SDI %lu Hz\n",
+                (unsigned long)_sciFreq, (unsigned long)_sdiFreq);
   return true;
 }
 
@@ -462,66 +513,9 @@ uint32_t VS1053_driver::getMaxSampleRate() {
 }
 
 void VS1053_driver::optimizeSPISpeed() {
-  // Calculate optimal SPI speed based on VS1053b datasheet specifications
-  // SDI max speed: 7MHz at 1.0x clock, scales with internal clock
-  // SCI max speed: ~CLKI/7 (due to timing constraints)
-
-  uint16_t clockf = readRegister(VS1053_REG_CLOCKF);
-  uint16_t scMult = (clockf & 0xE000) >> 13;
-
-  // Calculate multiplier value
-  float multiplier;
-  switch (scMult) {
-  case 0:
-    multiplier = 1.0f;
-    break;
-  case 1:
-    multiplier = 2.0f;
-    break;
-  case 2:
-    multiplier = 2.5f;
-    break;
-  case 3:
-    multiplier = 3.0f;
-    break;
-  case 4:
-    multiplier = 3.5f;
-    break;
-  case 5:
-    multiplier = 4.0f;
-    break;
-  case 6:
-    multiplier = 4.5f;
-    break;
-  case 7:
-    multiplier = 5.0f;
-    break;
-  default:
-    multiplier = 1.0f;
-    break;
-  }
-
-  // Calculate optimal SDI SPI frequency
-  // Base: 7MHz at 1.0x, scales with multiplier
-  uint32_t maxSdiSpeed = (uint32_t)(VS1053_MAX_SPI_SDI * multiplier);
-
-  // Conservative limit: don't exceed 80% of theoretical maximum
-  uint32_t newSpiFreq = (uint32_t)(maxSdiSpeed * 0.8f);
-
-  // Ensure we don't exceed the original requested frequency
-  if (newSpiFreq > _spiFreq && _spiFreq > 1000000UL) {
-    newSpiFreq = _spiFreq;
-  }
-
-  // Minimum safety limit
-  if (newSpiFreq < 1000000UL) {
-    newSpiFreq = 1000000UL;
-  }
-
-  _spiFreq = newSpiFreq;
-  Serial.printf(
-      "Optimized SPI frequency: %lu Hz (%.1fx multiplier, max SDI: %lu Hz)\n",
-      _spiFreq, multiplier, maxSdiSpeed);
+  updateClockSpeeds(readRegister(VS1053_REG_CLOCKF));
+  Serial.printf("VS1053 SPI: SCI %lu Hz, SDI %lu Hz\n",
+                (unsigned long)_sciFreq, (unsigned long)_sdiFreq);
 }
 
 void VS1053_driver::configureClockRange(uint32_t xtalFreq) {

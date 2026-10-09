@@ -257,3 +257,75 @@ TEST_CASE("Audio_buffer - consumeNextTrackIfMatches declines a mismatched or "
   CHECK(buf.readData(out.data(), out.size()) == size);
   checkSequentialRun(out.data(), out.size(), 2, 0);
 }
+
+namespace {
+
+// "fLaC" + STREAMINFO + the given extra metadata blocks (last one flagged)
+// + `audio` bytes.
+std::vector<uint8_t> buildFakeFlac(const std::vector<uint8_t> &streamInfo,
+                                   const std::vector<uint32_t> &extraBlockLens,
+                                   const std::vector<uint8_t> &audio) {
+  std::vector<uint8_t> out = {'f', 'L', 'a', 'C'};
+  out.push_back(extraBlockLens.empty() ? 0x80 : 0x00); // STREAMINFO
+  out.push_back(0);
+  out.push_back(0);
+  out.push_back(34);
+  out.insert(out.end(), streamInfo.begin(), streamInfo.end());
+  for (size_t i = 0; i < extraBlockLens.size(); i++) {
+    bool last = i + 1 == extraBlockLens.size();
+    uint32_t len = extraBlockLens[i];
+    out.push_back((last ? 0x80 : 0x00) | 6); // PICTURE
+    out.push_back((uint8_t)(len >> 16));
+    out.push_back((uint8_t)(len >> 8));
+    out.push_back((uint8_t)len);
+    out.insert(out.end(), len, 0xEE);
+  }
+  out.insert(out.end(), audio.begin(), audio.end());
+  return out;
+}
+
+} // namespace
+
+TEST_CASE("Audio_buffer - FLAC metadata other than STREAMINFO is skipped") {
+  resetAll();
+  std::vector<uint8_t> streamInfo(34);
+  for (size_t i = 0; i < streamInfo.size(); i++) streamInfo[i] = (uint8_t)i;
+  std::vector<uint8_t> audio = buildFakeAudioFile(2, 20000);
+  // Cover art bigger than a chunk, then a small padding block.
+  FakeFs::get().addFile("/music/a.flac",
+                        buildFakeFlac(streamInfo, {300000, 100}, audio));
+
+  Audio_buffer buf(4);
+  REQUIRE(buf.begin());
+  buf.setFileName("/music/a.flac");
+  const size_t expected = 42 + audio.size();
+  loadUntil(buf, expected);
+  REQUIRE(buf.getBufferedBytes() == expected);
+
+  std::vector<uint8_t> out(expected);
+  CHECK(buf.readData(out.data(), out.size()) == expected);
+  const uint8_t header[8] = {'f', 'L', 'a', 'C', 0x80, 0, 0, 34};
+  CHECK(memcmp(out.data(), header, sizeof(header)) == 0);
+  CHECK(memcmp(out.data() + 8, streamInfo.data(), 34) == 0);
+  checkSequentialRun(out.data() + 42, audio.size(), 2, 0);
+  CHECK(buf.isFileExhausted());
+}
+
+TEST_CASE("Audio_buffer - non-FLAC files are streamed unchanged") {
+  resetAll();
+  // Starts with something that is almost, but not, a FLAC header.
+  std::vector<uint8_t> data = buildFakeAudioFile(3, 8000);
+  data[0] = 'f';
+  data[1] = 'L';
+  data[2] = 'a';
+  data[3] = 'X';
+  FakeFs::get().addFile("/music/a.mp3", data);
+
+  Audio_buffer buf(4);
+  REQUIRE(buf.begin());
+  buf.setFileName("/music/a.mp3");
+  loadUntil(buf, data.size());
+  std::vector<uint8_t> out(data.size());
+  CHECK(buf.readData(out.data(), out.size()) == data.size());
+  CHECK(out == data);
+}

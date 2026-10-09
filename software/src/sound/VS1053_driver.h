@@ -79,7 +79,9 @@
 // WRAM parameter addresses
 #define VS1053_PARA_PLAYSPEED 0x1E04
 #define VS1053_PARA_ENDFILLBYTE 0x1E06
-#define VS1053_FLAC_SPEED 0x8800
+// SC_MULT = 4.5x, no SC_ADD (SC_ADD only applies to WMA/AAC: the previous
+// 0x8800, "3.5x + 1.0x", actually ran FLAC at 3.5x = 43 MHz).
+#define VS1053_FLAC_SPEED VS1053_SC_MULT_4_5X
 // Optimized transfer sizes
 #define VS1053_BURST_SIZE 64 // Increased from 32 for better throughput
 
@@ -101,7 +103,18 @@ public:
   uint16_t readRegister(uint8_t addr);
   void writeRegister(uint8_t addr, uint16_t data);
 
+  // Blocking: waits for DREQ before every 32-byte burst.
   void sendData(const uint8_t *data, size_t len);
+  // Non-blocking: sends 32-byte bursts only while DREQ is high and returns
+  // how many bytes went out (a multiple of 32 unless len ran out).
+  size_t sendIfReady(const uint8_t *data, size_t len);
+
+  // SPI clocks, derived from CLOCKF on every write to it (datasheet: SCI
+  // reads <= CLKI/7, SDI writes <= CLKI/4). setSdiFreq() overrides the SDI
+  // clock until the next CLOCKF write (link bench).
+  uint32_t getSciFreq() const { return _sciFreq; }
+  uint32_t getSdiFreq() const { return _sdiFreq; }
+  void setSdiFreq(uint32_t hz) { _sdiFreq = hz; }
 
   // Audio control
   void setVolume(uint8_t left, uint8_t right);
@@ -145,7 +158,10 @@ private:
   uint8_t _rst, _cs, _dcs, _dreq;
   uint8_t _mosi, _miso, _sclk;
   bool _useHardwareSPI;
-  uint32_t _spiFreq;
+  uint32_t _sciFreq;
+  uint32_t _sdiFreq;
+  void updateClockSpeeds(uint16_t clockf);
+  void sendBurst(const uint8_t *data, size_t len);
 
   // Low-level SPI functions
   void initSPI();

@@ -124,7 +124,11 @@ bool Audio_buffer::SDtoPSRAM(bool nextFile) {
     // prepareNextTrack() reset it), so this always skips the ID3 header on
     // first read; a resumed fpos (e.g. after consumeNextTrackIfMatches())
     // re-seeks to where streaming left off instead.
-    dataStart = fpos ? (uint32_t)fpos : skipID3Header(f);
+    if (fpos) {
+      dataStart = (uint32_t)fpos;
+    } else {
+      dataStart = skipFLACMetadata(f, skipID3Header(f), nextFile);
+    }
     fpos = (int)dataStart;
     f.seekSet(dataStart);
     if (!nextFile) {
@@ -151,53 +155,97 @@ bool Audio_buffer::SDtoPSRAM(bool nextFile) {
     return false;
   }
 
+  uint32_t t0 = audioprof::now();
   size_t read = f.read(_scratchBuffer, toRead);
+  audioprof::add(audioprof::SD_READ, t0);
+  audioprof::addBytes(audioprof::SD_READ, read);
   if (read == 0) {
     return false; // End of file
   }
 
-  // Scoped to just the PSRAM write. There's no live DREQ ISR to race right
-  // now (AudioPlayer::useInterrupt() is never called anywhere), so nothing
-  // actually needs this section atomic today - but if that ISR feeding is
-  // ever wired back up, it reads PSRAM (SPI2) + writes the VS1053 (SPI1) and
-  // must not fire mid-transfer here. Deliberately NOT wrapping f.read()
-  // above: that's a real, sometimes-slow SD/SPI1 transaction, and disabling
-  // global interrupts for its duration also stalls SysTick (millis()) and
-  // the interrupt-driven Serial TX drain - see flac-feed-problem.md.
-  noInterrupts();
-  if (nextFile) {
-    psram.writeData(NEXT_TRACK_BUFFER_BASE_ADDRESS + _nextPrefetchedBytes,
-                    _scratchBuffer, read);
-  } else {
-    bool wraps = (_psramHead + read) > _psramBufferSize;
-    size_t writeSize = wraps ? (_psramBufferSize - _psramHead) : read;
-    size_t wrapWriteSize = wraps ? (read - writeSize) : 0;
-    psram.writeData(_psramBaseAddress + _psramHead, _scratchBuffer, writeSize);
-    if (wrapWriteSize > 0) {
-      psram.writeData(_psramBaseAddress, _scratchBuffer + writeSize,
-                      wrapWriteSize);
-    }
-    _psramHead = (_psramHead + read) % _psramBufferSize;
-    // Mark the buffer full when the head catches the tail, but keep the
-    // file open while streaming (closing/reopening per refill starved the
-    // decoder).
-    if (_psramHead == _psramTail) {
-      _bufferFull = true;
-    }
-    _psramDataSize += read;
-    _psramPosition = 0;
-  }
-  interrupts();
-
-  if (nextFile) {
-    _nextPrefetchedBytes += read;
-  }
+  appendToDestination(nextFile, _scratchBuffer, read);
   fpos += read;
 
   return true;
 }
+
+void Audio_buffer::appendToDestination(bool nextFile, const uint8_t *data,
+                                       size_t len) {
+  if (nextFile) {
+    psram.writeData(NEXT_TRACK_BUFFER_BASE_ADDRESS + _nextPrefetchedBytes,
+                    data, len);
+    _nextPrefetchedBytes += len;
+    return;
+  }
+  bool wraps = (_psramHead + len) > _psramBufferSize;
+  size_t writeSize = wraps ? (_psramBufferSize - _psramHead) : len;
+  size_t wrapWriteSize = wraps ? (len - writeSize) : 0;
+  psram.writeData(_psramBaseAddress + _psramHead, data, writeSize);
+  if (wrapWriteSize > 0) {
+    psram.writeData(_psramBaseAddress, data + writeSize, wrapWriteSize);
+  }
+  _psramHead = (_psramHead + len) % _psramBufferSize;
+  if (_psramHead == _psramTail) {
+    _bufferFull = true;
+  }
+  _psramDataSize += len;
+  _psramPosition = 0;
+}
+
+uint32_t Audio_buffer::skipFLACMetadata(FsFile &f, uint32_t start,
+                                        bool nextFile) {
+  // A FLAC file is "fLaC", metadata blocks, then audio frames. The decoder
+  // only needs STREAMINFO; the other blocks (embedded cover art: 200-300 KB
+  // is common, seek table, tags, padding) would be streamed to the VS1053
+  // for nothing, draining the freshly primed buffer at SPI speed and
+  // starving the start of every track. Hand the decoder a minimal header
+  // instead ("fLaC" + STREAMINFO flagged as the last block) and start
+  // streaming at the first audio frame. Anything unexpected: stream the
+  // file as-is.
+  uint8_t header[4 + 4 + 34];
+  f.seekSet(start);
+  if (f.read(header, 4) != 4 || memcmp(header, "fLaC", 4) != 0) {
+    return start;
+  }
+  bool haveStreamInfo = false;
+  uint32_t pos = start + 4;
+  for (;;) {
+    uint8_t blockHeader[4];
+    if (!f.seekSet(pos) || f.read(blockHeader, 4) != 4) {
+      return start;
+    }
+    uint8_t type = blockHeader[0] & 0x7F;
+    uint32_t len = ((uint32_t)blockHeader[1] << 16) |
+                   ((uint32_t)blockHeader[2] << 8) | blockHeader[3];
+    if (type == 0 && len == 34) {
+      if (f.read(header + 8, 34) != 34) {
+        return start;
+      }
+      haveStreamInfo = true;
+    }
+    pos += 4 + len;
+    if (blockHeader[0] & 0x80) {
+      break; // last metadata block
+    }
+    if (pos >= (nextFile ? _nextFileSize : fileSize)) {
+      return start;
+    }
+  }
+  if (!haveStreamInfo) {
+    return start;
+  }
+  header[4] = 0x80; // STREAMINFO, last metadata block
+  header[5] = 0;
+  header[6] = 0;
+  header[7] = 34;
+  appendToDestination(nextFile, header, sizeof(header));
+  Serial.printf("FLAC: skipped %lu bytes of metadata\n",
+                (unsigned long)(pos - start - 4 - 4 - 34));
+  return pos;
+}
 bool Audio_buffer::load(size_t targetBufferedBytes,
-                        const std::function<void()> &onChunkLoaded) {
+                        const std::function<void()> &onChunkLoaded,
+                        unsigned long maxMs) {
   // Keep topping up the ring buffer (not just one 4KB chunk) so a slow
   // main-loop tick (display/wheel work) can't starve playback before the
   // next refill. Bounded to AUDIO_MAX_CHUNKS_PER_LOAD_CALL reads per call so
@@ -216,7 +264,7 @@ bool Audio_buffer::load(size_t targetBufferedBytes,
   unsigned long loadStartMs = millis();
   while (!_bufferFull && getPSRAMDataSize() < targetBufferedBytes &&
          chunksThisCall < AUDIO_MAX_CHUNKS_PER_LOAD_CALL &&
-         millis() - loadStartMs < AUDIO_MAX_LOAD_MS) {
+         millis() - loadStartMs < maxMs) {
     if (!SDtoPSRAM()) {
       break; // buffer full or end of file
     }
@@ -343,32 +391,6 @@ size_t Audio_buffer::readData(uint8_t *buffer, size_t maxLen) {
 
   // Handle ring buffer wrapping
   size_t firstChunk = (toRead < (_psramBufferSize - _psramTail)) ? toRead : (_psramBufferSize - _psramTail);
-  size_t secondChunk = toRead - firstChunk;
-
-  noInterrupts();
-  psram.readData(_psramBaseAddress + _psramTail, buffer, firstChunk);
-  if (secondChunk > 0)
-    psram.readData(_psramBaseAddress, buffer + firstChunk, secondChunk);
-  interrupts();
-
-  _psramTail = (_psramTail + toRead) % _psramBufferSize;
-  _bufferFull = false;
-
-  return toRead;
-}
-
-size_t Audio_buffer::readDataForISR(uint8_t *buffer, size_t maxLen) {
-  if ((_psramTail == _psramHead) && !_bufferFull)
-    return 0;
-
-  size_t available = getPSRAMDataSize();
-  size_t toRead = (maxLen < available) ? maxLen : available;
-  if (toRead == 0)
-    return 0;
-
-  size_t firstChunk = (toRead < (_psramBufferSize - _psramTail))
-                          ? toRead
-                          : (_psramBufferSize - _psramTail);
   size_t secondChunk = toRead - firstChunk;
 
   psram.readData(_psramBaseAddress + _psramTail, buffer, firstChunk);

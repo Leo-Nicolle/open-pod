@@ -11,9 +11,6 @@
 #include "VS1053_driver.h"
 #include <Arduino.h>
 #include "pinout.h"
-// Interrupt types
-#define AUDIOPLAYER_PIN_INT 1
-#define AUDIOPLAYER_TIMER_INT 2
 
 class AudioPlayer {
 public:
@@ -36,11 +33,6 @@ public:
   // duration index and is forwarded to Audio_buffer::setFileName() to
   // short-circuit the on-device MP3-frame-scan duration guess.
   bool startPlaying(const char *filename, uint32_t knownDurationSeconds = 0);
-  bool
-  startPlayingSimple(const char *filename); 
-  bool startPlayingEnhanced(
-      const char *filename); 
-  bool playFile(const char *filename);
   void stopPlaying();
 
   // Playback control
@@ -50,8 +42,6 @@ public:
   bool isPaused();
   void setLoop(bool loop);
   bool isLooping();
-  void forward();
-  void rewind();
 
   // Seek support (approximate; see Audio_buffer::seekToSeconds)
   bool seekToSeconds(uint32_t targetSeconds);
@@ -93,8 +83,6 @@ public:
   void dumpRegisters();
   bool testBasicPlayback();
 
-  // Interrupt and processing control
-  bool useInterrupt(uint8_t type);
   void loop();
 
   // Off by default: the periodic starvation-monitor Serial.printf() (see
@@ -105,19 +93,11 @@ public:
   // (see flac-feed-problem.md).
   void setDebugMonitorEnabled(bool enabled) { _monitorEnabled = enabled; }
 
-  // OPTIMIZED: Buffer management methods
-  bool primeBuffer();
-  bool primeBufferEnhanced(bool isHighQuality);
+  // Sends whatever the VS1053 can take right now (DREQ high) from the feed
+  // buffer, refilling that from the ring buffer when it's empty. Never waits
+  // on DREQ. Returns true if bytes went out.
   bool feedBuffer();
-  // Feeds the VS1053 from the DREQ interrupt: reads one SDI burst (32 bytes)
-  // out of the PSRAM ring buffer and sends it. Kept minimal - no locks, no
-  // EOF handling - the main loop owns refill + end-of-track detection.
-  void feedFromISR();
   void sendEndFillSequence();
-
-  // ISR methods
-  static void timerISR();
-  static void pinISR();
 
 private:
   // Core objects
@@ -128,9 +108,6 @@ private:
   bool _playing;
   bool _paused;
   bool _looping;
-  bool _usingInterrupts;
-  bool _needsFeeding;
-  uint8_t _interruptType;
   bool _trackEnded = false;
   // The decoder was fed a stream that hasn't been ended with
   // sendEndFillSequence() yet; stopping when it's clean skips that (slow)
@@ -172,6 +149,14 @@ private:
   // responsive while the (healthy) ring buffer absorbs any transient shortfall.
   static const unsigned long AUDIO_MAX_FEED_MS = 100;
 
+  // A refill runs from the low watermark up to the target (see loop()).
+  // While the buffer still holds more than AUDIO_URGENT_BYTES (~2.5 s of
+  // CD-quality FLAC), each tick spends at most AUDIO_RELAXED_LOAD_MS on it,
+  // otherwise up to AUDIO_MAX_LOAD_MS.
+  bool _refilling = false;
+  static const size_t AUDIO_URGENT_BYTES = 256 * 1024;
+  static const unsigned long AUDIO_RELAXED_LOAD_MS = 8;
+
   // Bounded prime: buffer this many bytes before flipping _playing, so the
   // VS1053 has slack from sample one instead of stuttering while the
   // per-tick refill catches up (see memory-improvements.md).
@@ -188,16 +173,15 @@ private:
   // saturated (see memory-improvements.md §monitoring).
   static const size_t AUDIO_FEED_BUFFER_LEN = 512;
 
-  // Buffer for audio data
+  // Bytes read from the ring buffer but not yet accepted by the VS1053:
+  // _feedBuffer[_feedPos, _feedLen) goes out on the next feedBuffer() calls.
   uint8_t _feedBuffer[AUDIO_FEED_BUFFER_LEN];
-  // Small dedicated buffer used by the DREQ ISR (one 32-byte SDI burst).
-  uint8_t _isrFeedBuffer[32];
+  size_t _feedLen = 0;
+  size_t _feedPos = 0;
+  // Forget queued feed bytes (stop, seek: they belong to the old stream).
+  void dropPendingFeed() { _feedLen = _feedPos = 0; }
 
-  // Static instance for ISR access
   static AudioPlayer *_instance;
-
-  // Internal methods
-  void handleInterrupt();
 };
 
 #endif // AUDIOPLAYER_H

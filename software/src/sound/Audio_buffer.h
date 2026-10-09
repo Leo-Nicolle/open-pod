@@ -100,14 +100,12 @@ public:
   // AudioPlayer::loop()) passes a callback that drains the VS1053 as far as
   // DREQ allows, so refilling never blocks feeding for more than one
   // chunk's worth of time (see flac-feed-problem.md).
+  // maxMs bounds the wall time of one call (checked before each chunk, so
+  // a call can overrun it by one SD + PSRAM chunk, ~6 ms).
   bool load(size_t targetBufferedBytes = AUDIO_TARGET_BUFFERED_BYTES,
-           const std::function<void()> &onChunkLoaded = nullptr);
+           const std::function<void()> &onChunkLoaded = nullptr,
+           unsigned long maxMs = AUDIO_MAX_LOAD_MS);
   size_t readData(uint8_t *buffer, size_t maxLen);
-  // ISR-safe read: same as readData() but does NOT touch interrupts, for use
-  // from the DREQ interrupt handler (where interrupts are already off and
-  // re-enabling them would allow re-entrancy). The main loop must make its own
-  // PSRAM/SD access atomic (see SDtoPSRAM) so this never races it.
-  size_t readDataForISR(uint8_t *buffer, size_t maxLen);
   SdFat &getSD() { return _sd; }
   void resetRingBuffer();
   // Track length in seconds as supplied via setFileName()/prepareNextTrack()
@@ -128,6 +126,9 @@ public:
   // empty because SDtoPSRAM() hasn't topped it back up yet - the caller must
   // keep streaming and refill rather than treat that gap as end-of-track.
   bool isFileExhausted();
+  // True once every byte of the current file has been read from SD (the
+  // ring buffer may still hold some of it).
+  bool isFileFullyRead() { return file.isOpen() && (size_t)filePos >= fileSize; }
 
   // --- Next-track prefetch (see memory-improvements.md §3) ---
   // Call once the current track starts playing, with the filename/duration
@@ -211,6 +212,14 @@ protected:
   // a different file handle and a different PSRAM destination/capacity.
   bool SDtoPSRAM(bool nextFile = false);
   uint32_t skipID3Header(FsFile &file);
+  // For a FLAC stream at `start`: writes a minimal "fLaC" + STREAMINFO
+  // header to the destination and returns the offset of the first audio
+  // frame (skipping cover art, tags, seek table, padding). Returns `start`
+  // unchanged for anything else.
+  uint32_t skipFLACMetadata(FsFile &file, uint32_t start, bool nextFile);
+  // Appends bytes to the current track's ring buffer (nextFile=false) or
+  // the next-track prefetch region; the caller checked there's room.
+  void appendToDestination(bool nextFile, const uint8_t *data, size_t len);
   size_t getPSRAMDataSize(); // Returns the size of data in PSRAM buffer
   size_t getPSRAMFreeSpace(); // Returns the free space in PSRAM buffer
 };

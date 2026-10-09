@@ -17,6 +17,15 @@ so `sync.sh` re-encodes any such file to **48 kHz / 16-bit / stereo** while
 preserving tags and embedded cover art. Files already inside the limits are
 copied unchanged.
 
+Files inside those limits can still be too heavy to decode in real time: the
+FLAC "streamable subset" caps the LPC predictor order at 12, but some
+encoders go past it (ffmpeg `-compression_level` 9–12, `flac --lax`) with
+orders up to 32, ~2.5× the decode work. The data reaches the chip in time,
+but playback stutters constantly. `flac-max-lpc-order.py` reads the frame
+headers to find the order, and files above 12 are re-encoded **losslessly**
+(same rate/depth/channels, `-compression_level 8`; the decoded PCM is
+bit-identical).
+
 ## Usage
 
 ```sh
