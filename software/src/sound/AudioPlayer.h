@@ -59,6 +59,9 @@ public:
 
   // One-shot: true if the current track hit end-of-data since the last call.
   bool consumeTrackEnded();
+  // True if the playing track's file could not be (re)opened: nothing more
+  // will be read from it, the caller should stop playback.
+  bool hasFailed() { return _playing && _buffer.openFailed(); }
 
   VS1053_driver &getDriver() { return _driver; }
   // Audio settings

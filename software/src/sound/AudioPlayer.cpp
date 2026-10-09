@@ -80,6 +80,10 @@ bool AudioPlayer::startPlaying(const char *filename,
     }
     primed = now;
   }
+  if (_buffer.openFailed()) {
+    stopPlaying();
+    return false;
+  }
 
   _driver.resetDecodeTime();
   _seekOffsetSeconds = 0;

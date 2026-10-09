@@ -273,10 +273,15 @@ void onButtonClick(ClickWheel::Button button)
   switch (button)
   {
   case ClickWheel::Button::Center:
-    // Enter menu / navigate forward, or enter seek-mode on Now Playing
+    // Enter menu / navigate forward, or toggle seek-mode on Now Playing
     if (onNowPlaying)
     {
-      if (!seeking)
+      if (seeking)
+      {
+        commitPendingSeek(); // don't lose an in-flight scrub on exit
+        state.exitSeekMode();
+      }
+      else
       {
         state.enterSeekMode();
         seekModeLastInteraction = millis();
@@ -321,6 +326,11 @@ void onButtonClick(ClickWheel::Button button)
       }
       if (button == ClickWheel::Button::Left)
       {
+        // The periodic progress poll lags up to a second (and seek-mode
+        // shows a preview position), so decide restart-vs-previous on the
+        // real decode time. A restart resets it to 0, so a quick second
+        // click (double-click) lands on the previous track.
+        state.updateProgress((int)player.audioPlayer.getDecodeTime());
         state.previousTrack(musicLookup);
       }
       else

@@ -47,6 +47,16 @@ public:
   static const int16_t TOUCH_THRESHOLD = 6;       // min dominant-pad delta to count as a wheel touch
   static const int16_t SECOND_PAD_THRESHOLD = 3;  // min 2nd-pad delta to interpolate instead of snapping
 
+  // Lifting the finger smears it across the pads and fakes a +/-1 click.
+  // Scroll clicks are held this long before being emitted, and dropped if
+  // the touch ends in the meantime. Also the added scroll latency.
+  static const unsigned long SCROLL_LIFTOFF_MS = 80;
+
+  // After a touch ends, keep polling this long before trusting ~IRQ again:
+  // the MPR121's auto-baseline drifted toward the finger during the touch
+  // and needs ~1s to recover, so a quick re-touch doesn't raise ~IRQ.
+  static const unsigned long IRQ_RESUME_MS = 1500;
+
 private:
   // Hardware
   Adafruit_MPR121 *mpr121;
@@ -70,6 +80,10 @@ private:
     unsigned long pressStart = 0;
     bool longFired = false;
     bool veryLongFired = false;
+    // Set by the falling-edge ISR: catches presses shorter than the gap
+    // between two polls (a slow loop() pass would otherwise miss them).
+    volatile bool fallPending = false;
+    volatile unsigned long lastFall = 0;
   };
   ButtonState buttons[BUTTON_COUNT];
 
@@ -79,8 +93,18 @@ private:
   uint8_t queueHead = 0;
   uint8_t queueCount = 0;
 
+  // Scroll clicks waiting out SCROLL_LIFTOFF_MS (oldest first)
+  struct HeldScroll {
+    unsigned long at;
+    int16_t clicks;
+  };
+  static const uint8_t HELD_SCROLL_SIZE = 8;
+  HeldScroll heldScroll[HELD_SCROLL_SIZE];
+  uint8_t heldScrollCount = 0;
+
   // Touch state
   bool wheelTouched = false; // finger on the wheel (software threshold, see update())
+  unsigned long lastWheelTouchAt = 0; // last sample with wheelTouched, gates the IRQ skip
   
   // Wheel state
   int16_t wheelBaseline[12]; // Full baseline array for all 12 electrodes
@@ -222,7 +246,14 @@ public:
     for (uint8_t i = 0; i < BUTTON_COUNT; i++) {
       buttons[i] = ButtonState();
       buttons[i].pin = pins[i];
-      if (pins[i] >= 0) pinMode(pins[i], INPUT_PULLUP);
+      if (pins[i] >= 0) {
+        pinMode(pins[i], INPUT_PULLUP);
+        ButtonState *b = &buttons[i];
+        attachInterrupt(digitalPinToInterrupt(pins[i]), [b]() {
+          b->fallPending = true;
+          b->lastFall = millis();
+        }, FALLING);
+      }
     }
   }
 
@@ -232,6 +263,7 @@ public:
     updateButtons();
 
     if (irqPin >= 0 && lastTouchedMask == 0 && lastWheelAngle == -1 &&
+        millis() - lastWheelTouchAt >= IRQ_RESUME_MS &&
         digitalRead(irqPin) == HIGH) {
       return;
     }
@@ -249,9 +281,11 @@ public:
       resetScroll();
       pushEvent({EventType::TouchStart, Button::Count, 0});
     } else if (!wheelTouchedNow && wheelTouched) {
+      heldScrollCount = 0; // lift-off jitter: drop clicks not yet emitted
       pushEvent({EventType::TouchEnd, Button::Count, 0});
     }
     wheelTouched = wheelTouchedNow;
+    if (wheelTouched) lastWheelTouchAt = millis();
 
     // Clicks are cut from the accumulated angle; the remainder carries over,
     // and a jittering finger has to travel a full click back to undo one.
@@ -259,7 +293,29 @@ public:
 
     int clicks = consumeScrollClicks();
     if (clicks != 0) {
-      pushEvent({EventType::Scroll, Button::Count, (int16_t)clicks});
+      if (heldScrollCount == HELD_SCROLL_SIZE) {
+        releaseHeldScroll(1); // full: emit the oldest early
+      }
+      heldScroll[heldScrollCount++] = {millis(), (int16_t)clicks};
+    }
+
+    uint8_t due = 0;
+    while (due < heldScrollCount &&
+           millis() - heldScroll[due].at >= SCROLL_LIFTOFF_MS) {
+      due++;
+    }
+    releaseHeldScroll(due);
+  }
+
+  // Emits the n oldest held clicks as one Scroll event.
+  void releaseHeldScroll(uint8_t n) {
+    if (n == 0) return;
+    int16_t clicks = 0;
+    for (uint8_t i = 0; i < n; i++) clicks += heldScroll[i].clicks;
+    for (uint8_t i = n; i < heldScrollCount; i++) heldScroll[i - n] = heldScroll[i];
+    heldScrollCount -= n;
+    if (clicks != 0) {
+      pushEvent({EventType::Scroll, Button::Count, clicks});
     }
   }
 
@@ -405,6 +461,8 @@ private:
       // Debounce: accept a level only once it has been stable long enough
       if (b.rawPressed != b.pressed && now - b.lastRawChange >= DEBOUNCE_MS) {
         b.pressed = b.rawPressed;
+        // Any edge so far (incl. bounce) belongs to this debounced press/release
+        b.fallPending = false;
         if (b.pressed) {
           b.pressStart = now;
           b.longFired = false;
@@ -414,6 +472,16 @@ private:
           pushEvent({EventType::ButtonUp, id, 0});
           if (!b.longFired) pushEvent({EventType::Click, id, 0});
         }
+      }
+
+      // A whole press+release fit between two polls: the debounce never saw
+      // it, but the ISR did. Replay it as a click once the line has settled.
+      if (b.fallPending && !b.pressed && !b.rawPressed &&
+          now - b.lastFall >= DEBOUNCE_MS) {
+        b.fallPending = false;
+        pushEvent({EventType::ButtonDown, id, 0});
+        pushEvent({EventType::ButtonUp, id, 0});
+        pushEvent({EventType::Click, id, 0});
       }
 
       if (b.pressed) {

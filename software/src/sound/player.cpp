@@ -51,9 +51,14 @@ void PodPlayer::handleTrackPlaybackStarted(const PlaybackEvent *event) {
     uint32_t indexedDuration = musicLookup.getTrackDurationSeconds(event->trackId);
     if (audioPlayer.startPlaying(currentPath, indexedDuration)) {
       state.setTrackDuration((int)audioPlayer.getDurationSeconds());
+    } else {
+      playbackFailed = true;
+      return; // no point prefetching after a track that won't play
     }
   } else {
     Serial.printf("Could not resolve path for track id %d\n", event->trackId);
+    playbackFailed = true;
+    return;
   }
 
   // Kick off background prefetch of whatever plays next (memory-improvements
@@ -91,6 +96,13 @@ void PodPlayer::handleVolumeChanged(const VolumeEvent *event) {
 
 void PodPlayer::loop() {
   audioPlayer.loop();
+  if (playbackFailed || audioPlayer.hasFailed()) {
+    playbackFailed = false;
+    Serial.println("Playback failed, stopping");
+    audioPlayer.stopPlaying();
+    state.stopPlayback();
+    return;
+  }
   if (audioPlayer.consumeTrackEnded()) {
     state.notifyTrackEnded(musicLookup);
   }

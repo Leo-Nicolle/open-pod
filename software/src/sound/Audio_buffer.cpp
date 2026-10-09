@@ -71,6 +71,7 @@ void Audio_buffer::setFileName(const char *filename,
   strncpy(_currentFileName, filename, sizeof(_currentFileName) - 1);
   _currentFileName[sizeof(_currentFileName) - 1] =
       '\0';    // Ensure null-termination
+  _openFailed = false;
   filePos = 0; // Reset file position
   _durationSeconds = knownDurationSeconds;
 }
@@ -101,6 +102,9 @@ bool Audio_buffer::SDtoPSRAM(bool nextFile) {
   if (nextFile && _nextFileName[0] == '\0') {
     return false;
   }
+  if (!nextFile && _openFailed) {
+    return false; // already reported, don't retry every tick
+  }
 
   File &f = nextFile ? _nextFile : file;
   size_t &fsize = nextFile ? _nextFileSize : fileSize;
@@ -111,6 +115,8 @@ bool Audio_buffer::SDtoPSRAM(bool nextFile) {
     if (!openFile(nextFile)) {
       if (nextFile) {
         _nextFileName[0] = '\0'; // give up on this guess
+      } else {
+        _openFailed = true;
       }
       return false;
     }
@@ -263,6 +269,7 @@ bool Audio_buffer::consumeNextTrackIfMatches(const char *filename,
     closeFile();
     strncpy(_currentFileName, filename, sizeof(_currentFileName) - 1);
     _currentFileName[sizeof(_currentFileName) - 1] = '\0';
+    _openFailed = false;
     // Don't rely on File copy-assignment to "move" the open next-track
     // handle over - SdFat handle semantics vary by version/backend. Closing
     // and reopening at the resumed position is just a directory lookup +

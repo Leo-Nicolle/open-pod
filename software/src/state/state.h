@@ -185,9 +185,11 @@ public:
   bool nextTrack(MusicLookup &musicLookup);
   // iPod-style previous: restarts the current track if it has played for
   // more than PREVIOUS_RESTART_SECONDS (or is the first one), otherwise goes
-  // to the previous track. False if nothing is playing.
+  // to the previous track. Since a restart resets the position to 0, two
+  // quick calls (double-click) go to the previous track. False if nothing
+  // is playing.
   bool previousTrack(MusicLookup &musicLookup);
-  static const int PREVIOUS_RESTART_SECONDS = 3;
+  static const int PREVIOUS_RESTART_SECONDS = 1;
 
   // Volume control (Now Playing wheel scroll)
   void setVolume(int vol);

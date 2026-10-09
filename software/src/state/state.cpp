@@ -263,10 +263,10 @@ void State::loadCurrentRouteData(MusicLookup &musicLookup) {
   }
 
   // Update route info and set elements
+  // Callers position selectedIndex/topVisibleIndex first (0 when entering a
+  // route, the saved values on back()), so the list event carries them.
   currentRoute.totalResults = count;
-  topVisibleIndex = 0;
   setElements(stringPointers, count);
-  updateVisibleElements();
 }
 
 void State::scrollUp() {
@@ -348,13 +348,9 @@ void State::setElements(const char **elementList, int count) {
   if (selectedIndex >= count) {
     selectedIndex = count > 0 ? count - 1 : 0;
   }
-  for (int i = 0; i < ELEMENTS_PER_SCREEN; i++) {
-    if (i < count) {
-      visibleElements[i] = elementList[i];
-    } else {
-      visibleElements[i] = nullptr;
-    }
-  }
+  topVisibleIndex =
+      constrain(topVisibleIndex, 0, max(0, count - ELEMENTS_PER_SCREEN));
+  updateVisibleElements();
   ListEvent event = {count, selectedIndex, topVisibleIndex, elementList,
                      visibleElements};
   emitEvent(EVENT_TRACK_LIST_UPDATED, &event);
@@ -502,8 +498,15 @@ bool State::back(MusicLookup &musicLookup) {
   router.popRoute();
   setAnimating(true);
   if(oldRouteType != Route_t::NOW_PLAYING) {
+    // Restore the saved scroll position *before* loading: setElements()
+    // emits EVENT_TRACK_LIST_UPDATED, and the UI builds its row cache from
+    // that event's topVisibleIndex. Restoring afterwards left the UI showing
+    // the top of the list while the state pointed further down.
+    Route_t &restoredRoute = router.getCurrentRoute();
+    selectedIndex = restoredRoute.selectedIndex;
+    topVisibleIndex = restoredRoute.topVisibleIndex;
     loadCurrentRouteData(musicLookup);
-    restoreSelectionState();
+    restoreSelectionState(); // clamps to the loaded list
   }
   Route_t &currentRoute = router.getCurrentRoute();
   RouteChangedEvent event = {oldRouteType,

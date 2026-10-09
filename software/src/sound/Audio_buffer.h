@@ -153,6 +153,11 @@ public:
   // that invalidates the sequential-next guess before it's ever consumed).
   void invalidateNextTrack();
 
+  // True once the current track's file failed to open. Sticky until the
+  // next file is set, so a missing file is reported once instead of being
+  // retried on every load() tick.
+  bool openFailed() const { return _openFailed; }
+
   friend class SDToPSRAMTest; // Allow SDToPSRAMTest to access private/protected members
 
 protected:
@@ -161,13 +166,14 @@ protected:
   SdFat _sd;
   File file;
   size_t fileSize;
-  char _currentFileName[64];
+  char _currentFileName[256]; // same size as PodPlayer::currentPath
   uint8_t _dataBuffer[AUDIO_DATABUFFERLEN];
   // Shared scratch buffer for SD<->PSRAM chunks (SDtoPSRAM) and PSRAM<->PSRAM
   // chunked copies (consumeNextTrackIfMatches). Never used concurrently -
   // everything here runs from the single-threaded main loop.
   uint8_t _scratchBuffer[AUDIO_PRELOAD_CHUNK_SIZE];
   int filePos = 0; // Current position in the file
+  bool _openFailed = false; // see openFailed()
   // SPI_PSRAM _psram = nullptr;
   uint32_t _psramBaseAddress = 0;
   static const uint32_t _psramBufferSize = AUDIO_BUFFER_SIZE;
@@ -185,7 +191,7 @@ protected:
   // --- Next-track prefetch state (linear, not a ring - filled once from
   // byte 0, consumed once at adoption time) ---
   File _nextFile;
-  char _nextFileName[64] = {0};
+  char _nextFileName[256] = {0};
   size_t _nextFileSize = 0;
   int _nextFilePos = 0;
   uint32_t _nextDataStart = 0;

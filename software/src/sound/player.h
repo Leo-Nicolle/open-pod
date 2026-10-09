@@ -14,6 +14,10 @@ class PodPlayer {
     void handlePlaybackResumed(const PlaybackEvent* event);
     void handleVolumeChanged(const VolumeEvent* event);
     char currentPath[256]; // Current track path for playback
+    // Set when a started track can't be played. Handled from loop() rather
+    // than inside the EVENT_PLAYBACK_STARTED dispatch, so the other
+    // listeners (UI) see STARTED before the matching STOPPED.
+    bool playbackFailed = false;
 
     // Event handler - must be static to use as callback
     static void onStateEvent(int eventType, void *eventData,
