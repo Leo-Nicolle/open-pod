@@ -114,6 +114,9 @@ private:
   // sequence, e.g. stopping twice in a row on a track change.
   bool _decoderDirty = false;
   static const unsigned long END_FILL_DREQ_TIMEOUT_MS = 50;
+  // The current stream goes through the FLAC plugin (see sendEndFillSequence).
+  bool _streamIsFlac = false;
+  static const int FLAC_END_FILL_BYTES = 12288;
   uint32_t _seekOffsetSeconds = 0;
 
   // Volume ducking around a seek (datasheet 10.5.4 recommends lowering

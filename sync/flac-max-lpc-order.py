@@ -11,8 +11,10 @@ run past the subset (e.g. ffmpeg's -compression_level 9..12, or flac
 files play choppy on the device even though data reaches the chip in time.
 
 Only frame and subframe headers are parsed (no decoding): each frame header
-is located by its sync code and validated with its CRC-8. Prints 0 when the
-file can't be parsed.
+is located by its sync code and must pass its CRC-8 and carry the next frame
+number (a sync code + valid CRC also shows up by chance inside compressed
+audio, about once per file; its "predictor order" is garbage). Prints 0 when
+the file can't be parsed.
 """
 import sys
 
@@ -49,6 +51,7 @@ def max_order(d, max_frames):
         return 0
     best = 0
     frames = 0
+    expected = 0  # frame number of the next frame (fixed-blocksize streams)
     while frames < max_frames:
         k = d.find(b"\xff\xf8", k)
         if k < 0 or k + 16 > len(d):
@@ -61,12 +64,17 @@ def max_order(d, max_frames):
         while first & mask and extra < 7:
             extra += 1
             mask >>= 1
-        q += 1 + (extra - 1 if extra > 1 else 0)
+        nbytes = 1 + (extra - 1 if extra > 1 else 0)
+        number = first & (0x7F >> extra) if extra != 1 else -1
+        for b in d[q + 1:q + nbytes]:
+            number = (number << 6) | (b & 0x3F)
+        q += nbytes
         q += {6: 1, 7: 2}.get(block_code, 0)
         q += {12: 1, 13: 2, 14: 2}.get(rate_code, 0)
-        if q >= len(d) or crc8(d[k:q]) != d[q]:
+        if q >= len(d) or crc8(d[k:q]) != d[q] or number != expected:
             k += 1  # false sync inside audio data
             continue
+        expected += 1
         subframe_type = (d[q + 1] >> 1) & 0x3F
         if subframe_type >= 32:
             best = max(best, (subframe_type & 31) + 1)  # LPC

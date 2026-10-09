@@ -51,6 +51,7 @@ bool AudioPlayer::startPlaying(const char *filename,
   stopPlaying();
 
   bool isFlac = isFLACFile(filename);
+  _streamIsFlac = isFlac;
   if (isFlac) {
     if (!_driver.prepareFLACPlayback()) {
       return false;
@@ -296,7 +297,7 @@ bool AudioPlayer::seekToSeconds(uint32_t targetSeconds) {
   // keeps trying to decode stale, now-discontinuous audio it already has
   // queued internally, which is what actually produced the silence+glitch
   // (not just our own software ring buffer).
-  if (!_driver.prepareForSeek()) {
+  if (!_driver.prepareForSeek(_streamIsFlac ? FLAC_END_FILL_BYTES : 2048)) {
     restoreVolumeFromDuck(); // no jump happening; nothing to mask
     return false; // header mid-decode; not safe to jump right now
   }
@@ -361,11 +362,14 @@ void AudioPlayer::sendEndFillSequence() {
     return true;
   };
 
+  // The FLAC plugin has a 12 KiB stream buffer and needs 12288 end fill
+  // bytes instead of ~2050 (vs1053b-patches.pdf, "FLAC Decoder").
+  int fillBytes = _streamIsFlac ? FLAC_END_FILL_BYTES : 2052;
   bool cancelled = false;
-  if (sendFill(2052)) {
+  if (sendFill(fillBytes)) {
     _driver.writeRegister(VS1053_REG_MODE,
                           VS1053_MODE_SM_SDINEW | VS1053_MODE_SM_CANCEL);
-    for (int sent = 0; sent < 2048; sent += 32) {
+    for (int sent = 0; sent < fillBytes; sent += 32) {
       if (!sendFill(32)) {
         break;
       }

@@ -329,7 +329,7 @@ void VS1053_driver::cancel() {
   writeRegister(VS1053_REG_MODE, VS1053_MODE_SM_SDINEW | VS1053_MODE_SM_CANCEL);
 }
 
-bool VS1053_driver::prepareForSeek() {
+bool VS1053_driver::prepareForSeek(int fillBytes) {
   uint16_t status = readRegister(VS1053_REG_STATUS);
   if (status & VS1053_STATUS_SS_DO_NOT_JUMP) {
     return false;
@@ -340,7 +340,7 @@ bool VS1053_driver::prepareForSeek() {
 
   uint8_t fillBuf[32];
   memset(fillBuf, endFillByte, sizeof(fillBuf));
-  for (int sent = 0; sent < 2048; sent += sizeof(fillBuf)) {
+  for (int sent = 0; sent < fillBytes; sent += sizeof(fillBuf)) {
     sendData(fillBuf, sizeof(fillBuf));
   }
   return true;

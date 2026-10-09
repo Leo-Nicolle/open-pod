@@ -132,7 +132,8 @@ public:
   // audio the chip already has queued (starvation + a resync pop). Returns
   // false if SS_DO_NOT_JUMP is set (a header is mid-decode; not safe to
   // jump right now) - caller should not jump and may retry later.
-  bool prepareForSeek();
+  // fillBytes: 2048 for the built-in decoders, 12288 for the FLAC plugin.
+  bool prepareForSeek(int fillBytes = 2048);
 
   // Test functions
   void sineTest(uint8_t freq, uint16_t duration);
