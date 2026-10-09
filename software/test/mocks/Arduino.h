@@ -109,7 +109,7 @@ inline void delay(unsigned long) {}
 inline void delayMicroseconds(unsigned int) {}
 // Real elapsed wall time since the test process started, matching millis()'s
 // semantics closely enough for wall-clock bounds (e.g. Audio_buffer's
-// AUDIO_MAX_LOAD_MS) to compile and behave sanely under test: a handful of
+// load() budget) to compile and behave sanely under test: a handful of
 // in-memory chunk reads/writes complete in microseconds, well under any of
 // the firmware's millisecond-scale budgets, so those bounds stay inactive
 // and chunk-count caps remain the operative limit in tests.
@@ -118,6 +118,12 @@ inline unsigned long millis() {
   auto elapsed = std::chrono::steady_clock::now() - start;
   return (unsigned long)
       std::chrono::duration_cast<std::chrono::milliseconds>(elapsed).count();
+}
+inline unsigned long micros() {
+  static const auto start = std::chrono::steady_clock::now();
+  auto elapsed = std::chrono::steady_clock::now() - start;
+  return (unsigned long)
+      std::chrono::duration_cast<std::chrono::microseconds>(elapsed).count();
 }
 // Native tests are single-threaded with no ISRs, so these are no-ops -
 // Audio_buffer brackets its PSRAM read/write calls with them to keep the

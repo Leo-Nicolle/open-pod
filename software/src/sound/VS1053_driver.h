@@ -154,6 +154,7 @@ public:
   bool configureFLACClock(); 
   bool prepareFLACPlayback();
   bool isFLACPluginLoaded();
+  bool flacPluginLoaded() const { return _flacPluginLoaded; } // no logging
   void writeFLACPluginData(const uint16_t *pluginData, size_t length);
 
 private:

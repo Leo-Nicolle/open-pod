@@ -1,5 +1,6 @@
 #include "Music_lookup.h"
 #include "SharedSpiDriver.h"
+#include "../sound/AudioYield.h"
 
 MusicLookup::MusicLookup(uint32_t psram_base_addr)
     : psram_base_address(psram_base_addr), initialized(false) {
@@ -475,7 +476,6 @@ uint32_t MusicLookup::getLookupStrings(
   uint32_t id_count =
       getRelatedIds(source_id, relation_header, target_ids,
                     min(max_results, (uint32_t)MAX_SEARCH_RESULTS));
-  test();
   if (id_count == 0) {
     return 0;
   }
@@ -485,6 +485,9 @@ uint32_t MusicLookup::getLookupStrings(
   uint32_t strings_loaded = 0;
 
   for (uint32_t i = 0; i < id_count && strings_loaded < max_results; i++) {
+    if ((i & 15) == 15) {
+      audioYield(); // long lists take 200+ ms: keep the audio fifo topped up
+    }
     // Binary search for this ID in the target index
     // (+8 skips the [entry_count][data_size] header before the id array)
     int32_t index = binarySearch(target_ids[i], target_index_header.baseOffset + 8,

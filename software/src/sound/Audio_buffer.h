@@ -24,31 +24,11 @@
 // before 1 MB was reallocated to COVER_BUFFER_SIZE - see
 // PSRAM_controller.hpp and docs/blog/09-10.md).
 #define AUDIO_TARGET_BUFFERED_BYTES (3584UL * 1024UL) // 3.5 MB
-// AudioPlayer::loop() only triggers a refill once the buffer has drained
-// below this low watermark, instead of topping up on every tick. This is
-// what actually creates a long SD-idle valley between big refill bursts,
-// instead of the buffer hovering right at the target via continuous tiny
-// top-ups (which is what a single watermark would do, since draining and
-// refilling both happen every tick).
-#define AUDIO_LOW_WATERMARK_BYTES (AUDIO_TARGET_BUFFERED_BYTES / 8) // ~12.5%
-// Each load() call performs at most this many SD reads before returning, so
-// a large refill (from the low watermark up to the target) spreads across
-// many main-loop ticks instead of blocking it in one big synchronous burst.
-// 16 chunks (64 KB) keeps the refill rate above the VS1053's burst drain.
+// Safety cap on the chunks one load() call may read, whatever its budget.
 #define AUDIO_MAX_CHUNKS_PER_LOAD_CALL 16
-// Wall-clock backstop on top of the chunk-count cap above. load() now feeds
-// the VS1053 between chunks (see the onChunkLoaded doc comment below), which
-// fixed FIFO starvation during a refill burst - but that interleaved feeding
-// is itself extra time spent inside a single AudioPlayer::loop() call, on
-// top of the SD reads. AudioPlayer::loop() runs after the wheel/UI are
-// polled each main-loop tick (see main.cpp), so a load() call that runs too
-// long (slow SD card, or a lot of FIFO to top up) delays the next tick's
-// wheel/UI polling by the same amount - felt as sluggish wheel input while
-// playing. Capping load()'s total wall time, independent of chunk count,
-// bounds that per-tick cost the same way AUDIO_MAX_FEED_MS already bounds
-// the plain feed loop; the rest of the refill just continues on the next
-// tick(s), same as when the chunk-count cap alone stops it early.
-#define AUDIO_MAX_LOAD_MS 40
+// Default load() budget: the most one call may spend (prime, seek, a low
+// buffer). The refill policy (RefillPolicy.h) passes smaller budgets.
+#define AUDIO_FULL_LOAD_BUDGET_US 40000UL
 // Bounded refill used right after a seek: just enough to bridge until the
 // next couple of loop() ticks top the buffer back up to the full target
 // above. Filling all the way to AUDIO_TARGET_BUFFERED_BYTES synchronously
@@ -96,19 +76,24 @@ public:
   // streaming target). Pass a smaller value for a bounded refill, e.g.
   // right after a seek (see AUDIO_SEEK_PRIME_BYTES).
   //
-  // onChunkLoaded, if given, is invoked after every SD chunk this call
-  // lands (not just once the whole refill is done). A multi-chunk refill
-  // burst (AUDIO_MAX_CHUNKS_PER_LOAD_CALL) can otherwise run for a while
-  // with nothing feeding the VS1053, and its onboard FIFO is only ~2KB - it
-  // starves during that gap regardless of codec/bitrate. The caller (e.g.
-  // AudioPlayer::loop()) passes a callback that drains the VS1053 as far as
-  // DREQ allows, so refilling never blocks feeding for more than one
-  // chunk's worth of time (see flac-feed-problem.md).
-  // maxMs bounds the wall time of one call (checked before each chunk, so
-  // a call can overrun it by one SD + PSRAM chunk, ~6 ms).
+  // onChunkLoaded, if given, runs after every chunk (the main-loop feeding
+  // diagnostic uses it; the feeder interrupt doesn't need it).
+  //
+  // budgetUs: the call always reads one chunk, then more only while
+  // elapsed + getChunkCostUs() fits in the budget (and at most
+  // AUDIO_MAX_CHUNKS_PER_LOAD_CALL). A budget of 1 means exactly one chunk.
   bool load(size_t targetBufferedBytes = AUDIO_TARGET_BUFFERED_BYTES,
            const std::function<void()> &onChunkLoaded = nullptr,
-           unsigned long maxMs = AUDIO_MAX_LOAD_MS);
+           uint32_t budgetUs = AUDIO_FULL_LOAD_BUDGET_US);
+  // Running estimate (EMA) of what one load() chunk costs: SD read + PSRAM
+  // or fifo write.
+  uint32_t getChunkCostUs() const { return _chunkCostUs; }
+  // Average stream rate of the current file from its size and indexed
+  // duration; 0 when the duration isn't known.
+  uint32_t estimatedBytesPerSecond() const {
+    if (_durationSeconds == 0 || fileSize <= _dataStart) return 0;
+    return (uint32_t)((fileSize - _dataStart) / _durationSeconds);
+  }
   size_t readData(uint8_t *buffer, size_t maxLen);
   SdFat &getSD() { return _sd; }
   void resetRingBuffer();
@@ -135,6 +120,9 @@ public:
   // fifo is only appended to directly while the ring holds nothing.
   // The caller owns the fifo and resets it (the consumer must be stopped).
   void setFrontFifo(AudioFifo *front) { _front = front; }
+  // Off while the decoder is being stopped (the fifo then carries end fill
+  // bytes for the previous stream): new data must wait in PSRAM.
+  void setFrontBypass(bool enabled) { _frontBypass = enabled; }
   // Moves ring data into the front fifo, in PSRAM reads of at most
   // `chunk` bytes, until the fifo has less than `chunk` free, the ring is
   // empty, or `maxBytes` moved. Returns the bytes moved.
@@ -182,6 +170,10 @@ public:
 
 protected:
   AudioFifo *_front = nullptr;
+  bool _frontBypass = true;
+  // See getChunkCostUs(). Starts at a typical measured value (~5 ms SD
+  // read + ~4 ms PSRAM write for 4 KB on the breadboard).
+  uint32_t _chunkCostUs = 9000;
   // SD card
   uint8_t _sdCS;
   SdFat _sd;

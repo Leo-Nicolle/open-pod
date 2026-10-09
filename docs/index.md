@@ -4,12 +4,12 @@ layout: home
 
 hero:
   name: "Openpod"
-  text: "An ESP32 mp3 player"
+  text: "An Opensource mp3 player"
   tagline: Work in Progress
   actions:
     - theme: brand
       text: About
-      link: /markdown-examples
+      link: /about
     - theme: alt
       text: Click wheel designer
       link: /clickwheel

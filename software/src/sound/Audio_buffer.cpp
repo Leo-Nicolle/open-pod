@@ -178,7 +178,8 @@ void Audio_buffer::appendToDestination(bool nextFile, const uint8_t *data,
     _nextPrefetchedBytes += len;
     return;
   }
-  if (_front && getPSRAMDataSize() == 0 && _front->freeSpace() >= len) {
+  if (_front && _frontBypass && getPSRAMDataSize() == 0 &&
+      _front->freeSpace() >= len) {
     _front->write(data, len); // bypass PSRAM, see setFrontFifo()
     return;
   }
@@ -250,33 +251,24 @@ uint32_t Audio_buffer::skipFLACMetadata(FsFile &f, uint32_t start,
 }
 bool Audio_buffer::load(size_t targetBufferedBytes,
                         const std::function<void()> &onChunkLoaded,
-                        unsigned long maxMs) {
-  // Keep topping up the ring buffer (not just one 4KB chunk) so a slow
-  // main-loop tick (display/wheel work) can't starve playback before the
-  // next refill. Bounded to AUDIO_MAX_CHUNKS_PER_LOAD_CALL reads per call so
-  // a big refill (from AUDIO_LOW_WATERMARK_BYTES up to a multi-MB target)
-  // spreads across many calls/ticks instead of blocking the caller in one
-  // long synchronous burst - AudioPlayer::loop() calls this every tick, so
-  // it naturally keeps making progress across the following ticks.
-  //
-  // Also bounded by AUDIO_MAX_LOAD_MS wall-clock time, on top of the chunk
-  // count: with onChunkLoaded feeding the VS1053 between chunks, this call
-  // now does real work per chunk beyond just the SD read, so a fixed chunk
-  // count no longer bounds how long a single call can run. This call is
-  // made from AudioPlayer::loop(), which runs after the wheel/UI are polled
-  // each main-loop tick - see AUDIO_MAX_LOAD_MS's comment in Audio_buffer.h.
-  uint8_t chunksThisCall = 0;
-  unsigned long loadStartMs = millis();
+                        uint32_t budgetUs) {
+  uint32_t startUs = micros();
+  uint8_t chunks = 0;
   while (!_bufferFull && getBufferedBytes() < targetBufferedBytes &&
-         chunksThisCall < AUDIO_MAX_CHUNKS_PER_LOAD_CALL &&
-         millis() - loadStartMs < maxMs) {
+         chunks < AUDIO_MAX_CHUNKS_PER_LOAD_CALL) {
+    uint32_t elapsed = micros() - startUs;
+    if (chunks > 0 && elapsed + _chunkCostUs > budgetUs) {
+      break; // the next chunk wouldn't fit
+    }
+    uint32_t chunkStartUs = micros();
     if (!SDtoPSRAM()) {
       break; // buffer full or end of file
     }
-    chunksThisCall++;
-    // Give the caller a chance to feed the VS1053 before the next chunk -
-    // see the onChunkLoaded doc comment in Audio_buffer.h. Without this, a
-    // multi-chunk burst runs with nobody feeding the chip at all.
+    // EMA, 1/8 weight: follows a slower card or a busier bus within a
+    // few chunks without jumping on a single outlier.
+    uint32_t cost = micros() - chunkStartUs;
+    _chunkCostUs = _chunkCostUs - _chunkCostUs / 8 + cost / 8;
+    chunks++;
     if (onChunkLoaded) {
       onChunkLoaded();
     }

@@ -9,6 +9,7 @@
 
 #include "Audio_buffer.h"
 #include "AudioFifo.h"
+#include "AudioYield.h"
 #include "VS1053_driver.h"
 #include <Arduino.h>
 #include "pinout.h"
@@ -96,7 +97,7 @@ public:
   // buffer runs low (see loop()).
   void noteUserActivity() { _lastUserActivityMs = millis(); }
 
-  void sendEndFillSequence(bool endOfStream);
+
 
   // The L1 fifo's storage, as scratch for the link bench. Only valid while
   // nothing plays (the feeder reads it during playback).
@@ -122,9 +123,13 @@ private:
   // from SD while PSRAM is empty, see Audio_buffer::setFrontFifo()).
   AudioFifo _fifo;
   HardwareTimer *_feederTimer = nullptr;
-  volatile bool _feederEnabled = false; // = playing && !paused
-  void updateFeeder() { _feederEnabled = _playing && !_paused; }
+  // On while a stop sends its end fill bytes, or playing and not paused.
+  volatile bool _feederEnabled = false;
+  void updateFeeder() {
+    _feederEnabled = stopping() || (_playing && !_paused);
+  }
   static void feederIsr();
+  static void yieldHook(); // see AudioYield.h
   // Diagnostic: -DOPENPOD_FEED_MAIN_LOOP feeds from loop() instead of the
   // timer interrupt (see feedFromMainLoop()).
 #ifdef OPENPOD_FEED_MAIN_LOOP
@@ -134,10 +139,16 @@ private:
 #endif
   void feedFromMainLoop();
   static const uint32_t FEEDER_HZ = 1000;
-  // The most one tick may send: ~0.75 ms at 5.6 MHz (the breadboard cap in
-  // platformio.ini), so a tick stays under the 1 ms period. Still ~500 KB/s
-  // of feeding capacity against ~90 KB/s for CD-quality FLAC.
+  // The most one tick may send, ~0.75 ms of SPI so a tick stays under the
+  // 1 ms period: 1 KB at 11.25 MHz, 512 B with the 5.6 MHz breadboard cap
+  // (OPENPOD_FEEDER_SDI_MAX_HZ in platformio.ini). Either way 500+ KB/s of
+  // feeding capacity, against ~90-200 KB/s for FLAC.
+#if defined(OPENPOD_FEEDER_SDI_MAX_HZ) && OPENPOD_FEEDER_SDI_MAX_HZ > 0 &&    \
+    OPENPOD_FEEDER_SDI_MAX_HZ < 11250000
   static const size_t FEEDER_MAX_BYTES_PER_TICK = 512;
+#else
+  static const size_t FEEDER_MAX_BYTES_PER_TICK = 1024;
+#endif
   // Per main-loop pass: PSRAM -> fifo moves at most this much (~12 ms).
   static const size_t FIFO_TOPUP_MAX_BYTES = 16 * 1024;
   // Feeder counters (interrupt writes, monitor reads and resets).
@@ -150,12 +161,37 @@ private:
   // Longest time between two feeder ticks (should be ~1 ms).
   volatile uint32_t _isrLastTickCycles = 0;
   volatile uint32_t _isrMaxTickGapCycles = 0;
-  // The decoder was fed a stream that hasn't been ended with
-  // sendEndFillSequence() yet; stopping when it's clean skips that (slow)
-  // sequence, e.g. stopping twice in a row on a track change.
+  // The decoder was fed a stream that hasn't been stopped yet (see
+  // beginStop()); stopping when it's clean skips the stop sequence, e.g.
+  // stopping twice in a row on a track change.
   bool _decoderDirty = false;
+
+  // --- Asynchronous stop (datasheet 10.5.1 / 10.5.2) -------------------------
+  // The end fill bytes go through the fifo and the feeder; loop() advances
+  // the sequence (serviceStop()) instead of blocking ~100 ms on every track
+  // change. Meanwhile the next track primes into PSRAM, and only reaches
+  // the fifo once the decoder is clear (onDecoderReady()).
+  //  - end of stream: DrainThenCancel (fill bytes play out what the decoder
+  //    holds) -> Cancelling -> done
+  //  - mid-track: Cancelling (drop it right away) -> Flushing -> done
+  enum class StopPhase : uint8_t { None, DrainThenCancel, Cancelling, Flushing };
+  volatile StopPhase _stopPhase = StopPhase::None;
+  bool _stopEndOfStream = false;
+  uint8_t _stopFillByte = 0;
+  uint32_t _stopFillBytes = 0;  // 2052, or 12288 for the FLAC plugin
+  uint32_t _stopQueued = 0;     // fill bytes queued while cancelling
+  unsigned long _stopStartMs = 0;
+  unsigned long _stopLastPollMs = 0;
+  bool stopping() const { return _stopPhase != StopPhase::None; }
+  void beginStop(bool endOfStream);
+  void serviceStop();
+  void abortStop();
+  void stopDone();
+  void onDecoderReady();
+  // Blocks until a stop in progress completes (bounded by its deadline).
+  void finishStop();
   static const unsigned long END_FILL_TIMEOUT_MS = 1000;
-  // The current stream goes through the FLAC plugin (see sendEndFillSequence).
+  // The current stream goes through the FLAC plugin (see beginStop()).
   bool _streamIsFlac = false;
   static const int FLAC_END_FILL_BYTES = 12288;
   uint32_t _seekOffsetSeconds = 0;
@@ -174,7 +210,7 @@ private:
   // printed every AUDIO_MONITOR_INTERVAL_MS - no per-tick serial spam.
   static const unsigned long AUDIO_MONITOR_INTERVAL_MS = 1000;
   bool _monitorEnabled = false; // see setDebugMonitorEnabled()
-  uint32_t _monitorLowCount = 0;   // ticks spent below the low watermark
+  uint32_t _monitorMinRunwayMs = UINT32_MAX;
   size_t _monitorMinBuffered = (size_t)-1;
   size_t _monitorMaxBuffered = 0;
   unsigned long _monitorLastReport = 0;
@@ -186,20 +222,22 @@ private:
   unsigned long _monitorLoopMaxMs = 0;
   unsigned long _monitorPrevLoopMs = 0;
 
-  // A refill runs from the low watermark up to the target (see loop()).
-  // While the buffer still holds more than AUDIO_URGENT_BYTES (~2.5 s of
-  // CD-quality FLAC), each tick spends at most AUDIO_RELAXED_LOAD_MS on it,
-  // otherwise up to AUDIO_MAX_LOAD_MS.
+  // Refill latch and pacing: see RefillPolicy.h.
   bool _refilling = false;
   unsigned long _lastUserActivityMs = 0;
   unsigned long _lastBusyChunkMs = 0;
   static const unsigned long USER_ACTIVITY_HOLDOFF_MS = 600;
-  static const unsigned long USER_BUSY_CHUNK_INTERVAL_MS = 20;
-  // Below this (~0.7 s of CD-quality FLAC) the refill runs at full budget
-  // even while the user interacts.
-  static const size_t AUDIO_CRITICAL_BYTES = 64 * 1024;
-  static const size_t AUDIO_URGENT_BYTES = 256 * 1024;
-  static const unsigned long AUDIO_RELAXED_LOAD_MS = 8;
+
+  // Stream rate, for the runway (see streamBytesPerSecond()).
+  volatile uint32_t _isrBytesSent = 0; // all bytes sent to the VS1053
+  uint32_t _measuredBytesPerSecond = 0;
+  unsigned long _rateWindowStartMs = 0;
+  uint32_t _rateWindowStartBytes = 0;
+  bool _rateWindowValid = false;
+  uint32_t streamBytesPerSecond();
+  void updateRateEstimate(unsigned long nowMs);
+  void resetRateEstimate();
+  void resetMonitorWindow(unsigned long nowMs);
 
   // Read synchronously before a track starts (straight into the fifo, PSRAM
   // being empty): ~270 ms of CD-quality FLAC, ~25 ms of SD time. loop()'s

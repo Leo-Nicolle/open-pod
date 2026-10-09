@@ -641,10 +641,6 @@ bool VS1053_driver::loadFLACPlugin() {
       writeRegister(addr, data);
     }
 
-    // Progress indication for large plugin
-    if ((i % 1000) == 0) {
-      Serial.printf("Plugin loading progress: %d/%d\n", i, FLAC_PLUGIN_SIZE);
-    }
   }
 
   // Final DREQ wait to ensure plugin is fully loaded

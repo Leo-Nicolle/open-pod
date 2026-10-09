@@ -408,3 +408,27 @@ TEST_CASE("Audio_buffer - adopting a large prefetch takes only its start and "
   CHECK(buf.readData(out.data(), out.size()) == nextSize);
   checkSequentialRun(out.data(), out.size(), 2, 0);
 }
+
+TEST_CASE("Audio_buffer - a load() budget of 1 us reads exactly one chunk") {
+  resetAll();
+  FakeFs::get().addFile("/music/a.raw", buildFakeAudioFile(1, 100000));
+  Audio_buffer buf(4);
+  REQUIRE(buf.begin());
+  buf.setFileName("/music/a.raw");
+  buf.load(AUDIO_TARGET_BUFFERED_BYTES, nullptr, 1);
+  CHECK(buf.getBufferedBytes() == AUDIO_PRELOAD_CHUNK_SIZE);
+  CHECK(buf.getChunkCostUs() > 0);
+}
+
+TEST_CASE("Audio_buffer - estimated rate comes from size and duration") {
+  resetAll();
+  FakeFs::get().addFile("/music/a.raw", buildFakeAudioFile(1, 90000));
+  Audio_buffer buf(4);
+  REQUIRE(buf.begin());
+  buf.setFileName("/music/a.raw", 0);
+  buf.load(4096);
+  CHECK(buf.estimatedBytesPerSecond() == 0); // duration unknown
+  buf.setFileName("/music/a.raw", 10);
+  buf.load(8192);
+  CHECK(buf.estimatedBytesPerSecond() == 9000);
+}

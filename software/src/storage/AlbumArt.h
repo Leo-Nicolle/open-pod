@@ -14,6 +14,7 @@
 // NowPlayingComponent (which only knows *what* to draw) - this module is
 // purely "given a byte range in thumbs.bin, get those pixels into a
 // buffer."
+#include "../sound/AudioYield.h"
 #include <Arduino.h>
 #include <SdFat.h>
 #include <stdint.h>
@@ -67,6 +68,9 @@ public:
     }
 
     for (int row = 0; row < rowCount; row++) {
+      if ((row & 7) == 7) {
+        audioYield(); // a full cover is ~130 ms of row reads
+      }
       uint32_t fileOffset =
           coverOffset + (uint32_t)(coverRowStart + row) * ROW_BYTES;
       if (!thumbsFile.seekSet(fileOffset)) {

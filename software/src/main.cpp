@@ -7,6 +7,7 @@
 #include "sound/player.h"
 #include "sound/AudioProfiler.h"
 #include "sound/Spi1Bus.h"
+#include "UiVerbose.h"
 #include "sound/LinkBench.hpp"
 #include "state/state.h"
 #include "storage/AlbumArt.h"
@@ -47,7 +48,7 @@ bool enableAudioMonitor = true;
 bool enableLinkBench = false;
 // The haptic motor's start-up kick draws a current spike from the 3.3V
 // rail; turn this off to check whether it's what browns out the board.
-bool enableHaptics = false;
+bool enableHaptics = true;
 
 // Tracks whether a route-transition animation is currently playing, kept in
 // sync via EVENT_ANIMATION_STARTED/FINISHED (see onNavigationStateEvent
@@ -297,10 +298,12 @@ void handleWheelInput()
       onScroll(e.value);
       break;
     case ClickWheel::EventType::TouchStart:
-      Serial.println("👆 Wheel touch start");
+      if (kUiVerbose)
+        Serial.println("👆 Wheel touch start");
       break;
     case ClickWheel::EventType::TouchEnd:
-      Serial.println("👋 Wheel touch end");
+      if (kUiVerbose)
+        Serial.println("👋 Wheel touch end");
       break;
     default:
       break;
@@ -423,8 +426,10 @@ void onButtonVeryLongPress(ClickWheel::Button button)
 // Scroll wheel: seek (seek-mode) / volume (Now Playing) / list navigation
 void onScroll(int scrollClicks)
 {
-  Serial.print("🔄 Scroll: ");
-  Serial.println(scrollClicks);
+  if (kUiVerbose)
+  {
+    Serial.printf("🔄 Scroll: %d\n", scrollClicks);
+  }
 
   bool onNowPlaying =
       state.getCurrentRoute().type == Route_t::RouteType::NOW_PLAYING;

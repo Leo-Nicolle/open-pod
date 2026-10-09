@@ -8,6 +8,7 @@
 #include "nowplaying.hpp"
 #include "scrollbar.hpp"
 #include "ui_types.h"
+#include "../UiVerbose.h"
 #include <Arduino.h>
 
 // Forward declaration for global state
@@ -272,16 +273,11 @@ void OpenPodUIEngine::handleTrackSelected(const TrackSelectedEvent *event)
 
 void OpenPodUIEngine::handleScrollChanged(const ScrollChangedEvent *event)
 {
-  Serial.print("UI: Scroll changed - selected: ");
-  Serial.print(event->selectedIndex);
-  Serial.print(", top visible: ");
-  Serial.println(event->topVisibleIndex);
-  Serial.print("State selected: ");
-  int selectedIndex = state.getSelectedIndex();
-  int topVisibleIndex = state.getTopVisibleIndex();
-  Serial.print(selectedIndex);
-  Serial.print(", top visible: ");
-  Serial.println(topVisibleIndex);
+  if (kUiVerbose)
+  {
+    Serial.printf("UI: Scroll changed - selected: %d, top visible: %d\n",
+                  event->selectedIndex, event->topVisibleIndex);
+  }
   elementList.setScroll(event->selectedIndex, event->topVisibleIndex);
 
   updateScrollbar();
@@ -292,8 +288,6 @@ void OpenPodUIEngine::handleScrollChanged(const ScrollChangedEvent *event)
     int scrollDelta = event->topVisibleIndex - event->oldTopVisibleIndex;
     if (scrollDelta > 0)
     {
-      Serial.print("Scrolling down by ");
-      Serial.println(scrollDelta);
       elementList.scrollDown(scrollDelta, event->visibleElements);
     }
     else
@@ -307,13 +301,13 @@ void OpenPodUIEngine::handleScrollChanged(const ScrollChangedEvent *event)
 
 void OpenPodUIEngine::handlePageChanged(const ScrollChangedEvent *event)
 {
-  Serial.println("UI: Page changed");
-  for (int i = 0; i < ELEMENTS_PER_SCREEN; i++)
+  if (kUiVerbose)
   {
-    Serial.print("Track ");
-    Serial.print(i);
-    Serial.print(": ");
-    Serial.println(event->visibleElements[i]);
+    Serial.println("UI: Page changed");
+    for (int i = 0; i < ELEMENTS_PER_SCREEN; i++)
+    {
+      Serial.printf("Track %d: %s\n", i, event->visibleElements[i]);
+    }
   }
   updateTrackListScroll();
   elementList.rebuildCache();
@@ -401,10 +395,11 @@ void OpenPodUIEngine::handleTrackEnded(const PlaybackEvent *event)
 
 void OpenPodUIEngine::handleNavigationChanged(const RouteChangedEvent *event)
 {
-  Serial.print("UI: State changed from ");
-  Serial.print(event->oldRouteType);
-  Serial.print(" to ");
-  Serial.println(event->newRouteType);
+  if (kUiVerbose)
+  {
+    Serial.printf("UI: State changed from %d to %d\n",
+                  (int)event->oldRouteType, (int)event->newRouteType);
+  }
   nowPlaying.invalidateArt(); // the transition draws over the whole screen
   // return;
   // Handle transitions between states
@@ -431,14 +426,18 @@ void OpenPodUIEngine::handleNavigationChanged(const RouteChangedEvent *event)
 
 void OpenPodUIEngine::handleAnimationStarted(const AnimationEvent *event)
 {
-  Serial.print("UI: Animation started - ID: ");
-  Serial.println(event->animationId);
+  if (kUiVerbose)
+  {
+    Serial.printf("UI: Animation started - ID: %d\n", (int)event->animationId);
+  }
 }
 
 void OpenPodUIEngine::handleAnimationFinished(const AnimationEvent *event)
 {
-  Serial.print("UI: Animation finished - ID: ");
-  Serial.println(event->animationId);
+  if (kUiVerbose)
+  {
+    Serial.printf("UI: Animation finished - ID: %d\n", (int)event->animationId);
+  }
 
   // Ensure final render after animation
   renderCurrentState();
@@ -446,9 +445,11 @@ void OpenPodUIEngine::handleAnimationFinished(const AnimationEvent *event)
 
 void OpenPodUIEngine::handleTrackListUpdated(const ListEvent *event)
 {
-  Serial.print("UI: Track list updated - ");
-  Serial.print(event->totalElements);
-  Serial.println(" tracks");
+  if (kUiVerbose)
+  {
+    Serial.printf("UI: Track list updated - %d tracks\n",
+                  (int)event->totalElements);
+  }
   elementList.setScroll(event->selectedIndex, event->topVisibleIndex);
   elementList.setElements(event->elements, event->totalElements);
   updateScrollbar();
@@ -711,9 +712,10 @@ void OpenPodUIEngine::transitionToTrackList(bool leftToRight)
       [this, leftToRight]()
       {
         state.setAnimating(false);
-        Serial.print("transitionToTrackList leftToRight=");
-        Serial.println(leftToRight);
-        measurePerformance();
+        if (kUiVerbose)
+        {
+          measurePerformance();
+        }
       },
       Easing::easeInOutCubic);
 }
@@ -732,6 +734,4 @@ void OpenPodUIEngine::measurePerformance()
   Serial.print("µs, Max: ");
   Serial.print(max);
   Serial.println("µs");
-  Serial.print("Free heap: ");
-  // Serial.println(ESP.getFreeHeap());
 }
