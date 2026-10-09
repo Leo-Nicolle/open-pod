@@ -1,6 +1,7 @@
 #pragma once
 #include <Adafruit_GFX.h>
 #include <Arduino.h>
+#include "sound/Spi1Bus.h"
 
 // BROKEN_NUCLEO: workaround for one specific hand-soldered prototype board,
 // NOT a general hardware feature. On that board, PC14/PC15 (D14/D15) were
@@ -137,7 +138,11 @@ public:
     return value;
   }
 
+  // Every bus write holds the SPI1 lock, like the bulk transfers in
+  // ILI9341_GFX (see PIXEL_SLICE there): the VS1053 feeder never clocks
+  // SPI1 while the parallel bus or DC is switching.
   void writeCommand(uint8_t cmd) {
+    spi1bus::Lock busLock;
     digitalWrite(TFT_DC, LOW);
     write16(cmd);
   }
@@ -147,11 +152,13 @@ public:
   }
 
   void writeData(uint8_t data) {
+    spi1bus::Lock busLock;
     digitalWrite(TFT_DC, HIGH);
     write16(data);
   }
 
   void writeData16(uint16_t data) {
+    spi1bus::Lock busLock;
     digitalWrite(TFT_DC, HIGH);
     write16(data);
   }

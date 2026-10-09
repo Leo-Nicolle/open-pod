@@ -6,6 +6,7 @@
 #include "VS1053_driver.h"
 #include "VS1053_FLAC_plugin.h"
 #include "AudioProfiler.h"
+#include "Spi1Bus.h"
 
 VS1053_driver::VS1053_driver(uint8_t rst, uint8_t cs, uint8_t dcs, uint8_t dreq)
     : _rst(rst), _cs(cs), _dcs(dcs), _dreq(dreq), _useHardwareSPI(true) {}
@@ -28,6 +29,10 @@ bool VS1053_driver::begin(uint32_t spiFreq) {
 
   digitalWrite(_cs, HIGH);
   digitalWrite(_dcs, HIGH);
+  _dcsPort = digitalPinToPort(_dcs);
+  _dcsMask = digitalPinToBitMask(_dcs);
+  _dreqPort = digitalPinToPort(_dreq);
+  _dreqMask = digitalPinToBitMask(_dreq);
 
   if (!_useHardwareSPI) {
     pinMode(_mosi, OUTPUT);
@@ -72,7 +77,29 @@ void VS1053_driver::updateClockSpeeds(uint16_t clockf) {
   static const uint8_t multX2[8] = {2, 4, 5, 6, 7, 8, 9, 10};
   uint32_t clki = VS1053_XTALI_12_288MHZ / 2 * multX2[clockf >> 13];
   _sciFreq = clki / 7;
-  _sdiFreq = clki / 4;
+  setSdiFreq(clki / 4);
+}
+
+// Cap on the SDI clock the feeder interrupt uses (0 = none), for testing
+// signal integrity on the breadboard: -DOPENPOD_FEEDER_SDI_MAX_HZ=5625000.
+#ifndef OPENPOD_FEEDER_SDI_MAX_HZ
+#define OPENPOD_FEEDER_SDI_MAX_HZ 0
+#endif
+
+void VS1053_driver::setSdiFreq(uint32_t hz) {
+  _sdiFreq = hz;
+  if (OPENPOD_FEEDER_SDI_MAX_HZ && hz > OPENPOD_FEEDER_SDI_MAX_HZ) {
+    hz = OPENPOD_FEEDER_SDI_MAX_HZ;
+  }
+  // SPI1 baud rate bits for the feeder interrupt, which programs SPI1
+  // directly: PCLK2 / 2^(BR+1), the largest that doesn't exceed hz (same
+  // rounding as the STM32 core's SPISettings).
+  uint32_t pclk = HAL_RCC_GetPCLK2Freq();
+  uint32_t br = 0;
+  while (br < 7 && (pclk >> (br + 1)) > hz) {
+    br++;
+  }
+  _sdiBaudBits = br << SPI_CR1_BR_Pos;
 }
 
 void VS1053_driver::reset() {
@@ -87,11 +114,13 @@ void VS1053_driver::reset() {
     delay(1);
   }
   updateClockSpeeds(0); // CLKI = XTALI until CLOCKF is written
+  _flacPluginLoaded = false;
 }
 
 void VS1053_driver::softReset() {
   writeRegister(VS1053_REG_MODE, VS1053_MODE_SM_SDINEW | VS1053_MODE_SM_RESET);
   delay(50); // Reduced delay
+  _flacPluginLoaded = false; // patches are wiped by a software reset too
   // Re-derive the SPI clocks from whatever CLOCKF holds after the reset,
   // reading it at the slowest safe speed first.
   updateClockSpeeds(0);
@@ -169,15 +198,11 @@ void VS1053_driver::waitForDREQFast() {
 }
 
 uint16_t VS1053_driver::readRegister(uint8_t addr) {
+  // Lock before waiting on DREQ: the feeder would otherwise keep refilling
+  // the chip and holding DREQ low.
+  spi1bus::Lock lock;
   waitForDREQ();
 
-  // No noInterrupts() here: no DREQ ISR is currently attached anywhere
-  // (AudioPlayer::useInterrupt() is never called), so there's nothing for
-  // this SCI transaction to race with. Disabling global interrupts around
-  // every register access would silence SysTick (millis()) and the
-  // interrupt-driven Serial TX drain for no live benefit - see
-  // flac-feed-problem.md. Re-add it, scoped the same way, only if/when a
-  // DREQ ISR is actually wired up.
   beginSCITransaction();
   spiWrite(VS1053_SCI_READ);
   spiWrite(addr);
@@ -188,6 +213,7 @@ uint16_t VS1053_driver::readRegister(uint8_t addr) {
 }
 
 void VS1053_driver::writeRegister(uint8_t addr, uint16_t data) {
+  spi1bus::Lock lock; // see readRegister()
   waitForDREQ();
 
   beginSCITransaction();
@@ -205,6 +231,7 @@ void VS1053_driver::writeRegister(uint8_t addr, uint16_t data) {
 void VS1053_driver::sendData(const uint8_t *data, size_t len) {
   if (len == 0)
     return;
+  spi1bus::Lock lock;
 
   // One SPI transaction for the whole send; XDCS is toggled between 32-byte
   // bursts (datasheet: DREQ high guarantees room for 32 bytes).
@@ -228,26 +255,56 @@ void VS1053_driver::sendData(const uint8_t *data, size_t len) {
   }
 }
 
-size_t VS1053_driver::sendIfReady(const uint8_t *data, size_t len) {
-  if (len == 0 || !readyForData())
+size_t VS1053_driver::isrFeed(AudioFifo &fifo, size_t maxBytes) {
+  if (!(_dreqPort->IDR & _dreqMask)) {
     return 0;
-
-  if (_useHardwareSPI) {
-    SPI.beginTransaction(SPISettings(_sdiFreq, MSBFIRST, SPI_MODE0));
   }
-  dataDeselect();
-
-  size_t offset = 0;
-  while (offset < len && readyForData()) {
-    size_t toSend = min(len - offset, (size_t)32);
-    sendBurst(data + offset, toSend);
-    offset += toSend;
+  // SPI1 is idle (the caller checked the bus lock) but configured for
+  // whoever used it last: switch to the SDI clock, restore it afterwards so
+  // the STM32 core's cached settings stay true. Mode, bit order and frame
+  // size are the same for the SD card and the VS1053; only BR differs.
+  SPI_TypeDef *spi = SPI1;
+  uint32_t savedCr1 = spi->CR1;
+  uint32_t cr1 = (savedCr1 & ~SPI_CR1_BR_Msk) | _sdiBaudBits;
+  if (cr1 != savedCr1 || !(savedCr1 & SPI_CR1_SPE)) {
+    spi->CR1 = cr1 & ~SPI_CR1_SPE;
+    spi->CR1 = cr1 | SPI_CR1_SPE;
   }
 
-  if (_useHardwareSPI) {
-    SPI.endTransaction();
+  size_t sent = 0;
+  while (sent < maxBytes && (_dreqPort->IDR & _dreqMask)) {
+    uint32_t n;
+    const uint8_t *p = fifo.readPtr(n);
+    if (n == 0) {
+      break;
+    }
+    if (n > 32) {
+      n = 32; // DREQ high guarantees room for 32 bytes
+    }
+    _dcsPort->BSRR = _dcsMask << 16; // XDCS low
+    for (uint32_t i = 0; i < n; i++) {
+      while (!(spi->SR & SPI_SR_TXE)) {
+      }
+      *(volatile uint8_t *)&spi->DR = p[i];
+    }
+    while (!(spi->SR & SPI_SR_TXE)) {
+    }
+    while (spi->SR & SPI_SR_BSY) {
+    }
+    _dcsPort->BSRR = _dcsMask; // XDCS high
+    fifo.consume(n);
+    sent += n;
   }
-  return offset;
+
+  // Received bytes were ignored: clear RXNE and the overrun flag so the
+  // next main-loop transfer doesn't read a stale byte.
+  (void)*(volatile uint8_t *)&spi->DR;
+  (void)spi->SR;
+  if (spi->CR1 != savedCr1) {
+    spi->CR1 = savedCr1 & ~SPI_CR1_SPE;
+    spi->CR1 = savedCr1;
+  }
+  return sent;
 }
 
 // One XDCS-framed SDI burst of at most 32 bytes. The caller holds the SPI
@@ -296,6 +353,7 @@ uint16_t VS1053_driver::getPlaySpeed() {
 }
 
 void VS1053_driver::sineTest(uint8_t freq, uint16_t duration) {
+  spi1bus::Lock lock;
   writeRegister(VS1053_REG_MODE, VS1053_MODE_SM_SDINEW | VS1053_MODE_SM_TESTS);
 
   waitForDREQ();
@@ -329,21 +387,13 @@ void VS1053_driver::cancel() {
   writeRegister(VS1053_REG_MODE, VS1053_MODE_SM_SDINEW | VS1053_MODE_SM_CANCEL);
 }
 
-bool VS1053_driver::prepareForSeek(int fillBytes) {
-  uint16_t status = readRegister(VS1053_REG_STATUS);
-  if (status & VS1053_STATUS_SS_DO_NOT_JUMP) {
-    return false;
-  }
+bool VS1053_driver::canJump() {
+  return !(readRegister(VS1053_REG_STATUS) & VS1053_STATUS_SS_DO_NOT_JUMP);
+}
 
+uint8_t VS1053_driver::getEndFillByte() {
   writeRegister(VS1053_REG_WRAMADDR, VS1053_PARA_ENDFILLBYTE);
-  uint8_t endFillByte = readRegister(VS1053_REG_WRAM) & 0xFF;
-
-  uint8_t fillBuf[32];
-  memset(fillBuf, endFillByte, sizeof(fillBuf));
-  for (int sent = 0; sent < fillBytes; sent += sizeof(fillBuf)) {
-    sendData(fillBuf, sizeof(fillBuf));
-  }
-  return true;
+  return readRegister(VS1053_REG_WRAM) & 0xFF;
 }
 
 void VS1053_driver::dumpRegisters() {
@@ -602,6 +652,7 @@ bool VS1053_driver::loadFLACPlugin() {
   delay(100);
 
   Serial.println("FLAC plugin loaded successfully");
+  _flacPluginLoaded = true;
 
   // Verify the plugin is working by checking chip status
   uint16_t status = readRegister(VS1053_REG_STATUS);
@@ -636,14 +687,11 @@ bool VS1053_driver::prepareFLACPlayback() {
 }
 
 bool VS1053_driver::isFLACPluginLoaded() {
-  // Check if FLAC plugin is loaded by verifying clock configuration
-  // and checking for FLAC capability in the chip
-  uint16_t clockf = readRegister(VS1053_REG_CLOCKF);
-
-  if (clockf != VS1053_FLAC_SPEED) {
-    Serial.printf(
-        "FLAC plugin not detected - clock: 0x%04X (expected 0x%04X)\n", clockf,
-        VS1053_FLAC_SPEED);
+  // The plugin lives in the chip's RAM and is lost on any reset (hardware or
+  // SM_RESET), while CLOCKF survives a soft reset - so the clock value can't
+  // tell whether the plugin is there. Track it ourselves.
+  if (!_flacPluginLoaded) {
+    Serial.println("FLAC plugin not loaded");
     return false;
   }
 

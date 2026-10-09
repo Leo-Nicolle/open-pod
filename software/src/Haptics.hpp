@@ -2,6 +2,7 @@
 #include "Adafruit_DRV2605.h"
 #include <Arduino.h>
 #include <Wire.h>
+#include "sound/Spi1Bus.h"
 
 // Click-wheel haptics on a DRV2605L driving a 10mm coin ERM.
 //
@@ -64,7 +65,9 @@ public:
 
   // Starts an effect unless the previous one is still playing.
   void play(const Effect &e) {
-    if (!ready || (drv.readRegister8(DRV2605_REG_GO) & 0x01)) return;
+    if (!ready) return;
+    spi1bus::Lock busLock; // I2C traffic, see wheel.update() in main.cpp
+    if (drv.readRegister8(DRV2605_REG_GO) & 0x01) return;
     if (e.kickOffset != kickOffset) {
       kickOffset = e.kickOffset;
       drv.writeRegister8(DRV2605_REG_OVERDRIVE, (uint8_t)kickOffset);

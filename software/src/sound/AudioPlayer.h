@@ -8,6 +8,7 @@
 #define AUDIOPLAYER_H
 
 #include "Audio_buffer.h"
+#include "AudioFifo.h"
 #include "VS1053_driver.h"
 #include <Arduino.h>
 #include "pinout.h"
@@ -33,7 +34,9 @@ public:
   // duration index and is forwarded to Audio_buffer::setFileName() to
   // short-circuit the on-device MP3-frame-scan duration guess.
   bool startPlaying(const char *filename, uint32_t knownDurationSeconds = 0);
-  void stopPlaying();
+  // endOfStream: the file was played to its end (the decoder plays out what
+  // it holds) rather than stopped mid-track (it drops it right away).
+  void stopPlaying(bool endOfStream = false);
 
   // Playback control
   void pausePlaying(bool pause = true);
@@ -85,19 +88,20 @@ public:
 
   void loop();
 
-  // Off by default: the periodic starvation-monitor Serial.printf() (see
-  // AUDIO_MONITOR_INTERVAL_MS below) is bigger than the STM32 core's 64-byte
-  // TX ring buffer (Serial.h SERIAL_TX_BUFFER_SIZE), so printing it every
-  // second costs a real, blocking write() stall once a second - on every
-  // codec, not just FLAC. Enable only while actively debugging the feed path
-  // (see flac-feed-problem.md).
+  // Prints the [audio] buffer monitor line once a second.
   void setDebugMonitorEnabled(bool enabled) { _monitorEnabled = enabled; }
 
-  // Sends whatever the VS1053 can take right now (DREQ high) from the feed
-  // buffer, refilling that from the ring buffer when it's empty. Never waits
-  // on DREQ. Returns true if bytes went out.
-  bool feedBuffer();
-  void sendEndFillSequence();
+  // Call on user input / while the UI animates: background SD work (refill,
+  // next-track prefetch) then waits USER_ACTIVITY_HOLDOFF_MS, unless the
+  // buffer runs low (see loop()).
+  void noteUserActivity() { _lastUserActivityMs = millis(); }
+
+  void sendEndFillSequence(bool endOfStream);
+
+  // The L1 fifo's storage, as scratch for the link bench. Only valid while
+  // nothing plays (the feeder reads it during playback).
+  uint8_t *benchScratch() { return _fifo.storage(); }
+  static const size_t BENCH_SCRATCH_LEN = AudioFifo::CAPACITY;
 
 private:
   // Core objects
@@ -109,11 +113,48 @@ private:
   bool _paused;
   bool _looping;
   bool _trackEnded = false;
+
+  // --- L1 fifo + feeder interrupt -------------------------------------------
+  // The VS1053 is fed from a timer interrupt, out of the L1 fifo in MCU RAM,
+  // so playback no longer depends on how often the main loop comes around
+  // (the chip's own buffer is only ~16 ms of FLAC, 12 KiB with the FLAC
+  // plugin). The main loop keeps the fifo topped up from PSRAM (or straight
+  // from SD while PSRAM is empty, see Audio_buffer::setFrontFifo()).
+  AudioFifo _fifo;
+  HardwareTimer *_feederTimer = nullptr;
+  volatile bool _feederEnabled = false; // = playing && !paused
+  void updateFeeder() { _feederEnabled = _playing && !_paused; }
+  static void feederIsr();
+  // Diagnostic: -DOPENPOD_FEED_MAIN_LOOP feeds from loop() instead of the
+  // timer interrupt (see feedFromMainLoop()).
+#ifdef OPENPOD_FEED_MAIN_LOOP
+  static const bool FEED_FROM_MAIN_LOOP = true;
+#else
+  static const bool FEED_FROM_MAIN_LOOP = false;
+#endif
+  void feedFromMainLoop();
+  static const uint32_t FEEDER_HZ = 1000;
+  // The most one tick may send: ~0.75 ms at 5.6 MHz (the breadboard cap in
+  // platformio.ini), so a tick stays under the 1 ms period. Still ~500 KB/s
+  // of feeding capacity against ~90 KB/s for CD-quality FLAC.
+  static const size_t FEEDER_MAX_BYTES_PER_TICK = 512;
+  // Per main-loop pass: PSRAM -> fifo moves at most this much (~12 ms).
+  static const size_t FIFO_TOPUP_MAX_BYTES = 16 * 1024;
+  // Feeder counters (interrupt writes, monitor reads and resets).
+  volatile uint32_t _isrUnderruns = 0; // chip wanted data, fifo empty
+  volatile uint32_t _isrBusySkips = 0; // tick skipped: SPI1 lock held
+  // Longest run of consecutive ticks where DREQ was high and nothing was
+  // sent (the chip's own buffer draining); see feederIsr().
+  volatile uint32_t _isrStallTicks = 0;
+  volatile uint32_t _isrMaxStall = 0;
+  // Longest time between two feeder ticks (should be ~1 ms).
+  volatile uint32_t _isrLastTickCycles = 0;
+  volatile uint32_t _isrMaxTickGapCycles = 0;
   // The decoder was fed a stream that hasn't been ended with
   // sendEndFillSequence() yet; stopping when it's clean skips that (slow)
   // sequence, e.g. stopping twice in a row on a track change.
   bool _decoderDirty = false;
-  static const unsigned long END_FILL_DREQ_TIMEOUT_MS = 50;
+  static const unsigned long END_FILL_TIMEOUT_MS = 1000;
   // The current stream goes through the FLAC plugin (see sendEndFillSequence).
   bool _streamIsFlac = false;
   static const int FLAC_END_FILL_BYTES = 12288;
@@ -133,56 +174,38 @@ private:
   // printed every AUDIO_MONITOR_INTERVAL_MS - no per-tick serial spam.
   static const unsigned long AUDIO_MONITOR_INTERVAL_MS = 1000;
   bool _monitorEnabled = false; // see setDebugMonitorEnabled()
-  uint32_t _monitorUnderflows = 0; // feedBuffer() hit an empty ring buffer
   uint32_t _monitorLowCount = 0;   // ticks spent below the low watermark
   size_t _monitorMinBuffered = (size_t)-1;
   size_t _monitorMaxBuffered = 0;
   unsigned long _monitorLastReport = 0;
-  // Timing (per window): time in load()/prefetchNextTrack(), time in the
-  // feed while-loop, and the largest gap between loop() calls (reveals how
-  // fast the whole main loop is actually running).
+  // Timing (per window): time in load()/prefetchNextTrack(), time moving
+  // PSRAM -> fifo, and the largest gap between loop() calls.
   uint32_t _monitorLoadUs = 0;
-  uint32_t _monitorFeedUs = 0;
+  uint32_t _monitorFillUs = 0;
+  uint32_t _monitorMinFifo = AudioFifo::CAPACITY;
   unsigned long _monitorLoopMaxMs = 0;
   unsigned long _monitorPrevLoopMs = 0;
-
-  // Bound the feed loop so the main loop stays responsive. The VS1053's DREQ
-  // stays high for a long time at the 4.5x FLAC clock, so an unbounded feed
-  // loop blocks the UI for seconds. Feeding ~100ms per tick keeps the UI
-  // responsive while the (healthy) ring buffer absorbs any transient shortfall.
-  static const unsigned long AUDIO_MAX_FEED_MS = 100;
 
   // A refill runs from the low watermark up to the target (see loop()).
   // While the buffer still holds more than AUDIO_URGENT_BYTES (~2.5 s of
   // CD-quality FLAC), each tick spends at most AUDIO_RELAXED_LOAD_MS on it,
   // otherwise up to AUDIO_MAX_LOAD_MS.
   bool _refilling = false;
+  unsigned long _lastUserActivityMs = 0;
+  unsigned long _lastBusyChunkMs = 0;
+  static const unsigned long USER_ACTIVITY_HOLDOFF_MS = 600;
+  static const unsigned long USER_BUSY_CHUNK_INTERVAL_MS = 20;
+  // Below this (~0.7 s of CD-quality FLAC) the refill runs at full budget
+  // even while the user interacts.
+  static const size_t AUDIO_CRITICAL_BYTES = 64 * 1024;
   static const size_t AUDIO_URGENT_BYTES = 256 * 1024;
   static const unsigned long AUDIO_RELAXED_LOAD_MS = 8;
 
-  // Bounded prime: buffer this many bytes before flipping _playing, so the
-  // VS1053 has slack from sample one instead of stuttering while the
-  // per-tick refill catches up (see memory-improvements.md).
-  // Read synchronously before a track starts (blocks the UI meanwhile);
-  // loop()'s bounded refills take over from there. ~0.5s of 44.1k/16 FLAC.
-  static const size_t AUDIO_PRIME_BYTES = 64 * 1024;
+  // Read synchronously before a track starts (straight into the fifo, PSRAM
+  // being empty): ~270 ms of CD-quality FLAC, ~25 ms of SD time. loop()'s
+  // refills take over from there.
+  static const size_t AUDIO_PRIME_BYTES = 24 * 1024;
   static const unsigned long AUDIO_PRIME_TIMEOUT_MS = 5000;
-
-  // Feed the VS1053 from a larger RAM buffer rather than 32 bytes at a time.
-  // sendData() still bursts to the chip in 32-byte SDI chunks (datasheet
-  // limit), but readData() then pulls this many bytes out of the PSRAM ring
-  // buffer in one transaction instead of dozens - the 8 MHz SPI PSRAM has
-  // heavy per-transaction overhead and 32-byte reads were leaving it
-  // saturated (see memory-improvements.md §monitoring).
-  static const size_t AUDIO_FEED_BUFFER_LEN = 512;
-
-  // Bytes read from the ring buffer but not yet accepted by the VS1053:
-  // _feedBuffer[_feedPos, _feedLen) goes out on the next feedBuffer() calls.
-  uint8_t _feedBuffer[AUDIO_FEED_BUFFER_LEN];
-  size_t _feedLen = 0;
-  size_t _feedPos = 0;
-  // Forget queued feed bytes (stop, seek: they belong to the old stream).
-  void dropPendingFeed() { _feedLen = _feedPos = 0; }
 
   static AudioPlayer *_instance;
 };

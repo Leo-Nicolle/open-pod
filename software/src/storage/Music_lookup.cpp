@@ -1,4 +1,5 @@
 #include "Music_lookup.h"
+#include "SharedSpiDriver.h"
 
 MusicLookup::MusicLookup(uint32_t psram_base_addr)
     : psram_base_address(psram_base_addr), initialized(false) {
@@ -26,7 +27,7 @@ bool MusicLookup::init() {
   Serial.println("=== MUSIC LOOKUP INIT ===");
 
   // Initialize SD card with default SPI configuration
-  if (!sd.begin(SdSpiConfig(CARDCS, SHARED_SPI, SD_SCK_MHZ(25)))) {
+  if (!sd.begin(OPENPOD_SD_CONFIG(CARDCS))) {
     Serial.println("ERROR: SD card initialization failed");
     return false;
   }

@@ -1,5 +1,6 @@
 #pragma once
 #include "rendering/ILI9341_driver.h"
+#include "sound/Spi1Bus.h"
 #include "ui/theme.h" // diagnostic-only: lets runDisplayDiagnostics() test the
                        // app's actual COLOR_* values, not just generic test colors
 #include <Adafruit_GFX.h>
@@ -25,6 +26,17 @@ public:
     setWindow(x, y, x, y);
     writeData16(color);
   }
+
+  // Bulk pixel transfers hold the SPI1 lock, in slices of PIXEL_SLICE
+  // pixels: the VS1053 feeder interrupt then never clocks SPI1 while the 16
+  // parallel data lines are switching at full speed (on the breadboard
+  // wiring that corrupted bits on their way to the VS1053: audible glitches
+  // while scrolling/animating, with on-time, complete feeding). Slicing
+  // keeps each hold short (~0.15 ms) even across a long animation of
+  // back-to-back transfers; a feeder tick that found the bus busy runs as
+  // soon as the slice releases it (see spi1bus::release()). Pausing between
+  // pixels is invisible to the panel.
+  static const uint32_t PIXEL_SLICE = 1024;
 
   void fillRect(int16_t x, int16_t y, int16_t w, int16_t h,
                 uint16_t color) override {
@@ -52,91 +64,21 @@ public:
     }
 
     setWindow(x, y, x + w - 1, y + h - 1);
-
-    // Optimized fill using 16-bit parallel interface
-    digitalWrite(TFT_DC, HIGH); // Data mode
-
-#ifdef BROKEN_NUCLEO
-    // color is constant for the whole fill, so (unlike pushPixels) the
-    // relocated D14/D15 pins only need setting once, before the loop - the
-    // pins hold their level across every pulseWR() below. See the
-    // BROKEN_NUCLEO note in ILI9341_driver.h.
-    writeBrokenBits(color);
-#endif
-
-    // Unroll loop for better performance
-    uint32_t pixels = (uint32_t)w * h;
-    while (pixels >= 8) {
-      GPIOC->ODR = color;
-      pulseWR();
-      GPIOC->ODR = color;
-      pulseWR();
-      GPIOC->ODR = color;
-      pulseWR();
-      GPIOC->ODR = color;
-      pulseWR();
-      GPIOC->ODR = color;
-      pulseWR();
-      GPIOC->ODR = color;
-      pulseWR();
-      GPIOC->ODR = color;
-      pulseWR();
-      GPIOC->ODR = color;
-      pulseWR();
-      pixels -= 8;
-    }
-
-    // Handle remaining pixels
-    while (pixels--) {
-      GPIOC->ODR = color;
-      pulseWR();
-    }
+    fillPixels(color, (uint32_t)w * h);
   }
 
   // HIGH PERFORMANCE: Push array of pixels
   void pushPixels(uint16_t *colors, uint32_t count) {
     digitalWrite(TFT_DC, HIGH); // Data mode
-
-#ifdef BROKEN_NUCLEO
-    // Unlike fillRect()/fillScreen(), the color changes every pixel here, so
-    // D14/D15 (relocated to PA0/PA1, see ILI9341_driver.h) need a fresh
-    // writeBrokenBits() call each iteration - not unrolled like the normal
-    // path below, since that extra register write already dominates the
-    // per-pixel cost more than loop overhead would.
-    while (count--) {
-      uint16_t px = *colors++;
-      GPIOC->ODR = px;
-      writeBrokenBits(px);
-      pulseWR();
+    while (count > 0) {
+      uint32_t n = count < PIXEL_SLICE ? count : PIXEL_SLICE;
+      {
+        spi1bus::Lock busLock;
+        pushPixelSlice(colors, n);
+      }
+      colors += n;
+      count -= n;
     }
-#else
-    // Unrolled loop for maximum speed
-    while (count >= 8) {
-      GPIOC->ODR = *colors++;
-      pulseWR();
-      GPIOC->ODR = *colors++;
-      pulseWR();
-      GPIOC->ODR = *colors++;
-      pulseWR();
-      GPIOC->ODR = *colors++;
-      pulseWR();
-      GPIOC->ODR = *colors++;
-      pulseWR();
-      GPIOC->ODR = *colors++;
-      pulseWR();
-      GPIOC->ODR = *colors++;
-      pulseWR();
-      GPIOC->ODR = *colors++;
-      pulseWR();
-      count -= 8;
-    }
-
-    // Handle remaining pixels
-    while (count--) {
-      GPIOC->ODR = *colors++;
-      pulseWR();
-    }
-#endif
   }
 
   // Push pixels with DMA support (if you add DMA later)
@@ -186,59 +128,88 @@ public:
 
   void fillScreen(uint16_t color) override {
     setWindow(0, 0, _width - 1, _height - 1);
+    fillPixels(color, (uint32_t)_width * _height);
+  }
 
-    digitalWrite(TFT_DC, HIGH);
-
+  // Writes `pixels` copies of `color` into the current window, in locked
+  // slices (see PIXEL_SLICE).
+  void fillPixels(uint16_t color, uint32_t pixels) {
+    digitalWrite(TFT_DC, HIGH); // Data mode
 #ifdef BROKEN_NUCLEO
-    // Set once, not per pixel - see the matching note in fillRect() above.
+    // color is constant for the whole fill, so the relocated D14/D15 pins
+    // only need setting once - they hold their level across every
+    // pulseWR(). See the BROKEN_NUCLEO note in ILI9341_driver.h.
     writeBrokenBits(color);
 #endif
-
-    // Ultra-fast screen fill
-    uint32_t pixels = (uint32_t)_width * _height;
-
-    // Fill 16 pixels at a time for maximum speed
-    while (pixels >= 16) {
-      GPIOC->ODR = color;
-      pulseWR();
-      GPIOC->ODR = color;
-      pulseWR();
-      GPIOC->ODR = color;
-      pulseWR();
-      GPIOC->ODR = color;
-      pulseWR();
-      GPIOC->ODR = color;
-      pulseWR();
-      GPIOC->ODR = color;
-      pulseWR();
-      GPIOC->ODR = color;
-      pulseWR();
-      GPIOC->ODR = color;
-      pulseWR();
-      GPIOC->ODR = color;
-      pulseWR();
-      GPIOC->ODR = color;
-      pulseWR();
-      GPIOC->ODR = color;
-      pulseWR();
-      GPIOC->ODR = color;
-      pulseWR();
-      GPIOC->ODR = color;
-      pulseWR();
-      GPIOC->ODR = color;
-      pulseWR();
-      GPIOC->ODR = color;
-      pulseWR();
-      GPIOC->ODR = color;
-      pulseWR();
-      pixels -= 16;
-    }
-
-    while (pixels--) {
-      GPIOC->ODR = color;
-      pulseWR();
+    while (pixels > 0) {
+      uint32_t n = pixels < PIXEL_SLICE ? pixels : PIXEL_SLICE;
+      pixels -= n;
+      spi1bus::Lock busLock;
+      while (n >= 8) {
+        GPIOC->ODR = color;
+        pulseWR();
+        GPIOC->ODR = color;
+        pulseWR();
+        GPIOC->ODR = color;
+        pulseWR();
+        GPIOC->ODR = color;
+        pulseWR();
+        GPIOC->ODR = color;
+        pulseWR();
+        GPIOC->ODR = color;
+        pulseWR();
+        GPIOC->ODR = color;
+        pulseWR();
+        GPIOC->ODR = color;
+        pulseWR();
+        n -= 8;
+      }
+      while (n--) {
+        GPIOC->ODR = color;
+        pulseWR();
+      }
     }
   }
+
+  // One slice of pushPixels(); the caller holds the bus lock.
+  void pushPixelSlice(uint16_t *colors, uint32_t count) {
+#ifdef BROKEN_NUCLEO
+    // Unlike fills, the color changes every pixel here, so D14/D15
+    // (relocated to PA0/PA1, see ILI9341_driver.h) need a fresh
+    // writeBrokenBits() call each iteration.
+    while (count--) {
+      uint16_t px = *colors++;
+      GPIOC->ODR = px;
+      writeBrokenBits(px);
+      pulseWR();
+    }
+#else
+    while (count >= 8) {
+      GPIOC->ODR = *colors++;
+      pulseWR();
+      GPIOC->ODR = *colors++;
+      pulseWR();
+      GPIOC->ODR = *colors++;
+      pulseWR();
+      GPIOC->ODR = *colors++;
+      pulseWR();
+      GPIOC->ODR = *colors++;
+      pulseWR();
+      GPIOC->ODR = *colors++;
+      pulseWR();
+      GPIOC->ODR = *colors++;
+      pulseWR();
+      GPIOC->ODR = *colors++;
+      pulseWR();
+      count -= 8;
+    }
+    while (count--) {
+      GPIOC->ODR = *colors++;
+      pulseWR();
+    }
+#endif
+  }
+
   void setupScroll(uint16_t TF, uint16_t scrollHeight, uint16_t BF) {
     // For landscape mode (rotation = 1), scrolling is horizontal visually
     // but still uses the vertical scroll registers internally

@@ -329,3 +329,82 @@ TEST_CASE("Audio_buffer - non-FLAC files are streamed unchanged") {
   CHECK(buf.readData(out.data(), out.size()) == data.size());
   CHECK(out == data);
 }
+
+TEST_CASE("Audio_buffer - with a front fifo, the stream comes out in order "
+          "across the SD->fifo bypass and the PSRAM ring") {
+  resetAll();
+  const uint32_t size = 300000; // much more than the fifo holds
+  FakeFs::get().addFile("/music/a.raw", buildFakeAudioFile(5, size));
+
+  static AudioFifo fifo;
+  fifo.reset();
+  Audio_buffer buf(4);
+  REQUIRE(buf.begin());
+  buf.setFrontFifo(&fifo);
+  buf.setFileName("/music/a.raw");
+
+  // While the ring is empty, chunks go straight to the fifo.
+  buf.load(16 * 1024);
+  CHECK(fifo.size() >= 16 * 1024);
+  CHECK(buf.getPSRAMBufferedBytes() == 0);
+
+  // Then the fifo fills up and the rest lands in PSRAM.
+  loadUntil(buf, size, 256);
+  CHECK(buf.getBufferedBytes() == size);
+  CHECK(buf.getPSRAMBufferedBytes() > 0);
+
+  // Consume like the feeder + main loop do: drain the fifo, top it up.
+  std::vector<uint8_t> out;
+  while (out.size() < size) {
+    uint32_t n;
+    const uint8_t *p = fifo.readPtr(n);
+    if (n == 0) {
+      REQUIRE(buf.fillFrontFromPSRAM(64 * 1024) > 0);
+      continue;
+    }
+    out.insert(out.end(), p, p + n);
+    fifo.consume(n);
+  }
+  checkSequentialRun(out.data(), out.size(), 5, 0);
+  CHECK(buf.isFileExhausted());
+}
+
+TEST_CASE("Audio_buffer - isFileExhausted waits for the front fifo") {
+  resetAll();
+  FakeFs::get().addFile("/music/a.raw", buildFakeAudioFile(6, 4000));
+  static AudioFifo fifo;
+  fifo.reset();
+  Audio_buffer buf(4);
+  REQUIRE(buf.begin());
+  buf.setFrontFifo(&fifo);
+  buf.setFileName("/music/a.raw");
+  loadUntil(buf, 4000);
+  CHECK(fifo.size() == 4000); // bypassed
+  CHECK_FALSE(buf.isFileExhausted());
+  uint32_t n;
+  fifo.readPtr(n);
+  fifo.consume(n);
+  CHECK(buf.isFileExhausted());
+}
+
+TEST_CASE("Audio_buffer - adopting a large prefetch takes only its start and "
+          "resumes the file right after it") {
+  resetAll();
+  const uint32_t nextSize = 200000;
+  FakeFs::get().addFile("/music/b.raw", buildFakeAudioFile(2, nextSize));
+
+  Audio_buffer buf(4);
+  REQUIRE(buf.begin());
+  buf.prepareNextTrack("/music/b.raw");
+  for (int i = 0; i < 20; i++) { // 80 KB, more than the adopt cap
+    buf.prefetchNextTrack();
+  }
+  REQUIRE(buf.consumeNextTrackIfMatches("/music/b.raw", 0));
+  CHECK(buf.getBufferedBytes() == NEXT_TRACK_ADOPT_MAX_BYTES);
+
+  loadUntil(buf, nextSize, 256);
+  REQUIRE(buf.getBufferedBytes() == nextSize);
+  std::vector<uint8_t> out(nextSize);
+  CHECK(buf.readData(out.data(), out.size()) == nextSize);
+  checkSequentialRun(out.data(), out.size(), 2, 0);
+}

@@ -10,6 +10,7 @@
 #include <SdFat.h>
 #include <functional>
 #include "../pinout.h"
+#include "AudioFifo.h"
 
 #include "../storage/PSRAM_controller.hpp"
 
@@ -55,6 +56,9 @@
 // feeds the VS1053 - its small internal FIFO drains dry and produces an
 // audible gap.
 #define AUDIO_SEEK_PRIME_BYTES (32 * 1024)
+// consumeNextTrackIfMatches() adopts at most this much of a prefetch (one
+// L1 fifo's worth, ~25 ms of PSRAM reads).
+#define NEXT_TRACK_ADOPT_MAX_BYTES (32 * 1024)
 
 // consumeNextTrackIfMatches() copies an already-prefetched next track into
 // the (empty) main ring buffer assuming it can never wrap - guard that
@@ -116,16 +120,31 @@ public:
   // brief decode glitch until the VS1053 resyncs). Discards buffered audio.
   bool seekToSeconds(uint32_t targetSeconds);
 
-  // Public wrapper so AudioPlayer can implement refill hysteresis (only
-  // calling load() below AUDIO_LOW_WATERMARK_BYTES) without reaching into
-  // protected ring-buffer internals.
-  size_t getBufferedBytes() { return getPSRAMDataSize(); }
+  // Audio waiting to be played: PSRAM ring + front fifo (when set).
+  size_t getBufferedBytes() {
+    return getPSRAMDataSize() + (_front ? _front->size() : 0);
+  }
+  size_t getPSRAMBufferedBytes() { return getPSRAMDataSize(); }
+
+  // --- L1 front buffer (see AudioFifo.h) ---
+  // The stream is played from `front` first, then the PSRAM ring. While
+  // the ring is empty (track start, after a seek, or a refill fell
+  // behind), SD chunks go straight into the front fifo when they fit,
+  // skipping the PSRAM write + read; otherwise they go to the ring and
+  // fillFrontFromPSRAM() moves them over. Order is preserved because the
+  // fifo is only appended to directly while the ring holds nothing.
+  // The caller owns the fifo and resets it (the consumer must be stopped).
+  void setFrontFifo(AudioFifo *front) { _front = front; }
+  // Moves ring data into the front fifo, in PSRAM reads of at most
+  // `chunk` bytes, until the fifo has less than `chunk` free, the ring is
+  // empty, or `maxBytes` moved. Returns the bytes moved.
+  size_t fillFrontFromPSRAM(size_t maxBytes, size_t chunk = 4096);
 
   // True when the current track is genuinely over: the source file has been
   // fully read AND the ring buffer is empty. False when the buffer is merely
   // empty because SDtoPSRAM() hasn't topped it back up yet - the caller must
   // keep streaming and refill rather than treat that gap as end-of-track.
-  bool isFileExhausted();
+  bool isFileExhausted(); // also requires the front fifo to be empty
   // True once every byte of the current file has been read from SD (the
   // ring buffer may still hold some of it).
   bool isFileFullyRead() { return file.isOpen() && (size_t)filePos >= fileSize; }
@@ -162,6 +181,7 @@ public:
   friend class SDToPSRAMTest; // Allow SDToPSRAMTest to access private/protected members
 
 protected:
+  AudioFifo *_front = nullptr;
   // SD card
   uint8_t _sdCS;
   SdFat _sd;

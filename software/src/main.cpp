@@ -6,6 +6,7 @@
 #include "rendering/ILI9341_GFX.h"
 #include "sound/player.h"
 #include "sound/AudioProfiler.h"
+#include "sound/Spi1Bus.h"
 #include "sound/LinkBench.hpp"
 #include "state/state.h"
 #include "storage/AlbumArt.h"
@@ -44,6 +45,9 @@ bool enableAudioMonitor = true;
 // Runs the SD / PSRAM / VS1053 link throughput bench at boot (see
 // LinkBench.hpp), then continues normally.
 bool enableLinkBench = false;
+// The haptic motor's start-up kick draws a current spike from the 3.3V
+// rail; turn this off to check whether it's what browns out the board.
+bool enableHaptics = false;
 
 // Tracks whether a route-transition animation is currently playing, kept in
 // sync via EVENT_ANIMATION_STARTED/FINISHED (see onNavigationStateEvent
@@ -100,6 +104,24 @@ void sendTelemetry();
 void demoAnimations();
 void updateAudioProgress();
 
+// Why the MCU last (re)started, from RCC_CSR, then clears the flags. A fault
+// hangs on this core rather than resetting, so an unexpected reboot is a
+// real reset: pin (NRST / ST-Link), power (POR / brown-out) or software.
+void printResetCause()
+{
+  uint32_t csr = RCC->CSR;
+  Serial.print("Reset cause:");
+  if (csr & RCC_CSR_LPWRRSTF) Serial.print(" low-power");
+  if (csr & RCC_CSR_WWDGRSTF) Serial.print(" window-watchdog");
+  if (csr & RCC_CSR_IWDGRSTF) Serial.print(" watchdog");
+  if (csr & RCC_CSR_SFTRSTF) Serial.print(" software");
+  if (csr & RCC_CSR_PORRSTF) Serial.print(" power-on");
+  if (csr & RCC_CSR_PINRSTF) Serial.print(" reset-pin");
+  if (csr & RCC_CSR_BORRSTF) Serial.print(" brown-out");
+  Serial.println();
+  RCC->CSR |= RCC_CSR_RMVF;
+}
+
 void setup()
 {
   Serial.begin(115200);
@@ -107,6 +129,7 @@ void setup()
     delay(10);
 
   Serial.println("=== OpenPod with ClickWheel (Event-Driven) ===");
+  printResetCause();
 
   state.addEventListener(onNavigationStateEvent);
 
@@ -155,7 +178,7 @@ void setup()
   Serial.println("✅ ClickWheel initialized!");
 
   // Haptics are optional: the pod stays usable without the DRV2605L.
-  if (haptics.begin(&Wire3))
+  if (enableHaptics && haptics.begin(&Wire3))
   {
     Serial.println("✅ Haptics initialized!");
   }
@@ -191,18 +214,31 @@ void loop()
   // Handle calibration mode
   if (wheel.isCalibrating())
   {
+    spi1bus::Lock busLock; // I2C traffic, see wheel.update() below
     wheel.updateCalibration();
     return;
   }
 
   // Update wheel state
-  wheel.update();
+  {
+    // The wheel's I2C traffic (MPR121) holds the SPI1 lock so the VS1053
+    // feeder never sends during it: on the breadboard, I2C SCL (PA8) sits
+    // next to the VS1053's XDCS (PA9), and overlapping traffic corrupted the
+    // audio stream (glitches while touching the wheel). The feeder catches
+    // up as soon as the lock is released.
+    spi1bus::Lock busLock;
+    wheel.update();
+  }
 
   // Handle input
   handleWheelInput();
   checkSeekModeTimeout();
 
   audioprof::markLoop();
+  if (navigationBusy)
+  {
+    player.audioPlayer.noteUserActivity(); // keep transitions smooth too
+  }
 
   // Update UI (handles animations and event processing)
   uint32_t uiStart = audioprof::now();
@@ -243,6 +279,7 @@ void handleWheelInput()
   ClickWheel::Event e;
   while (wheel.pollEvent(e))
   {
+    player.audioPlayer.noteUserActivity();
     switch (e.type)
     {
     case ClickWheel::EventType::Click:

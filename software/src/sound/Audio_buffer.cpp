@@ -1,4 +1,5 @@
 #include "Audio_buffer.h"
+#include "../storage/SharedSpiDriver.h"
 
 Audio_buffer::Audio_buffer(uint8_t sdCS) : _sdCS(sdCS) {
   // psram = nullptr;
@@ -14,7 +15,7 @@ Audio_buffer::~Audio_buffer() {
 }
 
 bool Audio_buffer::begin(uint32_t sdFreq) {
-  if (!_sd.begin(SdSpiConfig(_sdCS, SHARED_SPI, SD_SCK_MHZ(25)))) {
+  if (!_sd.begin(OPENPOD_SD_CONFIG(_sdCS))) {
     Serial.println("SD card initialization failed");
     return false;
   }
@@ -177,6 +178,10 @@ void Audio_buffer::appendToDestination(bool nextFile, const uint8_t *data,
     _nextPrefetchedBytes += len;
     return;
   }
+  if (_front && getPSRAMDataSize() == 0 && _front->freeSpace() >= len) {
+    _front->write(data, len); // bypass PSRAM, see setFrontFifo()
+    return;
+  }
   bool wraps = (_psramHead + len) > _psramBufferSize;
   size_t writeSize = wraps ? (_psramBufferSize - _psramHead) : len;
   size_t wrapWriteSize = wraps ? (len - writeSize) : 0;
@@ -262,7 +267,7 @@ bool Audio_buffer::load(size_t targetBufferedBytes,
   // each main-loop tick - see AUDIO_MAX_LOAD_MS's comment in Audio_buffer.h.
   uint8_t chunksThisCall = 0;
   unsigned long loadStartMs = millis();
-  while (!_bufferFull && getPSRAMDataSize() < targetBufferedBytes &&
+  while (!_bufferFull && getBufferedBytes() < targetBufferedBytes &&
          chunksThisCall < AUDIO_MAX_CHUNKS_PER_LOAD_CALL &&
          millis() - loadStartMs < maxMs) {
     if (!SDtoPSRAM()) {
@@ -307,11 +312,19 @@ bool Audio_buffer::consumeNextTrackIfMatches(const char *filename,
   bool adopted = false;
 
   if (hasPrefetchedData) {
-    uint32_t adoptFilePos = (uint32_t)_nextFilePos;
+    // Only the start of the prefetch is adopted: copying the whole region
+    // (up to 1 MB) PSRAM -> PSRAM blocked the track change for ~1.6 s. A
+    // fifo's worth is enough to start instantly; the file is reopened right
+    // after the adopted bytes and the normal refill reads the rest. The
+    // region may start with a synthetic FLAC header (no file bytes), so the
+    // resume offset is counted back from where the prefetch stopped.
+    uint32_t adoptBytes =
+        min(_nextPrefetchedBytes, (uint32_t)NEXT_TRACK_ADOPT_MAX_BYTES);
+    uint32_t adoptFilePos =
+        (uint32_t)_nextFilePos - (_nextPrefetchedBytes - adoptBytes);
     uint32_t adoptDataStart = _nextDataStart;
     uint32_t adoptDuration =
         knownDurationSeconds ? knownDurationSeconds : _nextDurationSeconds;
-    uint32_t adoptBytes = _nextPrefetchedBytes;
 
     _nextFile.close();
     closeFile();
@@ -329,10 +342,8 @@ bool Audio_buffer::consumeNextTrackIfMatches(const char *filename,
       _dataStart = adoptDataStart;
       _durationSeconds = adoptDuration;
 
-      // Copy the already-prefetched bytes into the main ring buffer, which
-      // stopPlaying()'s resetRingBuffer() already emptied before
-      // startPlaying() called us - a plain append from an empty ring, and
-      // (per the static_assert in Audio_buffer.h) never wraps.
+      // Same path as SD chunks: straight into the front fifo while the
+      // ring is empty (stopPlaying() emptied both), else the ring.
       uint32_t remaining = adoptBytes;
       uint32_t srcOffset = 0;
       while (remaining > 0) {
@@ -340,12 +351,10 @@ bool Audio_buffer::consumeNextTrackIfMatches(const char *filename,
             (size_t)min((uint32_t)AUDIO_PRELOAD_CHUNK_SIZE, remaining);
         psram.readData(NEXT_TRACK_BUFFER_BASE_ADDRESS + srcOffset,
                        _scratchBuffer, chunk);
-        psram.writeData(_psramBaseAddress + _psramHead, _scratchBuffer, chunk);
-        _psramHead += chunk;
+        appendToDestination(false, _scratchBuffer, chunk);
         srcOffset += chunk;
         remaining -= chunk;
       }
-      _psramDataSize += adoptBytes;
       Serial.printf("Adopted %lu prefetched bytes for %s\n", adoptBytes,
                     filename);
       adopted = true;
@@ -403,6 +412,26 @@ size_t Audio_buffer::readData(uint8_t *buffer, size_t maxLen) {
   return toRead;
 }
 
+size_t Audio_buffer::fillFrontFromPSRAM(size_t maxBytes, size_t chunk) {
+  if (!_front) {
+    return 0;
+  }
+  size_t moved = 0;
+  while (moved < maxBytes && _front->freeSpace() >= chunk &&
+         getPSRAMDataSize() > 0) {
+    uint32_t contig;
+    uint8_t *dst = _front->writePtr(contig);
+    size_t want = min(min((size_t)contig, chunk), maxBytes - moved);
+    size_t got = readData(dst, want);
+    if (got == 0) {
+      break;
+    }
+    _front->commit(got);
+    moved += got;
+  }
+  return moved;
+}
+
 bool Audio_buffer::seekToSeconds(uint32_t targetSeconds) {
   if (!file.isOpen() || _durationSeconds == 0) {
     return false;
@@ -442,6 +471,9 @@ bool Audio_buffer::isFileExhausted() {
     return false;
   }
   if (getPSRAMDataSize() != 0) {
+    return false;
+  }
+  if (_front && _front->size() != 0) {
     return false;
   }
   // Every byte of the source file has been pulled into (and consumed from)

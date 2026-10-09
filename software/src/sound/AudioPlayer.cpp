@@ -3,6 +3,8 @@
  */
 
 #include "AudioPlayer.h"
+#include "AudioProfiler.h"
+#include "Spi1Bus.h"
 
 AudioPlayer *AudioPlayer::_instance = nullptr;
 
@@ -36,6 +38,17 @@ bool AudioPlayer::begin(uint32_t spiFreq, uint32_t sdFreq) {
   if (!_buffer.begin(sdFreq)) {
     return false;
   }
+  _buffer.setFrontFifo(&_fifo);
+
+  // Lowest priority: UART, I2C and SysTick interrupts preempt it.
+  _feederTimer = new HardwareTimer(TIM7);
+  _feederTimer->setOverflow(FEEDER_HZ, HERTZ_FORMAT);
+  _feederTimer->setInterruptPriority(15, 0);
+  _feederTimer->attachInterrupt(&AudioPlayer::feederIsr);
+  _feederTimer->resume();
+  // A tick that found SPI1 busy runs again as soon as the bus is released:
+  // a software update event fires the timer interrupt right away.
+  spi1bus::onFreed = []() { TIM7->EGR = TIM_EGR_UG; };
 
   // Display audio capabilities after optimal clock configuration
   Serial.printf("Audio system ready - Max sample rate: %lu Hz\n",
@@ -65,10 +78,9 @@ bool AudioPlayer::startPlaying(const char *filename,
     _buffer.setFileName(filename, knownDurationSeconds);
   }
 
-  // Bounded prime: fill the ring buffer to AUDIO_PRIME_BYTES before flipping
-  // _playing, so the VS1053 has data from sample one instead of stuttering
-  // while the per-tick refill catches up. Bounded by a timeout AND a
-  // no-progress guard so a slow/empty SD can't hang the track change.
+  // Bounded prime (straight into the fifo, PSRAM being empty) before the
+  // feeder starts. Bounded by a timeout AND a no-progress guard so a
+  // slow/empty SD can't hang the track change.
   unsigned long primeStart = millis();
   size_t primed = _buffer.getBufferedBytes();
   while (primed < AUDIO_PRIME_BYTES &&
@@ -84,31 +96,102 @@ bool AudioPlayer::startPlaying(const char *filename,
     stopPlaying();
     return false;
   }
+  // An adopted next-track prefetch lands in PSRAM, not the fifo.
+  _buffer.fillFrontFromPSRAM(AudioFifo::CAPACITY);
 
   _driver.resetDecodeTime();
   _seekOffsetSeconds = 0;
   _playing = true;
   _paused = false;
   _decoderDirty = true;
+  updateFeeder();
   Serial.printf("Track started in %lu ms (%u bytes primed)\n",
                 millis() - startMs, (unsigned)primed);
   return true;
 }
 
-void AudioPlayer::stopPlaying() {
+void AudioPlayer::stopPlaying(bool endOfStream) {
   _playing = false;
   _paused = false;
+  updateFeeder(); // stops the consumer before the fifo is reset
 
+  _fifo.reset();
   _buffer.resetRingBuffer();
-  dropPendingFeed();
+  _refilling = false;
   if (_decoderDirty) {
-    sendEndFillSequence();
+    sendEndFillSequence(endOfStream);
   }
 }
 
-void AudioPlayer::pausePlaying(bool pause) { _paused = pause; }
+void AudioPlayer::pausePlaying(bool pause) {
+  _paused = pause;
+  updateFeeder();
+}
 
-void AudioPlayer::resumePlaying() { _paused = false; }
+void AudioPlayer::resumePlaying() { pausePlaying(false); }
+
+// Diagnostic mode (OPENPOD_FEED_MAIN_LOOP): same fifo and same send code
+// as the feeder interrupt, but run from the main loop like Phase 1 did.
+void AudioPlayer::feedFromMainLoop() {
+  if (!FEED_FROM_MAIN_LOOP || !_feederEnabled) {
+    return;
+  }
+  uint32_t t0 = audioprof::now();
+  size_t sent = 0;
+  while (_driver.dreqHigh() && _fifo.size() > 0) {
+    sent += _driver.isrFeed(_fifo, 4096);
+  }
+  if (sent) {
+    audioprof::add(audioprof::FEED_ISR, t0);
+    audioprof::addBytes(audioprof::FEED_ISR, sent);
+  }
+}
+
+void AudioPlayer::feederIsr() {
+  AudioPlayer *p = _instance;
+  if (!p) {
+    return;
+  }
+  // Tick regularity: a gap well over 1 ms means the interrupt itself was
+  // held off (higher-priority interrupts, or interrupts disabled).
+  uint32_t nowCycles = audioprof::now();
+  uint32_t gap = nowCycles - p->_isrLastTickCycles;
+  p->_isrLastTickCycles = nowCycles;
+  if (gap > p->_isrMaxTickGapCycles) {
+    p->_isrMaxTickGapCycles = gap;
+  }
+  if (!p->_feederEnabled || FEED_FROM_MAIN_LOOP) {
+    return;
+  }
+  // A stall is a run of ticks where the chip asked for data (DREQ high)
+  // and got none, whatever the reason (bus busy, fifo empty).
+  bool wanted = p->_driver.dreqHigh();
+  size_t sent = 0;
+  if (spi1bus::busy()) {
+    p->_isrBusySkips = p->_isrBusySkips + 1;
+    if (wanted) {
+      spi1bus::feedPending = true;
+    }
+  } else {
+    uint32_t t0 = audioprof::now();
+    sent = p->_driver.isrFeed(p->_fifo, FEEDER_MAX_BYTES_PER_TICK);
+    if (sent) {
+      audioprof::add(audioprof::FEED_ISR, t0);
+      audioprof::addBytes(audioprof::FEED_ISR, sent);
+    }
+  }
+  if (wanted && sent == 0) {
+    p->_isrStallTicks = p->_isrStallTicks + 1;
+    if (p->_isrStallTicks > p->_isrMaxStall) {
+      p->_isrMaxStall = p->_isrStallTicks;
+    }
+  } else {
+    p->_isrStallTicks = 0;
+  }
+  if (p->_fifo.size() == 0 && p->_driver.dreqHigh()) {
+    p->_isrUnderruns = p->_isrUnderruns + 1;
+  }
+}
 
 bool AudioPlayer::isPlaying() { return _playing && !_paused; }
 
@@ -142,91 +225,120 @@ void AudioPlayer::loop() {
   if (_duckingForSeek && millis() >= _duckRestoreAt) {
     restoreVolumeFromDuck();
   }
-  if (!_playing || _paused) return;
+  if (!_playing) return;
 
-  // --- starvation monitor (rate-limited, no per-tick spam) ---
+  // Everything has been handed to the feeder and it sent the last byte:
+  // the end fill sequence (in stopPlaying) plays out what the chip holds.
+  if (_buffer.isFileExhausted()) {
+    Serial.println("End of audio data reached");
+    _trackEnded = true;
+    stopPlaying(true);
+    return;
+  }
+  if (_paused) return;
+
+  // --- monitor (rate-limited) ---
   unsigned long loopEnterMs = millis();
   if (_monitorPrevLoopMs != 0) {
     unsigned long period = loopEnterMs - _monitorPrevLoopMs;
     if (period > _monitorLoopMaxMs) _monitorLoopMaxMs = period;
   }
   _monitorPrevLoopMs = loopEnterMs;
+  if (_fifo.size() < _monitorMinFifo) _monitorMinFifo = _fifo.size();
+
+  // 1. Keep the feeder's fifo topped up from PSRAM.
+  unsigned long fillUsStart = micros();
+  feedFromMainLoop();
+  _buffer.fillFrontFromPSRAM(FIFO_TOPUP_MAX_BYTES);
+  feedFromMainLoop();
+  _monitorFillUs += (uint32_t)(micros() - fillUsStart);
 
   size_t buffered = _buffer.getBufferedBytes();
   if (buffered < _monitorMinBuffered) _monitorMinBuffered = buffered;
   if (buffered > _monitorMaxBuffered) _monitorMaxBuffered = buffered;
   if (buffered < AUDIO_LOW_WATERMARK_BYTES) _monitorLowCount++;
 
-  // Hysteresis: a refill starts once the buffer drains below the low
+  // 2. Hysteresis: a refill starts once the buffer drains below the low
   // watermark and keeps going, a few chunks per tick, until the buffer
   // reaches the target (or the file is fully read). Then the SD card stays
-  // idle until the next crossing. Without the latch, a refill stopped as
-  // soon as one tick lifted the buffer back above the low watermark, so the
-  // buffer hovered there and refilled several times a second.
+  // idle until the next crossing.
   //
   // Per-tick budget: short while there's plenty buffered, so the UI keeps
-  // running between chunks; long when the buffer is actually low. load()
-  // feeds the VS1053 between chunks either way.
+  // running between chunks; long when the buffer is actually low. The
+  // feeder interrupt keeps playing from the fifo meanwhile.
   unsigned long loadUsStart = micros();
   if (buffered < AUDIO_LOW_WATERMARK_BYTES) {
     _refilling = true;
   }
-  if (_refilling) {
-    unsigned long budgetMs = buffered < AUDIO_URGENT_BYTES
-                                 ? AUDIO_MAX_LOAD_MS
-                                 : AUDIO_RELAXED_LOAD_MS;
-    _buffer.load(
-        AUDIO_TARGET_BUFFERED_BYTES,
-        [this]() {
-          while (_playing && !_paused && _driver.readyForData()) {
-            if (!feedBuffer()) break;
-          }
-        },
-        budgetMs);
+  // While the user is interacting (wheel input, screen transition), a
+  // refill step (SD read + PSRAM write, ~15 ms) would eat the UI's frame
+  // time, so SD work backs off:
+  //  - plenty buffered: the refill waits until the user stops;
+  //  - otherwise: a trickle of one chunk per USER_BUSY_CHUNK_INTERVAL_MS
+  //    (~200 KB/s, above any FLAC rate), so the buffer still grows;
+  //  - nearly empty (AUDIO_CRITICAL_BYTES): full budget, audio first.
+  unsigned long nowMs = millis();
+  bool userBusy = nowMs - _lastUserActivityMs < USER_ACTIVITY_HOLDOFF_MS;
+  bool critical = buffered < AUDIO_CRITICAL_BYTES;
+  bool runRefill = _refilling;
+  unsigned long budgetMs = buffered < AUDIO_URGENT_BYTES
+                               ? AUDIO_MAX_LOAD_MS
+                               : AUDIO_RELAXED_LOAD_MS;
+  if (_refilling && userBusy && !critical) {
+    if (buffered >= AUDIO_URGENT_BYTES ||
+        nowMs - _lastBusyChunkMs < USER_BUSY_CHUNK_INTERVAL_MS) {
+      runRefill = false; // resumes once the user stops / at the next slot
+    } else {
+      budgetMs = 1; // checked before each chunk: exactly one chunk
+      _lastBusyChunkMs = nowMs;
+    }
+  }
+  if (runRefill) {
+    _buffer.load(AUDIO_TARGET_BUFFERED_BYTES,
+                 FEED_FROM_MAIN_LOOP ? std::function<void()>([this]() {
+                   feedFromMainLoop();
+                 })
+                                     : std::function<void()>(),
+                 budgetMs);
     if (_buffer.getBufferedBytes() >= AUDIO_TARGET_BUFFERED_BYTES ||
         _buffer.isFileFullyRead() || _buffer.openFailed()) {
       _refilling = false;
     }
-  } else {
-    // Buffer is healthy: use the otherwise-idle SD bus to make background
-    // progress on the next track's prefetch instead (memory-improvements.md
-    // §3), bounded to one chunk per tick same as load().
+  } else if (!_refilling && !userBusy) {
+    // 3. Buffer is healthy: use the otherwise-idle SD bus to make background
+    // progress on the next track's prefetch instead, one chunk per tick.
     _buffer.prefetchNextTrack();
+    feedFromMainLoop();
   }
   _monitorLoadUs += (uint32_t)(micros() - loadUsStart);
 
-  unsigned long feedUsStart = micros();
-  unsigned long feedStartMs = millis();
-  while (_playing && !_paused && _driver.readyForData() &&
-         millis() - feedStartMs < AUDIO_MAX_FEED_MS) {
-    if (!feedBuffer()) break;
-  }
-  _monitorFeedUs += (uint32_t)(micros() - feedUsStart);
-
   if (loopEnterMs - _monitorLastReport >= AUDIO_MONITOR_INTERVAL_MS) {
-    // The print itself is gated behind _monitorEnabled (off by default): the
-    // formatted line runs well past the STM32 core's 64-byte Serial TX ring
-    // buffer, so emitting it every second means a real, blocking write()
-    // stall once a second - on every codec, not just FLAC. The window
-    // still resets on schedule either way, so turning monitoring on
-    // mid-track reports a clean current window instead of a stale one.
     if (_monitorEnabled) {
       Serial.printf(
-          "[audio] buf=%u/%u min=%u max=%u low=%u underflow=%u "
-          "loop=%lums load=%lums feed=%lums\n",
+          "[audio] buf=%u/%u min=%u max=%u low=%u l1min=%u underrun=%lu "
+          "busySkip=%lu maxStall=%lums tickGap=%luus loop=%lums load=%lums "
+          "fill=%lums\n",
           (unsigned)buffered, (unsigned)AUDIO_TARGET_BUFFERED_BYTES,
           (unsigned)_monitorMinBuffered, (unsigned)_monitorMaxBuffered,
-          (unsigned)_monitorLowCount, (unsigned)_monitorUnderflows,
-          (unsigned long)_monitorLoopMaxMs, (unsigned long)(_monitorLoadUs / 1000),
-          (unsigned long)(_monitorFeedUs / 1000));
+          (unsigned)_monitorLowCount, (unsigned)_monitorMinFifo,
+          (unsigned long)_isrUnderruns, (unsigned long)_isrBusySkips,
+          (unsigned long)(_isrMaxStall * 1000 / FEEDER_HZ),
+          (unsigned long)(_isrMaxTickGapCycles / (SystemCoreClock / 1000000UL)),
+          (unsigned long)_monitorLoopMaxMs,
+          (unsigned long)(_monitorLoadUs / 1000),
+          (unsigned long)(_monitorFillUs / 1000));
     }
     _monitorLastReport = loopEnterMs;
     _monitorMinBuffered = (size_t)-1;
     _monitorMaxBuffered = 0;
     _monitorLowCount = 0;
-    _monitorUnderflows = 0;
+    _monitorMinFifo = AudioFifo::CAPACITY;
+    _isrUnderruns = 0;
+    _isrBusySkips = 0;
+    _isrMaxStall = 0;
+    _isrMaxTickGapCycles = 0;
     _monitorLoadUs = 0;
-    _monitorFeedUs = 0;
+    _monitorFillUs = 0;
     _monitorLoopMaxMs = 0;
   }
 }
@@ -238,37 +350,6 @@ void AudioPlayer::prepareNextTrack(const char *filename,
 
 void AudioPlayer::invalidateNextTrack() { _buffer.invalidateNextTrack(); }
 
-bool AudioPlayer::feedBuffer() {
-  if (_feedPos >= _feedLen) {
-    _feedPos = 0;
-    _feedLen = _buffer.readData(_feedBuffer, AUDIO_FEED_BUFFER_LEN);
-  }
-  if (_feedLen == 0) {
-    // Ring buffer is empty. It's only the end of the track once the source
-    // file has been fully read; otherwise the refill is just behind.
-    if (!_buffer.isFileExhausted()) {
-      _monitorUnderflows++;
-      return false;
-    }
-
-    Serial.println("End of audio data reached");
-    if (_looping) {
-      Serial.println("Looping back to start");
-      _buffer.resetRingBuffer();
-      return true;
-    } else {
-      Serial.println("Stopping playback");
-      _trackEnded = true;
-      stopPlaying();
-      return false;
-    }
-  }
-  size_t sent =
-      _driver.sendIfReady(_feedBuffer + _feedPos, _feedLen - _feedPos);
-  _feedPos += sent;
-  return sent > 0;
-}
-
 bool AudioPlayer::consumeTrackEnded() {
   bool ended = _trackEnded;
   _trackEnded = false;
@@ -277,6 +358,10 @@ bool AudioPlayer::consumeTrackEnded() {
 
 bool AudioPlayer::seekToSeconds(uint32_t targetSeconds) {
   if (!_playing) {
+    return false;
+  }
+  // Datasheet 10.5.4: no jump while a header is mid-decode.
+  if (!_driver.canJump()) {
     return false;
   }
 
@@ -291,31 +376,28 @@ bool AudioPlayer::seekToSeconds(uint32_t targetSeconds) {
     _driver.setVolume(left, right);
     _duckingForSeek = true;
   }
+  uint8_t endFillByte = _driver.getEndFillByte();
 
-  // Datasheet 10.5.4: flush the chip's in-flight decode state before we
-  // jump the file position out from under it - without this the VS1053
-  // keeps trying to decode stale, now-discontinuous audio it already has
-  // queued internally, which is what actually produced the silence+glitch
-  // (not just our own software ring buffer).
-  if (!_driver.prepareForSeek(_streamIsFlac ? FLAC_END_FILL_BYTES : 2048)) {
-    restoreVolumeFromDuck(); // no jump happening; nothing to mask
-    return false; // header mid-decode; not safe to jump right now
-  }
+  _feederEnabled = false; // stop the consumer while the fifo is rewritten
   if (!_buffer.seekToSeconds(targetSeconds)) {
+    updateFeeder();
     restoreVolumeFromDuck();
     return false;
   }
-  dropPendingFeed();
-  // Bounded prime, not a full refill to AUDIO_TARGET_BUFFERED_BYTES: this
-  // runs while playback is actively draining the VS1053, so a long
-  // synchronous SD refill here would starve its internal FIFO (audible
-  // silence) before any of the new data even reaches it. loop()'s regular
-  // per-tick load() call tops the buffer the rest of the way up afterward.
+  // The jump must be preceded by end fill bytes so the decoder flushes what
+  // it has queued (12288 for the FLAC plugin). They're queued in the fifo
+  // ahead of the new position's data instead of being sent here, so the
+  // seek doesn't block while the chip drains its buffer.
+  _fifo.reset();
+  _fifo.fill(endFillByte, _streamIsFlac ? FLAC_END_FILL_BYTES : 2048);
+  // Bounded prime (straight into the fifo behind the fill bytes); loop()'s
+  // refill takes it from there.
   _buffer.load(AUDIO_SEEK_PRIME_BYTES);
+  updateFeeder();
+
   _driver.resetDecodeTime(); // Hardware counter can't jump; restart at 0.
   _seekOffsetSeconds = targetSeconds;
-  // Keep the duck through the resync window (the glitch lands a few
-  // feedBuffer() ticks into the resumed stream, not at this exact instant).
+  // Keep the duck through the resync window.
   _duckRestoreAt = millis() + SEEK_DUCK_RESTORE_DELAY;
   return true;
 }
@@ -333,58 +415,65 @@ bool AudioPlayer::seekBySeconds(int deltaSeconds) {
   return seekToSeconds((uint32_t)target);
 }
 
-// OPTIMIZED: Send proper end fill sequence
-void AudioPlayer::sendEndFillSequence() {
-  // VS1053 datasheet 10.5.1 (cancelling playback): 2052 end fill bytes,
-  // set SM_CANCEL, then keep sending end fill bytes in 32-byte blocks until
-  // the decoder clears SM_CANCEL (or soft reset after 2048 more bytes).
-  // Every DREQ wait is bounded so a wedged chip can't hang the main loop.
+// Ends the stream the decoder is working on (datasheet 10.5.1 / 10.5.2).
+// The FLAC plugin has a 12 KiB stream buffer and needs 12288 end fill bytes
+// where the built-in decoders need 2052 (vs1053b-patches.pdf, "FLAC
+// Decoder"). The whole sequence is bounded by one second (the datasheet's
+// own limit before falling back to a software reset): DREQ can legitimately
+// stay low for a whole FLAC frame (~100 ms) while the decoder catches up.
+void AudioPlayer::sendEndFillSequence(bool endOfStream) {
   unsigned long startMs = millis();
   _decoderDirty = false;
 
-  _driver.writeRegister(VS1053_REG_WRAMADDR, 0x1E06); // endFill address
-  uint8_t endFillByte = _driver.readRegister(VS1053_REG_WRAM) & 0xFF;
   uint8_t endFillBuffer[32];
-  memset(endFillBuffer, endFillByte, sizeof(endFillBuffer));
+  memset(endFillBuffer, _driver.getEndFillByte(), sizeof(endFillBuffer));
+  const int fillBytes = _streamIsFlac ? FLAC_END_FILL_BYTES : 2052;
 
-  // Sends `bytes` end fill bytes; false if DREQ stayed low too long.
+  // Sends `bytes` end fill bytes; false once the deadline passes.
   auto sendFill = [&](int bytes) {
-    unsigned long waitStart = millis();
     while (bytes > 0) {
+      if (millis() - startMs > END_FILL_TIMEOUT_MS) {
+        return false;
+      }
       if (_driver.readyForData()) {
         _driver.sendData(endFillBuffer, sizeof(endFillBuffer));
         bytes -= sizeof(endFillBuffer);
-        waitStart = millis();
-      } else if (millis() - waitStart > END_FILL_DREQ_TIMEOUT_MS) {
-        return false;
       }
     }
     return true;
   };
-
-  // The FLAC plugin has a 12 KiB stream buffer and needs 12288 end fill
-  // bytes instead of ~2050 (vs1053b-patches.pdf, "FLAC Decoder").
-  int fillBytes = _streamIsFlac ? FLAC_END_FILL_BYTES : 2052;
-  bool cancelled = false;
-  if (sendFill(fillBytes)) {
+  // Sets SM_CANCEL, then sends end fill bytes 32 at a time until the
+  // decoder clears it (at most fillBytes).
+  auto cancel = [&]() {
     _driver.writeRegister(VS1053_REG_MODE,
                           VS1053_MODE_SM_SDINEW | VS1053_MODE_SM_CANCEL);
     for (int sent = 0; sent < fillBytes; sent += 32) {
-      if (!sendFill(32)) {
-        break;
-      }
       if (!(_driver.readRegister(VS1053_REG_MODE) & VS1053_MODE_SM_CANCEL)) {
-        cancelled = true;
-        break;
+        return true;
+      }
+      if (!sendFill(32)) {
+        return false;
       }
     }
+    return !(_driver.readRegister(VS1053_REG_MODE) & VS1053_MODE_SM_CANCEL);
+  };
+
+  bool ok;
+  if (endOfStream) {
+    // 10.5.1, the file was played to its end: end fill bytes first so the
+    // decoder plays out what it holds, then cancel.
+    ok = sendFill(fillBytes) && cancel();
+  } else {
+    // 10.5.2, stopping mid-stream: cancel first (the decoder drops what it
+    // holds right away), then end fill bytes to flush it.
+    ok = cancel() && sendFill(fillBytes);
   }
-  if (!cancelled) {
+  if (!ok) {
     Serial.println("Cancel didn't complete, soft reset");
     _driver.softReset();
   }
-  Serial.printf("End fill sequence completed in %lu ms\n",
-                millis() - startMs);
+  Serial.printf("End fill sequence (%s) completed in %lu ms\n",
+                endOfStream ? "end of stream" : "cancel", millis() - startMs);
 }
 
 bool AudioPlayer::configureAudioQuality(uint32_t targetSampleRate) {

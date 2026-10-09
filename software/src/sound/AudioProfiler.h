@@ -19,6 +19,7 @@ enum Category : uint8_t {
   VS_DREQ_WAIT, // busy-waiting for DREQ inside sendData
   AUDIO_LOOP,   // PodPlayer::loop() as a whole
   UI_UPDATE,    // ui.update() as a whole
+  FEED_ISR,     // feeder interrupt ticks that sent data
   CATEGORY_COUNT
 };
 
@@ -97,7 +98,7 @@ inline void report() {
   unsigned long windowMs = nowMs - st.lastReportMs;
   st.lastReportMs = nowMs;
   static const char *const names[CATEGORY_COUNT] = {
-      "sd", "psW", "psR", "vsClk", "vsWait", "audio", "ui"};
+      "sd", "psW", "psR", "vsClk", "vsWait", "audio", "ui", "isr"};
   const uint32_t cyclesPerUs = SystemCoreClock / 1000000UL;
   Serial.printf("[prof %lums] loops=%lu maxLoop=%lums", windowMs,
                 (unsigned long)st.loops,

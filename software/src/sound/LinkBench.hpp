@@ -8,13 +8,16 @@
 #include <SPI.h>
 #include <SdFat.h>
 #include "AudioPlayer.h"
+#include "Spi1Bus.h"
 #include "../storage/Music_lookup.h"
 #include "../storage/PSRAM_controller.hpp"
 
 namespace linkbench {
 
-// Allocated only while the bench runs (it's off in normal builds).
+// Borrowed from the audio player's L1 fifo while the bench runs (nothing
+// plays at boot).
 static const uint32_t BUF_LEN = 16 * 1024;
+static_assert(BUF_LEN <= AudioPlayer::BENCH_SCRATCH_LEN, "bench buffer");
 static uint8_t *buf = nullptr;
 
 inline uint32_t usSince(uint32_t startCycles) {
@@ -200,6 +203,7 @@ inline void benchVs1053(AudioPlayer &player) {
                 (unsigned long)player.getDriver().getSdiFreq());
   static const uint32_t LEN = 8 * 1024;
   memset(buf, 0, LEN);
+  spi1bus::Lock lock;
   const uint32_t speeds[] = {703125, 1406250, 2812500, 5625000, 11250000};
   for (uint32_t hz : speeds) {
     char label[64];
@@ -222,11 +226,7 @@ inline void benchVs1053(AudioPlayer &player) {
 
 inline void runLinkBench(AudioPlayer &player, MusicLookup &lookup) {
   Serial.println("=== LINK BENCH ===");
-  linkbench::buf = (uint8_t *)malloc(linkbench::BUF_LEN);
-  if (!linkbench::buf) {
-    Serial.println("no RAM for the bench buffer, skipped");
-    return;
-  }
+  linkbench::buf = player.benchScratch();
   Serial.printf("core %lu MHz, PCLK1 %lu MHz, PCLK2 %lu MHz\n",
                 (unsigned long)(SystemCoreClock / 1000000),
                 (unsigned long)(HAL_RCC_GetPCLK1Freq() / 1000000),
@@ -234,7 +234,6 @@ inline void runLinkBench(AudioPlayer &player, MusicLookup &lookup) {
   linkbench::benchSD(lookup.getSD());
   linkbench::benchPsram();
   linkbench::benchVs1053(player);
-  free(linkbench::buf);
   linkbench::buf = nullptr;
   Serial.println("=== LINK BENCH DONE ===");
   Serial.flush();

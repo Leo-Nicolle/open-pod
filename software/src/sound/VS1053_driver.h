@@ -9,6 +9,7 @@
 #include "VS1053_FLAC_plugin.h"
 #include <Arduino.h>
 #include <SPI.h>
+#include "AudioFifo.h"
 
 // VS1053 Register Definitions
 #define VS1053_REG_MODE 0x00
@@ -105,16 +106,19 @@ public:
 
   // Blocking: waits for DREQ before every 32-byte burst.
   void sendData(const uint8_t *data, size_t len);
-  // Non-blocking: sends 32-byte bursts only while DREQ is high and returns
-  // how many bytes went out (a multiple of 32 unless len ran out).
-  size_t sendIfReady(const uint8_t *data, size_t len);
+  // Feeder interrupt only, with SPI1 free (bus lock not held): sends
+  // 32-byte bursts from the fifo while DREQ is high, at most maxBytes.
+  // Returns the bytes sent.
+  size_t isrFeed(AudioFifo &fifo, size_t maxBytes);
+  // DREQ, read straight from the GPIO register (interrupt-safe, fast).
+  bool dreqHigh() const { return _dreqPort->IDR & _dreqMask; }
 
   // SPI clocks, derived from CLOCKF on every write to it (datasheet: SCI
   // reads <= CLKI/7, SDI writes <= CLKI/4). setSdiFreq() overrides the SDI
   // clock until the next CLOCKF write (link bench).
   uint32_t getSciFreq() const { return _sciFreq; }
   uint32_t getSdiFreq() const { return _sdiFreq; }
-  void setSdiFreq(uint32_t hz) { _sdiFreq = hz; }
+  void setSdiFreq(uint32_t hz);
 
   // Audio control
   void setVolume(uint8_t left, uint8_t right);
@@ -126,14 +130,12 @@ public:
   void setPlaySpeed(uint16_t speed);
   uint16_t getPlaySpeed();
   void cancel();
-  // Datasheet 10.5.4 "Fast Forward and Rewind without Audio": flushes the
-  // chip's in-flight decode state with endFillByte so a random-access jump
-  // in the underlying file lands at a clean point instead of cutting off
-  // audio the chip already has queued (starvation + a resync pop). Returns
-  // false if SS_DO_NOT_JUMP is set (a header is mid-decode; not safe to
-  // jump right now) - caller should not jump and may retry later.
-  // fillBytes: 2048 for the built-in decoders, 12288 for the FLAC plugin.
-  bool prepareForSeek(int fillBytes = 2048);
+  // Datasheet 10.5.4 "Fast Forward and Rewind without Audio": a jump in
+  // the stream must be preceded by end fill bytes (2048, or 12288 for the
+  // FLAC plugin) so the decoder flushes what it has queued, and is not
+  // allowed while SS_DO_NOT_JUMP is set (a header is mid-decode).
+  bool canJump();
+  uint8_t getEndFillByte();
 
   // Test functions
   void sineTest(uint8_t freq, uint16_t duration);
@@ -162,7 +164,14 @@ private:
   uint32_t _sciFreq;
   uint32_t _sdiFreq;
   void updateClockSpeeds(uint16_t clockf);
+  // Feeder interrupt: direct GPIO/SPI1 register access.
+  GPIO_TypeDef *_dcsPort = nullptr;
+  uint32_t _dcsMask = 0;
+  GPIO_TypeDef *_dreqPort = nullptr;
+  uint32_t _dreqMask = 0;
+  uint32_t _sdiBaudBits = 0;
   void sendBurst(const uint8_t *data, size_t len);
+  bool _flacPluginLoaded = false; // see isFLACPluginLoaded()
 
   // Low-level SPI functions
   void initSPI();
