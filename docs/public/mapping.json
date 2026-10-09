@@ -190,6 +190,12 @@
       {
         "pin": "PB4",
         "role": "SDA (I2C3_SDA)"
+      },
+      {
+        "pin": "PH1",
+        "role": "~IRQ (active low, open-drain)",
+        "macro": "MPR121_IRQ",
+        "note": "Read with the internal pull-up (INPUT_PULLUP). PH1 (OSC_OUT) is free because the Arduino core clocks from HSI. Nucleo morpho CN7-31."
       }
     ]
   },
