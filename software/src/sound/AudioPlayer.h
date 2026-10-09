@@ -132,6 +132,11 @@ private:
   bool _needsFeeding;
   uint8_t _interruptType;
   bool _trackEnded = false;
+  // The decoder was fed a stream that hasn't been ended with
+  // sendEndFillSequence() yet; stopping when it's clean skips that (slow)
+  // sequence, e.g. stopping twice in a row on a track change.
+  bool _decoderDirty = false;
+  static const unsigned long END_FILL_DREQ_TIMEOUT_MS = 50;
   uint32_t _seekOffsetSeconds = 0;
 
   // Volume ducking around a seek (datasheet 10.5.4 recommends lowering
@@ -170,7 +175,9 @@ private:
   // Bounded prime: buffer this many bytes before flipping _playing, so the
   // VS1053 has slack from sample one instead of stuttering while the
   // per-tick refill catches up (see memory-improvements.md).
-  static const size_t AUDIO_PRIME_BYTES = 512 * 1024; // ~4s of 44.1k/16 FLAC
+  // Read synchronously before a track starts (blocks the UI meanwhile);
+  // loop()'s bounded refills take over from there. ~0.5s of 44.1k/16 FLAC.
+  static const size_t AUDIO_PRIME_BYTES = 64 * 1024;
   static const unsigned long AUDIO_PRIME_TIMEOUT_MS = 5000;
 
   // Feed the VS1053 from a larger RAM buffer rather than 32 bytes at a time.

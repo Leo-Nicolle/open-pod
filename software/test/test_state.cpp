@@ -734,6 +734,51 @@ TEST_SUITE("State Utility Tests") {
 }
 
 TEST_SUITE("State Navigation Tests") {
+  TEST_CASE("State - Back Restores Scrolled List Window") {
+    setupCatalog();
+    // Enough artists to scroll past the first screen
+    std::vector<std::pair<uint32_t, std::string>> artists;
+    for (uint32_t id = 1; id <= 30; id++) {
+      artists.push_back(std::make_pair(id, "Artist " + std::to_string(id)));
+    }
+    openpod_test::FakeFs::get().addFile("/openpod/artist_index.bin",
+                                        openpod_test::buildStringIndex(artists));
+    MusicLookup lookup;
+    REQUIRE(lookup.init());
+
+    static ListEvent lastList;
+    static const char *lastListFirstVisible;
+    State state;
+    state.addEventListener([](int type, void *data, EventTarget *) {
+      if (type == EVENT_TRACK_LIST_UPDATED) {
+        lastList = *(ListEvent *)data;
+        lastListFirstVisible = lastList.visibleElements[0];
+      }
+    });
+
+    state.loadCurrentRouteData(lookup);
+    state.scrollDown();         // "Artists" root menu item
+    state.goToSelected(lookup); // ROOT -> ARTISTS
+    for (int i = 0; i < 24; i++) {
+      state.scrollDown();
+    }
+    REQUIRE(state.getSelectedIndex() == 24);
+    int top = state.getTopVisibleIndex();
+    REQUIRE(top > 0);
+
+    state.goToSelected(lookup); // ARTISTS -> ALBUMS
+    state.back(lookup);
+
+    CHECK(state.getSelectedIndex() == 24);
+    CHECK(state.getTopVisibleIndex() == top);
+    // The UI rebuilds its rows from this event: it must carry the restored
+    // window, not the top of the list.
+    CHECK(lastList.selectedIndex == 24);
+    CHECK(lastList.topVisibleIndex == top);
+    CHECK(strcmp(lastListFirstVisible, state.getVisibleElements()[0]) == 0);
+    CHECK(strcmp(lastListFirstVisible, "Artist 1") != 0);
+  }
+
   // Regression test: selecting "Tracks" from the ROOT menu used to be an
   // unimplemented TODO that left the route unchanged (see goToSelected's
   // ROOT case) - selecting it did nothing.

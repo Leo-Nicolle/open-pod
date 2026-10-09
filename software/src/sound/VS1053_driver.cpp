@@ -298,6 +298,9 @@ void VS1053_driver::dumpRegisters() {
 
 // OPTIMIZED: FLAC-specific clock configuration matching working implementation
 bool VS1053_driver::configureFLACClock() {
+  if (readRegister(VS1053_REG_CLOCKF) == VS1053_FLAC_SPEED) {
+    return true; // already set by a previous FLAC start
+  }
   Serial.println("Configuring VS1053 clock for FLAC playback");
 
   // Use the same aggressive clock configuration as the working code

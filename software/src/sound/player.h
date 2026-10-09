@@ -19,6 +19,20 @@ class PodPlayer {
     // listeners (UI) see STARTED before the matching STOPPED.
     bool playbackFailed = false;
 
+    // Track changes are applied to the audio after TRACK_START_DELAY_MS
+    // without another change, so skipping through several tracks only
+    // opens/primes the one landed on (the UI/state still update at once).
+    static const unsigned long TRACK_START_DELAY_MS = 200;
+    int pendingTrackId = -1;
+    // The delay is counted from the first loop() pass after the change,
+    // not from the change itself: the UI redraw it triggers (album art) can
+    // block for longer than the delay, and a click made meanwhile is only
+    // handled on the next pass.
+    bool pendingArmed = false;
+    unsigned long pendingTrackAt = 0;
+    bool autoAdvancing = false; // track ended on its own: start with no delay
+    void startPendingTrack();
+
     // Event handler - must be static to use as callback
     static void onStateEvent(int eventType, void *eventData,
                              EventTarget *source);

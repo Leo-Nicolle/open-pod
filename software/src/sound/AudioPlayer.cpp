@@ -49,6 +49,7 @@ bool AudioPlayer::begin(uint32_t spiFreq, uint32_t sdFreq) {
 bool AudioPlayer::startPlaying(const char *filename,
                                uint32_t knownDurationSeconds) {
   Serial.printf("Starting playback: %s\n", filename);
+  unsigned long startMs = millis();
   stopPlaying();
 
   bool isFlac = isFLACFile(filename);
@@ -89,6 +90,9 @@ bool AudioPlayer::startPlaying(const char *filename,
   _seekOffsetSeconds = 0;
   _playing = true;
   _paused = false;
+  _decoderDirty = true;
+  Serial.printf("Track started in %lu ms (%u bytes primed)\n",
+                millis() - startMs, (unsigned)primed);
   return true;
 }
 
@@ -117,7 +121,9 @@ void AudioPlayer::stopPlaying() {
   }
 
   _buffer.resetRingBuffer();
-  sendEndFillSequence();
+  if (_decoderDirty) {
+    sendEndFillSequence();
+  }
 }
 
 void AudioPlayer::pausePlaying(bool pause) { _paused = pause; }
@@ -151,6 +157,9 @@ void AudioPlayer::setVolume(uint8_t left, uint8_t right) {
 }
 
 uint16_t AudioPlayer::getDecodeTime() {
+  // The chip keeps the last track's decode time after a stop; nothing is
+  // playing (e.g. a track start is pending), so report the start instead.
+  if (!_playing) return 0;
   return (uint16_t)(_driver.getDecodeTime() + _seekOffsetSeconds);
 }
 
@@ -351,47 +360,53 @@ bool AudioPlayer::seekBySeconds(int deltaSeconds) {
 
 // OPTIMIZED: Send proper end fill sequence
 void AudioPlayer::sendEndFillSequence() {
-  Serial.println("Sending end fill sequence...");
+  // VS1053 datasheet 10.5.1 (cancelling playback): 2052 end fill bytes,
+  // set SM_CANCEL, then keep sending end fill bytes in 32-byte blocks until
+  // the decoder clears SM_CANCEL (or soft reset after 2048 more bytes).
+  // Every DREQ wait is bounded so a wedged chip can't hang the main loop.
+  unsigned long startMs = millis();
+  _decoderDirty = false;
 
-  // Get the VS1053's end fill byte
   _driver.writeRegister(VS1053_REG_WRAMADDR, 0x1E06); // endFill address
-  uint16_t endFillWord = _driver.readRegister(VS1053_REG_WRAM);
-  uint8_t endFillByte = endFillWord & 0xFF;
-
-  // Send 2052 end fill bytes (matching working code)
+  uint8_t endFillByte = _driver.readRegister(VS1053_REG_WRAM) & 0xFF;
   uint8_t endFillBuffer[32];
-  memset(endFillBuffer, endFillByte, 32);
+  memset(endFillBuffer, endFillByte, sizeof(endFillBuffer));
 
-  int remainingBytes = 2052;
-  while (remainingBytes > 0) {
-    if (_driver.readyForData()) {
-      int bytesToSend = min(32, remainingBytes);
-      _driver.sendData(endFillBuffer, 32); // Use efficient 32-byte method
-      remainingBytes -= bytesToSend;
+  // Sends `bytes` end fill bytes; false if DREQ stayed low too long.
+  auto sendFill = [&](int bytes) {
+    unsigned long waitStart = millis();
+    while (bytes > 0) {
+      if (_driver.readyForData()) {
+        _driver.sendData(endFillBuffer, sizeof(endFillBuffer));
+        bytes -= sizeof(endFillBuffer);
+        waitStart = millis();
+      } else if (millis() - waitStart > END_FILL_DREQ_TIMEOUT_MS) {
+        return false;
+      }
+    }
+    return true;
+  };
+
+  bool cancelled = false;
+  if (sendFill(2052)) {
+    _driver.writeRegister(VS1053_REG_MODE,
+                          VS1053_MODE_SM_SDINEW | VS1053_MODE_SM_CANCEL);
+    for (int sent = 0; sent < 2048; sent += 32) {
+      if (!sendFill(32)) {
+        break;
+      }
+      if (!(_driver.readRegister(VS1053_REG_MODE) & VS1053_MODE_SM_CANCEL)) {
+        cancelled = true;
+        break;
+      }
     }
   }
-
-  // Set cancel mode
-  _driver.writeRegister(VS1053_REG_MODE,
-                        VS1053_MODE_SM_SDINEW | VS1053_MODE_SM_CANCEL);
-
-  // Send 32 more end fill bytes
-  for (int i = 0; i < 32; i++) {
-    if (_driver.readyForData()) {
-      _driver.sendData(&endFillByte, 1);
-    }
-  }
-
-  delay(100);
-
-  // Check if cancel bit is cleared, if not perform soft reset
-  uint16_t mode = _driver.readRegister(VS1053_REG_MODE);
-  if (mode & VS1053_MODE_SM_CANCEL) {
-    Serial.println("Performing soft reset to clear cancel bit");
+  if (!cancelled) {
+    Serial.println("Cancel didn't complete, soft reset");
     _driver.softReset();
   }
-
-  Serial.println("End fill sequence completed");
+  Serial.printf("End fill sequence completed in %lu ms\n",
+                millis() - startMs);
 }
 
 bool AudioPlayer::useInterrupt(uint8_t type) {

@@ -67,6 +67,12 @@ private:
   uint32_t coverLength;
   uint8_t coverFormat; // 1 = raw565 (see indexer's ALBUM_COVER_FORMAT_BYTE)
   bool coverValid;
+  // What a full-width render last put in the art area. The cover is read
+  // from SD row by row on every blit, so a render whose cover didn't change
+  // (next track on the same album, pause, duration update...) skips it.
+  bool artOnScreen;
+  bool drawnCoverValid;
+  uint32_t drawnCoverOffset;
 
   // Layout constants (dark theme: art on the left, metadata on the right,
   // every animated element in the bottom 30px chunk). Matches
@@ -113,6 +119,9 @@ public:
     coverValid = length > 0;
   }
   void clearAlbumArt() { coverValid = false; }
+  // Call when something else drew over the art area (e.g. leaving the
+  // screen), so the next render() redraws the cover.
+  void invalidateArt() { artOnScreen = false; }
 
   // Render the volume band (the bottom chunk shows the volume overlay).
   void renderVolumeOverlay(ILI9341_GFX *display);
@@ -137,13 +146,30 @@ private:
 NowPlayingComponent::NowPlayingComponent()
     : currentTrack(""), isPlaying(false), trackLength(0), progress(0),
       seekModeActive(false), volumeLevel(0), volumeOverlayVisible(false),
-      coverOffset(0), coverLength(0), coverFormat(0), coverValid(false) {
+      coverOffset(0), coverLength(0), coverFormat(0), coverValid(false),
+      artOnScreen(false), drawnCoverValid(false), drawnCoverOffset(0) {
   albumName[0] = '\0';
 }
 
 void NowPlayingComponent::render(ILI9341_GFX *display, int x, int width) {
+  bool fullWidth = x == 0 && width >= SCREEN_WIDTH;
+  bool artUnchanged = fullWidth && artOnScreen &&
+                      drawnCoverValid == coverValid &&
+                      (!coverValid || drawnCoverOffset == coverOffset);
+  // Body strips start right of the art when it's already up to date (the
+  // left margin is plain background); the bottom band always spans it all.
+  int bodyX = artUnchanged ? ALBUM_ART_X + ALBUM_ART_SIZE : x;
   for (int y = BODY_Y; y < SCREEN_HEIGHT; y += CHUNK_HEIGHT) {
-    renderChunk(display, x, y, width);
+    if (y >= BOTTOM_BAND_Y) {
+      renderChunk(display, x, y, width);
+    } else {
+      renderChunk(display, bodyX, y, x + width - bodyX);
+    }
+  }
+  if (fullWidth) {
+    artOnScreen = true;
+    drawnCoverValid = coverValid;
+    drawnCoverOffset = coverOffset;
   }
 }
 

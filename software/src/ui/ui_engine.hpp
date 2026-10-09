@@ -405,6 +405,7 @@ void OpenPodUIEngine::handleNavigationChanged(const RouteChangedEvent *event)
   Serial.print(event->oldRouteType);
   Serial.print(" to ");
   Serial.println(event->newRouteType);
+  nowPlaying.invalidateArt(); // the transition draws over the whole screen
   // return;
   // Handle transitions between states
   if (event->oldRouteType != Route_t::RouteType::NOW_PLAYING &&

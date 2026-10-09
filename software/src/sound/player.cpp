@@ -46,17 +46,38 @@ void PodPlayer::onStateEvent(int eventType, void *eventData,
 }
 
 void PodPlayer::handleTrackPlaybackStarted(const PlaybackEvent *event) {
-  if (musicLookup.getTrackPath(event->trackId, currentPath,
-                               sizeof(currentPath))) {
-    uint32_t indexedDuration = musicLookup.getTrackDurationSeconds(event->trackId);
+  // Silence the old track now, open the new one once the user stops
+  // skipping (see TRACK_START_DELAY_MS / loop()). Already silent if a start
+  // was pending.
+  if (pendingTrackId < 0) {
+    audioPlayer.stopPlaying();
+  }
+  pendingTrackId = event->trackId;
+  pendingArmed = autoAdvancing; // auto-advance: no delay
+  pendingTrackAt = millis() - (autoAdvancing ? TRACK_START_DELAY_MS : 0);
+  uint32_t indexedDuration =
+      musicLookup.getTrackDurationSeconds(event->trackId);
+  if (indexedDuration > 0) {
+    state.setTrackDuration((int)indexedDuration);
+  }
+}
+
+void PodPlayer::startPendingTrack() {
+  int trackId = pendingTrackId;
+  pendingTrackId = -1;
+  if (musicLookup.getTrackPath(trackId, currentPath, sizeof(currentPath))) {
+    uint32_t indexedDuration = musicLookup.getTrackDurationSeconds(trackId);
     if (audioPlayer.startPlaying(currentPath, indexedDuration)) {
+      if (!state.getIsPlaying()) {
+        audioPlayer.pausePlaying(true); // paused while the start was pending
+      }
       state.setTrackDuration((int)audioPlayer.getDurationSeconds());
     } else {
       playbackFailed = true;
       return; // no point prefetching after a track that won't play
     }
   } else {
-    Serial.printf("Could not resolve path for track id %d\n", event->trackId);
+    Serial.printf("Could not resolve path for track id %d\n", trackId);
     playbackFailed = true;
     return;
   }
@@ -85,6 +106,7 @@ void PodPlayer::handlePlaybackResumed(const PlaybackEvent *event) {
 }
 
 void PodPlayer::handlePlaybackStopped(const PlaybackEvent *event) {
+  pendingTrackId = -1;
   audioPlayer.stopPlaying();
 }
 
@@ -95,6 +117,14 @@ void PodPlayer::handleVolumeChanged(const VolumeEvent *event) {
 }
 
 void PodPlayer::loop() {
+  if (pendingTrackId >= 0) {
+    if (!pendingArmed) {
+      pendingArmed = true;
+      pendingTrackAt = millis();
+    } else if (millis() - pendingTrackAt >= TRACK_START_DELAY_MS) {
+      startPendingTrack();
+    }
+  }
   audioPlayer.loop();
   if (playbackFailed || audioPlayer.hasFailed()) {
     playbackFailed = false;
@@ -104,6 +134,11 @@ void PodPlayer::loop() {
     return;
   }
   if (audioPlayer.consumeTrackEnded()) {
+    autoAdvancing = true;
     state.notifyTrackEnded(musicLookup);
+    autoAdvancing = false;
+    if (pendingTrackId >= 0) {
+      startPendingTrack(); // keep the gap between tracks minimal
+    }
   }
 }
