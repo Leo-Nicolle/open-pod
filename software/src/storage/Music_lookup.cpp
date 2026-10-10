@@ -17,6 +17,7 @@ MusicLookup::MusicLookup(uint32_t psram_base_addr)
   memset(&path_index_h, 0, sizeof(path_index_h));
   memset(&duration_index_h, 0, sizeof(duration_index_h));
   memset(&track_to_album_h, 0, sizeof(track_to_album_h));
+  memset(&track_to_artist_h, 0, sizeof(track_to_artist_h));
   memset(&album_cover_h, 0, sizeof(album_cover_h));
 }
 
@@ -49,9 +50,14 @@ bool MusicLookup::init() {
   if (!loadDurationIndexFromSDCard(duration_index_path, current_address,
                                    duration_index_h))
     return false;
-  if (!loadTrackToAlbumIndexFromSDCard(track_to_album_path, current_address,
-                                       track_to_album_h))
+  if (!loadTrackToIdIndexFromSDCard(track_to_album_path, current_address,
+                                    track_to_album_h))
     return false;
+  // Optional: older SD cards predate track_to_artist.bin. Without it Now
+  // Playing just shows no artist line.
+  if (!loadTrackToIdIndexFromSDCard(track_to_artist_path, current_address,
+                                    track_to_artist_h))
+    memset(&track_to_artist_h, 0, sizeof(track_to_artist_h));
   if (!loadAlbumCoverIndexFromSDCard(album_to_cover_path, current_address,
                                      album_cover_h))
     return false;
@@ -137,6 +143,17 @@ uint32_t MusicLookup::getAlbumIdForTrack(uint32_t track_id) {
   psram.readData(track_to_album_h.baseOffset + track_id * sizeof(uint32_t),
                  (uint8_t *)&albumId, sizeof(uint32_t));
   return albumId;
+}
+
+uint32_t MusicLookup::getArtistIdForTrack(uint32_t track_id) {
+  if (!initialized || track_id >= track_to_artist_h.entry_count) {
+    return 0xFFFFFFFFu;
+  }
+
+  uint32_t artistId = 0;
+  psram.readData(track_to_artist_h.baseOffset + track_id * sizeof(uint32_t),
+                 (uint8_t *)&artistId, sizeof(uint32_t));
+  return artistId;
 }
 
 bool MusicLookup::getAlbumCoverEntry(uint32_t album_id,
@@ -246,18 +263,18 @@ bool MusicLookup::loadDurationIndexFromSDCard(const char *filename,
   return res;
 }
 
-bool MusicLookup::loadTrackToAlbumIndexFromSDCard(
-    const char *filename, uint32_t &base_address,
-    track_to_album_index_t &header) {
+bool MusicLookup::loadTrackToIdIndexFromSDCard(const char *filename,
+                                               uint32_t &base_address,
+                                               track_to_id_index_t &header) {
   if (!file.open(filename, O_RDONLY)) {
-    Serial.print("ERROR: Could not open track-to-album index file: ");
+    Serial.print("ERROR: Could not open track-to-id index file: ");
     Serial.println(filename);
     return false;
   }
 
   uint32_t entry_count = readLittleEndian32(file);
 
-  // Layout: [entry_count][uint32 albumId]*entry_count - same shape as
+  // Layout: [entry_count][uint32 id]*entry_count - same shape as
   // loadDurationIndexFromSDCard, just 4-byte entries instead of 2-byte.
   header.baseOffset = base_address + 4;
   header.entry_count = entry_count;

@@ -52,6 +52,11 @@ function buildUnsortedIndex(): CrawlIndex {
     [1, new Set([0, 1])],
     [0, new Set([2])],
   ]);
+  const trackToArtist = new Map([
+    [0, 1], // Track Zulu -> Alpha
+    [1, 1], // Track Alpha -> Alpha
+    [2, 0], // Track Mike -> Zeta
+  ]);
   const genreToAlbums = new Map([
     [0, new Set([0])],
     [1, new Set([1])],
@@ -130,6 +135,7 @@ function buildUnsortedIndex(): CrawlIndex {
     metadataByTrackIndex,
     albumThumbnails,
     trackToAlbum,
+    trackToArtist,
   };
 }
 
@@ -202,6 +208,14 @@ describe("sortIndexesAlphabetically", () => {
     expect(sorted.genreToArtists.get(0)).toEqual(new Set([2]));
     // Rock (new id 1) -> Alpha (new id 0)
     expect(sorted.genreToArtists.get(1)).toEqual(new Set([0]));
+  });
+
+  it("keeps track->artist consistent with the remapped track/artist ids", () => {
+    // Track Alpha (new 0) and Track Zulu (new 2) -> Alpha (new 0)
+    expect(sorted.trackToArtist.get(0)).toBe(0);
+    expect(sorted.trackToArtist.get(2)).toBe(0);
+    // Track Mike (new 1) -> Zeta (new 2)
+    expect(sorted.trackToArtist.get(1)).toBe(2);
   });
 
   it("keeps metadata and thumbnails keyed by the remapped track/album ids", () => {

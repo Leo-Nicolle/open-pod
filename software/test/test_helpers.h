@@ -76,6 +76,12 @@ inline void registerSampleCatalog() {
   track_to_album.push_back(std::make_pair(2u, 2u));
   fs.addFile("/openpod/track_to_album.bin", buildTrackToAlbumIndex(track_to_album));
 
+  // Same dense uint32-per-track layout as track_to_album.
+  std::vector<std::pair<uint32_t, uint32_t>> track_to_artist;
+  track_to_artist.push_back(std::make_pair(1u, 1u));
+  track_to_artist.push_back(std::make_pair(2u, 2u));
+  fs.addFile("/openpod/track_to_artist.bin", buildTrackToAlbumIndex(track_to_artist));
+
   std::vector<CoverIndexEntry> album_to_cover;
   album_to_cover.push_back({1u, 0u, 100u, 1});
   album_to_cover.push_back({2u, 100u, 200u, 0});

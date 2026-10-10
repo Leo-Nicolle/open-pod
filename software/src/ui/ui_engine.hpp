@@ -549,6 +549,7 @@ void OpenPodUIEngine::updateAlbumArtForTrack(int trackId)
   {
     nowPlaying.clearAlbumArt();
     nowPlaying.setAlbumName(nullptr);
+    nowPlaying.setArtistName(nullptr);
     return;
   }
 
@@ -574,6 +575,20 @@ void OpenPodUIEngine::updateAlbumArtForTrack(int trackId)
   else
   {
     nowPlaying.setAlbumName(nullptr);
+  }
+
+  // Same for the primary artist (empty on SD cards without
+  // track_to_artist.bin).
+  uint32_t artistId = musicLookup.getArtistIdForTrack((uint32_t)trackId);
+  char artistName[64];
+  if (artistId != 0xFFFFFFFFu &&
+      musicLookup.getArtistName(artistId, artistName, sizeof(artistName)))
+  {
+    nowPlaying.setArtistName(artistName);
+  }
+  else
+  {
+    nowPlaying.setArtistName(nullptr);
   }
 }
 

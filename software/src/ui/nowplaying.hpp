@@ -56,7 +56,8 @@ static inline void fillRoundedRect(uint16_t *buf, int bufW, int bufH, int x,
 class NowPlayingComponent {
 private:
   const char *currentTrack;
-  char albumName[64]; // resolved by the engine via MusicLookup
+  char artistName[64]; // resolved by the engine via MusicLookup
+  char albumName[64];  // resolved by the engine via MusicLookup
   bool isPlaying;
   int trackLength; // seconds
   int progress;    // seconds
@@ -78,14 +79,18 @@ private:
   // every animated element in the bottom 30px chunk). Matches
   // docs/ui-builder's box spec: album art 8,40 160x160 (largest square that
   // leaves a readable 132px metadata column); title 180,40 132x32, wrapping
-  // onto a second line (ellipsized) when it doesn't fit in one; album
-  // 180,96.
+  // onto a second line (ellipsized) when it doesn't fit in one; artist
+  // 180,92; album 180,110.
   static const int ALBUM_ART_X = 8;
   static const int ALBUM_ART_Y = 40;
   static const int ALBUM_ART_SIZE = 160; // matches the generated thumbnail size
   static const int METADATA_X = 180;
   static const int TITLE_Y = 40;
-  static const int ALBUM_Y = 96;
+  // Title is two IBMPlexSans16 lines (21px line height): 40..82. Artist and
+  // album sit below it with a 10px gap, then 18px apart (12px font, 16px
+  // line height + 2px).
+  static const int ARTIST_Y = 92;
+  static const int ALBUM_Y = 110;
   static const int BOTTOM_BAND_Y = 210; // one CHUNK_HEIGHT boundary (7 * 30)
 
   // Bottom band geometry.
@@ -96,13 +101,11 @@ public:
   NowPlayingComponent();
 
   void setTrack(const char *trackName) { currentTrack = trackName; }
+  void setArtistName(const char *name) {
+    copyName(artistName, sizeof(artistName), name);
+  }
   void setAlbumName(const char *name) {
-    if (!name) {
-      albumName[0] = '\0';
-      return;
-    }
-    strncpy(albumName, name, sizeof(albumName) - 1);
-    albumName[sizeof(albumName) - 1] = '\0';
+    copyName(albumName, sizeof(albumName), name);
   }
   void setProgress(int p) { progress = p; }
   void setTrackLength(int tl) { trackLength = tl; }
@@ -136,6 +139,25 @@ public:
   void updateNowPlaying(ILI9341_GFX *display);
 
 private:
+  static void copyName(char *dst, size_t size, const char *name) {
+    if (!name) {
+      dst[0] = '\0';
+      return;
+    }
+    strncpy(dst, name, size - 1);
+    dst[size - 1] = '\0';
+  }
+  // True when a text line [lineY, lineY + lineH) overlaps the chunk rows
+  // [y, y + h). Lines can straddle a chunk boundary (title line 1 crosses
+  // y=60, the album crosses y=120), so each chunk draws every line touching
+  // it and the font renderer clips the glyph rows outside the buffer.
+  static bool lineInChunk(int lineY, int lineH, int y, int h) {
+    return lineY < y + h && lineY + lineH > y;
+  }
+  // Draw one metadata line at (METADATA_X, lineY), ellipsized to maxWidth.
+  void drawMetadataLine(const char *text, int lineY, const FastFont &font,
+                        uint16_t color, int x, int y, int maxWidth);
+
   void renderBodyChunk(ILI9341_GFX *display, int x, int y, int width, int tx,
                        int ty);
   void renderBandChunk(ILI9341_GFX *display, int x, int width, int tx, int ty);
@@ -148,6 +170,7 @@ NowPlayingComponent::NowPlayingComponent()
       seekModeActive(false), volumeLevel(0), volumeOverlayVisible(false),
       coverOffset(0), coverLength(0), coverFormat(0), coverValid(false),
       artOnScreen(false), drawnCoverValid(false), drawnCoverOffset(0) {
+  artistName[0] = '\0';
   albumName[0] = '\0';
 }
 
@@ -257,7 +280,7 @@ void NowPlayingComponent::renderBodyChunk(ILI9341_GFX *display, int x, int y,
         put(artRight - 1, row);
   }
 
-  // Metadata (title + album). Only render if the text's x range overlaps this
+  // Metadata (title, artist, album). Only render if the text's x range overlaps this
   // strip; the font renderer clips to the buffer otherwise.
   fontRenderer.setBuffer(buffer, actualWidth, actualHeight);
   const int metadataMaxWidth = SCREEN_WIDTH - METADATA_X - 8;
@@ -267,8 +290,10 @@ void NowPlayingComponent::renderBodyChunk(ILI9341_GFX *display, int x, int y,
   // still too long. Each renderBodyChunk call only sees one 30px band, so
   // both candidate line y-positions are checked against this call's range.
   const int titleLine2Y = TITLE_Y + IBMPlexSans16.lineHeight;
-  bool titleLine1Visible = TITLE_Y >= y && TITLE_Y < y + actualHeight;
-  bool titleLine2Visible = titleLine2Y >= y && titleLine2Y < y + actualHeight;
+  const int titleLineH = IBMPlexSans16.lineHeight;
+  bool titleLine1Visible = lineInChunk(TITLE_Y, titleLineH, y, actualHeight);
+  bool titleLine2Visible =
+      lineInChunk(titleLine2Y, titleLineH, y, actualHeight);
   if ((titleLine1Visible || titleLine2Visible) && METADATA_X >= x &&
       METADATA_X < x + actualWidth) {
     char line1[64];
@@ -320,24 +345,14 @@ void NowPlayingComponent::renderBodyChunk(ILI9341_GFX *display, int x, int y,
                               IBMPlexSans16, COLOR_TEXT, COLOR_BG);
   }
 
-  if (albumName[0] && ALBUM_Y >= y && ALBUM_Y < y + actualHeight &&
-      METADATA_X >= x && METADATA_X < x + actualWidth) {
-    char line[64];
-    strncpy(line, albumName, sizeof(line) - 1);
-    line[sizeof(line) - 1] = '\0';
-    if (fontRenderer.measureText(line, IBMPlexSans12) > metadataMaxWidth) {
-      int len = strlen(line);
-      while (len > 1) {
-        char test[64];
-        snprintf(test, sizeof(test), "%.*s...", len, line);
-        if (fontRenderer.measureText(test, IBMPlexSans12) <= metadataMaxWidth)
-          break;
-        len--;
-      }
-      snprintf(line, sizeof(line), "%.*s...", len, line);
-    }
-    fontRenderer.renderText(line, METADATA_X - x, ALBUM_Y - y, IBMPlexSans12,
-                            COLOR_MUTED, COLOR_BG);
+  if (METADATA_X >= x && METADATA_X < x + actualWidth) {
+    const int smallLineH = IBMPlexSans12.lineHeight;
+    if (artistName[0] && lineInChunk(ARTIST_Y, smallLineH, y, actualHeight))
+      drawMetadataLine(artistName, ARTIST_Y, IBMPlexSans12, COLOR_DIM, x, y,
+                       metadataMaxWidth);
+    if (albumName[0] && lineInChunk(ALBUM_Y, smallLineH, y, actualHeight))
+      drawMetadataLine(albumName, ALBUM_Y, IBMPlexSans12, COLOR_ACCENT, x, y,
+                       metadataMaxWidth);
   }
 
   if (tx < 0)
@@ -347,6 +362,28 @@ void NowPlayingComponent::renderBodyChunk(ILI9341_GFX *display, int x, int y,
   display->setWindow(tx, ty, tx + actualWidth - 1, ty + actualHeight - 1);
   display->pushPixels(buffer, actualWidth * actualHeight);
   g_buffers.swapBuffers();
+}
+
+void NowPlayingComponent::drawMetadataLine(const char *text, int lineY,
+                                           const FastFont &font,
+                                           uint16_t color, int x, int y,
+                                           int maxWidth) {
+  char line[64];
+  strncpy(line, text, sizeof(line) - 1);
+  line[sizeof(line) - 1] = '\0';
+  if (fontRenderer.measureText(line, font) > maxWidth) {
+    int len = strlen(line);
+    while (len > 1) {
+      char test[64];
+      snprintf(test, sizeof(test), "%.*s...", len, line);
+      if (fontRenderer.measureText(test, font) <= maxWidth)
+        break;
+      len--;
+    }
+    snprintf(line, sizeof(line), "%.*s...", len, line);
+  }
+  fontRenderer.renderText(line, METADATA_X - x, lineY - y, font, color,
+                          COLOR_BG);
 }
 
 void NowPlayingComponent::renderBandChunk(ILI9341_GFX *display, int x,

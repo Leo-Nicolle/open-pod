@@ -155,6 +155,36 @@ TEST_CASE("MusicLookup - track to album lookup") {
   CHECK(lookup.getAlbumIdForTrack(999) == 0xFFFFFFFFu);
 }
 
+TEST_CASE("MusicLookup - track to artist lookup") {
+  openpod_test::resetAll();
+  openpod_test::registerSampleCatalog();
+
+  MusicLookup lookup;
+  REQUIRE(lookup.init());
+
+  CHECK(lookup.getArtistIdForTrack(1) == 1);
+  CHECK(lookup.getArtistIdForTrack(2) == 2);
+  CHECK(lookup.getArtistIdForTrack(999) == 0xFFFFFFFFu);
+
+  char name[64];
+  REQUIRE(lookup.getArtistName(lookup.getArtistIdForTrack(2), name,
+                               sizeof(name)));
+  CHECK(std::strcmp(name, "Artist Two") == 0);
+}
+
+TEST_CASE("MusicLookup - track_to_artist.bin is optional") {
+  openpod_test::resetAll();
+  openpod_test::registerSampleCatalog();
+  openpod_test::FakeFs::get().files.erase("/openpod/track_to_artist.bin");
+
+  MusicLookup lookup;
+  REQUIRE(lookup.init());
+
+  CHECK(lookup.getArtistIdForTrack(1) == 0xFFFFFFFFu);
+  // Indexes loaded after it still land at the right PSRAM addresses.
+  CHECK(lookup.getAlbumIdForTrack(2) == 2);
+}
+
 TEST_CASE("MusicLookup - album cover lookup") {
   openpod_test::resetAll();
   openpod_test::registerSampleCatalog();

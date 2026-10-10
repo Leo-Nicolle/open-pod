@@ -76,6 +76,7 @@ export type CrawlIndex = {
   genreToArtists: Map<number, Set<number>>;
   albumThumbnails: Map<number, ThumbnailResult>;
   trackToAlbum: Map<number, number>;
+  trackToArtist: Map<number, number>; // primary (first-listed) artist
 };
 
 // Path index types for track path lookup

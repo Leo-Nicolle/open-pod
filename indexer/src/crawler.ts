@@ -92,6 +92,13 @@ export function sortIndexesAlphabetically(indexes: CrawlIndex): CrawlIndex {
       albumRemap.get(oldAlbumId)!
     );
   }
+  const trackToArtist = new Map<number, number>();
+  for (const [oldTrackId, oldArtistId] of indexes.trackToArtist.entries()) {
+    trackToArtist.set(
+      trackRemap.get(oldTrackId)!,
+      artistRemap.get(oldArtistId)!
+    );
+  }
 
   return {
     indexToTrack: remapMapKeys(indexes.indexToTrack, trackRemap),
@@ -135,6 +142,7 @@ export function sortIndexesAlphabetically(indexes: CrawlIndex): CrawlIndex {
     ),
     albumThumbnails: remapMapKeys(indexes.albumThumbnails, albumRemap),
     trackToAlbum,
+    trackToArtist,
   };
 }
 
@@ -210,6 +218,7 @@ export async function readMetadata(
   const metadataByTrackIndex = new Map<number, TrackMetadata>();
   const albumThumbnails = new Map<number, ThumbnailResult>();
   const trackToAlbum = new Map<number, number>();
+  const trackToArtist = new Map<number, number>();
   const trackIndexCounter = { value: 0 };
   const artistIndexCounter = { value: 0 };
   const albumIndexCounter = { value: 0 };
@@ -258,6 +267,7 @@ export async function readMetadata(
     );
     const trackId = trackIndexCounter.value++;
     trackToAlbum.set(trackId, albumId);
+    trackToArtist.set(trackId, artistIds[0]);
 
     trackToIndex.set(title, trackId);
     indexToTrack.set(trackId, title);
@@ -316,6 +326,7 @@ export async function readMetadata(
     genreToArtists,
     albumThumbnails,
     trackToAlbum,
+    trackToArtist,
   });
 }
 
@@ -364,6 +375,7 @@ export function serialize(indexes: CrawlIndex): string {
     ),
     metadataByTrackIndex: Array.from(indexes.metadataByTrackIndex.entries()),
     trackToAlbum: Array.from(indexes.trackToAlbum.entries()),
+    trackToArtist: Array.from(indexes.trackToArtist.entries()),
     // albumThumbnails deliberately omitted: it carries raw blob bytes and
     // isn't needed by this JSON debug/fixture dump. See thumbs.bin instead.
   };
@@ -430,6 +442,7 @@ export function unserialize(data: string): CrawlIndex {
     genreToArtists,
     metadataByTrackIndex,
     trackToAlbum: new Map<number, number>(parsed.trackToAlbum ?? []),
+    trackToArtist: new Map<number, number>(parsed.trackToArtist ?? []),
     // Not part of the JSON fixture; re-crawl to regenerate thumbnails.
     albumThumbnails: new Map(),
   };

@@ -183,6 +183,14 @@ export function exportTrackToAlbumIndexToBinary(
   return new Uint8Array(buffer);
 }
 
+// Same dense [uint32 entryCount][uint32 artistId]*entryCount layout as
+// track_to_album; holds each track's primary (first-listed) artist.
+export function exportTrackToArtistIndexToBinary(
+  trackToArtist: Map<number, number>
+): Uint8Array {
+  return exportTrackToAlbumIndexToBinary(trackToArtist);
+}
+
 export function importTrackToAlbumIndexFromBinary(
   buffer: Uint8Array
 ): { entryCount: number; albumIds: number[] } {
@@ -304,5 +312,6 @@ export function exportIndexesToBinary(crawlIndex: CrawlIndex) {
     path_index: exportStringIndexToBinary(crawlIndex.indexToPath),
     duration_index: exportDurationIndexToBinary(crawlIndex.metadataByTrackIndex),
     track_to_album: exportTrackToAlbumIndexToBinary(crawlIndex.trackToAlbum),
+    track_to_artist: exportTrackToArtistIndexToBinary(crawlIndex.trackToArtist),
   };
 }

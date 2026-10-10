@@ -257,10 +257,10 @@ export function drawNowPlaying(ctx: Ctx, p: Palette, o: NowPlayingOpts) {
   // ---- metadata column (180,40 132 wide) ----
   ctx.font = `600 14px ${SANS}`;
   wrap(ctx, 'Everything In Its Right Place', 132, 2).forEach((line, i) =>
-    text(ctx, line, 180, 40 + i * 16, `600 {s} ${SANS}`, 14, p.text, { lh: 16, spacing: -0.14 }),
+    text(ctx, line, 180, 40 + i * 21, `600 {s} ${SANS}`, 14, p.text, { lh: 21, spacing: -0.14 }),
   );
-  text(ctx, 'Radiohead', 180, 80, `{s} ${SANS}`, 12, p.dim, { lh: 16, maxW: 132 });
-  text(ctx, 'Kid A', 180, 96, `{s} ${SANS}`, 11, p.muted, { lh: 14, maxW: 132 });
+  text(ctx, 'Radiohead', 180, 92, `{s} ${SANS}`, 12, p.dim, { lh: 16, maxW: 132 });
+  text(ctx, 'Kid A', 180, 110, `{s} ${SANS}`, 12, p.accent, { lh: 16, maxW: 132 });
 
   // ---- bottom band (0,210 320x30): everything that moves ----
   if (o.mode === 'volume') {
