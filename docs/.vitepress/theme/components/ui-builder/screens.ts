@@ -181,8 +181,20 @@ function listRow(
   ctx.fillRect(0, top + ROW_H - 1, W, 1);
 }
 
-/** Scrollbar at x=313. `top`/`h` is the track; thumb follows the design formula. */
-function scrollbar(ctx: Ctx, p: Palette, top: number, h: number, visible: number, total: number, first: number) {
+/**
+ * Scrollbar at x=313. `top`/`h` is the track; thumb follows the design formula.
+ * `wide` (fast scroll) widens the thumb to 7px at x=312.
+ */
+function scrollbar(
+  ctx: Ctx,
+  p: Palette,
+  top: number,
+  h: number,
+  visible: number,
+  total: number,
+  first: number,
+  wide = false,
+) {
   if (total <= visible) return;
   ctx.fillStyle = p.scrollTrack;
   rr(ctx, 313, top, 5, h, 2);
@@ -190,7 +202,45 @@ function scrollbar(ctx: Ctx, p: Palette, top: number, h: number, visible: number
   const maxScroll = Math.max(1, total - visible);
   const ty = top + Math.round((h - th) * Math.min(1, first / maxScroll));
   ctx.fillStyle = p.accent;
-  rr(ctx, 313, ty, 5, th, 2);
+  rr(ctx, wide ? 312 : 313, ty, wide ? 7 : 5, th, 2);
+}
+
+// --- fast-scroll overlay --------------------------------------------------------------
+
+/** Label font size (Sans 600) per letter count. */
+export const FAST_SCROLL_SIZES: Record<number, number> = { 1: 60, 2: 46, 3: 36 };
+
+/** 1 letter up to 150 items, 2 up to 1500, 3 beyond. */
+export function fastScrollLetterCount(total: number): number {
+  return total > 1500 ? 3 : total > 150 ? 2 : 1;
+}
+
+/** First letters of `title`: non-letters stripped, uppercased, `#` if nothing is left. */
+export function fastScrollLabel(title: string, total: number): string {
+  return title.replace(/[^A-Za-z]/g, '').slice(0, fastScrollLetterCount(total)).toUpperCase() || '#';
+}
+
+/** 120×90 box at 100,90 (exactly chunks 3–5): SURFACE, 2px ACCENT border inset, r=6. */
+function fastScrollOverlay(ctx: Ctx, p: Palette, label: string) {
+  const x = 100;
+  const y = 90;
+  const w = 120;
+  const h = 90;
+  ctx.fillStyle = p.accent;
+  rr(ctx, x, y, w, h, 6);
+  ctx.fillStyle = p.surface;
+  rr(ctx, x + 2, y + 2, w - 4, h - 4, 4);
+  const size = FAST_SCROLL_SIZES[label.length] ?? 60;
+  ctx.font = `600 ${size}px ${SANS}`;
+  setSpacing(ctx, size * 0.02);
+  ctx.fillStyle = p.text;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'alphabetic';
+  // Centre the cap height, not the line box: the label is A–Z only.
+  const m = ctx.measureText(label);
+  const capH = m.actualBoundingBoxAscent;
+  ctx.fillText(label, x + w / 2, y + h / 2 + capH / 2);
+  setSpacing(ctx, 0);
 }
 
 function chunkGrid(ctx: Ctx, p: Palette, band?: [number, number]) {
@@ -316,6 +366,12 @@ export interface TrackListOpts {
   /** Selected row, relative to the visible window (0…6) */
   selected: number;
   grid: boolean;
+  /** List length, for the scrollbar and the fast-scroll letter count (default: tracks.length) */
+  total?: number;
+  /** Track-number column; library lists ("Songs") omit it (default: true) */
+  numbered?: boolean;
+  /** Wheel spinning fast: letter overlay over chunks 3–5 and a 7px thumb */
+  fastScroll?: boolean;
 }
 
 export const VISIBLE_ROWS = 7;
@@ -329,18 +385,28 @@ export function drawTrackList(ctx: Ctx, p: Palette, o: TrackListOpts) {
   text(ctx, o.heading, 23, 0, `600 {s} ${SANS}`, 14, p.text, { lh: 30, maxW: 282 - 23, spacing: -0.14 });
   battery(ctx, p, 290, 9);
 
-  const first = Math.max(0, Math.min(o.first, o.tracks.length - VISIBLE_ROWS));
-  o.tracks.slice(first, first + VISIBLE_ROWS).forEach((t, i) => {
+  // With an explicit `total` larger than the sample, `tracks` is just the
+  // visible window starting at `first`.
+  const windowed = o.total !== undefined && o.total > o.tracks.length;
+  const total = windowed ? o.total! : o.tracks.length;
+  const first = Math.max(0, Math.min(o.first, total - VISIBLE_ROWS));
+  const visible = windowed ? o.tracks.slice(0, VISIBLE_ROWS) : o.tracks.slice(first, first + VISIBLE_ROWS);
+  const numbered = o.numbered ?? true;
+  visible.forEach((t, i) => {
     const top = 30 + i * ROW_H;
     listRow(ctx, p, top, i === o.selected, (fg, sub) => {
-      const n = String(first + i + 1).padStart(2, '0');
-      text(ctx, n, 28, top + 8, `{s} ${MONO}`, 11, sub, { align: 'right', lh: 14 });
+      if (numbered) {
+        const n = String(first + i + 1).padStart(2, '0');
+        text(ctx, n, 28, top + 8, `{s} ${MONO}`, 11, sub, { align: 'right', lh: 14 });
+      }
       text(ctx, t.title, 36, top + 6, `{s} ${SANS}`, 14, fg, { lh: 18, maxW: 224 });
       text(ctx, t.dur, 304, top + 8, `{s} ${MONO}`, 11, sub, { align: 'right', lh: 14 });
     });
   });
 
-  scrollbar(ctx, p, 32, 204, VISIBLE_ROWS, o.tracks.length, first);
+  scrollbar(ctx, p, 32, 204, VISIBLE_ROWS, total, first, !!o.fastScroll);
+  const sel = visible[o.selected];
+  if (o.fastScroll && sel) fastScrollOverlay(ctx, p, fastScrollLabel(sel.title, total));
   if (o.grid) chunkGrid(ctx, p);
 }
 
@@ -460,6 +526,18 @@ export const RADIOHEAD: Track[] = [
   { title: 'No Surprises', dur: '3:48' },
   { title: 'Lucky', dur: '4:19' },
   { title: 'The Tourist', dur: '5:24' },
+];
+
+// Library list ("Songs"): alphabetical, no track numbers. Used as the visible
+// window of a long list in the fast-scroll preview.
+export const LIBRARY: Track[] = [
+  { title: 'Rabbit In Your Headlights', dur: '6:59' },
+  { title: 'Race For The Prize', dur: '4:18' },
+  { title: 'Radio Ga Ga', dur: '5:48' },
+  { title: 'Rain Dogs', dur: '2:56' },
+  { title: 'Ramble On', dur: '4:35' },
+  { title: 'Range Life', dur: '4:54' },
+  { title: 'Rapture', dur: '5:33' },
 ];
 
 export const KID_RESULTS: SearchResult[] = [

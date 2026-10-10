@@ -32,6 +32,9 @@ export const GEOMETRY: GeometryRow[] = [
   { el: 'row · selected', box: 'fill 320×30', note: 'ACCENT_DK fill + 3px ACCENT left edge, title to #FFFFFF' },
   { el: 'scrollbar track', box: '313,32 5×204', note: 'r=2, #23201E' },
   { el: 'scrollbar thumb', box: '313,32+ 5×h', note: 'h = max(24, 204*7/N), y offset = (204-h)*first/(N-7)' },
+  { el: 'fast-scroll overlay', box: '100,90 120×90', note: 'Chunks 3–5 exactly. SURFACE fill, 2px ACCENT border inset, r=6' },
+  { el: 'fast-scroll label', box: 'centred · Sans 600', note: 'Selected title, non-letters stripped, caps. 1/2/3 letters at 60/46/36px for N ≤150/≤1500/more; "#" if empty' },
+  { el: 'scrollbar thumb (fast)', box: '312,32+ 7×h', note: 'Widens from 5px while the overlay is shown' },
   { el: 'search header', box: '0,0 320×30', note: 'Chevron · 11px magnifier at 23,9 · query 14px · 2px caret · battery right' },
   { el: 'letter ribbon', box: '0,30 320×30', note: '13 cells of 19×20 at y=35, gap 2. Cursor cell filled ACCENT, glyph BG' },
   { el: 'result row i', box: '0,60+i*30 320×30', note: '6 rows while typing; 7 rows from y=30 once the ribbon drops' },
@@ -48,4 +51,5 @@ export const REDRAW_NOTES: { i: string; t: string }[] = [
   { i: '05', t: 'Glyph sprites are 1-bit masks blitted with a runtime tint colour, so play/pause/speaker/battery cost ~30 bytes each and follow the theme for free.' },
   { i: '06', t: 'On the track list, the 30px row pitch means the highlight is a two-row redraw: clear the old row, fill the new one. Wheel scrolling past the edges shifts firstIndex and redraws rows 0…6 through the same single buffer.' },
   { i: '07', t: 'Cover at 160×160 is the largest square that leaves a readable 132px metadata column. A 176px cover would push the title under 120px, which starts wrapping most titles to three lines.' },
+  { i: '08', t: 'Fast-scroll overlay sits on chunks 3–5, so it is composed into those three row buffers before they are pushed: rows never flash under it while scrolling. Hiding it re-renders rows 2…4 only.' },
 ];

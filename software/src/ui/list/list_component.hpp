@@ -1,5 +1,6 @@
 #pragma once
 #include "../../fonts/IBMPlexSans16Bold.h"
+#include "../fast_scroll_overlay.hpp"
 #include "../theme.h"
 #include "../ui_types.h"
 #include "list_cache.hpp"
@@ -19,13 +20,18 @@ public:
   int numElements;
   int selectedIndex;
   int topVisibleElement;
+  // Fast-scroll letter overlay label, composed over rows 2-4; nullptr when
+  // hidden.
+  const char *overlayLabel;
 
 public:
   static const int BITS_PER_PIXEL = 2;
   ListComponent(const char **elements, int count)
       : elements(elements), numElements(count), selectedIndex(0),
-        topVisibleElement(0), cache(IBMPlexSans16Bold, BITS_PER_PIXEL),
-        renderer(cache) {}
+        topVisibleElement(0), overlayLabel(nullptr),
+        cache(IBMPlexSans16Bold, BITS_PER_PIXEL), renderer(cache) {}
+
+  void setOverlayLabel(const char *label) { overlayLabel = label; }
 
   void begin() {
     const char *visibleElements[ELEMENTS_PER_SCREEN];
@@ -78,11 +84,22 @@ public:
   void renderAllElements(ILI9341_GFX *display, int xOffset = 0,
                          int yOffset = BODY_Y,
                          int width = SCREEN_WIDTH - SCROLLBAR_WIDTH) {
+    renderRows(display, 0, ELEMENTS_PER_SCREEN - 1, xOffset, yOffset, width);
+  }
+
+  /**
+   * @brief Render visible rows firstRow..lastRow (inclusive), with the
+   * fast-scroll overlay composed over the rows it covers
+   */
+  void renderRows(ILI9341_GFX *display, int firstRow, int lastRow,
+                  int xOffset = 0, int yOffset = BODY_Y,
+                  int width = SCREEN_WIDTH - SCROLLBAR_WIDTH) {
     // Use global buffer for efficient rendering
     // No clear-to-background first: every row below is fully overwritten, and
     // a clear makes rows flash black (visible tearing while scrolling fast).
     uint16_t *buffer = g_buffers.getCurrentBuffer();
-    for (int i = 0; i < ELEMENTS_PER_SCREEN; i++) {
+    for (int i = max(firstRow, 0); i <= min(lastRow, ELEMENTS_PER_SCREEN - 1);
+         i++) {
       int elementIndex = topVisibleElement + i;
       bool isVisible = (elementIndex < numElements);
       bool isSelected = (elementIndex == selectedIndex);
@@ -97,8 +114,10 @@ public:
         renderer.fillBufferWithBackground(buffer, width, ELEMENT_HEIGHT);
       }
 
-      // Copy buffer to display
       int yPos = yOffset + (i * ELEMENT_HEIGHT);
+      FastScrollOverlay::compose(buffer, width, xOffset, yPos, overlayLabel);
+
+      // Copy buffer to display
       display->pushWindow(xOffset, yPos, width, ELEMENT_HEIGHT, buffer);
     }
   }

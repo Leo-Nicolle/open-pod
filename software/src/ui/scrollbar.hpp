@@ -12,6 +12,7 @@ private:
     int topVisibleItem;
     int scrollAreaY;
     int scrollAreaHeight;
+    bool wide; // fast scroll: 7px thumb instead of 4px
     
 public:
     ScrollbarComponent(int scrollY = BODY_Y, int scrollHeight = ELEMENTS_PER_SCREEN * ELEMENT_HEIGHT);
@@ -19,6 +20,7 @@ public:
     // Configuration
     void setScrollData(int total, int visible, int topVisible);
     void setScrollArea(int y, int height);
+    void setWide(bool w) { wide = w; }
     
     // Standard rendering interface - uses global buffers
     // Utility functions
@@ -33,7 +35,7 @@ public:
 // Implementation
 ScrollbarComponent::ScrollbarComponent(int scrollY, int scrollHeight) 
     : totalItems(0), visibleItems(0), topVisibleItem(0), 
-      scrollAreaY(scrollY), scrollAreaHeight(scrollHeight) {
+      scrollAreaY(scrollY), scrollAreaHeight(scrollHeight), wide(false) {
 }
 
 void ScrollbarComponent::setScrollData(int total, int visible, int topVisible) {
@@ -77,5 +79,8 @@ void ScrollbarComponent::render(ILI9341_GFX* display, int x) {
     int thumbPos = scrollBarY + ((scrollBarHeight - thumbHeight) * topVisibleItem) /
                               (totalItems - visibleItems);
 
-    display->fillRect(scrollBarX + 1, thumbPos, 4, thumbHeight, COLOR_DIM);
+    if (wide)
+        display->fillRect(scrollBarX, thumbPos, 7, thumbHeight, COLOR_ACCENT);
+    else
+        display->fillRect(scrollBarX + 1, thumbPos, 4, thumbHeight, COLOR_DIM);
 }

@@ -95,6 +95,17 @@ const unsigned long SEEK_COMMIT_DELAY = 400; // ms of no scrolling
 // so it is only enabled when the list spans more than this many screens.
 const int FAST_SCROLL_MIN_PAGES = 3;
 
+// Fast-scroll letter overlay (same long-list condition as above): shown once
+// FAST_SCROLL_MIN_CLICKS wheel clicks land within FAST_SCROLL_WINDOW_MS (or a
+// single multi-click tick), hidden FAST_SCROLL_HIDE_DELAY ms after the wheel
+// slows down. Starting values - tune on hardware.
+const unsigned long FAST_SCROLL_WINDOW_MS = 300;
+const int FAST_SCROLL_MIN_CLICKS = 6;
+const unsigned long FAST_SCROLL_HIDE_DELAY = 600;
+unsigned long fastScrollWindowStart = 0;
+int fastScrollWindowClicks = 0;
+unsigned long lastFastScrollTime = 0;
+
 // Audio progress tracking
 unsigned long lastProgressUpdate = 0;
 const unsigned long PROGRESS_UPDATE_INTERVAL = 1000; // 1 second
@@ -107,6 +118,8 @@ void onButtonVeryLongPress(ClickWheel::Button button);
 void onScroll(int scrollClicks);
 void onSearchButtonClick(ClickWheel::Button button);
 void checkSeekModeTimeout();
+void trackFastScroll(int scrollClicks);
+void checkFastScrollTimeout();
 void checkIdle();
 void commitPendingSeek();
 void drawTraceVisualization();
@@ -248,6 +261,7 @@ void loop()
   // Handle input
   handleWheelInput();
   checkSeekModeTimeout();
+  checkFastScrollTimeout();
   checkIdle();
 
   audioprof::markLoop();
@@ -545,32 +559,66 @@ void onScroll(int scrollClicks)
   {
     state.searchScroll(scrollClicks, musicLookup);
   }
-  else if (abs(scrollClicks) > 1 &&
-           state.getTotalElements() > FAST_SCROLL_MIN_PAGES * ELEMENTS_PER_SCREEN)
-  {
-    if (scrollClicks < 0)
-    {
-      state.pageDown(); // Fast scroll down
-    }
-    else
-    {
-      state.pageUp(); // Fast scroll up
-    }
-  }
   else
   {
-    // Handle multiple clicks at once for smooth scrolling
-    for (int i = 0; i < abs(scrollClicks); i++)
+    // Before moving, so the scroll event already renders the overlay.
+    trackFastScroll(scrollClicks);
+    if (abs(scrollClicks) > 1 &&
+        state.getTotalElements() > FAST_SCROLL_MIN_PAGES * ELEMENTS_PER_SCREEN)
     {
       if (scrollClicks < 0)
       {
-        state.scrollDown();
+        state.pageDown(); // Fast scroll down
       }
       else
       {
-        state.scrollUp();
+        state.pageUp(); // Fast scroll up
       }
     }
+    else
+    {
+      // Handle multiple clicks at once for smooth scrolling
+      for (int i = 0; i < abs(scrollClicks); i++)
+      {
+        if (scrollClicks < 0)
+        {
+          state.scrollDown();
+        }
+        else
+        {
+          state.scrollUp();
+        }
+      }
+    }
+  }
+}
+
+// List scrolling: counts clicks in a FAST_SCROLL_WINDOW_MS window and shows
+// the letter overlay on long lists once the wheel spins fast enough.
+void trackFastScroll(int scrollClicks)
+{
+  if (state.getTotalElements() <= FAST_SCROLL_MIN_PAGES * ELEMENTS_PER_SCREEN)
+    return;
+  unsigned long now = millis();
+  if (now - fastScrollWindowStart > FAST_SCROLL_WINDOW_MS)
+  {
+    fastScrollWindowStart = now;
+    fastScrollWindowClicks = 0;
+  }
+  fastScrollWindowClicks += abs(scrollClicks);
+  if (abs(scrollClicks) > 1 || fastScrollWindowClicks >= FAST_SCROLL_MIN_CLICKS)
+  {
+    lastFastScrollTime = now;
+    state.setFastScroll(true);
+  }
+}
+
+void checkFastScrollTimeout()
+{
+  if (state.getFastScrollActive() &&
+      millis() - lastFastScrollTime >= FAST_SCROLL_HIDE_DELAY)
+  {
+    state.setFastScroll(false);
   }
 }
 

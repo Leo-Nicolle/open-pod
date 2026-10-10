@@ -13,7 +13,7 @@ import {
 } from './export';
 import ScreenCanvas from './ScreenCanvas.vue';
 import SpriteStage from './SpriteStage.vue';
-import { KID_A, KID_RESULTS, RADIOHEAD } from './screens';
+import { KID_A, KID_RESULTS, LIBRARY, RADIOHEAD } from './screens';
 import { GEOMETRY, REDRAW_NOTES } from './spec';
 
 const palette = reactive<Palette>({ ...DEFAULT_PALETTE });
@@ -55,6 +55,22 @@ const trackLists = computed(() => [
     screen: {
       kind: 'tracklist' as const,
       opts: { heading: 'Radiohead', tracks: RADIOHEAD, first: 5, selected: 6, grid: grid.value },
+    },
+  },
+  {
+    label: 'fast scroll — 800 songs, 2-letter label',
+    screen: {
+      kind: 'tracklist' as const,
+      opts: {
+        heading: 'Songs',
+        tracks: LIBRARY,
+        total: 800,
+        first: 410,
+        selected: 2,
+        numbered: false,
+        fastScroll: true,
+        grid: grid.value,
+      },
     },
   },
 ]);
@@ -266,7 +282,9 @@ async function copyTheme() {
         <p class="lede">
           Seven rows of exactly 30px fill y=30…240, so every row is one CHUNK_HEIGHT buffer on a chunk
           boundary. Moving the highlight redraws two rows, not the screen; scrolling redraws all seven
-          but reuses one buffer seven times.
+          but reuses one buffer seven times. While the wheel spins fast on a long list, a letter overlay
+          covers exactly chunks 3–5 (1, 2 or 3 letters for ≤150, ≤1500 or more items) and the thumb widens
+          to 7px; it hides ~600ms after the wheel slows down.
         </p>
         <div class="states">
           <figure v-for="s in trackLists" :key="s.label" class="state">

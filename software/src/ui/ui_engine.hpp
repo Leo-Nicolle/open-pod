@@ -2,6 +2,7 @@
 #include "../rendering/ILI9341_GFX.h"
 #include "../rendering/animation_manager.h"
 #include "../state/state.h"
+#include "../state/fast_scroll.h"
 #include "../storage/Music_lookup.h"
 #include "header.hpp"
 #include "list/list_component.hpp"
@@ -36,6 +37,10 @@ private:
   unsigned long volumeOverlayHideAt = 0;
   static const unsigned long VOLUME_OVERLAY_HIDE_DELAY = 1500; // ms
 
+  // Fast-scroll letter overlay label (state.getFastScrollActive() says
+  // whether it's shown).
+  char fastScrollLabelText[4];
+
   // Event handler - must be static to use as callback
   static void onStateEvent(int eventType, void *eventData, EventTarget *source);
 
@@ -60,6 +65,7 @@ private:
   void handleVolumeChanged(const VolumeEvent *event);
   void handleSeekModeChanged(const SeekModeEvent *event);
   void handleSearchChanged(const SearchEvent *event);
+  void handleFastScrollChanged(const FastScrollEvent *event);
 
 public:
   OpenPodUIEngine(ILI9341_GFX *disp);
@@ -89,6 +95,9 @@ private:
   // Internal helpers
   void updateScrollbar();
   void updateTrackListScroll();
+  // Points the list at the current overlay label (or none) and sets the
+  // scrollbar's wide thumb to match state.getFastScrollActive().
+  void updateFastScrollOverlay();
   bool isAnimating() const { return state.getIsAnimating(); }
   bool onSearch() { return state.getCurrentRoute().type == Route_t::SEARCH_RESULTS; }
   // One CHUNK_HEIGHT slice of the body (the list, or the search screen
@@ -108,6 +117,7 @@ OpenPodUIEngine *OpenPodUIEngine::instance = nullptr;
 OpenPodUIEngine::OpenPodUIEngine(ILI9341_GFX *disp)
     : display(disp), elementList(nullptr, 0), lastDrawnOffset(0)
 {
+  fastScrollLabelText[0] = '\0';
 
   // Set static instance for callback access
   instance = this;
@@ -261,6 +271,10 @@ void OpenPodUIEngine::onStateEvent(int eventType, void *eventData,
     instance->handleSearchChanged((SearchEvent *)eventData);
     break;
 
+  case EVENT_FAST_SCROLL_CHANGED:
+    instance->handleFastScrollChanged((FastScrollEvent *)eventData);
+    break;
+
   default:
     Serial.print("UI Engine: Unhandled event type: ");
     Serial.println(eventType);
@@ -293,6 +307,7 @@ void OpenPodUIEngine::handleScrollChanged(const ScrollChangedEvent *event)
   elementList.setScroll(event->selectedIndex, event->topVisibleIndex);
 
   updateScrollbar();
+  updateFastScrollOverlay();
 
   // Handle cache updates for track list
   if (event->topVisibleIndex != event->oldTopVisibleIndex)
@@ -324,6 +339,7 @@ void OpenPodUIEngine::handlePageChanged(const ScrollChangedEvent *event)
   updateTrackListScroll();
   elementList.rebuildCache();
   updateScrollbar();
+  updateFastScrollOverlay();
   renderTrackList(); // Full re-render for page changes
 }
 
@@ -413,6 +429,7 @@ void OpenPodUIEngine::handleNavigationChanged(const RouteChangedEvent *event)
                   (int)event->oldRouteType, (int)event->newRouteType);
   }
   nowPlaying.invalidateArt(); // the transition draws over the whole screen
+  updateFastScrollOverlay();  // route changes clear fast scroll
   // return;
   // Handle transitions between states
   if (event->oldRouteType != Route_t::RouteType::NOW_PLAYING &&
@@ -530,6 +547,30 @@ void OpenPodUIEngine::handleSearchChanged(const SearchEvent *event)
     searchView.renderHitRow(display, search, event->oldSelected);
     searchView.renderHitRow(display, search, search.getSelected());
   }
+}
+
+void OpenPodUIEngine::handleFastScrollChanged(const FastScrollEvent *event)
+{
+  updateFastScrollOverlay();
+  Route_t::RouteType route = state.getCurrentRoute().type;
+  if (state.getIsAnimating() || onSearch() ||
+      route == Route_t::RouteType::NOW_PLAYING)
+    return;
+  // The overlay covers rows 2-4 (chunks 3-5) only.
+  elementList.renderRows(display, 2, 4);
+  scrollbar.render(display);
+}
+
+void OpenPodUIEngine::updateFastScrollOverlay()
+{
+  bool active = state.getFastScrollActive();
+  if (active)
+  {
+    fastScrollLabel(state.getCurrentTrackName(), state.getTotalElements(),
+                    fastScrollLabelText);
+  }
+  elementList.setOverlayLabel(active ? fastScrollLabelText : nullptr);
+  scrollbar.setWide(active);
 }
 
 void OpenPodUIEngine::renderSearch()

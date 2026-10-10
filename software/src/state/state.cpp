@@ -8,7 +8,7 @@ State::State()
       playingTrackId(-1), isPlaying(false), playbackPosition(0),
       trackDuration(0), playingListParentType(Route_t::ROOT),
       playingListEntityId(0), playingListTotalTracks(0), volume(60),
-      seekModeActive(false), selectedIndex(0), topVisibleIndex(0),
+      seekModeActive(false), fastScrollActive(false), selectedIndex(0), topVisibleIndex(0),
       isAnimating(false), scrollAnimId(0),
       transitionAnimId(0), isRotatedMode(false) {
   playingTrackName[0] = '\0';
@@ -550,6 +550,7 @@ void State::goToSelected(MusicLookup &musicLookup) {
   if (newRouteType != Route_t::NOW_PLAYING) {
     loadCurrentRouteData(musicLookup);
   }
+  fastScrollActive = false;
   emitEvent(EVENT_ROUTE_CHANGED, &event);
 }
 
@@ -581,6 +582,7 @@ bool State::back(MusicLookup &musicLookup) {
                              currentRoute.entityName,
                              false,
                              router.canGoBack()};
+  fastScrollActive = false;
   emitEvent(EVENT_ROUTE_CHANGED, &event);
 
   return true;
@@ -611,6 +613,7 @@ void State::backToMain(MusicLookup &musicLookup) {
                              currentRoute.entityName,
                              false,
                              router.canGoBack()};
+  fastScrollActive = false;
   emitEvent(EVENT_ROUTE_CHANGED, &event);
 }
 
@@ -624,6 +627,7 @@ void State::goToNowPlaying(MusicLookup &musicLookup) {
   RouteChangedEvent event = {oldRouteType, Route_t::NOW_PLAYING, 0, 0, 0,
                              nullptr,      true,                router.canGoBack()};
   setAnimating(true);
+  fastScrollActive = false;
   emitEvent(EVENT_ROUTE_CHANGED, &event);
 }
 
@@ -653,6 +657,14 @@ void State::exitSeekMode() {
     seekModeActive = false;
     SeekModeEvent event = {false};
     emitEvent(EVENT_SEEK_MODE_CHANGED, &event);
+  }
+}
+
+void State::setFastScroll(bool active) {
+  if (fastScrollActive != active) {
+    fastScrollActive = active;
+    FastScrollEvent event = {active};
+    emitEvent(EVENT_FAST_SCROLL_CHANGED, &event);
   }
 }
 

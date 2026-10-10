@@ -18,8 +18,15 @@ class FontConverter:
         self.name = name
         self.glyphs = []
         
-    def convert_font(self, first_char=32, last_char=126):
-        """Convert font to optimized format"""
+    def convert_font(self, first_char=32, last_char=126, charset=None):
+        """Convert font to optimized format.
+
+        `charset`, if given, limits which characters get bitmaps: the others
+        in [first_char, last_char] are emitted as empty, zero-byte glyphs so
+        the FastFont index stays contiguous.
+        """
+        self.first_char = first_char
+        self.last_char = last_char
         
         # Get font metrics
         self.face.load_char('A', freetype.FT_LOAD_RENDER)
@@ -35,7 +42,17 @@ class FontConverter:
             glyph = self.face.glyph
             bitmap = glyph.bitmap
             
-            if bitmap.width == 0 or bitmap.rows == 0:
+            if charset is not None and chr(char_code) not in charset:
+                glyph_data = {
+                    'char': chr(char_code),
+                    'width': 0,
+                    'height': 0,
+                    'xOffset': 0,
+                    'yOffset': 0,
+                    'xAdvance': 0,
+                    'alphaData': []
+                }
+            elif bitmap.width == 0 or bitmap.rows == 0:
                 # Empty glyph (like space)
                 glyph_data = {
                     'char': chr(char_code),
@@ -87,7 +104,8 @@ class FontConverter:
             f.write(f"// Auto-generated font data for {self.name}\n")
             f.write(f"// Font size: {self.size}pt\n\n")
             f.write("#pragma once\n")
-            f.write("#include <stdint.h>\n\n")
+            f.write("#include <stdint.h>\n")
+            f.write('#include "fonts/Fastfont.h"\n\n')
             
             # Write alpha data arrays
             for i, glyph in enumerate(self.glyphs):
@@ -117,18 +135,19 @@ class FontConverter:
                 else:
                     alpha_ptr = "nullptr"
                 
+                comment = glyph['char'].replace('\\', '\\\\')
                 f.write(f"  {{ {glyph['width']}, {glyph['height']}, "
                        f"{glyph['xOffset']}, {glyph['yOffset']}, "
                        f"{glyph['xAdvance']}, {alpha_ptr}, nullptr }}, "
-                       f"// '{glyph['char']}'\n")
+                       f"// '{comment}'\n")
             
             f.write("};\n\n")
             
             # Write font structure
             f.write(f"const FastFont {self.name} = {{\n")
             f.write(f"  {self.name}_glyphs,\n")
-            f.write(f"  32,  // first char\n")
-            f.write(f"  126, // last char\n")
+            f.write(f"  {self.first_char},  // first char\n")
+            f.write(f"  {self.last_char}, // last char\n")
             f.write(f"  {self.line_height}, // line height\n")
             f.write(f"  {self.baseline}, // baseline\n")
             f.write(f"  false, // hasKerning\n")
@@ -185,14 +204,30 @@ def convert_ibm_plex_sans():
     }
     
     # Convert different sizes
+    # (font file, pixel size, name, (first, last, charset) or None for full ASCII)
+    # The fast-scroll labels only ever show A-Z or '#', so they keep the
+    # range '#'..'Z' with bitmaps for those 27 glyphs only.
+    LABEL = (ord('#'), ord('Z'), '#ABCDEFGHIJKLMNOPQRSTUVWXYZ')
     conversions = [
-        ('IBMPlexSans-Regular.ttf', 12, 'IBMPlexSans12'),
-        ('IBMPlexSans-Regular.ttf', 16, 'IBMPlexSans16'),
-        ('IBMPlexSans-Bold.ttf', 16, 'IBMPlexSans16Bold'),
-        ('IBMPlexSans-Regular.ttf', 20, 'IBMPlexSans20'),
+        ('IBMPlexSans-Regular.ttf', 12, 'IBMPlexSans12', None),
+        ('IBMPlexSans-Regular.ttf', 16, 'IBMPlexSans16', None),
+        ('IBMPlexSans-Bold.ttf', 16, 'IBMPlexSans16Bold', None),
+        ('IBMPlexSans-Regular.ttf', 20, 'IBMPlexSans20', None),
+        ('IBMPlexSans-SemiBold.ttf', 60, 'IBMPlexSansSemiBold60', LABEL),
+        ('IBMPlexSans-SemiBold.ttf', 46, 'IBMPlexSansSemiBold46', LABEL),
+        ('IBMPlexSans-SemiBold.ttf', 36, 'IBMPlexSansSemiBold36', LABEL),
     ]
+    only = set(sys.argv[1:])  # optional: names to (re)generate
     
-    for font_file, size, name in conversions:
+    for font_file, size, name, chars in conversions:
+        if only and name not in only:
+            continue
+        if font_file == 'IBMPlexSans-SemiBold.ttf' and not os.path.exists(font_file):
+            # Shipped in the IBM_Plex_Sans.zip next to this script.
+            import zipfile
+            with zipfile.ZipFile('IBM_Plex_Sans.zip') as z:
+                with open(font_file, 'wb') as out:
+                    out.write(z.read('static/IBMPlexSans-SemiBold.ttf'))
         if not os.path.exists(font_file):
             print(f"Downloading {font_file}...")
             import urllib.request
@@ -200,7 +235,10 @@ def convert_ibm_plex_sans():
         
         print(f"Converting {font_file} at {size}pt...")
         converter = FontConverter(font_file, size, name)
-        converter.convert_font()
+        if chars:
+            converter.convert_font(*chars)
+        else:
+            converter.convert_font()
         converter.generate_cpp_header(f"{name}.h")
         converter.generate_preview(f"{name}_preview.png")
         

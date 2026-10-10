@@ -63,6 +63,8 @@ size_t eventDataSize(int eventType) {
     return sizeof(VolumeEvent);
   case EVENT_SEEK_MODE_CHANGED:
     return sizeof(SeekModeEvent);
+  case EVENT_FAST_SCROLL_CHANGED:
+    return sizeof(FastScrollEvent);
   case EVENT_TRACK_DURATION_CHANGED:
     return sizeof(int);
   default:
@@ -595,6 +597,43 @@ TEST_SUITE("State UI and Animation Tests") {
     RouteChangedEvent *event = (RouteChangedEvent *)lastEvent.eventData;
     CHECK(event->oldRouteType == Route_t::ROOT);
     CHECK(event->newRouteType == Route_t::NOW_PLAYING);
+  }
+
+  TEST_CASE("State - Fast Scroll Emits Only On Change") {
+    State state;
+    resetTestState();
+    state.addEventListener(testEventCallback);
+
+    CHECK(state.getFastScrollActive() == false);
+    state.setFastScroll(false); // already off: no event
+    CHECK(eventCount == 0);
+
+    state.setFastScroll(true);
+    CHECK(state.getFastScrollActive() == true);
+    CHECK(eventCount == 1);
+    CHECK(lastEvent.eventType == EVENT_FAST_SCROLL_CHANGED);
+    CHECK(((FastScrollEvent *)lastEvent.eventData)->active == true);
+
+    state.setFastScroll(true); // repeat: no event
+    CHECK(eventCount == 1);
+
+    state.setFastScroll(false);
+    CHECK(eventCount == 2);
+    CHECK(((FastScrollEvent *)lastEvent.eventData)->active == false);
+  }
+
+  TEST_CASE("State - Route Change Clears Fast Scroll") {
+    MusicLookup lookup; // goToNowPlaying() never dereferences it
+    State state;
+    state.setFastScroll(true);
+    resetTestState();
+    state.addEventListener(testEventCallback);
+
+    state.goToNowPlaying(lookup);
+
+    // Cleared silently: the route change is the last event.
+    CHECK(state.getFastScrollActive() == false);
+    CHECK(lastEvent.eventType == EVENT_ROUTE_CHANGED);
   }
 
   TEST_CASE("State - Go To Now Playing When Already There") {

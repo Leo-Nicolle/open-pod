@@ -41,7 +41,10 @@ enum StateEvent {
   EVENT_SEEK_MODE_CHANGED,
 
   // Search screen
-  EVENT_SEARCH_CHANGED
+  EVENT_SEARCH_CHANGED,
+
+  // List fast-scroll letter overlay shown / hidden
+  EVENT_FAST_SCROLL_CHANGED
 };
 
 // Event data structures
@@ -103,6 +106,10 @@ struct SeekModeEvent {
   bool active;
 };
 
+struct FastScrollEvent {
+  bool active;
+};
+
 // Which parts of the search screen a change touched, so the UI redraws
 // only those strips.
 enum SearchDirty : uint8_t {
@@ -149,6 +156,7 @@ private:
 
   int volume;          // 0-100 logical volume
   bool seekModeActive; // Now Playing seek-mode (center press to enter)
+  bool fastScrollActive; // list letter overlay (wheel spinning fast)
 
   // Navigation state - RENAMED for generalization
   int selectedIndex;        // Currently selected item (was selectedTrackIndex)
@@ -225,6 +233,12 @@ public:
   void enterSeekMode();
   void exitSeekMode();
   bool getSeekModeActive() const { return seekModeActive; }
+
+  // Fast-scroll letter overlay on lists. Emits EVENT_FAST_SCROLL_CHANGED on
+  // change only. Route changes clear it without an event (the transition
+  // redraws the whole screen anyway).
+  void setFastScroll(bool active);
+  bool getFastScrollActive() const { return fastScrollActive; }
 
   // UI state management
   void setAnimating(bool animating, uint32_t animId = 0);
