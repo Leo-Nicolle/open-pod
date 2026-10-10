@@ -15,3 +15,6 @@ hero:
       link: /clickwheel
 ---
 
+## Current status
+
+<Video src="/blog/10-10-state.mp4" aspectRatio="16/9"/>
