@@ -148,6 +148,7 @@ private:
   const char *duration_index_path = "/openpod/duration_index.bin";
   const char *track_to_album_path = "/openpod/track_to_album.bin";
   const char *track_to_artist_path = "/openpod/track_to_artist.bin";
+  const char *album_to_artist_path = "/openpod/album_to_artist.bin";
   const char *album_to_cover_path = "/openpod/album_to_cover.bin";
 
   // SD card and file handling
@@ -169,6 +170,7 @@ private:
   duration_index_t duration_index_h;
   track_to_id_index_t track_to_album_h;
   track_to_id_index_t track_to_artist_h;
+  track_to_id_index_t album_to_artist_h;
   album_cover_index_t album_cover_h;
 
   // Private helper methods
@@ -191,6 +193,9 @@ private:
   lookup_result_t getStringAtIndex(int32_t index, const index_header_t &header);
   uint32_t getRelatedIds(uint32_t source_id, const relation_header_t &header,
                          uint32_t *results, uint32_t max_results);
+  // Number of targets related to source_id (0 if it isn't in the relation),
+  // without reading the target ids.
+  uint32_t getRelatedCount(uint32_t source_id, const relation_header_t &header);
   bool getString(uint32_t id, const index_header_t &index_header, char *buffer,
                  uint32_t buffer_size);
 
@@ -232,6 +237,21 @@ public:
   // track_id is out of range or track_to_artist.bin is missing (SD cards
   // indexed before it existed).
   uint32_t getArtistIdForTrack(uint32_t track_id);
+
+  // Artist for an album, O(1) direct index from album_to_artist.bin. SD
+  // cards indexed before it existed fall back to the artist of the album's
+  // first track. Returns UINT32_MAX if neither resolves.
+  uint32_t getArtistIdForAlbum(uint32_t album_id);
+
+  // Relationship sizes (0 if the id is unknown).
+  uint32_t getAlbumCountForArtist(uint32_t artist_id);
+  uint32_t getAlbumCountForGenre(uint32_t genre_id);
+  uint32_t getTrackCountForAlbum(uint32_t album_id);
+
+  // An album's track ids in list order (capped at MAX_SEARCH_RESULTS, like
+  // getTracksByAlbum). Returns how many were written.
+  uint32_t getTrackIdsByAlbum(uint32_t album_id, uint32_t *ids,
+                              uint32_t max_ids);
 
   // Cover location for an album, O(1) direct index - returns false if
   // album_id is out of range or no cover was resolved for it (length == 0).

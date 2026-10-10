@@ -4,6 +4,7 @@
 #include "../ui/ui_types.h"
 #include "event-target.h"
 #include "router.h"
+#include "search.h"
 #include <Arduino.h>
 
 // Buffer sizes for string data
@@ -37,7 +38,10 @@ enum StateEvent {
 
   // Now Playing input events
   EVENT_VOLUME_CHANGED,
-  EVENT_SEEK_MODE_CHANGED
+  EVENT_SEEK_MODE_CHANGED,
+
+  // Search screen
+  EVENT_SEARCH_CHANGED
 };
 
 // Event data structures
@@ -99,6 +103,22 @@ struct SeekModeEvent {
   bool active;
 };
 
+// Which parts of the search screen a change touched, so the UI redraws
+// only those strips.
+enum SearchDirty : uint8_t {
+  SEARCH_DIRTY_HEADER = 1 << 0,    // query text / caret
+  SEARCH_DIRTY_RIBBON = 1 << 1,    // ribbon cursor
+  SEARCH_DIRTY_ROWS = 1 << 2,      // result rows + scrollbar
+  SEARCH_DIRTY_LAYOUT = 1 << 3,    // ribbon shown/dropped: everything
+  SEARCH_DIRTY_SELECTION = 1 << 4, // highlight moved from oldSelected
+};
+
+struct SearchEvent {
+  uint8_t dirty;
+  int oldSelected;
+  int oldFirst;
+};
+
 class State : public EventTarget {
 private:
   // String buffer and pointers for current data
@@ -142,6 +162,10 @@ private:
 
   // Route management
   Router router;
+
+  // Search screen model (kept across routes, so back() returns to it)
+  SearchModel search;
+  void emitSearchChanged(uint8_t dirty, int oldSelected, int oldFirst);
 
   void updateVisibleElements();
   void restoreSelectionState();
@@ -235,6 +259,16 @@ public:
   uint32_t getScrollAnimId() const { return scrollAnimId; }
   uint32_t getTransitionAnimId() const { return transitionAnimId; }
   
+  // Search screen input. Scroll moves the ribbon cursor while typing and
+  // the highlight while browsing results.
+  SearchModel &getSearch() { return search; }
+  void searchScroll(int clicks, MusicLookup &musicLookup);
+  void searchAppend(MusicLookup &musicLookup);
+  void searchBackspace(MusicLookup &musicLookup);
+  void searchSpace(MusicLookup &musicLookup);
+  void searchEnterResults();
+  void searchExitResults();
+
   // Route accessors
   Router& getRouteManager() { return router; }
   Route_t& getCurrentRoute() { return router.getCurrentRoute(); }

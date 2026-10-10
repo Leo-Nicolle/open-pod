@@ -18,6 +18,7 @@ MusicLookup::MusicLookup(uint32_t psram_base_addr)
   memset(&duration_index_h, 0, sizeof(duration_index_h));
   memset(&track_to_album_h, 0, sizeof(track_to_album_h));
   memset(&track_to_artist_h, 0, sizeof(track_to_artist_h));
+  memset(&album_to_artist_h, 0, sizeof(album_to_artist_h));
   memset(&album_cover_h, 0, sizeof(album_cover_h));
 }
 
@@ -58,6 +59,10 @@ bool MusicLookup::init() {
   if (!loadTrackToIdIndexFromSDCard(track_to_artist_path, current_address,
                                     track_to_artist_h))
     memset(&track_to_artist_h, 0, sizeof(track_to_artist_h));
+  // Optional too: search falls back to the album's first track's artist.
+  if (!loadTrackToIdIndexFromSDCard(album_to_artist_path, current_address,
+                                    album_to_artist_h))
+    memset(&album_to_artist_h, 0, sizeof(album_to_artist_h));
   if (!loadAlbumCoverIndexFromSDCard(album_to_cover_path, current_address,
                                      album_cover_h))
     return false;
@@ -154,6 +159,41 @@ uint32_t MusicLookup::getArtistIdForTrack(uint32_t track_id) {
   psram.readData(track_to_artist_h.baseOffset + track_id * sizeof(uint32_t),
                  (uint8_t *)&artistId, sizeof(uint32_t));
   return artistId;
+}
+
+uint32_t MusicLookup::getArtistIdForAlbum(uint32_t album_id) {
+  if (!initialized) {
+    return 0xFFFFFFFFu;
+  }
+  if (album_id < album_to_artist_h.entry_count) {
+    uint32_t artistId = 0;
+    psram.readData(album_to_artist_h.baseOffset + album_id * sizeof(uint32_t),
+                   (uint8_t *)&artistId, sizeof(uint32_t));
+    return artistId;
+  }
+  uint32_t firstTrack = getTrackIdByAlbumAtIndex(album_id, 0);
+  if (firstTrack == 0xFFFFFFFFu) {
+    return 0xFFFFFFFFu;
+  }
+  return getArtistIdForTrack(firstTrack);
+}
+
+uint32_t MusicLookup::getAlbumCountForArtist(uint32_t artist_id) {
+  return getRelatedCount(artist_id, artist_to_albums_h);
+}
+
+uint32_t MusicLookup::getAlbumCountForGenre(uint32_t genre_id) {
+  return getRelatedCount(genre_id, genre_to_albums_h);
+}
+
+uint32_t MusicLookup::getTrackCountForAlbum(uint32_t album_id) {
+  return getRelatedCount(album_id, album_to_tracks_h);
+}
+
+uint32_t MusicLookup::getTrackIdsByAlbum(uint32_t album_id, uint32_t *ids,
+                                         uint32_t max_ids) {
+  return getRelatedIds(album_id, album_to_tracks_h, ids,
+                       min(max_ids, (uint32_t)MAX_SEARCH_RESULTS));
 }
 
 bool MusicLookup::getAlbumCoverEntry(uint32_t album_id,
@@ -407,6 +447,22 @@ lookup_result_t MusicLookup::getStringAtIndex(int32_t index,
   return result;
 }
 
+uint32_t MusicLookup::getRelatedCount(uint32_t source_id,
+                                      const relation_header_t &header) {
+  if (!initialized || header.entry_count == 0) {
+    return 0;
+  }
+  uint32_t source_ids_base = header.baseOffset + 8; // Skip header
+  int32_t index = binarySearch(source_id, source_ids_base, header.entry_count);
+  if (index < 0) {
+    return 0;
+  }
+  uint32_t target_counts_base = source_ids_base + (header.entry_count * 4);
+  uint32_t target_count = 0;
+  psram.readData(target_counts_base + (index * 4), (uint8_t *)&target_count, 4);
+  return target_count;
+}
+
 uint32_t MusicLookup::getRelatedIds(uint32_t source_id,
                                     const relation_header_t &header,
                                     uint32_t *results, uint32_t max_results) {
@@ -432,6 +488,9 @@ uint32_t MusicLookup::getRelatedIds(uint32_t source_id,
   // Calculate offset into target IDs array
   uint32_t target_offset = 0;
   for (int32_t i = 0; i < index; i++) {
+    if ((i & 63) == 63) {
+      audioYield(); // one read per earlier source: thousands on a big library
+    }
     uint32_t count;
     psram.readData(target_counts_base + (i * 4), (uint8_t *)&count, 4);
     target_offset += count;
@@ -762,6 +821,9 @@ uint32_t MusicLookup::getRelatedIdAtIndex(uint32_t source_id,
   // Calculate offset into target IDs array
   uint32_t target_offset = 0;
   for (int32_t i = 0; i < source_index; i++) {
+    if ((i & 63) == 63) {
+      audioYield(); // one read per earlier source: thousands on a big library
+    }
     uint32_t count;
     psram.readData(target_counts_base + (i * 4), (uint8_t *)&count, 4);
     target_offset += count;

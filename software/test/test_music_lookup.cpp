@@ -216,3 +216,48 @@ TEST_CASE("MusicLookup - printStats does not crash") {
   lookup.printStats();
   CHECK(true);
 }
+
+TEST_CASE("MusicLookup - relation counts") {
+  openpod_test::resetAll();
+  openpod_test::registerSampleCatalog();
+
+  MusicLookup lookup;
+  REQUIRE(lookup.init());
+
+  CHECK(lookup.getAlbumCountForArtist(1) == 1);
+  CHECK(lookup.getAlbumCountForGenre(1) == 2);
+  CHECK(lookup.getTrackCountForAlbum(2) == 1);
+  CHECK(lookup.getAlbumCountForArtist(999) == 0);
+
+  uint32_t ids[4];
+  REQUIRE(lookup.getTrackIdsByAlbum(2, ids, 4) == 1);
+  CHECK(ids[0] == 2);
+}
+
+TEST_CASE("MusicLookup - album artist from album_to_artist.bin") {
+  openpod_test::resetAll();
+  openpod_test::registerSampleCatalog();
+  // Deliberately differs from the tracks' artists, to tell it from the
+  // fallback. Dense by album id: [0] unused, album 1 -> artist 2.
+  std::vector<std::pair<uint32_t, uint32_t>> album_to_artist;
+  album_to_artist.push_back(std::make_pair(1u, 2u));
+  openpod_test::FakeFs::get().addFile(
+      "/openpod/album_to_artist.bin",
+      openpod_test::buildTrackToAlbumIndex(album_to_artist));
+
+  MusicLookup lookup;
+  REQUIRE(lookup.init());
+
+  CHECK(lookup.getArtistIdForAlbum(1) == 2);
+}
+
+TEST_CASE("MusicLookup - album artist falls back to the first track's") {
+  openpod_test::resetAll();
+  openpod_test::registerSampleCatalog(); // no album_to_artist.bin
+
+  MusicLookup lookup;
+  REQUIRE(lookup.init());
+
+  CHECK(lookup.getArtistIdForAlbum(2) == 2); // album 2 -> track 2 -> artist 2
+  CHECK(lookup.getArtistIdForAlbum(999) == 0xFFFFFFFFu);
+}

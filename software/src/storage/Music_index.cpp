@@ -1,5 +1,6 @@
 #include "Music_index.h"
 #include "SharedSpiDriver.h"
+#include "../sound/AudioYield.h"
 
 MusicIndex::MusicIndex( uint32_t psram_base_addr)
     : base_address(psram_base_addr),
@@ -494,6 +495,9 @@ uint32_t MusicIndex::findNode(const char *query, uint32_t query_len) {
 
     // Check all children of current node
     for (uint32_t i = 0; i < node.child_count; i++) {
+      if ((i & 7) == 7) {
+        audioYield(); // the root has a child per first letter/word: many reads
+      }
       uint32_t child_index = node.first_child_offset + i;
       trie_node_t child = readNodeCached(child_index);
 
@@ -535,6 +539,9 @@ void MusicIndex::collectResults(uint32_t node_index, search_result_t *results,
     return;
   }
 
+  // A short prefix's subtree spans hundreds of nodes: keep the audio fifo
+  // topped up while walking it.
+  audioYield();
   trie_node_t node = readNodeCached(node_index);
 
   // Batch load results if there are many

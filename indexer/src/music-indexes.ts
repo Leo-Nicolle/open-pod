@@ -191,6 +191,41 @@ export function exportTrackToArtistIndexToBinary(
   return exportTrackToAlbumIndexToBinary(trackToArtist);
 }
 
+// Same dense layout as track_to_album, indexed by album id: each album's
+// artist, taken as the primary artist credited on most of its tracks (ties go
+// to the lowest artist id). Lets search show an album's artist without
+// walking its track list on the device.
+export function exportAlbumToArtistIndexToBinary(
+  trackToAlbum: Map<number, number>,
+  trackToArtist: Map<number, number>
+): Uint8Array {
+  const counts = new Map<number, Map<number, number>>();
+  for (const [trackId, albumId] of trackToAlbum) {
+    const artistId = trackToArtist.get(trackId);
+    if (artistId === undefined) continue;
+    let perArtist = counts.get(albumId);
+    if (!perArtist) {
+      perArtist = new Map();
+      counts.set(albumId, perArtist);
+    }
+    perArtist.set(artistId, (perArtist.get(artistId) ?? 0) + 1);
+  }
+
+  const albumToArtist = new Map<number, number>();
+  for (const [albumId, perArtist] of counts) {
+    let best = -1;
+    let bestCount = 0;
+    for (const [artistId, count] of perArtist) {
+      if (count > bestCount || (count === bestCount && artistId < best)) {
+        best = artistId;
+        bestCount = count;
+      }
+    }
+    albumToArtist.set(albumId, best);
+  }
+  return exportTrackToAlbumIndexToBinary(albumToArtist);
+}
+
 export function importTrackToAlbumIndexFromBinary(
   buffer: Uint8Array
 ): { entryCount: number; albumIds: number[] } {
@@ -313,5 +348,9 @@ export function exportIndexesToBinary(crawlIndex: CrawlIndex) {
     duration_index: exportDurationIndexToBinary(crawlIndex.metadataByTrackIndex),
     track_to_album: exportTrackToAlbumIndexToBinary(crawlIndex.trackToAlbum),
     track_to_artist: exportTrackToArtistIndexToBinary(crawlIndex.trackToArtist),
+    album_to_artist: exportAlbumToArtistIndexToBinary(
+      crawlIndex.trackToAlbum,
+      crawlIndex.trackToArtist
+    ),
   };
 }

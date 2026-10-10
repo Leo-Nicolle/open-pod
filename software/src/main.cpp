@@ -105,6 +105,7 @@ void onButtonClick(ClickWheel::Button button);
 void onButtonLongPress(ClickWheel::Button button);
 void onButtonVeryLongPress(ClickWheel::Button button);
 void onScroll(int scrollClicks);
+void onSearchButtonClick(ClickWheel::Button button);
 void checkSeekModeTimeout();
 void checkIdle();
 void commitPendingSeek();
@@ -204,6 +205,7 @@ void setup()
   {
     Serial.println("❌ Failed to initialize MusicIndex!");
   }
+  state.getSearch().setIndex(&musicIndex);
   delay(100);
   ui.begin();
   state.loadCurrentRouteData(musicLookup);
@@ -359,6 +361,12 @@ void onButtonClick(ClickWheel::Button button)
   Serial.print("🔘 Click: ");
   Serial.println(ClickWheel::buttonName(button));
 
+  if (state.getCurrentRoute().type == Route_t::RouteType::SEARCH_RESULTS)
+  {
+    onSearchButtonClick(button);
+    return;
+  }
+
   bool onNowPlaying =
       state.getCurrentRoute().type == Route_t::RouteType::NOW_PLAYING;
   bool seeking = onNowPlaying && state.getSeekModeActive();
@@ -438,6 +446,44 @@ void onButtonClick(ClickWheel::Button button)
   }
 }
 
+// Search screen. Typing: Center adds the ribbon letter, Left deletes one,
+// Right adds a space, Bottom drops into the results, Top leaves search.
+// Browsing results: Center opens the highlighted one, Top goes back to
+// typing.
+void onSearchButtonClick(ClickWheel::Button button)
+{
+  bool typing = state.getSearch().getMode() == SearchModel::TYPING;
+  switch (button)
+  {
+  case ClickWheel::Button::Center:
+    if (typing)
+      state.searchAppend(musicLookup);
+    else if (!navigationBusy)
+      state.goToSelected(musicLookup);
+    break;
+  case ClickWheel::Button::Top:
+    if (!typing)
+      state.searchExitResults();
+    else if (!navigationBusy)
+      state.back(musicLookup);
+    break;
+  case ClickWheel::Button::Left:
+    if (typing)
+      state.searchBackspace(musicLookup);
+    break;
+  case ClickWheel::Button::Right:
+    if (typing)
+      state.searchSpace(musicLookup);
+    break;
+  case ClickWheel::Button::Bottom:
+    if (typing)
+      state.searchEnterResults();
+    break;
+  default:
+    break;
+  }
+}
+
 void onButtonLongPress(ClickWheel::Button button)
 {
   if (button == ClickWheel::Button::Center && !navigationBusy)
@@ -494,6 +540,10 @@ void onScroll(int scrollClicks)
         state.decreaseVolume();
       }
     }
+  }
+  else if (state.getCurrentRoute().type == Route_t::RouteType::SEARCH_RESULTS)
+  {
+    state.searchScroll(scrollClicks, musicLookup);
   }
   else if (abs(scrollClicks) > 1 &&
            state.getTotalElements() > FAST_SCROLL_MIN_PAGES * ELEMENTS_PER_SCREEN)

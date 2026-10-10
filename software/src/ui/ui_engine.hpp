@@ -7,6 +7,7 @@
 #include "list/list_component.hpp"
 #include "nowplaying.hpp"
 #include "scrollbar.hpp"
+#include "search_view.hpp"
 #include "ui_types.h"
 #include "../UiVerbose.h"
 #include <Arduino.h>
@@ -26,6 +27,7 @@ private:
   ScrollbarComponent scrollbar;
   ListComponent elementList;
   NowPlayingComponent nowPlaying;
+  SearchView searchView;
 
   int lastDrawnOffset;
   bool animatingLeftToRight; // Track direction of last transition
@@ -57,6 +59,7 @@ private:
   void handleTrackDurationChanged(int *duration);
   void handleVolumeChanged(const VolumeEvent *event);
   void handleSeekModeChanged(const SeekModeEvent *event);
+  void handleSearchChanged(const SearchEvent *event);
 
 public:
   OpenPodUIEngine(ILI9341_GFX *disp);
@@ -72,6 +75,7 @@ public:
   void renderTrackList();
   void renderNowPlaying(int xOffset = 0, int width = SCREEN_WIDTH);
   void renderTrackListArea();
+  void renderSearch();
 
   // Transitions (triggered by events)
   void transitionToNowPlaying();
@@ -86,6 +90,10 @@ private:
   void updateScrollbar();
   void updateTrackListScroll();
   bool isAnimating() const { return state.getIsAnimating(); }
+  bool onSearch() { return state.getCurrentRoute().type == Route_t::SEARCH_RESULTS; }
+  // One CHUNK_HEIGHT slice of the body (the list, or the search screen
+  // below its header) for the slide transition.
+  void renderBodySlice(int x, int chunkY, int width, int height);
   // Resolves trackId -> albumId -> cover location and pushes it into
   // nowPlaying, or clears it if either lookup misses. Shared by
   // handlePlaybackStarted (event-driven) and renderNowPlaying (redraw path,
@@ -247,6 +255,10 @@ void OpenPodUIEngine::onStateEvent(int eventType, void *eventData,
 
   case EVENT_SEEK_MODE_CHANGED:
     instance->handleSeekModeChanged((SeekModeEvent *)eventData);
+    break;
+
+  case EVENT_SEARCH_CHANGED:
+    instance->handleSearchChanged((SearchEvent *)eventData);
     break;
 
   default:
@@ -454,7 +466,7 @@ void OpenPodUIEngine::handleTrackListUpdated(const ListEvent *event)
   elementList.setElements(event->elements, event->totalElements);
   updateScrollbar();
   // Re-render if we're showing the track list
-  if (!state.getIsAnimating())
+  if (!state.getIsAnimating() && !onSearch())
   {
     renderTrackList();
   }
@@ -492,6 +504,54 @@ void OpenPodUIEngine::handleSeekModeChanged(const SeekModeEvent *event)
   }
 }
 
+void OpenPodUIEngine::handleSearchChanged(const SearchEvent *event)
+{
+  if (state.getIsAnimating() || !onSearch())
+    return; // the transition's final render draws it
+
+  const SearchModel &search = state.getSearch();
+  uint8_t dirty = event->dirty;
+  if (dirty & SEARCH_DIRTY_LAYOUT)
+  {
+    searchView.renderAll(display, search);
+    return;
+  }
+  if (dirty & SEARCH_DIRTY_HEADER)
+    searchView.renderChunk(display, search, 0);
+  if ((dirty & SEARCH_DIRTY_RIBBON) && search.getMode() == SearchModel::TYPING)
+    searchView.renderChunk(display, search, 1);
+  if (dirty & SEARCH_DIRTY_ROWS)
+  {
+    searchView.renderRows(display, search);
+  }
+  else if (dirty & SEARCH_DIRTY_SELECTION)
+  {
+    // first didn't move: only the two rows whose highlight changed
+    searchView.renderHitRow(display, search, event->oldSelected);
+    searchView.renderHitRow(display, search, search.getSelected());
+  }
+}
+
+void OpenPodUIEngine::renderSearch()
+{
+  searchView.renderAll(display, state.getSearch());
+}
+
+void OpenPodUIEngine::renderBodySlice(int x, int chunkY, int width, int height)
+{
+  if (onSearch())
+  {
+    searchView.renderChunk(display, state.getSearch(),
+                           (BODY_Y + chunkY) / CHUNK_HEIGHT, x, width, x,
+                           BODY_Y + chunkY);
+  }
+  else
+  {
+    elementList.renderRect(display, x, chunkY, width, height, x,
+                           BODY_Y + chunkY);
+  }
+}
+
 // Rendering methods (mostly unchanged, but now use state getters)
 void OpenPodUIEngine::renderCurrentState()
 {
@@ -502,6 +562,10 @@ void OpenPodUIEngine::renderCurrentState()
   else if (state.getCurrentRoute().type == Route_t::RouteType::NOW_PLAYING)
   {
     renderNowPlaying();
+  }
+  else if (onSearch())
+  {
+    renderSearch();
   }
   else
   {
@@ -714,8 +778,7 @@ void OpenPodUIEngine::transitionToTrackList(bool leftToRight)
         for (int chunkY = 0; chunkY < BODY_HEIGHT; chunkY += CHUNK_HEIGHT)
         {
           int chunkHeight = min(CHUNK_HEIGHT, BODY_HEIGHT - chunkY);
-          elementList.renderRect(display, x, chunkY, width, chunkHeight, x,
-                                 BODY_Y + chunkY);
+          renderBodySlice(x, chunkY, width, chunkHeight);
         }
 
         // Fixed scroll offset

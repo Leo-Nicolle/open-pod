@@ -33,3 +33,9 @@
 #define COLOR_ACCENT_ALT  HEX_TO_RGB565(0xFFD15C)
 
 #define SCROLLBAR_X 312
+
+// Search screen colors, firmware-only like SCROLLBAR_X (the ui-builder's
+// palette defaults for COLOR_RIBBON / COLOR_SEPARATOR / COLOR_SCROLL_TRACK).
+#define COLOR_RIBBON       HEX_TO_RGB565(0x171513)
+#define COLOR_SEPARATOR    HEX_TO_RGB565(0x1B1917)
+#define COLOR_SCROLL_TRACK HEX_TO_RGB565(0x23201E)

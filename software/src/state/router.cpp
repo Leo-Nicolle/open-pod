@@ -9,6 +9,7 @@ Router::Router() : stackDepth(0) {
   // any locally-constructed Router/State (e.g. in tests) had no such luck.
   routeStack[0].type = Route_t::ROOT;
   routeStack[0].entityId = 0;
+  routeStack[0].scope = Route_t::ROOT;
   routeStack[0].entityName[0] = '\0';
   routeStack[0].currentPage = 0;
   routeStack[0].totalResults = 0;
@@ -19,11 +20,17 @@ Router::Router() : stackDepth(0) {
 
 void Router::pushRoute(Route_t::RouteType type, uint32_t entityId,
                        const char *entityName) {
+  pushRoute(type, entityId, entityName, routeStack[stackDepth].type);
+}
+
+void Router::pushRoute(Route_t::RouteType type, uint32_t entityId,
+                       const char *entityName, Route_t::RouteType scope) {
   if (stackDepth >= MAX_ROUTE_DEPTH - 1)
     return;
   stackDepth++;
   routeStack[stackDepth].type = type;
   routeStack[stackDepth].entityId = entityId;
+  routeStack[stackDepth].scope = scope;
   routeStack[stackDepth].currentPage = 0;
   routeStack[stackDepth].totalResults = 0;
   routeStack[stackDepth].hasMore = false;

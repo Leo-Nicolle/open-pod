@@ -175,15 +175,15 @@ void State::loadCurrentRouteData(MusicLookup &musicLookup) {
   case Route_t::ALBUMS:
     // Check if we're loading albums by artist or genre. currentRoute.entityId
     // (set when this ALBUMS route was pushed) is the artist/genre id;
-    // parentRoute only tells us which kind of id it is.
+    // its scope tells us which kind of id it is.
     if (router.getDepth() > 0) {
-      Route_t &parentRoute = router.routeStack[router.getDepth() - 1];
-      if (parentRoute.type == Route_t::ARTISTS) {
+      Route_t::RouteType scope = currentRoute.scope;
+      if (scope == Route_t::ARTISTS) {
         count = musicLookup.getAlbumsByArtist(
             currentRoute.entityId, elementsBuffer, ELEMENTS_BUFFER_SIZE,
             stringPointers, MAX_STRING_POINTERS);
         currentRoute.hasMore = false; // Relationship lookups return all results
-      } else if (parentRoute.type == Route_t::GENRES) {
+      } else if (scope == Route_t::GENRES) {
         count = musicLookup.getAlbumsByGenre(
             currentRoute.entityId, elementsBuffer, ELEMENTS_BUFFER_SIZE,
             stringPointers, MAX_STRING_POINTERS);
@@ -203,6 +203,12 @@ void State::loadCurrentRouteData(MusicLookup &musicLookup) {
     }
     break;
 
+  case Route_t::SEARCH_RESULTS:
+    // The search screen draws from its own model, which survives the trip
+    // into a result and back. setElements() would make the UI paint a list.
+    currentRoute.totalResults = search.getHitCount();
+    return;
+
   case Route_t::GENRES:
     count = musicLookup.getAllGenres(
         elementsBuffer, ELEMENTS_BUFFER_SIZE, stringPointers,
@@ -212,21 +218,21 @@ void State::loadCurrentRouteData(MusicLookup &musicLookup) {
 
   case Route_t::TRACKS:
     // Load tracks based on parent entity. currentRoute.entityId (set when
-    // this TRACKS route was pushed) is the artist/album/genre id; parentRoute
-    // only tells us which kind of id it is.
+    // this TRACKS route was pushed) is the artist/album/genre id; its
+    // scope tells us which kind of id it is.
     if (router.getDepth() > 0) {
-      Route_t &parentRoute = router.routeStack[router.getDepth() - 1];
-      if (parentRoute.type == Route_t::ARTISTS) {
+      Route_t::RouteType scope = currentRoute.scope;
+      if (scope == Route_t::ARTISTS) {
         count = musicLookup.getTracksByArtist(
             currentRoute.entityId, elementsBuffer, ELEMENTS_BUFFER_SIZE,
             stringPointers, MAX_STRING_POINTERS);
         currentRoute.hasMore = false; // Relationship lookups return all results
-      } else if (parentRoute.type == Route_t::ALBUMS) {
+      } else if (scope == Route_t::ALBUMS) {
         count = musicLookup.getTracksByAlbum(
             currentRoute.entityId, elementsBuffer, ELEMENTS_BUFFER_SIZE,
             stringPointers, MAX_STRING_POINTERS);
         currentRoute.hasMore = false; // Relationship lookups return all results
-      } else if (parentRoute.type == Route_t::GENRES) {
+      } else if (scope == Route_t::GENRES) {
         count = musicLookup.getTracksByGenre(
             currentRoute.entityId, elementsBuffer, ELEMENTS_BUFFER_SIZE,
             stringPointers, MAX_STRING_POINTERS);
@@ -374,6 +380,9 @@ void State::goToSelected(MusicLookup &musicLookup) {
   Route_t::RouteType oldRouteType = currentRoute.type;
   router.saveCurrentSelection(selectedIndex, topVisibleIndex);
   Route_t::RouteType newRouteType = currentRoute.type;
+  // What kind of id entityId is: the route we come from, except when search
+  // opens an artist/album/genre directly.
+  Route_t::RouteType scope = currentRoute.type;
   uint32_t entityId = 0;
   const char *entityName = nullptr;
   char name[64];
@@ -395,7 +404,8 @@ void State::goToSelected(MusicLookup &musicLookup) {
       newRouteType = Route_t::GENRES;
       break;
     case 5: // Search
-      // TODO: Implement search interface
+      search.reset();
+      newRouteType = Route_t::SEARCH_RESULTS;
       break;
     case 6: // Settings
       // TODO: Implement settings menu
@@ -445,6 +455,60 @@ void State::goToSelected(MusicLookup &musicLookup) {
     break;
   }
 
+  case Route_t::SEARCH_RESULTS: {
+    const SearchModel::Hit *hit = search.getSelectedHit();
+    if (!hit)
+      break;
+    switch (hit->type) {
+    case SEARCH_ARTIST:
+      musicLookup.getArtistName(hit->id, name, sizeof(name));
+      newRouteType = Route_t::ALBUMS;
+      scope = Route_t::ARTISTS;
+      break;
+    case SEARCH_GENRE:
+      musicLookup.getGenreName(hit->id, name, sizeof(name));
+      newRouteType = Route_t::ALBUMS;
+      scope = Route_t::GENRES;
+      break;
+    case SEARCH_ALBUM:
+      musicLookup.getAlbumName(hit->id, name, sizeof(name));
+      newRouteType = Route_t::TRACKS;
+      scope = Route_t::ALBUMS;
+      break;
+    case SEARCH_TRACK: {
+      // Play it within its album, so next/previous carry on through the
+      // album like they do when it's picked from the album's track list.
+      uint32_t albumId = musicLookup.getAlbumIdForTrack(hit->id);
+      if (albumId == UINT32_MAX)
+        break;
+      uint32_t albumTracks[MAX_SEARCH_RESULTS];
+      uint32_t total = musicLookup.getTrackIdsByAlbum(albumId, albumTracks,
+                                                      MAX_SEARCH_RESULTS);
+      int index = -1;
+      for (uint32_t i = 0; i < total; i++) {
+        if (albumTracks[i] == hit->id) {
+          index = (int)i;
+          break;
+        }
+      }
+      if (index < 0)
+        break;
+      playingListEntityId = albumId;
+      playingListTotalTracks = (int)total;
+      playingListParentType = Route_t::ALBUMS;
+      startPlayback(index, hit->id, musicLookup);
+      newRouteType = Route_t::NOW_PLAYING;
+      break;
+    }
+    }
+    if (newRouteType != Route_t::NOW_PLAYING &&
+        newRouteType != Route_t::SEARCH_RESULTS) {
+      entityId = hit->id;
+      entityName = name;
+    }
+    break;
+  }
+
   case Route_t::TRACKS: {
     // Start playback of selected track
     uint32_t trackId = getSelectedEntityId(musicLookup);
@@ -457,7 +521,7 @@ void State::goToSelected(MusicLookup &musicLookup) {
     playingListEntityId = currentRoute.entityId;
     playingListTotalTracks = totalElements;
     playingListParentType = (router.getDepth() > 0)
-        ? router.routeStack[router.getDepth() - 1].type
+        ? currentRoute.scope
         : Route_t::ROOT;
     startPlayback(selectedIndex, trackId, musicLookup);
     newRouteType = Route_t::NOW_PLAYING;
@@ -478,7 +542,7 @@ void State::goToSelected(MusicLookup &musicLookup) {
     selectedIndex = 0;
     topVisibleIndex = 0;
   }
-  router.pushRoute(newRouteType, entityId, entityName);
+  router.pushRoute(newRouteType, entityId, entityName, scope);
   RouteChangedEvent event = {
       oldRouteType, newRouteType, entityId,          0, 0,
       entityName,   true,         router.canGoBack()};
@@ -602,13 +666,13 @@ uint32_t State::getSelectedEntityId(MusicLookup &musicLookup) {
   case Route_t::ALBUMS:
     // Check if we're in a parent context (albums by artist/genre).
     // currentRoute.entityId is the artist/genre id this ALBUMS route was
-    // scoped to; parentRoute only tells us which kind of id it is.
+    // scoped to; its scope tells us which kind of id it is.
     if (router.getDepth() > 0) {
-      Route_t &parentRoute = router.routeStack[router.getDepth() - 1];
-      if (parentRoute.type == Route_t::ARTISTS) {
+      Route_t::RouteType scope = currentRoute.scope;
+      if (scope == Route_t::ARTISTS) {
         return musicLookup.getAlbumIdByArtistAtIndex(currentRoute.entityId,
                                                      selectedIndex);
-      } else if (parentRoute.type == Route_t::GENRES) {
+      } else if (scope == Route_t::GENRES) {
         return musicLookup.getAlbumIdByGenreAtIndex(currentRoute.entityId,
                                                     selectedIndex);
       }
@@ -621,17 +685,17 @@ uint32_t State::getSelectedEntityId(MusicLookup &musicLookup) {
 
   case Route_t::TRACKS:
     // Tracks always have parent context. currentRoute.entityId is the
-    // artist/album/genre id this TRACKS route was scoped to; parentRoute
-    // only tells us which kind of id it is.
+    // artist/album/genre id this TRACKS route was scoped to; its
+    // scope tells us which kind of id it is.
     if (router.getDepth() > 0) {
-      Route_t &parentRoute = router.routeStack[router.getDepth() - 1];
-      if (parentRoute.type == Route_t::ARTISTS) {
+      Route_t::RouteType scope = currentRoute.scope;
+      if (scope == Route_t::ARTISTS) {
         return musicLookup.getTrackIdByArtistAtIndex(currentRoute.entityId,
                                                      selectedIndex);
-      } else if (parentRoute.type == Route_t::ALBUMS) {
+      } else if (scope == Route_t::ALBUMS) {
         return musicLookup.getTrackIdByAlbumAtIndex(currentRoute.entityId,
                                                     selectedIndex);
-      } else if (parentRoute.type == Route_t::GENRES) {
+      } else if (scope == Route_t::GENRES) {
         return musicLookup.getTrackIdByGenreAtIndex(currentRoute.entityId,
                                                     selectedIndex);
       }
@@ -641,8 +705,12 @@ uint32_t State::getSelectedEntityId(MusicLookup &musicLookup) {
     }
     break;
 
+  case Route_t::SEARCH_RESULTS: {
+    const SearchModel::Hit *hit = search.getSelectedHit();
+    return hit ? hit->id : UINT32_MAX;
+  }
+
   case Route_t::ROOT:
-  case Route_t::SEARCH_RESULTS:
   default:
     break;
   }
@@ -706,5 +774,51 @@ void State::restoreSelectionState() {
 
   updateVisibleElements();
 }
+void State::emitSearchChanged(uint8_t dirty, int oldSelected, int oldFirst) {
+  SearchEvent event = {dirty, oldSelected, oldFirst};
+  emitEvent(EVENT_SEARCH_CHANGED, &event);
+}
+
+void State::searchScroll(int clicks, MusicLookup &musicLookup) {
+  // Negative clicks scroll lists down, so they move the ribbon cursor
+  // forward (A -> Z) and the highlight down.
+  int oldSelected = search.getSelected();
+  int oldFirst = search.getFirst();
+  if (search.getMode() == SearchModel::TYPING) {
+    if (search.moveCursor(-clicks))
+      emitSearchChanged(SEARCH_DIRTY_RIBBON, oldSelected, oldFirst);
+  } else if (search.scroll(-clicks, musicLookup)) {
+    uint8_t dirty = SEARCH_DIRTY_SELECTION;
+    if (search.getFirst() != oldFirst)
+      dirty |= SEARCH_DIRTY_ROWS;
+    emitSearchChanged(dirty, oldSelected, oldFirst);
+  }
+}
+
+void State::searchAppend(MusicLookup &musicLookup) {
+  if (search.append(musicLookup))
+    emitSearchChanged(SEARCH_DIRTY_HEADER | SEARCH_DIRTY_ROWS, 0, 0);
+}
+
+void State::searchBackspace(MusicLookup &musicLookup) {
+  if (search.backspace(musicLookup))
+    emitSearchChanged(SEARCH_DIRTY_HEADER | SEARCH_DIRTY_ROWS, 0, 0);
+}
+
+void State::searchSpace(MusicLookup &musicLookup) {
+  if (search.space(musicLookup))
+    emitSearchChanged(SEARCH_DIRTY_HEADER | SEARCH_DIRTY_ROWS, 0, 0);
+}
+
+void State::searchEnterResults() {
+  if (search.enterResults())
+    emitSearchChanged(SEARCH_DIRTY_LAYOUT, 0, 0);
+}
+
+void State::searchExitResults() {
+  if (search.exitResults())
+    emitSearchChanged(SEARCH_DIRTY_LAYOUT, 0, 0);
+}
+
 // Global state instance
 State state;

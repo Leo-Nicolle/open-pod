@@ -5,6 +5,10 @@ struct Route_t {
   enum RouteType { ROOT, SEARCH_RESULTS, GENRES, ARTISTS, ALBUMS, TRACKS, NOW_PLAYING };
   RouteType type;
   uint32_t entityId;     // ID of current entity (genre_id, artist_id, etc.)
+  // What kind of entity entityId is (ARTISTS -> an artist id, ...). Usually
+  // the route this one was opened from, but search opens albums/artists
+  // directly, so it can't be inferred from the stack.
+  RouteType scope;
   char entityName[64];   // Display name for breadcrumb
   uint32_t currentPage;  // For pagination
   uint32_t totalResults; // Total items available
@@ -27,8 +31,11 @@ private:
 public:
   Router();
 
+  // scope defaults to the type of the route being pushed over.
   void pushRoute(Route_t::RouteType type, uint32_t entityId = 0,
                  const char *entityName = nullptr);
+  void pushRoute(Route_t::RouteType type, uint32_t entityId,
+                 const char *entityName, Route_t::RouteType scope);
   bool popRoute();
   Route_t &getCurrentRoute();
   bool canGoBack();
