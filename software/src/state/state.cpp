@@ -7,7 +7,7 @@ State::State()
     : EventTarget(), elements(nullptr), totalElements(0), playingTrackIndex(-1),
       playingTrackId(-1), isPlaying(false), playbackPosition(0),
       trackDuration(0), playingListParentType(Route_t::ROOT),
-      playingListEntityId(0), playingListTotalTracks(0), volume(92),
+      playingListEntityId(0), playingListTotalTracks(0), volume(60),
       seekModeActive(false), selectedIndex(0), topVisibleIndex(0),
       isAnimating(false), scrollAnimId(0),
       transitionAnimId(0), isRotatedMode(false) {

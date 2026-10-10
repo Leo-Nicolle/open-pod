@@ -193,8 +193,8 @@ public:
 
   // Volume control (Now Playing wheel scroll)
   void setVolume(int vol);
-  void increaseVolume(int step = 5);
-  void decreaseVolume(int step = 5);
+  void increaseVolume(int step = 2);
+  void decreaseVolume(int step = 2);
   int getVolume() const { return volume; }
 
   // Seek mode (Now Playing center press)

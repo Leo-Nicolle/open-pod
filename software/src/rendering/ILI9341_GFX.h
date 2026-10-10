@@ -263,6 +263,27 @@ public:
 
   void invertDisplay(bool i) { writeCommand(i ? 0x21 : 0x20); }
 
+  // Off: DISPOFF + SLPIN (panel driver, oscillator and DC/DC stopped). On:
+  // SLPOUT + DISPON. The MCU interface and GRAM keep working while asleep,
+  // so the UI can still be drawn and turning it back on needs no redraw.
+  // The datasheet asks 5ms after SLPIN/SLPOUT before the next command (and
+  // 120ms between them, which the idle delay covers).
+  void setDisplayOn(bool on)
+  {
+    if (on)
+    {
+      writeCommand(0x11); // Sleep Out
+      delay(5);
+      writeCommand(0x29); // Display ON
+    }
+    else
+    {
+      writeCommand(0x28); // Display OFF
+      writeCommand(0x10); // Sleep In
+      delay(5);
+    }
+  }
+
   // Hardware bring-up diagnostics for a hand-wired 16-bit parallel bus.
   // Two independent checks, run slowly enough to read off a photo/serial log:
   //

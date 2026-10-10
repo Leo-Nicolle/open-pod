@@ -75,6 +75,14 @@ unsigned long seekModeLastInteraction = 0;
 const unsigned long SEEK_MODE_DELAY = 3000; // 3 seconds
 const int SEEK_SECONDS_PER_CLICK = 3;
 
+// Idle: jump to Now Playing (only while playing), then blank the screen.
+// While blank, only a button press wakes it (and is swallowed); touch and
+// scroll are ignored.
+unsigned long lastUserInput = 0;
+const unsigned long IDLE_NOW_PLAYING_DELAY = 5000;
+const unsigned long IDLE_SCREEN_OFF_DELAY = 15000;
+bool screenOff = false;
+
 // Scrolling while seeking only previews a target position (moves the
 // displayed time/progress bar); the actual file seek is deferred until
 // scrolling pauses, so a long scrub doesn't re-seek the file on every tick.
@@ -98,6 +106,7 @@ void onButtonLongPress(ClickWheel::Button button);
 void onButtonVeryLongPress(ClickWheel::Button button);
 void onScroll(int scrollClicks);
 void checkSeekModeTimeout();
+void checkIdle();
 void commitPendingSeek();
 void drawTraceVisualization();
 bool shouldUpdateTelemetry();
@@ -207,7 +216,10 @@ void setup()
   Serial.println("- Left/Right press: Previous/next track (Now Playing)");
   Serial.println("- Center hold 0.8s: Jump to Now Playing");
   Serial.println("- Center hold 2s: Recalibrate wheel");
+  Serial.println("- Idle 5s: Now Playing (if playing), 15s: screen off");
+  Serial.println("- Screen off: any button wakes it (scroll ignored)");
   Serial.println("=====================================");
+  lastUserInput = millis();
 }
 
 void loop()
@@ -234,6 +246,7 @@ void loop()
   // Handle input
   handleWheelInput();
   checkSeekModeTimeout();
+  checkIdle();
 
   audioprof::markLoop();
   if (navigationBusy)
@@ -280,6 +293,26 @@ void handleWheelInput()
   ClickWheel::Event e;
   while (wheel.pollEvent(e))
   {
+    if (screenOff)
+    {
+      // Only a button wakes the screen, and that press does nothing else,
+      // so a blind press never skips or pauses. Ignored touch/scroll don't
+      // count as activity (nor throttle the audio refill).
+      bool isPress = e.type == ClickWheel::EventType::Click ||
+                     e.type == ClickWheel::EventType::LongPress ||
+                     e.type == ClickWheel::EventType::VeryLongPress;
+      if (isPress)
+      {
+        display.setDisplayOn(true);
+        screenOff = false;
+        lastUserInput = millis();
+        haptics.buttonClick();
+        if (kUiVerbose)
+          Serial.println("💡 Screen on");
+      }
+      continue;
+    }
+    lastUserInput = millis();
     player.audioPlayer.noteUserActivity();
     switch (e.type)
     {
@@ -516,6 +549,27 @@ void checkSeekModeTimeout()
   {
     commitPendingSeek(); // don't lose an in-flight scrub on idle-exit
     state.exitSeekMode();
+  }
+}
+
+// Called every loop: lastUserInput only moves on input, so once on Now
+// Playing (goToNowPlaying no-ops there) the jump fires once per idle period.
+void checkIdle()
+{
+  unsigned long idle = millis() - lastUserInput;
+  if (!screenOff && idle >= IDLE_SCREEN_OFF_DELAY)
+  {
+    display.setDisplayOn(false);
+    screenOff = true;
+    if (kUiVerbose)
+      Serial.println("🌙 Screen off");
+  }
+  else if (idle >= IDLE_NOW_PLAYING_DELAY && state.getIsPlaying() &&
+           !navigationBusy &&
+           state.getCurrentRoute().type != Route_t::RouteType::NOW_PLAYING)
+  {
+    Serial.println("⏭️ Idle: jumping to Now Playing");
+    state.goToNowPlaying(musicLookup);
   }
 }
 

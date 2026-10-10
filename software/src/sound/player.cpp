@@ -1,4 +1,5 @@
 #include "player.h"
+#include <math.h>
 
 PodPlayer *PodPlayer::instance = nullptr;
 
@@ -111,8 +112,15 @@ void PodPlayer::handlePlaybackStopped(const PlaybackEvent *event) {
 }
 
 void PodPlayer::handleVolumeChanged(const VolumeEvent *event) {
-  // Hardware volume register is inverted: 0 = loudest, 255 = silent.
-  uint8_t hw = (uint8_t)constrain(255 - (event->volume * 255 / 100), 0, 255);
+  // Hardware volume register is attenuation in 0.5 dB steps (0 = loudest,
+  // 0xFE = silent). A linear map spreads 0..127 dB across the bar, so only the
+  // top quarter was audible. Use an audio taper instead (gain ~ v^2, i.e.
+  // 40*log10(v/100) dB): 50% -> -12 dB, 25% -> -24 dB, 10% -> -40 dB, 5% -> -52 dB.
+  uint8_t hw = 0xFE;
+  if (event->volume > 0) {
+    float attenuationDb = 40.0f * log10f(100.0f / (float)event->volume);
+    hw = (uint8_t)constrain((int)lroundf(attenuationDb * 2.0f), 0, 0xFE);
+  }
   audioPlayer.setVolume(hw, hw);
 }
 
