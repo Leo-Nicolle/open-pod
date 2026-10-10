@@ -95,7 +95,13 @@ public:
       uint16_t bgColor = isSelected ? getGradientColor(COLOR_ACCENT, yInList)
                                     : COLOR_BG;
 
-      for (int x = startx; x < startx + width; x++) {
+      // The cache stops at cacheWidth (the scrollbar column is not part of
+      // the list). Columns past it - reached by the full-width transition
+      // slide - are plain background padding: reading the cache there would
+      // wrap into the next pixel line (or past the row buffer).
+      const int endx = startx + width;
+      const int cachedEndx = min(endx, cache.cacheWidth);
+      for (int x = startx; x < cachedEndx; x++) {
         uint8_t pixelValue = 0;
 
         // Only read from cache if we have valid data
@@ -118,6 +124,9 @@ public:
         }
 
         displayBuffer[pixelIndex++] = color;
+      }
+      for (int x = max(startx, cachedEndx); x < endx; x++) {
+        displayBuffer[pixelIndex++] = COLOR_BG;
       }
     }
   }

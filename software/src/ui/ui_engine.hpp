@@ -615,11 +615,11 @@ void OpenPodUIEngine::transitionToNowPlaying()
   // header (and, for a track-list screen, scrollbar) back once the
   // transition completes and the scroll offset is back at rest.
   display->fillRect(0, 0, SCREEN_WIDTH, HEADER_HEIGHT, COLOR_SURFACE);
-  if (scrollbar.isVisible())
-  {
-    display->fillRect(SCROLLBAR_X, BODY_Y, SCREEN_WIDTH - SCROLLBAR_X,
-                      BODY_HEIGHT, COLOR_BG);
-  }
+  // Always blank the scrollbar column, even when neither menu shows a
+  // scrollbar: with the hardware scroll it is the seam between the old and
+  // new screen that travels across the display, so it must be plain padding.
+  display->fillRect(SCROLLBAR_X, BODY_Y, SCREEN_WIDTH - SCROLLBAR_X,
+                    BODY_HEIGHT, COLOR_BG);
 
   uint32_t animId = animManager.animate(
       ANIM_CUSTOM, 0, SCREEN_WIDTH, 800,
@@ -667,11 +667,11 @@ void OpenPodUIEngine::transitionToTrackList(bool leftToRight)
   // the moving scroll offset raced the panel's own refresh and shimmered).
   // renderCurrentState() draws the real ones back once this completes.
   display->fillRect(0, 0, SCREEN_WIDTH, HEADER_HEIGHT, COLOR_SURFACE);
-  if (scrollbar.isVisible())
-  {
-    display->fillRect(SCROLLBAR_X, BODY_Y, SCREEN_WIDTH - SCROLLBAR_X,
-                      BODY_HEIGHT, COLOR_BG);
-  }
+  // Always blank the scrollbar column, even when neither menu shows a
+  // scrollbar: with the hardware scroll it is the seam between the old and
+  // new screen that travels across the display, so it must be plain padding.
+  display->fillRect(SCROLLBAR_X, BODY_Y, SCREEN_WIDTH - SCROLLBAR_X,
+                    BODY_HEIGHT, COLOR_BG);
 
   uint32_t animId = animManager.animate(
       ANIM_CUSTOM, 0, SCREEN_WIDTH, 800,

@@ -61,14 +61,16 @@ int ScrollbarComponent::getThumbPosition() const {
 
 
 void ScrollbarComponent::render(ILI9341_GFX* display, int x) {
-    if (!isVisible())
-        return;
-
     int scrollBarX = x;
     int scrollBarY = scrollAreaY;
     int scrollBarHeight = scrollAreaHeight;
 
-    display->fillRect(scrollBarX, scrollBarY, 8, scrollBarHeight, COLOR_BG);
+    // The scrollbar owns its column: clear it even when hidden, so nothing
+    // left there (e.g. by a transition) survives on a short list.
+    display->fillRect(scrollBarX, scrollBarY, SCREEN_WIDTH - scrollBarX,
+                      scrollBarHeight, COLOR_BG);
+    if (!isVisible())
+        return;
     display->drawRect(scrollBarX, scrollBarY, 6, scrollBarHeight, COLOR_LINE);
 
     int thumbHeight = max(20, (scrollBarHeight * visibleItems) / totalItems);
