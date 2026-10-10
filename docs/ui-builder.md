@@ -30,6 +30,11 @@ Your palette is saved in this browser, so it's still there next time you open th
   in the same shape as `scripts/gen-sprites.py` produces.
 - **theme.h** — the `COLOR_*` macros for the palette you picked, including the list
   colors (`COLOR_TEXT_HI`, `COLOR_SEPARATOR`, `COLOR_SCROLL_TRACK`, `COLOR_RIBBON`).
+- **logo.h** — the title screen: the 99×122 logo and its landing squash frame as
+  4-bit palette indices, the "openpod" wordmark as 4-bit coverage with its TEXT /
+  ACCENT ramps, the theme-derived logo palette, the intro timeline (`BOOT_*`) and
+  the `blitLogoImage` / `drawWordmarkGlyph` helpers. Goes to
+  `software/src/ui/logo.h`; `ui/boot_screen.hpp` plays it.
 
 The three tinted glyphs (`play`, `pause`, `speaker`) ship both a mask and a
 pre-tinted pixel array, so you can either blit them through the mask with a runtime

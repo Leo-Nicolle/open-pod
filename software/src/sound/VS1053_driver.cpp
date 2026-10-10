@@ -22,6 +22,9 @@ bool VS1053_driver::begin(uint32_t spiFreq) {
   _sciFreq = spiFreq;
   _sdiFreq = spiFreq;
 
+  // Raise XRESET before making it an output: the output latch starts low, so
+  // pinMode() alone would pulse a hardware reset (see below).
+  digitalWrite(_rst, HIGH);
   pinMode(_rst, OUTPUT);
   pinMode(_cs, OUTPUT);
   pinMode(_dcs, OUTPUT);
@@ -42,17 +45,27 @@ bool VS1053_driver::begin(uint32_t spiFreq) {
   }
 
   initSPI();
-  reset();
+  // A hardware reset powers the analog outputs down and back up, which
+  // thumps in headphones like a jack pulled out and plugged back in. The chip
+  // already reset itself at power-up, so when it answers, a software reset
+  // (outputs stay up) is enough; the reset pin is only the fallback.
+  updateClockSpeeds(0); // slowest SCI speed: CLOCKF may not be set yet
+  if (isVS1053(readRegister(VS1053_REG_STATUS))) {
+    softReset();
+  } else {
+    reset();
+  }
 
   uint16_t status = readRegister(VS1053_REG_STATUS);
-  if (!(status & 0x0040)) {
+  if (!isVS1053(status)) {
     return false;
   }
+  // Quietest setting that keeps the analog drivers powered (0xFFFF would
+  // power them down, and powering back up pops). The caller sets the volume.
+  setVolume(0xFE, 0xFE);
 
   writeRegister(VS1053_REG_MODE, VS1053_MODE_SM_SDINEW);
   writeRegister(VS1053_REG_CLOCKF, 0x6000); // 12.288MHz
-
-  setVolume(60, 60);
 
   return true;
 }
@@ -101,6 +114,9 @@ void VS1053_driver::setSdiFreq(uint32_t hz) {
   }
   _sdiBaudBits = br << SPI_CR1_BR_Pos;
 }
+
+// SS_VER (status bits 7:4) is 4 for the VS1053; floating MISO reads 0xFFFF.
+bool VS1053_driver::isVS1053(uint16_t status) { return ((status >> 4) & 0xF) == 4; }
 
 void VS1053_driver::reset() {
   digitalWrite(_rst, LOW);

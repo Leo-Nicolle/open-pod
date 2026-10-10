@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, reactive, ref, shallowRef, watch } from 'vue';
 import { NButton, NSelect, NSwitch } from 'naive-ui';
 import { DEFAULT_PALETTE, PALETTE_META, normalizeHex, type Palette, type PaletteKey } from './palette';
 import { SPRITES } from './sprites';
@@ -13,6 +13,17 @@ import {
 } from './export';
 import ScreenCanvas from './ScreenCanvas.vue';
 import SpriteStage from './SpriteStage.vue';
+import BootStage from './BootStage.vue';
+import {
+  BOOT,
+  buildLogoHeader,
+  LOGO_ROLES,
+  logoPalette,
+  rasterizeBootLogo,
+  rasterizeBootSquash,
+  type Wordmark,
+} from './logo';
+import { renderWordmark } from './wordmark';
 import { KID_A, KID_RESULTS, LIBRARY, RADIOHEAD } from './screens';
 import { GEOMETRY, REDRAW_NOTES } from './spec';
 
@@ -93,6 +104,48 @@ const searches = computed(() => {
   ];
 });
 
+// Title screen. The logo frames never depend on the theme; the wordmark needs
+// the web font, so it is rendered once on mount (null until then).
+const logoRaster = rasterizeBootLogo();
+const squashRaster = rasterizeBootSquash();
+const wordmark = shallowRef<Wordmark | null>(null);
+const bootPlaying = ref(true);
+const logoColors = computed(() => logoPalette(palette));
+const bootBytes = computed(() => {
+  const img = (w: number, h: number) => Math.ceil(w / 2) * h;
+  const w = wordmark.value;
+  return img(logoRaster.w, logoRaster.h) + img(squashRaster.w, squashRaster.h) + (w ? img(w.w, w.h) : 0);
+});
+const bootKeyframes = [
+  { t: 480, label: '0.48s · drop' },
+  { t: 740, label: '0.74s · land squash' },
+  { t: 1200, label: '1.2s · wordmark types' },
+  { t: 1650, label: '1.65s · hop' },
+  { t: 2240, label: '2.24s · chunk wipe' },
+];
+const s = (ms: number) => (ms / 1000).toFixed(2) + 's';
+const bootSteps = [
+  { t: `0–${s(BOOT.DROP_START)}`, d: 'Blank background. Boot init runs here and in the other idle gaps.' },
+  {
+    t: `${s(BOOT.DROP_START)}–${s(BOOT.DROP_END)}`,
+    d: `Bird drops ${BOOT.DROP_PX}px into place, ease-out. Each frame pushes the union of the old and new logo rects.`,
+  },
+  {
+    t: `${s(BOOT.DROP_END)}–${s(BOOT.SQUASH_END)}`,
+    d: `Landing squash: one pre-baked ${squashRaster.w}×${squashRaster.h} frame, bottom-centre anchored, then the normal sprite.`,
+  },
+  {
+    t: `${s(BOOT.LETTER_START)}–${s(BOOT.LETTER_START + 6 * BOOT.LETTER_STEP)}`,
+    d: `"openpod" types in, one glyph every ${BOOT.LETTER_STEP}ms: "open" in TEXT, "pod" in ACCENT.`,
+  },
+  { t: `${s(BOOT.HOP_START)}–${s(BOOT.HOP_END)}`, d: `A single ${BOOT.HOP_PX}px hop.` },
+  {
+    t: `${s(BOOT.WIPE_AT)}–${s(BOOT.WIPE_AT + 8 * BOOT.CHUNK_MS)}`,
+    d: `Chunk wipe into the menu, ${BOOT.CHUNK_MS}ms per chunk. Held on the last frame until boot init is done; a button press skips ahead.`,
+  },
+];
+const paletteName = (key: PaletteKey) => PALETTE_META.find((m) => m.key === key)?.name ?? key;
+
 function to565(hex: string): string {
   const v = hexTo565(hex);
   return '0x' + v.toString(16).toUpperCase().padStart(4, '0');
@@ -152,6 +205,9 @@ function loadPalette() {
 
 onMounted(() => {
   loadPalette();
+  renderWordmark()
+    .then((w) => (wordmark.value = w))
+    .catch((e) => flash(`Wordmark failed: ${e}`));
   watch(palette, savePalette, { deep: true });
 });
 
@@ -186,6 +242,24 @@ function exportSprites() {
 function exportTheme() {
   downloadText('theme.h', buildThemeHeader(palette));
   flash('Downloaded theme.h');
+}
+
+function logoHeader(): string | null {
+  return wordmark.value ? buildLogoHeader(palette, logoRaster, squashRaster, wordmark.value) : null;
+}
+
+function exportLogo() {
+  const h = logoHeader();
+  if (!h) return;
+  downloadText('logo.h', h);
+  flash('Downloaded logo.h');
+}
+
+async function copyLogo() {
+  const h = logoHeader();
+  if (!h) return;
+  const ok = await copyToClipboard(h);
+  flash(ok ? 'Copied logo.h to clipboard' : 'Copy failed');
 }
 
 async function exportPngs() {
@@ -255,6 +329,8 @@ async function copyTheme() {
           <n-button @click="exportTheme">Download theme.h</n-button>
           <n-button @click="copySprites">Copy sprites.h</n-button>
           <n-button @click="copyTheme">Copy theme.h</n-button>
+          <n-button :disabled="!wordmark" @click="exportLogo">Download logo.h</n-button>
+          <n-button :disabled="!wordmark" @click="copyLogo">Copy logo.h</n-button>
           <n-button @click="exportPngs">Download PNG previews</n-button>
         </div>
         <div v-if="status" class="status">{{ status }}</div>
@@ -307,6 +383,63 @@ async function copyTheme() {
             <ScreenCanvas :palette="palette" :screen="s.screen" :zoom="zoom" />
             <figcaption>{{ s.label }}</figcaption>
           </figure>
+        </div>
+      </section>
+
+      <section>
+        <h3>Title screen <span class="muted">(Drop &amp; hop)</span></h3>
+        <p class="lede">
+          The bird at its native 99×122 at (110, 44), the wordmark under it, then a chunk wipe into the
+          root menu. The logo is rasterized from <code>public/openpod_logo.svg</code> into 4-bit palette
+          indices, one per SVG colour, so its pixels never change with the theme: only the 16-colour
+          palette in <code>logo.h</code> does. Each SVG colour follows one theme colour; colours sharing
+          it form a ramp that keeps the SVG's lightness steps between facets. The wordmark is rendered
+          here in IBM Plex Sans 600 28px and baked as 4-bit coverage with a BG→colour ramp.
+        </p>
+        <div class="logo">
+          <figure class="state">
+            <BootStage
+              :palette="palette"
+              :logo="logoRaster"
+              :squash="squashRaster"
+              :word="wordmark"
+              :zoom="zoom"
+              :playing="bootPlaying"
+            />
+            <figcaption class="boot-caption">
+              <span>live loop · logo.h pixel data {{ bootBytes }} B</span>
+              <span class="boot-toggle">play <n-switch v-model:value="bootPlaying" size="small" /></span>
+            </figcaption>
+          </figure>
+          <div class="logo-map">
+            <div v-for="(role, i) in LOGO_ROLES" :key="role.svg" class="logo-map-row">
+              <span class="logo-chip" :style="{ background: role.svg }" :title="role.svg" />
+              <span class="logo-arrow">→</span>
+              <span class="logo-chip" :style="{ background: logoColors[i + 1] }" :title="logoColors[i + 1]" />
+              <span class="logo-name">{{ role.name }}</span>
+              <span class="geometry-box">{{ paletteName(role.key) }}</span>
+              <span class="muted">{{ role.role }}</span>
+            </div>
+          </div>
+        </div>
+        <div class="boot-frames">
+          <figure v-for="k in bootKeyframes" :key="k.t" class="boot-frame">
+            <BootStage
+              :palette="palette"
+              :logo="logoRaster"
+              :squash="squashRaster"
+              :word="wordmark"
+              :zoom="0.5"
+              :t="k.t"
+            />
+            <figcaption>{{ k.label }}</figcaption>
+          </figure>
+        </div>
+        <div class="geometry boot-steps">
+          <div v-for="st in bootSteps" :key="st.t" class="boot-step">
+            <span class="geometry-box">{{ st.t }}</span>
+            <span class="muted">{{ st.d }}</span>
+          </div>
         </div>
       </section>
 
@@ -514,6 +647,99 @@ section {
   font-family: ui-monospace, 'SF Mono', 'Cascadia Code', monospace;
   font-size: 11px;
   color: var(--vp-c-text-2);
+}
+
+.logo {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+  align-items: flex-start;
+}
+
+.boot-caption {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.boot-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.boot-frames {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.boot-frame {
+  margin: 0;
+}
+
+.boot-frame figcaption {
+  margin-top: 4px;
+  font-family: ui-monospace, 'SF Mono', 'Cascadia Code', monospace;
+  font-size: 10px;
+  color: var(--vp-c-text-3);
+}
+
+.boot-steps {
+  margin-top: 16px;
+}
+
+.boot-step {
+  display: grid;
+  grid-template-columns: 96px 1fr;
+  gap: 14px;
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--vp-c-divider);
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.boot-step:last-child {
+  border-bottom: none;
+}
+
+.boot-step .geometry-box {
+  font-family: ui-monospace, 'SF Mono', 'Cascadia Code', monospace;
+  font-size: 11px;
+}
+
+.logo-map {
+  flex: 1;
+  min-width: 300px;
+  max-width: 520px;
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 8px;
+  padding: 6px 0;
+}
+
+.logo-map-row {
+  display: grid;
+  grid-template-columns: 16px 12px 16px 56px 130px 1fr;
+  gap: 8px;
+  align-items: center;
+  padding: 3px 12px;
+  font-family: ui-monospace, 'SF Mono', 'Cascadia Code', monospace;
+  font-size: 11px;
+  line-height: 16px;
+}
+
+.logo-chip {
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  border: 1px solid var(--vp-c-divider);
+}
+
+.logo-arrow {
+  color: var(--vp-c-text-3);
+  text-align: center;
 }
 
 .sprites {

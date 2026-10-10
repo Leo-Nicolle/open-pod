@@ -97,6 +97,7 @@ public:
   // Core initialization and control
   bool begin(uint32_t spiFreq = 1000000UL);
   void reset();
+  static bool isVS1053(uint16_t status);
   void softReset();
   bool readyForData();
 

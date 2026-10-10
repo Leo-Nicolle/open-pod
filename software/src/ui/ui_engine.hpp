@@ -71,8 +71,13 @@ public:
   OpenPodUIEngine(ILI9341_GFX *disp);
   ~OpenPodUIEngine();
 
-  // Lifecycle
+  // Lifecycle. begin() draws nothing: the boot screen is still up, and its
+  // exit wipe paints the first frame through renderBootChunk().
   void begin();
+  // Chunk k (0..7, top to bottom) of the first frame, for the boot wipe.
+  void renderBootChunk(int k);
+  // Ends the boot wipe: event handlers render normally from here on.
+  void endBoot() { booting = false; }
   bool update();
   void hookToEvents(); // Connect to state events
 
@@ -100,6 +105,8 @@ private:
   void updateFastScrollOverlay();
   bool isAnimating() const { return state.getIsAnimating(); }
   bool onSearch() { return state.getCurrentRoute().type == Route_t::SEARCH_RESULTS; }
+  // True from begin() until endBoot(): state still flows in, nothing renders.
+  bool booting = false;
   // One CHUNK_HEIGHT slice of the body (the list, or the search screen
   // below its header) for the slide transition.
   void renderBodySlice(int x, int chunkY, int width, int height);
@@ -137,22 +144,12 @@ OpenPodUIEngine::~OpenPodUIEngine()
 
 void OpenPodUIEngine::begin()
 {
-  display->fillScreen(COLOR_BG);
+  booting = true;
   Serial.println("OpenPod UI Engine initializing...");
-  delay(500);
   hookToEvents();
-  Serial.println("2");
-  delay(500);
   elementList.begin();
-  Serial.println("3");
-  delay(500);
   updateTrackListScroll();
-  Serial.println("4");
-  delay(500);
   updateScrollbar();
-  Serial.println("5");
-  delay(500);
-  renderCurrentState();
   Serial.println(
       "OpenPod UI Engine initialized with event-driven architecture");
 }
@@ -483,7 +480,7 @@ void OpenPodUIEngine::handleTrackListUpdated(const ListEvent *event)
   elementList.setElements(event->elements, event->totalElements);
   updateScrollbar();
   // Re-render if we're showing the track list
-  if (!state.getIsAnimating() && !onSearch())
+  if (!booting && !state.getIsAnimating() && !onSearch())
   {
     renderTrackList();
   }
@@ -594,8 +591,37 @@ void OpenPodUIEngine::renderBodySlice(int x, int chunkY, int width, int height)
 }
 
 // Rendering methods (mostly unchanged, but now use state getters)
+void OpenPodUIEngine::renderBootChunk(int k)
+{
+  Route_t::RouteType route = state.getCurrentRoute().type;
+  if (route == Route_t::NOW_PLAYING || onSearch())
+  {
+    // No per-chunk path for these: draw them whole on the first step.
+    if (k == 0)
+    {
+      booting = false;
+      renderCurrentState();
+    }
+    return;
+  }
+  if (k == 0)
+  {
+    header.render(display, state.getHeaderTitle(), state.getIsPlaying());
+    return;
+  }
+  elementList.renderRows(display, k - 1, k - 1);
+  if (k == ELEMENTS_PER_SCREEN)
+  {
+    scrollbar.render(display);
+  }
+}
+
 void OpenPodUIEngine::renderCurrentState()
 {
+  if (booting)
+  {
+    return;
+  }
   if (state.getIsAnimating())
   {
     return; // Don't render if animating

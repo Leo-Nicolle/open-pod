@@ -35,6 +35,13 @@ public:
   // duration index and is forwarded to Audio_buffer::setFileName() to
   // short-circuit the on-device MP3-frame-scan duration guess.
   bool startPlaying(const char *filename, uint32_t knownDurationSeconds = 0);
+  // Plays a short MP3 straight from memory (flash), no SD involved. It must
+  // fit the fifo whole (AudioFifo::CAPACITY): the feeder interrupt then plays
+  // it out without the main loop, which only has to call loop() to finish
+  // the stream. stopPlaying() or startPlaying() cut it.
+  bool playClip(const uint8_t *data, size_t len);
+  // A clip still has bytes to send to the decoder.
+  bool isClipPlaying() const { return _clipPlaying; }
   // endOfStream: the file was played to its end (the decoder plays out what
   // it holds) rather than stopped mid-track (it drops it right away).
   void stopPlaying(bool endOfStream = false);
@@ -114,6 +121,7 @@ private:
   bool _paused;
   bool _looping;
   bool _trackEnded = false;
+  bool _clipPlaying = false; // see playClip()
 
   // --- L1 fifo + feeder interrupt -------------------------------------------
   // The VS1053 is fed from a timer interrupt, out of the L1 fifo in MCU RAM,
@@ -126,7 +134,7 @@ private:
   // On while a stop sends its end fill bytes, or playing and not paused.
   volatile bool _feederEnabled = false;
   void updateFeeder() {
-    _feederEnabled = stopping() || (_playing && !_paused);
+    _feederEnabled = stopping() || _clipPlaying || (_playing && !_paused);
   }
   static void feederIsr();
   static void yieldHook(); // see AudioYield.h

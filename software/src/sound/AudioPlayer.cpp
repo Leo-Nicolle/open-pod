@@ -37,8 +37,10 @@ bool AudioPlayer::begin(uint32_t spiFreq, uint32_t sdFreq) {
     return false;
   }
 
+  // No SD card is not fatal: the feeder still comes up, so clips from flash
+  // (the startup sound) play; file playback then fails to open its files.
   if (!_buffer.begin(sdFreq)) {
-    return false;
+    Serial.println("AudioPlayer: no SD card, only clips from memory will play");
   }
   _buffer.setFrontFifo(&_fifo);
   audioYieldHook() = &AudioPlayer::yieldHook;
@@ -133,7 +135,23 @@ void AudioPlayer::onDecoderReady() {
 
 // endOfStream: the file was played to its end (the decoder plays out what
 // it holds) rather than stopped mid-track (it drops it right away).
+bool AudioPlayer::playClip(const uint8_t *data, size_t len) {
+  if (len > AudioFifo::CAPACITY || _playing || _clipPlaying || stopping() ||
+      !_feederTimer) {
+    return false;
+  }
+  _streamIsFlac = false; // 2052 end fill bytes when it ends
+  _fifo.reset();
+  _fifo.write(data, len);
+  _driver.resetDecodeTime();
+  _decoderDirty = true;
+  _clipPlaying = true;
+  updateFeeder();
+  return true;
+}
+
 void AudioPlayer::stopPlaying(bool endOfStream) {
+  _clipPlaying = false;
   _playing = false;
   _paused = false;
   _buffer.resetRingBuffer();
@@ -389,6 +407,13 @@ void AudioPlayer::sineTest(uint8_t freq, uint16_t duration) {
 void AudioPlayer::dumpRegisters() { _driver.dumpRegisters(); }
 void AudioPlayer::loop() {
   serviceStop();
+  // A clip is over once the feeder has sent its last byte: finish it with
+  // the end fill sequence, as for the end of a file.
+  if (_clipPlaying && !stopping() && _fifo.size() == 0) {
+    _clipPlaying = false;
+    _decoderDirty = false;
+    beginStop(true);
+  }
   if (_duckingForSeek && millis() >= _duckRestoreAt) {
     restoreVolumeFromDuck();
   }

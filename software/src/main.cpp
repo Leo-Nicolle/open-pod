@@ -5,6 +5,7 @@
 #include "pinout.h"
 #include "rendering/ILI9341_GFX.h"
 #include "sound/player.h"
+#include "sound/startup_sound.h"
 #include "sound/AudioProfiler.h"
 #include "sound/Spi1Bus.h"
 #include "UiVerbose.h"
@@ -14,6 +15,7 @@
 #include "storage/Music_index.h"
 #include "storage/Music_lookup.h"
 #include "ui/ui_engine.hpp"
+#include "ui/boot_screen.hpp"
 #include <Arduino.h>
 #include <Wire.h>
 MusicIndex musicIndex;
@@ -23,6 +25,7 @@ AlbumArt albumArt;
 ILI9341_GFX display;
 PodPlayer player;
 OpenPodUIEngine ui(&display);
+BootScreen boot(&display);
 
 // ClickWheel instances
 TwoWire Wire3(PB4, PA8);
@@ -148,6 +151,12 @@ void printResetCause()
 
 void setup()
 {
+  // Hold the VS1053 out of reset from the first instruction: left floating
+  // until player.setup() (a few hundred ms in), XRESET can dip and reset the
+  // chip, which thumps in the headphones (see VS1053_driver::begin()).
+  digitalWrite(MP3_RESET, HIGH);
+  pinMode(MP3_RESET, OUTPUT);
+
   Serial.begin(115200);
   while (!Serial)
     delay(10);
@@ -157,17 +166,8 @@ void setup()
 
   state.addEventListener(onNavigationStateEvent);
 
-  audioprof::begin();
-
-  // Initialize hardware
-  player.setup();
-  player.audioPlayer.setDebugMonitorEnabled(enableAudioMonitor);
-  musicLookup.init();
-  albumArt.init(musicLookup.getSD());
-  if (enableLinkBench)
-  {
-    runLinkBench(player.audioPlayer, musicLookup);
-  }
+  // Screen first: the title screen plays while the rest of the init runs in
+  // its idle gaps (see ui/boot_screen.hpp).
   display.begin();
   Serial.println("✅ Display initialized!");
   delay(100);
@@ -177,51 +177,101 @@ void setup()
   }
 
   display.setupScroll(0, SCREEN_WIDTH, 0);
+  boot.begin();
 
-  Wire3.begin();
-  // Fast mode: both the MPR121 and the DRV2605L support 400kHz, and it cuts
-  // the per-loop wheel reads and haptic phase writes by ~4x.
-  Wire3.setClock(400000);
+  boot.runStep([] {
+    audioprof::begin();
+    player.setup();
+    player.audioPlayer.setDebugMonitorEnabled(enableAudioMonitor);
+    // From flash, so it plays without an SD card. The clip fits the audio
+    // fifo whole, so the feeder interrupt plays it out even while a long
+    // init step blocks the loop.
+    if (!player.audioPlayer.playClip(STARTUP_SOUND_MP3, STARTUP_SOUND_LEN))
+    {
+      Serial.println("❌ Startup sound not played");
+    }
+  });
+  // Ends the clip's stream once it's sent (the hold below waits for that).
+  boot.setIdle([] { player.audioPlayer.loop(); });
 
-  if (!cap.begin(MPR121_ADDR, &Wire3))
-  {
-    Serial.println("❌ MPR121 not found!");
-    while (1)
-      delay(1000);
-  }
+  boot.runStep([] {
+    musicLookup.init();
+    albumArt.init(musicLookup.getSD());
+    if (enableLinkBench)
+    {
+      runLinkBench(player.audioPlayer, musicLookup);
+    }
+  });
 
-  if (!wheel.begin())
-  {
-    Serial.println("❌ ClickWheel initialization failed!");
-    while (1)
-      delay(1000);
-  }
-  wheel.setIrqPin(MPR121_IRQ);
+  boot.runStep([] {
+    Wire3.begin();
+    // Fast mode: both the MPR121 and the DRV2605L support 400kHz, and it cuts
+    // the per-loop wheel reads and haptic phase writes by ~4x.
+    Wire3.setClock(400000);
+
+    if (!cap.begin(MPR121_ADDR, &Wire3))
+    {
+      Serial.println("❌ MPR121 not found!");
+      while (1)
+        delay(1000);
+    }
+
+    if (!wheel.begin())
+    {
+      Serial.println("❌ ClickWheel initialization failed!");
+      while (1)
+        delay(1000);
+    }
+    wheel.setIrqPin(MPR121_IRQ);
+    Serial.println("✅ ClickWheel initialized!");
+  });
+
+  boot.runStep([] {
+    // Haptics are optional: the pod stays usable without the DRV2605L.
+    if (enableHaptics && haptics.begin(&Wire3))
+    {
+      Serial.println("✅ Haptics initialized!");
+    }
+    else
+    {
+      Serial.println("❌ DRV2605L not found, haptics disabled");
+    }
+  });
+
+  boot.runStep([] {
+    Serial.println("Keep hands off wheel for baseline...");
+    wheel.takeBaseline();
+    wheel.setSensitivities(0.896, 1.0, 0.950, 0.913);
+  });
+
+  boot.runStep([] {
+    // --- MusicIndex initialization and artist/track search ---
+    if (!musicIndex.init(musicLookup.getLastPSRAMAddress()))
+    {
+      Serial.println("❌ Failed to initialize MusicIndex!");
+    }
+    state.getSearch().setIndex(&musicIndex);
+  });
+
+  boot.runStep([] {
+    ui.begin();
+    state.loadCurrentRouteData(musicLookup);
+  });
+
+  // The title screen stays until the startup sound has played; a skip cuts it.
+  boot.finish(ui, [] {
+    if (!player.audioPlayer.isClipPlaying())
+      return false;
+    if (!boot.wasSkipped())
+      return true;
+    player.audioPlayer.stopPlaying();
+    return false;
+  });
+
+  // The boot screen read the buttons directly; hand them to the wheel only
+  // once released, so a press that skipped the intro isn't replayed as a click.
+  boot.waitForRelease(1000);
   wheel.setButtonPins(BTN_CENTER, BTN_TOP, BTN_RIGHT, BTN_BOTTOM, BTN_LEFT);
-
-  Serial.println("✅ ClickWheel initialized!");
-
-  // Haptics are optional: the pod stays usable without the DRV2605L.
-  if (enableHaptics && haptics.begin(&Wire3))
-  {
-    Serial.println("✅ Haptics initialized!");
-  }
-  else
-  {
-    Serial.println("❌ DRV2605L not found, haptics disabled");
-  }
-  Serial.println("Keep hands off wheel for baseline...");
-  wheel.takeBaseline();
-  wheel.setSensitivities(0.896, 1.0, 0.950, 0.913);
-  // --- MusicIndex initialization and artist/track search ---
-  if (!musicIndex.init(musicLookup.getLastPSRAMAddress()))
-  {
-    Serial.println("❌ Failed to initialize MusicIndex!");
-  }
-  state.getSearch().setIndex(&musicIndex);
-  delay(100);
-  ui.begin();
-  state.loadCurrentRouteData(musicLookup);
 
   Serial.println("🎮 Ready! Controls:");
   Serial.println("- Scroll: Navigate list / adjust volume / seek");

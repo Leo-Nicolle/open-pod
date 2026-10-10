@@ -14,7 +14,6 @@ void PodPlayer::setup() {
   audioPlayer.setVolume(20, 20);
   Serial.println("\n=== VS1053 Register Status ===");
   audioPlayer.dumpRegisters();
-  audioPlayer.sineTest(0x44, 1000); // 1 second test tone
 
   state.addEventListener(onStateEvent);
 }
