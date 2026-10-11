@@ -132,6 +132,7 @@ void VS1053_driver::reset() {
   }
   updateClockSpeeds(0); // CLKI = XTALI until CLOCKF is written
   _flacPluginLoaded = false;
+  applyI2SOutput(); // a hardware reset turns I2S off
 }
 
 void VS1053_driver::softReset() {
@@ -142,6 +143,32 @@ void VS1053_driver::softReset() {
   // reading it at the slowest safe speed first.
   updateClockSpeeds(0);
   updateClockSpeeds(readRegister(VS1053_REG_CLOCKF));
+  applyI2SOutput(); // a software reset clears GPIO_DDR, so I2S too
+}
+
+void VS1053_driver::setI2SOutput(bool enabled) {
+  _i2sOutput = enabled;
+  if (enabled) {
+    applyI2SOutput();
+  } else {
+    writeRegister(VS1053_REG_WRAMADDR, VS1053_I2S_CONFIG);
+    writeRegister(VS1053_REG_WRAM, 0);
+  }
+}
+
+// Datasheet 11.14: GPIO4-7 as outputs, then I2S_CONFIG. 0x4 = enabled at
+// 48 kHz: SCLK = 12.288 MHz / 8 = 1.536 MHz, i.e. 16-bit words, which is what
+// the FSC-BT1035 expects with AT+I2SCFG=3 (see Bluetooth.hpp). The rate bits
+// can only change while I2S is disabled, hence the 0 first.
+void VS1053_driver::applyI2SOutput() {
+  if (!_i2sOutput)
+    return;
+  writeRegister(VS1053_REG_WRAMADDR, VS1053_I2S_CONFIG);
+  writeRegister(VS1053_REG_WRAM, 0);
+  writeRegister(VS1053_REG_WRAMADDR, VS1053_GPIO_DDR);
+  writeRegister(VS1053_REG_WRAM, 0x00F0);
+  writeRegister(VS1053_REG_WRAMADDR, VS1053_I2S_CONFIG);
+  writeRegister(VS1053_REG_WRAM, 0x0004);
 }
 
 // FIXED: Simplified SPI transaction management

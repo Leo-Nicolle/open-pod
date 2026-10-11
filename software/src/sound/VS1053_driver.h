@@ -80,6 +80,11 @@
 // WRAM parameter addresses
 #define VS1053_PARA_PLAYSPEED 0x1E04
 #define VS1053_PARA_ENDFILLBYTE 0x1E06
+
+// WRAM addresses of peripheral registers (datasheet 11.10, 11.14)
+#define VS1053_GPIO_DDR 0xC017
+#define VS1053_GPIO_IDATA 0xC018
+#define VS1053_I2S_CONFIG 0xC040
 // SC_MULT = 4.5x, no SC_ADD (SC_ADD only applies to WMA/AAC: the previous
 // 0x8800, "3.5x + 1.0x", actually ran FLAC at 3.5x = 43 MHz).
 #define VS1053_FLAC_SPEED VS1053_SC_MULT_4_5X
@@ -138,6 +143,11 @@ public:
   bool canJump();
   uint8_t getEndFillByte();
 
+  // I2S output (GPIO4 LROUT, GPIO6 SCLK, GPIO7 SDATA) to the Bluetooth
+  // module: 48 kHz master, 16-bit words, MCLK off. Kept across resets: both
+  // reset() and softReset() turn it back on.
+  void setI2SOutput(bool enabled);
+
   // Test functions
   void sineTest(uint8_t freq, uint16_t duration);
   void dumpRegisters();
@@ -174,6 +184,8 @@ private:
   uint32_t _sdiBaudBits = 0;
   void sendBurst(const uint8_t *data, size_t len);
   bool _flacPluginLoaded = false; // see isFLACPluginLoaded()
+  bool _i2sOutput = false;        // see setI2SOutput()
+  void applyI2SOutput();
 
   // Low-level SPI functions
   void initSPI();

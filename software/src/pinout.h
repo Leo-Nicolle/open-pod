@@ -32,7 +32,7 @@
 // Bluetooth FSC-BT1035 (USART1, 115200 8N1, AT commands)
 #define BT_UART_TX PB6 // STM32 TX -> BT_RX (module pin 14)
 #define BT_UART_RX PB7 // STM32 RX <- BT_TX (module pin 13)
-#define BT_RESET   PA15 // active low -> RESET (module pin 8)
+#define BT_SYS_CTRL PA15 // power-on -> SYS_CTRL (module pin 34), high > 20 ms boots
 
 // Click-wheel mechanical buttons (Alps SKQGAKE010), active low, INPUT_PULLUP
 #define BTN_TOP    PB5

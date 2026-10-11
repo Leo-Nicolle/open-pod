@@ -1,4 +1,5 @@
 #include "Adafruit_MPR121.h"
+#include "Bluetooth.hpp"
 #include "app/app.h"
 #include "logging.h"
 #include "pinout.h"
@@ -31,6 +32,7 @@ TwoWire Wire3(PB4, PA8);
 Adafruit_MPR121 cap = Adafruit_MPR121();
 ClickWheel wheel(&cap);
 Haptics haptics;
+Bluetooth bluetooth;
 
 void setup()
 {
@@ -46,6 +48,10 @@ void setup()
 
   LOG_INFO("=== OpenPod with ClickWheel (Event-Driven) ===");
   printResetCause();
+
+  // First, so the module boots (~1.5 s) and reconnects to the last device
+  // while the rest of the init runs; bluetooth.loop() finishes its setup.
+  bluetooth.begin();
 
   state.addEventListener(onNavigationStateEvent); // see app/input.cpp
 
@@ -65,6 +71,9 @@ void setup()
   boot.runStep([] {
     audioprof::begin();
     player.setup();
+    // The VS1053 also streams to the Bluetooth module over I2S. Before the
+    // startup sound, so it plays there too.
+    player.audioPlayer.getDriver().setI2SOutput(true);
     player.audioPlayer.setDebugMonitorEnabled(LOG_ENABLED(AUDIO_BUFFER));
     // From flash, so it plays without an SD card. The clip fits the audio
     // fifo whole, so the feeder interrupt plays it out even while a long
@@ -75,7 +84,10 @@ void setup()
     }
   });
   // Ends the clip's stream once it's sent (the hold below waits for that).
-  boot.setIdle([] { player.audioPlayer.loop(); });
+  boot.setIdle([] {
+    player.audioPlayer.loop();
+    bluetooth.loop();
+  });
 
   boot.runStep([] {
     musicLookup.init();
@@ -219,6 +231,8 @@ void loop()
 
   // Update audio progress periodically
   updateAudioProgress();
+
+  bluetooth.loop();
 
   // Optional trace visualization
   if (DEBUG_WHEEL_TRACE)

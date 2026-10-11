@@ -23,6 +23,8 @@
 //                     on/off and idle jumps.                    default 0
 //   LOG_UI            UI engine event chatter: scroll positions, list
 //                     pages, route changes, animations.         default 0
+//   LOG_BLUETOOTH     Every line to/from the Bluetooth module (AT
+//                     commands, answers, events).               default 0
 //   LOG_TELEMETRY     Teleplot ">name:value" lines (wheel deltas, buttons,
 //                     playback) at 20 Hz.                       default 0
 //
@@ -78,6 +80,9 @@
 #ifndef LOG_TELEMETRY
 #define LOG_TELEMETRY 0
 #endif
+#ifndef LOG_BLUETOOTH
+#define LOG_BLUETOOTH 0
+#endif
 
 #ifndef DEBUG_WHEEL_TRACE
 #define DEBUG_WHEEL_TRACE 0
@@ -99,6 +104,7 @@
 #define LOG_TAG_USER_INPUT "input"
 #define LOG_TAG_UI "ui"
 #define LOG_TAG_TELEMETRY "tele"
+#define LOG_TAG_BLUETOOTH "bt"
 
 #define LOG_ANSI_RESET "\033[0m"
 #define LOG_ANSI_RED "\033[31m"
