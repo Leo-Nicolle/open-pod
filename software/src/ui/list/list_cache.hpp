@@ -1,6 +1,7 @@
 #pragma once
 #include "../ui_types.h"
 #include "utils.h"
+#include "../../logging.h"
 #include <Arduino.h>
 
 /**
@@ -158,7 +159,7 @@ public:
    */
   void scrollUp(int delta, const char *newVisibleElements[ELEMENTS_PER_SCREEN]) {
     if (delta <= 0 || delta >= ELEMENTS_PER_SCREEN) {
-      Serial.println("PAGE CHANGE");
+      LOG_CAT(UI, "List cache: page change, rebuilding");
       build(newVisibleElements);
       return;
     }
@@ -191,7 +192,7 @@ public:
    */
   void scrollDown(int delta, const char *newVisibleElements[ELEMENTS_PER_SCREEN]) {
     if (delta <= 0 || delta >= ELEMENTS_PER_SCREEN) {
-      Serial.println("PAGE CHANGE");
+      LOG_CAT(UI, "List cache: page change, rebuilding");
       build(newVisibleElements);
       return;
     }
@@ -234,15 +235,15 @@ public:
         validEntries++;
     }
 
-    Serial.println("=== Cache Statistics ===");
-    Serial.println("Cache size: " + String(cacheWidth) + "x" +
-                   String(cacheHeight));
-    Serial.println("Bits per pixel: " + String(bitsPerPixel));
-    Serial.println("Bytes per element: " + String(bytesPerElement));
-    Serial.println("Valid entries: " + String(validEntries) + "/" +
-                   String(ELEMENTS_PER_SCREEN));
-    Serial.println("Total memory: " +
-                   String(bytesPerElement * ELEMENTS_PER_SCREEN) + " bytes");
+    LOG_INFO("=== Cache Statistics ===\n"
+             "Cache size: %dx%d\n"
+             "Bits per pixel: %d\n"
+             "Bytes per element: %d\n"
+             "Valid entries: %d/%d\n"
+             "Total memory: %d bytes",
+             (int)cacheWidth, (int)cacheHeight, (int)bitsPerPixel,
+             (int)bytesPerElement, validEntries, ELEMENTS_PER_SCREEN,
+             (int)(bytesPerElement * ELEMENTS_PER_SCREEN));
   }
 
 };

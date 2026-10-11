@@ -3,6 +3,7 @@
  */
 
 #include "AudioPlayer.h"
+#include "../logging.h"
 #include "AudioProfiler.h"
 #include "Spi1Bus.h"
 #include "RefillPolicy.h"
@@ -30,8 +31,7 @@ AudioPlayer::~AudioPlayer() {
 }
 
 bool AudioPlayer::begin(uint32_t spiFreq, uint32_t sdFreq) {
-  Serial.println(
-      "Initializing AudioPlayer with enhanced clock configuration...");
+  LOG_CAT(VS1053, "Initializing AudioPlayer with enhanced clock configuration...");
 
   if (!_driver.begin(spiFreq)) {
     return false;
@@ -40,7 +40,7 @@ bool AudioPlayer::begin(uint32_t spiFreq, uint32_t sdFreq) {
   // No SD card is not fatal: the feeder still comes up, so clips from flash
   // (the startup sound) play; file playback then fails to open its files.
   if (!_buffer.begin(sdFreq)) {
-    Serial.println("AudioPlayer: no SD card, only clips from memory will play");
+    LOG_WARN("AudioPlayer: no SD card, only clips from memory will play");
   }
   _buffer.setFrontFifo(&_fifo);
   audioYieldHook() = &AudioPlayer::yieldHook;
@@ -56,15 +56,15 @@ bool AudioPlayer::begin(uint32_t spiFreq, uint32_t sdFreq) {
   spi1bus::onFreed = []() { TIM7->EGR = TIM_EGR_UG; };
 
   // Display audio capabilities after optimal clock configuration
-  Serial.printf("Audio system ready - Max sample rate: %lu Hz\n",
-                _driver.getMaxSampleRate());
+  LOG_INFO("Audio system ready - Max sample rate: %lu Hz",
+           _driver.getMaxSampleRate());
 
   return true;
 }
 
 bool AudioPlayer::startPlaying(const char *filename,
                                uint32_t knownDurationSeconds) {
-  Serial.printf("Starting playback: %s\n", filename);
+  LOG_INFO("Starting playback: %s", filename);
   unsigned long startMs = millis();
   stopPlaying(); // asynchronous: usually still running below
 
@@ -115,9 +115,9 @@ bool AudioPlayer::startPlaying(const char *filename,
     onDecoderReady(); // otherwise when the stop completes (serviceStop())
   }
   updateFeeder();
-  Serial.printf("Track started in %lu ms (%u bytes primed%s)\n",
-                millis() - startMs, (unsigned)primed,
-                stopping() ? ", previous stream still stopping" : "");
+  LOG_CAT(AUDIO_BUFFER, "Track started in %lu ms (%u bytes primed%s)",
+          millis() - startMs, (unsigned)primed,
+          stopping() ? ", previous stream still stopping" : "");
   return true;
 }
 
@@ -260,7 +260,7 @@ void AudioPlayer::serviceStop() {
 }
 
 void AudioPlayer::abortStop() {
-  Serial.println("Cancel didn't complete, soft reset");
+  LOG_WARN("Cancel didn't complete, soft reset");
   _feederEnabled = false;
   _fifo.reset();
   _driver.softReset(); // also wipes the FLAC plugin
@@ -271,9 +271,9 @@ void AudioPlayer::abortStop() {
 }
 
 void AudioPlayer::stopDone() {
-  Serial.printf("End fill sequence (%s) completed in %lu ms\n",
-                _stopEndOfStream ? "end of stream" : "cancel",
-                millis() - _stopStartMs);
+  LOG_CAT(AUDIO_BUFFER, "End fill sequence (%s) completed in %lu ms",
+          _stopEndOfStream ? "end of stream" : "cancel",
+          millis() - _stopStartMs);
   _stopPhase = StopPhase::None;
   updateFeeder();
   if (_playing) {
@@ -422,7 +422,7 @@ void AudioPlayer::loop() {
   // Everything has been handed to the feeder and it sent the last byte:
   // the end fill sequence (in stopPlaying) plays out what the chip holds.
   if (!stopping() && _buffer.isFileExhausted()) {
-    Serial.println("End of audio data reached");
+    LOG_CAT(AUDIO_BUFFER, "End of audio data reached");
     _trackEnded = true;
     stopPlaying(true);
     return;
@@ -490,21 +490,21 @@ void AudioPlayer::loop() {
     if (_monitorEnabled) {
       // One line a second; see docs/blog/09-10.md, "Reading the
       // diagnostics".
-      Serial.printf(
-          "[audio] runway=%lu.%lus min=%lu.%lus rate=%luKB/s buf=%uKB "
-          "fifoMin=%uKB underrun=%lu stall=%lums tick=%luus load=%lums "
-          "chunk=%luus%s\n",
-          (unsigned long)(runway / 1000), (unsigned long)(runway % 1000 / 100),
-          (unsigned long)(_monitorMinRunwayMs / 1000),
-          (unsigned long)(_monitorMinRunwayMs % 1000 / 100),
-          (unsigned long)(streamBytesPerSecond() / 1000),
-          (unsigned)(buffered / 1024), (unsigned)(_monitorMinFifo / 1024),
-          (unsigned long)_isrUnderruns,
-          (unsigned long)(_isrMaxStall * 1000 / FEEDER_HZ),
-          (unsigned long)(_isrMaxTickGapCycles / (SystemCoreClock / 1000000UL)),
-          (unsigned long)(_monitorLoadUs / 1000),
-          (unsigned long)_buffer.getChunkCostUs(),
-          _refilling ? " refilling" : "");
+      LOG_CAT(AUDIO_BUFFER,
+              "runway=%lu.%lus min=%lu.%lus rate=%luKB/s buf=%uKB "
+              "fifoMin=%uKB underrun=%lu stall=%lums tick=%luus load=%lums "
+              "chunk=%luus%s",
+              (unsigned long)(runway / 1000), (unsigned long)(runway % 1000 / 100),
+              (unsigned long)(_monitorMinRunwayMs / 1000),
+              (unsigned long)(_monitorMinRunwayMs % 1000 / 100),
+              (unsigned long)(streamBytesPerSecond() / 1000),
+              (unsigned)(buffered / 1024), (unsigned)(_monitorMinFifo / 1024),
+              (unsigned long)_isrUnderruns,
+              (unsigned long)(_isrMaxStall * 1000 / FEEDER_HZ),
+              (unsigned long)(_isrMaxTickGapCycles / (SystemCoreClock / 1000000UL)),
+              (unsigned long)(_monitorLoadUs / 1000),
+              (unsigned long)_buffer.getChunkCostUs(),
+              _refilling ? " refilling" : "");
     }
     resetMonitorWindow(loopEnterMs);
   }
@@ -638,8 +638,8 @@ bool AudioPlayer::seekBySeconds(int deltaSeconds) {
 }
 
 bool AudioPlayer::configureAudioQuality(uint32_t targetSampleRate) {
-  Serial.printf("Configuring audio quality for %lu Hz target sample rate\n",
-                targetSampleRate);
+  LOG_INFO("Configuring audio quality for %lu Hz target sample rate",
+           targetSampleRate);
 
   // Stop any current playback
   bool wasPlaying = _playing;
@@ -653,8 +653,7 @@ bool AudioPlayer::configureAudioQuality(uint32_t targetSampleRate) {
 
   // For very high sample rates, we might need a higher crystal frequency
   if (targetSampleRate > 96000) {
-    Serial.println(
-        "Warning: Target sample rate > 96kHz may require 24.576MHz crystal");
+    LOG_WARN("Target sample rate > 96kHz may require 24.576MHz crystal");
     xtalFreq = VS1053_XTALI_24_576MHZ;
   }
 
@@ -663,54 +662,53 @@ bool AudioPlayer::configureAudioQuality(uint32_t targetSampleRate) {
 
   if (success) {
     uint32_t maxSampleRate = _driver.getMaxSampleRate();
-    Serial.printf("Audio quality configured - Max sample rate: %lu Hz\n",
-                  maxSampleRate);
+    LOG_INFO("Audio quality configured - Max sample rate: %lu Hz",
+             maxSampleRate);
 
     if (maxSampleRate >= targetSampleRate) {
-      Serial.printf("Target sample rate %lu Hz is supported\n",
-                    targetSampleRate);
+      LOG_INFO("Target sample rate %lu Hz is supported",
+               targetSampleRate);
     } else {
-      Serial.printf(
-          "Warning: Target sample rate %lu Hz exceeds maximum %lu Hz\n",
+      LOG_WARN("Target sample rate %lu Hz exceeds maximum %lu Hz",
           targetSampleRate, maxSampleRate);
     }
   } else {
-    Serial.println("Failed to configure audio quality");
+    LOG_ERROR("Failed to configure audio quality");
   }
 
   return success;
 }
 
 bool AudioPlayer::testBasicPlayback() {
-  Serial.println("=== VS1053 Basic Playback Test ===");
+  LOG_INFO("=== VS1053 Basic Playback Test ===");
 
   // Test 1: Check if VS1053 is responsive
   uint16_t status = _driver.readRegister(VS1053_REG_STATUS);
-  Serial.printf("VS1053 Status: 0x%04X\n", status);
+  LOG_INFO("VS1053 Status: 0x%04X", status);
 
   if (!(status & 0x0040)) {
-    Serial.println("ERROR: VS1053 not responding!");
+    LOG_ERROR("VS1053 not responding!");
     return false;
   }
 
   // Test 2: Check clock configuration
   uint16_t clockf = _driver.readRegister(VS1053_REG_CLOCKF);
-  Serial.printf("Clock Config: 0x%04X\n", clockf);
+  LOG_INFO("Clock Config: 0x%04X", clockf);
 
   // Test 3: Check DREQ pin
   bool dreqStatus = _driver.readyForData();
-  Serial.printf("DREQ Status: %s\n",
-                dreqStatus ? "HIGH (Ready)" : "LOW (Busy)");
+  LOG_INFO("DREQ Status: %s",
+           dreqStatus ? "HIGH (Ready)" : "LOW (Busy)");
 
   // Test 4: Check volume setting
   uint16_t volume = _driver.readRegister(VS1053_REG_VOLUME);
-  Serial.printf("Volume: 0x%04X\n", volume);
+  LOG_INFO("Volume: 0x%04X", volume);
 
   // Test 5: Simple sine wave test
-  Serial.println("Testing sine wave generation...");
+  LOG_INFO("Testing sine wave generation...");
   _driver.sineTest(0x44, 500); // 500ms test tone
 
-  Serial.println("Basic test completed");
+  LOG_INFO("Basic test completed");
   return true;
 }
 

@@ -15,6 +15,7 @@
 // purely "given a byte range in thumbs.bin, get those pixels into a
 // buffer."
 #include "../sound/AudioYield.h"
+#include "../logging.h"
 #include <Arduino.h>
 #include <SdFat.h>
 #include <stdint.h>
@@ -35,7 +36,7 @@ public:
   bool init(SdFat &sd) {
     ready = thumbsFile.open("/openpod/thumbs.bin", O_RDONLY);
     if (!ready) {
-      Serial.println("ERROR: AlbumArt could not open /openpod/thumbs.bin");
+      LOG_ERROR("AlbumArt could not open /openpod/thumbs.bin");
     }
     return ready;
   }

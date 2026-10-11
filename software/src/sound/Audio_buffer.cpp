@@ -1,4 +1,5 @@
 #include "Audio_buffer.h"
+#include "../logging.h"
 #include "../storage/SharedSpiDriver.h"
 
 Audio_buffer::Audio_buffer(uint8_t sdCS) : _sdCS(sdCS) {
@@ -16,7 +17,7 @@ Audio_buffer::~Audio_buffer() {
 
 bool Audio_buffer::begin(uint32_t sdFreq) {
   if (!_sd.begin(OPENPOD_SD_CONFIG(_sdCS))) {
-    Serial.println("SD card initialization failed");
+    LOG_ERROR("SD card initialization failed");
     return false;
   }
   initializePSRAM();
@@ -26,7 +27,7 @@ bool Audio_buffer::begin(uint32_t sdFreq) {
 bool Audio_buffer::initializePSRAM() {
 
   if (!psram.init()) {
-    Serial.println("PSRAM init or test failed");
+    LOG_ERROR("PSRAM init or test failed");
     return false;
   }
   // NOTE: must stay AUDIO_BUFFER_BASE_ADDRESS, not some other offset - the
@@ -38,7 +39,7 @@ bool Audio_buffer::initializePSRAM() {
   // from.
   _psramBaseAddress = AUDIO_BUFFER_BASE_ADDRESS;
 
-  Serial.printf("PSRAM OK: %d bytes\n", _psramBufferSize);
+  LOG_INFO("PSRAM OK: %lu bytes", (unsigned long)_psramBufferSize);
   resetRingBuffer();
   return true;
 }
@@ -82,7 +83,7 @@ bool Audio_buffer::openFile(bool nextFile) {
   size_t &fsize = nextFile ? _nextFileSize : fileSize;
 
   if (!f.open(fname, O_RDONLY)) {
-    Serial.printf("Can't open: %s\n", fname);
+    LOG_ERROR("Can't open: %s", fname);
     return false;
   }
   fsize = f.size();
@@ -136,9 +137,9 @@ bool Audio_buffer::SDtoPSRAM(bool nextFile) {
       // f.size() returns uint64_t, so passing it straight to %d/%lu misaligns
       // the varargs and garbles the log. Print the already-correct size_t
       // (fsize) and uint32_t duration with matching specifiers instead.
-      Serial.printf("Loading file: %s, size: %u bytes, ~%u s\n",
-                    _currentFileName, (unsigned)fsize,
-                    (unsigned)_durationSeconds);
+      LOG_CAT(AUDIO_BUFFER, "Loading file: %s, size: %u bytes, ~%u s",
+              _currentFileName, (unsigned)fsize,
+              (unsigned)_durationSeconds);
     }
   }
 
@@ -245,8 +246,8 @@ uint32_t Audio_buffer::skipFLACMetadata(FsFile &f, uint32_t start,
   header[6] = 0;
   header[7] = 34;
   appendToDestination(nextFile, header, sizeof(header));
-  Serial.printf("FLAC: skipped %lu bytes of metadata\n",
-                (unsigned long)(pos - start - 4 - 4 - 34));
+  LOG_CAT(AUDIO_BUFFER, "FLAC: skipped %lu bytes of metadata",
+          (unsigned long)(pos - start - 4 - 4 - 34));
   return pos;
 }
 bool Audio_buffer::load(size_t targetBufferedBytes,
@@ -347,12 +348,12 @@ bool Audio_buffer::consumeNextTrackIfMatches(const char *filename,
         srcOffset += chunk;
         remaining -= chunk;
       }
-      Serial.printf("Adopted %lu prefetched bytes for %s\n", adoptBytes,
-                    filename);
+      LOG_CAT(AUDIO_BUFFER, "Adopted %lu prefetched bytes for %s",
+              (unsigned long)adoptBytes, filename);
       adopted = true;
     } else {
-      Serial.printf("Adopt: failed to reopen prefetched track: %s\n",
-                    filename);
+      LOG_WARN("Adopt: failed to reopen prefetched track: %s",
+               filename);
     }
   }
 

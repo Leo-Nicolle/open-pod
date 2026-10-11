@@ -3,6 +3,7 @@
 #include "../theme.h"
 #include "../ui_types.h"
 #include "list_cache.hpp"
+#include "../../logging.h"
 #include <Arduino.h>
 
 /**
@@ -43,25 +44,18 @@ public:
 
   void printDebugInfo() {
     int bitsPerPixel = cache.getBitsPerPixel();
-    Serial.print("ListRenderer: bitsPerPixel=");
-    Serial.println(bitsPerPixel);
-    Serial.print("maxPixelValue=");
-    Serial.println(maxPixelValue);
+    LOG_INFO("ListRenderer: bitsPerPixel=%d\nmaxPixelValue=%d", bitsPerPixel,
+             maxPixelValue);
 
     // blendColor(COLOR_BG, COLOR_TEXT, alpha)
     // Normal blend table - text on background (0 = background, max = text)
-    Serial.println("Normal Blend:");
+    LOG_INFO("Normal Blend:");
     for (int i = 0; i <= maxPixelValue; i++) {
       float alpha = (float)i / maxPixelValue;
-      Serial.print("Alpha:  ");
-      Serial.print(alpha, 2);
-      Serial.print(" BACK ");
-      Serial.print(COLOR_BG, HEX);
-      Serial.print(" TEXT ");
-      Serial.print(COLOR_TEXT, HEX);
-      Serial.print(" -> Color: ");
       uint16_t color = blendColor(COLOR_BG, COLOR_TEXT, alpha);
-      Serial.println(color, HEX);
+      int alpha100 = (int)(alpha * 100 + 0.5f); // no %f in nano printf
+      LOG_INFO("Alpha:  %d.%02d BACK %X TEXT %X -> Color: %X", alpha100 / 100,
+               alpha100 % 100, COLOR_BG, COLOR_TEXT, color);
     }
   }
   /**

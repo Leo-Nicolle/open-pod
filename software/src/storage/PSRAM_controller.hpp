@@ -3,6 +3,7 @@
 #include <SPI.h>
 #include "../pinout.h"
 #include "../sound/AudioProfiler.h"
+#include "../logging.h"
 
 // APS6404L-3SQR-SN is a 64-Megabit chip, i.e. 8 MB - not 64 MB. This used to
 // be defined as (64 * 1024 * 1024) (confusing Mbit with MB), which made
@@ -230,7 +231,7 @@ public:
 
   bool init() {
     if (initialized) return true;
-    Serial.println("=== PSRAM INIT START ===");
+    LOG_INFO("=== PSRAM INIT START ===");
     Serial.flush();
 
     setupPins();
@@ -244,12 +245,7 @@ public:
 
       uint8_t id[2] = {0, 0};
       readDeviceID(id);
-      Serial.print("PSRAM ID attempt ");
-      Serial.print(attempt);
-      Serial.print(": 0x");
-      Serial.print(id[0], HEX);
-      Serial.print(" 0x");
-      Serial.println(id[1], HEX);
+      LOG_INFO("PSRAM ID attempt %d: 0x%X 0x%X", (int)attempt, id[0], id[1]);
 
       if (id[0] == 0x0D && id[1] == 0x5D) {
         initialized = true;
@@ -260,7 +256,7 @@ public:
       delay(5);
     }
 
-    Serial.println("PSRAM init failed");
+    LOG_ERROR("PSRAM init failed");
     return false;
   }
 
@@ -311,16 +307,16 @@ public:
       // before) rather than crawl.
       setMaxBurst(tcemBurstBytes() >= MIN_USEFUL_BURST ? tcemBurstBytes() : 0);
       if (selfTest()) {
-        Serial.printf("PSRAM OK: SPI %lu Hz, %s\n",
-                      (unsigned long)actualClockHz(),
-                      maxBurst ? "tCEM-sized bursts"
+        LOG_INFO("PSRAM OK: SPI %lu Hz, %s",
+                 (unsigned long)actualClockHz(),
+                 maxBurst ? "tCEM-sized bursts"
                                : "unbounded bursts (tCEM NOT met)");
         return;
       }
-      Serial.printf("PSRAM pattern test failed at %lu Hz\n",
-                    (unsigned long)actualClockHz());
+      LOG_WARN("PSRAM pattern test failed at %lu Hz",
+               (unsigned long)actualClockHz());
     }
-    Serial.println("PSRAM: no speed passed the pattern test, using 5.6 MHz");
+    LOG_WARN("PSRAM: no speed passed the pattern test, using 5.6 MHz");
   }
 
   void writeData(uint32_t address, const uint8_t *data, uint32_t size) {

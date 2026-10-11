@@ -8,6 +8,7 @@
 // no-ops there.
 
 #include <Arduino.h>
+#include "../logging.h"
 
 namespace audioprof {
 
@@ -100,20 +101,21 @@ inline void report() {
   static const char *const names[CATEGORY_COUNT] = {
       "sd", "psW", "psR", "vsClk", "vsWait", "audio", "ui", "isr"};
   const uint32_t cyclesPerUs = SystemCoreClock / 1000000UL;
-  Serial.printf("[prof %lums] loops=%lu maxLoop=%lums", windowMs,
-                (unsigned long)st.loops,
-                (unsigned long)(st.maxLoopCycles / cyclesPerUs / 1000));
+  // One line, built in pieces (report() only runs with LOG_AUDIO_BUFFER).
+  LOG_RAW(LOG_AUDIO_BUFFER, "[prof %lums] loops=%lu maxLoop=%lums", windowMs,
+          (unsigned long)st.loops,
+          (unsigned long)(st.maxLoopCycles / cyclesPerUs / 1000));
   for (int i = 0; i < CATEGORY_COUNT; i++) {
     Slot &s = st.slots[i];
     if (s.count == 0) continue;
-    Serial.printf(" | %s %lums max%luus", names[i],
-                  (unsigned long)(s.cycles / cyclesPerUs / 1000),
-                  (unsigned long)(s.maxCycles / cyclesPerUs));
+    LOG_RAW(LOG_AUDIO_BUFFER, " | %s %lums max%luus", names[i],
+            (unsigned long)(s.cycles / cyclesPerUs / 1000),
+            (unsigned long)(s.maxCycles / cyclesPerUs));
     if (s.bytes > 0) {
-      Serial.printf(" %luKB", (unsigned long)(s.bytes / 1024));
+      LOG_RAW(LOG_AUDIO_BUFFER, " %luKB", (unsigned long)(s.bytes / 1024));
     }
   }
-  Serial.println();
+  LOG_RAW(LOG_AUDIO_BUFFER, "\n");
   for (int i = 0; i < CATEGORY_COUNT; i++) {
     st.slots[i] = Slot();
   }

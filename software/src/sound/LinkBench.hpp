@@ -1,14 +1,15 @@
 #pragma once
 // Boot-time throughput bench for every link of the audio path:
 //   SD -> MCU (SPI1, SdFat), MCU <-> PSRAM (SPI2), MCU -> VS1053 (SPI1).
-// Enabled with enableLinkBench in main.cpp. Prints one line per measurement;
-// leaves every bus setting as it found it.
+// Enabled with -DDEBUG_LINK_BENCH=1 (see logging.h). Prints one line per
+// measurement (at LOG_LEVEL 2); leaves every bus setting as it found it.
 
 #include <Arduino.h>
 #include <SPI.h>
 #include <SdFat.h>
 #include "AudioPlayer.h"
 #include "Spi1Bus.h"
+#include "../logging.h"
 #include "../storage/Music_lookup.h"
 #include "../storage/PSRAM_controller.hpp"
 
@@ -25,9 +26,9 @@ inline uint32_t usSince(uint32_t startCycles) {
 }
 
 inline void printRate(const char *what, uint32_t bytes, uint32_t us) {
-  Serial.printf("  %-44s %7lu B in %7lu us = %5lu KB/s\n", what,
-                (unsigned long)bytes, (unsigned long)us,
-                (unsigned long)(us ? (uint64_t)bytes * 1000000ULL / us / 1024
+  LOG_INFO("  %-44s %7lu B in %7lu us = %5lu KB/s", what,
+           (unsigned long)bytes, (unsigned long)us,
+           (unsigned long)(us ? (uint64_t)bytes * 1000000ULL / us / 1024
                                    : 0));
 }
 
@@ -63,7 +64,7 @@ inline bool findAudioFile(FsFile &dir, char *path, size_t pathLen, int depth,
 }
 
 inline void benchSD(SdFat &sd) {
-  Serial.println("[bench] SD -> MCU (SPI1, SdFat)");
+  LOG_INFO("[bench] SD -> MCU (SPI1, SdFat)");
   char path[256] = "";
   FsFile root = sd.open("/");
   bool found = findAudioFile(root, path, sizeof(path), 0, ".flac");
@@ -75,10 +76,10 @@ inline void benchSD(SdFat &sd) {
     root.close();
   }
   if (!found) {
-    Serial.println("  no .flac/.mp3 file found, skipped");
+    LOG_INFO("  no .flac/.mp3 file found, skipped");
     return;
   }
-  Serial.printf("  file: %s\n", path);
+  LOG_INFO("  file: %s", path);
   FsFile f = sd.open(path, O_RDONLY);
   static const uint32_t TOTAL = 256 * 1024;
   const uint32_t chunkSizes[] = {512, 4096, BUF_LEN};
@@ -150,12 +151,12 @@ inline void benchPsramRetention(const char *label) {
       if (buf[i] != (uint8_t)((off + i) * 13 >> 3)) errors++;
     }
   }
-  Serial.printf("  %-44s %lu bad bytes / 1 MB\n", label,
-                (unsigned long)errors);
+  LOG_INFO("  %-44s %lu bad bytes / 1 MB", label,
+           (unsigned long)errors);
 }
 
 inline void benchPsram() {
-  Serial.println("[bench] MCU <-> PSRAM (SPI2)");
+  LOG_INFO("[bench] MCU <-> PSRAM (SPI2)");
   uint32_t savedClock = psram.getClock();
   uint32_t savedBurst = psram.getMaxBurst();
   static const uint32_t LEN = 64 * 1024;
@@ -197,10 +198,10 @@ inline void benchPsram() {
 // (nothing listens, no DREQ involved): the old one-call-per-byte path vs the
 // bulk 32-byte bursts sendData() now uses.
 inline void benchVs1053(AudioPlayer &player) {
-  Serial.println("[bench] MCU -> VS1053 SDI (SPI1, clocking only)");
-  Serial.printf("  driver: SCI %lu Hz, SDI %lu Hz requested\n",
-                (unsigned long)player.getDriver().getSciFreq(),
-                (unsigned long)player.getDriver().getSdiFreq());
+  LOG_INFO("[bench] MCU -> VS1053 SDI (SPI1, clocking only)");
+  LOG_INFO("  driver: SCI %lu Hz, SDI %lu Hz requested",
+           (unsigned long)player.getDriver().getSciFreq(),
+           (unsigned long)player.getDriver().getSdiFreq());
   static const uint32_t LEN = 8 * 1024;
   memset(buf, 0, LEN);
   spi1bus::Lock lock;
@@ -225,16 +226,16 @@ inline void benchVs1053(AudioPlayer &player) {
 } // namespace linkbench
 
 inline void runLinkBench(AudioPlayer &player, MusicLookup &lookup) {
-  Serial.println("=== LINK BENCH ===");
+  LOG_INFO("=== LINK BENCH ===");
   linkbench::buf = player.benchScratch();
-  Serial.printf("core %lu MHz, PCLK1 %lu MHz, PCLK2 %lu MHz\n",
-                (unsigned long)(SystemCoreClock / 1000000),
-                (unsigned long)(HAL_RCC_GetPCLK1Freq() / 1000000),
-                (unsigned long)(HAL_RCC_GetPCLK2Freq() / 1000000));
+  LOG_INFO("core %lu MHz, PCLK1 %lu MHz, PCLK2 %lu MHz",
+           (unsigned long)(SystemCoreClock / 1000000),
+           (unsigned long)(HAL_RCC_GetPCLK1Freq() / 1000000),
+           (unsigned long)(HAL_RCC_GetPCLK2Freq() / 1000000));
   linkbench::benchSD(lookup.getSD());
   linkbench::benchPsram();
   linkbench::benchVs1053(player);
   linkbench::buf = nullptr;
-  Serial.println("=== LINK BENCH DONE ===");
+  LOG_INFO("=== LINK BENCH DONE ===");
   Serial.flush();
 }

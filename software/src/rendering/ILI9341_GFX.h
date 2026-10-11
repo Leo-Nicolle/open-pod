@@ -1,6 +1,7 @@
 #pragma once
 #include "rendering/ILI9341_driver.h"
 #include "sound/Spi1Bus.h"
+#include "logging.h"
 #include "ui/theme.h" // diagnostic-only: lets runDisplayDiagnostics() test the
                        // app's actual COLOR_* values, not just generic test colors
 #include <Adafruit_GFX.h>
@@ -141,31 +142,33 @@ public:
     // pulseWR(). See the BROKEN_NUCLEO note in ILI9341_driver.h.
     writeBrokenBits(color);
 #endif
+    volatile uint32_t &bus = portCReg();
+    const uint32_t word = portCWord(color);
     while (pixels > 0) {
       uint32_t n = pixels < PIXEL_SLICE ? pixels : PIXEL_SLICE;
       pixels -= n;
       spi1bus::Lock busLock;
       while (n >= 8) {
-        GPIOC->ODR = color;
+        bus = word;
         pulseWR();
-        GPIOC->ODR = color;
+        bus = word;
         pulseWR();
-        GPIOC->ODR = color;
+        bus = word;
         pulseWR();
-        GPIOC->ODR = color;
+        bus = word;
         pulseWR();
-        GPIOC->ODR = color;
+        bus = word;
         pulseWR();
-        GPIOC->ODR = color;
+        bus = word;
         pulseWR();
-        GPIOC->ODR = color;
+        bus = word;
         pulseWR();
-        GPIOC->ODR = color;
+        bus = word;
         pulseWR();
         n -= 8;
       }
       while (n--) {
-        GPIOC->ODR = color;
+        bus = word;
         pulseWR();
       }
     }
@@ -179,7 +182,7 @@ public:
     // writeBrokenBits() call each iteration.
     while (count--) {
       uint16_t px = *colors++;
-      GPIOC->ODR = px;
+      GPIOC->BSRR = portCWord(px);
       writeBrokenBits(px);
       pulseWR();
     }
@@ -312,10 +315,9 @@ public:
         {0xFFFF, "WHITE"}, {0x8410, "GREY (50%)"}, {0x0000, "BLACK"},
     };
 
-    Serial.println("=== Display diagnostics: solid color pass ===");
+    LOG_INFO("=== Display diagnostics: solid color pass ===");
     for (auto &s : solids) {
-      Serial.print("Filling screen with ");
-      Serial.println(s.name);
+      LOG_INFO("Filling screen with %s", s.name);
       fillScreen(s.color);
       delay(2000);
     }
@@ -329,12 +331,9 @@ public:
         {COLOR_DIM, "COLOR_DIM"},     {COLOR_MUTED, "COLOR_MUTED"},
         {COLOR_SURFACE, "COLOR_SURFACE"}, {COLOR_ACCENT, "COLOR_ACCENT"},
     };
-    Serial.println("=== Display diagnostics: theme.h macro pass ===");
+    LOG_INFO("=== Display diagnostics: theme.h macro pass ===");
     for (auto &s : themed) {
-      Serial.print("Filling screen with ");
-      Serial.print(s.name);
-      Serial.print(" = 0x");
-      Serial.println(s.color, HEX);
+      LOG_INFO("Filling screen with %s = 0x%X", s.name, s.color);
       fillScreen(s.color);
       delay(2000);
     }
@@ -350,7 +349,7 @@ public:
     // edge). This test forces exactly that: a fine black/white checkerboard
     // sent through pushPixels(), maximally alternating bits 14/15 on every
     // pixel.
-    Serial.println("=== Display diagnostics: pushPixels rapid black/white alternation ===");
+    LOG_INFO("=== Display diagnostics: pushPixels rapid black/white alternation ===");
     {
       static uint16_t checkerRow[320];
       for (int i = 0; i < _width; i++) {
@@ -363,8 +362,9 @@ public:
       delay(2000);
     }
 
-    Serial.println("=== Display diagnostics: data bus walk (D0..D15, PC0-PC15) ===");
-    Serial.println("Left-most stripe = D0, right-most = D15. A black stripe = that line isn't getting through.");
+    LOG_INFO("=== Display diagnostics: data bus walk (D0..D15, PC0-PC15) ===\n"
+             "Left-most stripe = D0, right-most = D15. A black stripe = that "
+             "line isn't getting through.");
     fillScreen(0x0000);
     int stripeWidth = _width / 16;
     for (int bit = 0; bit < 16; bit++) {
@@ -372,7 +372,7 @@ public:
     }
     delay(2000);
 
-    Serial.println("=== Display diagnostics done ===");
+    LOG_INFO("=== Display diagnostics done ===");
   }
 
   // Performance testing
@@ -385,11 +385,11 @@ public:
     uint32_t elapsed = micros() - start;
 
     uint32_t pixels = (uint32_t)_width * _height * 4;        // 4 screens
-    float rate = (pixels * 1000000.0) / elapsed / 1000000.0; // MPixels/sec
+    // MPixels/sec with 2 decimals (no %f in nano printf)
+    uint32_t rate100 = elapsed ? (uint32_t)((uint64_t)pixels * 100 / elapsed) : 0;
 
-    Serial.print("Fill rate: ");
-    Serial.print(rate);
-    Serial.println(" MPixels/sec");
+    LOG_INFO("Fill rate: %lu.%02lu MPixels/sec", (unsigned long)(rate100 / 100),
+             (unsigned long)(rate100 % 100));
 
     return elapsed;
   }

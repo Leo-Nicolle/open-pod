@@ -1,6 +1,7 @@
 #include "Music_index.h"
 #include "SharedSpiDriver.h"
 #include "../sound/AudioYield.h"
+#include "../logging.h"
 
 MusicIndex::MusicIndex( uint32_t psram_base_addr)
     : base_address(psram_base_addr),
@@ -16,26 +17,25 @@ MusicIndex::~MusicIndex() {
 
 bool MusicIndex::init(uint32_t base_address) {
   this->base_address = base_address;
-  Serial.println("=== MUSIC INDEX INIT ===");
-  Serial.print("Loading index from: ");
-  Serial.println(index_filename);
+  LOG_INFO("=== MUSIC INDEX INIT ===");
+  LOG_CAT(INDEX_USAGE, "Loading index from: %s", index_filename);
 
   // The index lives in PSRAM: make sure it's up (idempotent) rather than
   // relying on another subsystem having initialized it first.
   if (!psram.init()) {
-    Serial.println("ERROR: PSRAM initialization failed");
+    LOG_ERROR("PSRAM initialization failed");
     return false;
   }
 
   // Initialize SD card with default SPI configuration
   if (!sd.begin(OPENPOD_SD_CONFIG(CARDCS))) {
-    Serial.println("ERROR: SD card initialization failed");
+    LOG_ERROR("SD card initialization failed");
     return false;
   }
 
   // Load the binary trie data from SD card to PSRAM
   if (!loadFromSDCard(index_filename)) {
-    Serial.println("ERROR: Failed to load music index from SD card");
+    LOG_ERROR("Failed to load music index from SD card");
     return false;
   }
 
@@ -54,33 +54,32 @@ bool MusicIndex::init(uint32_t base_address) {
   // Clear cache since we loaded new data
   clearCache();
 
-  Serial.println("Music index loaded successfully!");
+  LOG_INFO("Music index loaded successfully!");
   // printStats();
 
   return true;
 }
 
 bool MusicIndex::initWithSDConfig(SdSpiConfig sdConfig, const char *index_filename) {
-  Serial.println("=== MUSIC INDEX INIT WITH CUSTOM CONFIG ===");
-  Serial.print("Loading index from: ");
-  Serial.println(index_filename);
+  LOG_INFO("=== MUSIC INDEX INIT WITH CUSTOM CONFIG ===");
+  LOG_CAT(INDEX_USAGE, "Loading index from: %s", index_filename);
 
   // The index lives in PSRAM: make sure it's up (idempotent) rather than
   // relying on another subsystem having initialized it first.
   if (!psram.init()) {
-    Serial.println("ERROR: PSRAM initialization failed");
+    LOG_ERROR("PSRAM initialization failed");
     return false;
   }
 
   // Initialize SD card with custom configuration
   if (!sd.begin(sdConfig)) {
-    Serial.println("ERROR: SD card initialization failed with custom config");
+    LOG_ERROR("SD card initialization failed with custom config");
     return false;
   }
 
   // Load the binary trie data from SD card to PSRAM
   if (!loadFromSDCard(index_filename)) {
-    Serial.println("ERROR: Failed to load music index from SD card");
+    LOG_ERROR("Failed to load music index from SD card");
     return false;
   }
 
@@ -94,12 +93,11 @@ bool MusicIndex::initWithSDConfig(SdSpiConfig sdConfig, const char *index_filena
   initialized = true;
   clearCache();
 
-  Serial.println("Music index loaded successfully with custom config!");
+  LOG_INFO("Music index loaded successfully with custom config!");
   printStats();
 
   return true;
 }
-
 
 uint32_t MusicIndex::readLittleEndian32(FsFile &file) {
   uint8_t bytes[4];
@@ -112,30 +110,25 @@ bool MusicIndex::loadFromSDCard(const char *filename) {
   // Open file using SDFat
   FsFile file;
   if (!file.open(filename, O_RDONLY)) {
-    Serial.print("ERROR: Could not open file: ");
-    Serial.println(filename);
+    LOG_ERROR("Could not open file: %s", filename);
     return false;
   }
 
   uint32_t file_size = file.size();
-  Serial.print("File size: ");
-  Serial.print(file_size);
-  Serial.println(" bytes");
+  LOG_CAT(INDEX_USAGE, "File size: %lu bytes", (unsigned long)file_size);
 
   if (file.read(&header, sizeof(header)) != sizeof(header)) {
-    Serial.println("ERROR: Failed to read header");
+    LOG_ERROR("Failed to read header");
     file.close();
     return false;
   }
 
-  Serial.print("Header - String pool: ");
-  Serial.print(header.string_pool_size);
-  Serial.print(", Nodes: ");
-  Serial.print(header.node_count);
-  Serial.print(", Results: ");
-  Serial.print(header.result_count);
-  Serial.print(", String offsets: ");
-  Serial.println(header.string_offset_count);
+  LOG_CAT(INDEX_USAGE,
+          "Header - String pool: %lu, Nodes: %lu, Results: %lu, "
+          "String offsets: %lu",
+          (unsigned long)header.string_pool_size,
+          (unsigned long)header.node_count, (unsigned long)header.result_count,
+          (unsigned long)header.string_offset_count);
 
   // Reset file position to beginning
   file.seekSet(0);
@@ -144,7 +137,7 @@ bool MusicIndex::loadFromSDCard(const char *filename) {
   const uint32_t CHUNK_SIZE = 4096; // Increased chunk size
   uint8_t *buffer = (uint8_t *)malloc(CHUNK_SIZE);
   if (!buffer) {
-    Serial.println("ERROR: Failed to allocate buffer");
+    LOG_ERROR("Failed to allocate buffer");
     file.close();
     return false;
   }
@@ -157,7 +150,7 @@ bool MusicIndex::loadFromSDCard(const char *filename) {
     uint32_t actual_read = file.read(buffer, to_read);
 
     if (actual_read == 0) {
-      Serial.println("ERROR: Failed to read from file");
+      LOG_ERROR("Failed to read from file");
       free(buffer);
       file.close();
       return false;
@@ -169,24 +162,19 @@ bool MusicIndex::loadFromSDCard(const char *filename) {
 
     // Show progress every 16KB
     if (bytes_read % 16384 == 0) {
-      Serial.print("Loaded ");
-      Serial.print(bytes_read);
-      Serial.print("/");
-      Serial.print(file_size);
-      Serial.println(" bytes");
+      LOG_CAT(INDEX_USAGE, "Loaded %lu/%lu bytes", (unsigned long)bytes_read,
+              (unsigned long)file_size);
     }
   }
 
   free(buffer);
   file.close();
 
-  Serial.print("Successfully loaded ");
-  Serial.print(bytes_read);
-  Serial.println(" bytes to PSRAM");
+  LOG_CAT(INDEX_USAGE, "Successfully loaded %lu bytes to PSRAM",
+          (unsigned long)bytes_read);
 
   return true;
 }
-
 
 void MusicIndex::readString(uint32_t offset, uint32_t length, char *buffer,
                              uint32_t buffer_size) {
@@ -194,7 +182,6 @@ void MusicIndex::readString(uint32_t offset, uint32_t length, char *buffer,
   psram.readData(string_pool_offset + offset, (uint8_t *)buffer, copy_len);
   buffer[copy_len] = '\0';
 }
-
 
 void MusicIndex::loadNodeBatch(uint32_t start_index, uint32_t count) {
   // Limit count to batch size
@@ -224,254 +211,6 @@ void MusicIndex::loadResultBatch(uint32_t start_index, search_result_t *results,
   // Read all results in one PSRAM operation
   uint32_t addr = results_offset + (start_index * sizeof(search_result_t));
   psram.readData(addr, (uint8_t *)results, count * sizeof(search_result_t));
-}
-
-int16_t MusicIndex::binarySearchCache(uint32_t node_index) {
-  if (node_cache_count == 0)
-    return -1;
-
-  uint16_t left = 0;
-  uint16_t right = node_cache_count - 1;
-
-  while (left <= right) {
-    uint16_t mid = (left + right) >> 1; // Fast division by 2
-    uint32_t mid_index = node_cache_index[mid].node_index;
-
-    if (mid_index == node_index) {
-      return node_cache_index[mid].cache_slot;
-    } else if (mid_index < node_index) {
-      left = mid + 1;
-    } else {
-      if (mid == 0)
-        break; // Prevent underflow
-      right = mid - 1;
-    }
-  }
-
-  return -1; // Not found
-}
-
-void MusicIndex::insertCacheIndex(uint16_t slot, uint32_t node_index) {
-  // Find insertion position using binary search
-  uint16_t pos = 0;
-  uint16_t left = 0;
-  uint16_t right = node_cache_count;
-
-  while (left < right) {
-    uint16_t mid = (left + right) >> 1;
-    if (node_cache_index[mid].node_index < node_index) {
-      left = mid + 1;
-    } else {
-      right = mid;
-    }
-  }
-  pos = left;
-
-  // Shift elements if needed
-  if (pos < node_cache_count) {
-    memmove(&node_cache_index[pos + 1], &node_cache_index[pos],
-            (node_cache_count - pos) * sizeof(cache_index_entry_t));
-  }
-
-  // Insert new entry
-  node_cache_index[pos].cache_slot = slot;
-  node_cache_index[pos].node_index = node_index;
-  node_cache_count++;
-}
-
-void MusicIndex::removeCacheIndex(uint16_t slot) {
-  // Find the entry with this slot
-  for (uint16_t i = 0; i < node_cache_count; i++) {
-    if (node_cache_index[i].cache_slot == slot) {
-      // Remove by shifting elements
-      if (i < node_cache_count - 1) {
-        memmove(&node_cache_index[i], &node_cache_index[i + 1],
-                (node_cache_count - i - 1) * sizeof(cache_index_entry_t));
-      }
-      node_cache_count--;
-      break;
-    }
-  }
-}
-
-void MusicIndex::initCache() {
-  // Initialize node cache
-  memset(node_cache, 0, sizeof(node_cache));
-  memset(node_cache_index, 0, sizeof(node_cache_index));
-  node_cache_count = 0;
-
-  // Initialize string cache
-  memset(string_cache, 0, sizeof(string_cache));
-
-  // Initialize batch buffer
-  node_batch.start_index = UINT32_MAX;
-  node_batch.count = 0;
-}
-
-void MusicIndex::clearCache() { initCache(); }
-
-trie_node_t MusicIndex::readNodeCached(uint32_t node_index) {
-  access_counter++;
-
-  // First check if it's in the current batch
-  trie_node_t *batch_node = getNodeFromBatch(node_index);
-  if (batch_node) {
-    return *batch_node;
-  }
-
-  // Binary search in cache
-  int16_t cache_slot = binarySearchCache(node_index);
-
-  if (cache_slot >= 0) {
-    // Cache hit - update access count
-    node_cache[cache_slot].access_count = access_counter;
-    return node_cache[cache_slot].node;
-  }
-
-  // Cache miss - need to load from PSRAM
-  // Try to predict and load adjacent nodes too
-  uint32_t batch_start = node_index;
-  uint32_t batch_count = NODE_BATCH_SIZE;
-
-  // Adjust batch to not exceed total nodes
-  if (batch_start + batch_count > header.node_count) {
-    batch_count = header.node_count - batch_start;
-  }
-
-  // Load batch
-  loadNodeBatch(batch_start, batch_count);
-
-  // Get the requested node from batch
-  batch_node = getNodeFromBatch(node_index);
-  if (!batch_node) {
-    // Shouldn't happen, but handle gracefully
-    trie_node_t single_node;
-    uint32_t addr = nodes_offset + (node_index * sizeof(trie_node_t));
-    psram.readData(addr, (uint8_t *)&single_node, sizeof(trie_node_t));
-    return single_node;
-  }
-
-  // Add to cache
-  uint16_t lru_slot = findLRUNodeCacheSlot();
-
-  // Remove old entry from index if slot was occupied
-  if (node_cache[lru_slot].valid) {
-    removeCacheIndex(lru_slot);
-  }
-
-  // Cache the node
-  node_cache[lru_slot].valid = 1;
-  node_cache[lru_slot].node_index = node_index;
-  node_cache[lru_slot].node = *batch_node;
-  node_cache[lru_slot].access_count = access_counter;
-
-  // Add to sorted index
-  insertCacheIndex(lru_slot, node_index);
-
-  return *batch_node;
-}
-
-void MusicIndex::readStringCached(uint32_t offset, uint32_t length,
-                                  char *buffer, uint32_t buffer_size) {
-  access_counter++;
-
-  // Only cache strings that fit in our cache buffer
-  if (length >= MAX_CACHED_STRING_LEN) {
-    readString(offset, length, buffer, buffer_size);
-    return;
-  }
-
-  // Simple hash for fast lookup (offset XOR length)
-  uint32_t hash = (offset ^ length) & (STRING_CACHE_SIZE - 1);
-
-  // Check direct hash slot first
-  if (string_cache[hash].valid && string_cache[hash].offset == offset &&
-      string_cache[hash].length == length) {
-    // Cache hit
-    string_cache[hash].access_count = access_counter;
-    uint32_t copy_len = min(length, buffer_size - 1);
-    memcpy(buffer, string_cache[hash].data, copy_len);
-    buffer[copy_len] = '\0';
-    return;
-  }
-
-  // Linear probe for collision resolution (up to 4 slots)
-  for (uint8_t i = 1; i < 4; i++) {
-    uint32_t slot = (hash + i) & (STRING_CACHE_SIZE - 1);
-    if (string_cache[slot].valid && string_cache[slot].offset == offset &&
-        string_cache[slot].length == length) {
-      // Cache hit
-      string_cache[slot].access_count = access_counter;
-      uint32_t copy_len = min(length, buffer_size - 1);
-      memcpy(buffer, string_cache[slot].data, copy_len);
-      buffer[copy_len] = '\0';
-      return;
-    }
-  }
-
-  // Cache miss - read from PSRAM
-  readString(offset, length, buffer, buffer_size);
-
-  // Find slot to cache (prefer empty or LRU in probed range)
-  uint16_t lru_slot = hash;
-  uint16_t min_access = string_cache[hash].access_count;
-
-  for (uint8_t i = 0; i < 4; i++) {
-    uint32_t slot = (hash + i) & (STRING_CACHE_SIZE - 1);
-    if (!string_cache[slot].valid) {
-      lru_slot = slot;
-      break;
-    }
-    if (string_cache[slot].access_count < min_access) {
-      min_access = string_cache[slot].access_count;
-      lru_slot = slot;
-    }
-  }
-
-  // Cache the string
-  string_cache[lru_slot].valid = 1;
-  string_cache[lru_slot].offset = offset;
-  string_cache[lru_slot].length = length;
-  string_cache[lru_slot].access_count = access_counter;
-
-  uint32_t copy_len = min(length, (uint32_t)(MAX_CACHED_STRING_LEN - 1));
-  memcpy(string_cache[lru_slot].data, buffer, copy_len);
-  string_cache[lru_slot].data[copy_len] = '\0';
-}
-
-uint16_t MusicIndex::findLRUNodeCacheSlot() {
-  uint16_t lru_slot = 0;
-  uint16_t min_access = node_cache[0].access_count;
-
-  // Quick scan for empty slot
-  for (uint16_t i = 0; i < NODE_CACHE_SIZE; i++) {
-    if (!node_cache[i].valid) {
-      return i;
-    }
-    if (node_cache[i].access_count < min_access) {
-      min_access = node_cache[i].access_count;
-      lru_slot = i;
-    }
-  }
-
-  return lru_slot;
-}
-
-uint16_t MusicIndex::findLRUStringCacheSlot() {
-  uint16_t lru_slot = 0;
-  uint16_t min_access = string_cache[0].access_count;
-
-  for (uint16_t i = 1; i < STRING_CACHE_SIZE; i++) {
-    if (!string_cache[i].valid) {
-      return i;
-    }
-    if (string_cache[i].access_count < min_access) {
-      min_access = string_cache[i].access_count;
-      lru_slot = i;
-    }
-  }
-
-  return lru_slot;
 }
 
 uint32_t MusicIndex::findNode(const char *query, uint32_t query_len) {
@@ -656,7 +395,6 @@ uint32_t MusicIndex::searchGenres(const char *prefix, search_result_t *results,
   return genre_count;
 }
 
-
 void MusicIndex::getResultName(const search_result_t &result, char *buffer,
                                uint32_t buffer_size) {
   readString(result.name_offset, result.name_length, buffer, buffer_size);
@@ -679,108 +417,40 @@ const char *MusicIndex::getSearchTypeName(SearchType type) {
 
 void MusicIndex::printStats() {
   if (!initialized) {
-    Serial.println("Music index not initialized");
+    LOG_WARN("Music index not initialized");
     return;
   }
-
-  Serial.println("=== MUSIC INDEX STATS ===");
-  Serial.print("String pool size: ");
-  Serial.print(header.string_pool_size);
-  Serial.println(" bytes");
-  Serial.print("Node count: ");
-  Serial.println(header.node_count);
-  Serial.print("Result count: ");
-  Serial.println(header.result_count);
-  Serial.print("String offset count: ");
-  Serial.println(header.string_offset_count);
-  Serial.print("Base address: 0x");
-  Serial.println(base_address, HEX);
-  Serial.print("String pool offset: 0x");
-  Serial.println(string_pool_offset, HEX);
-  Serial.print("Nodes offset: 0x");
-  Serial.println(nodes_offset, HEX);
-  Serial.print("Results offset: 0x");
-  Serial.println(results_offset, HEX);
-  Serial.print("SD card size: ");
 
   uint64_t sectors = sd.sectorsPerCluster() * sd.clusterCount();
 
-  // Each sector is 512 bytes
+  // Each sector is 512 bytes. No %f in nano printf: GB with one decimal.
   uint64_t cardSizeBytes = sectors * 512ULL;
-  float cardSizeMB = cardSizeBytes / (1024.0 * 1024.0);
-  float cardSizeGB = cardSizeMB / 1024.0;
-  Serial.print(cardSizeMB);
-  Serial.print(" MB (");
-  Serial.print(cardSizeGB);
-  Serial.println(" GB)");
-  Serial.println("========================");
-}
-
-void MusicIndex::printCacheStats() {
-  if (!initialized) {
-    Serial.println("Music index not initialized");
-    return;
-  }
-
-  Serial.println("=== CACHE STATS ===");
-
-  // Count valid node cache entries
-  uint32_t valid_nodes = 0;
-  for (uint32_t i = 0; i < NODE_CACHE_SIZE; i++) {
-    if (node_cache[i].valid) {
-      valid_nodes++;
-    }
-  }
-
-  // Count valid string cache entries
-  uint32_t valid_strings = 0;
-  for (uint32_t i = 0; i < STRING_CACHE_SIZE; i++) {
-    if (string_cache[i].valid) {
-      valid_strings++;
-    }
-  }
-
-  Serial.print("Node cache: ");
-  Serial.print(valid_nodes);
-  Serial.print("/");
-  Serial.print(NODE_CACHE_SIZE);
-  Serial.print(" slots used (");
-  Serial.print(node_cache_count);
-  Serial.println(" indexed)");
-
-  Serial.print("String cache: ");
-  Serial.print(valid_strings);
-  Serial.print("/");
-  Serial.print(STRING_CACHE_SIZE);
-  Serial.println(" slots used");
-
-  Serial.print("Access counter: ");
-  Serial.println(access_counter);
-
-  Serial.print("Current batch: ");
-  if (node_batch.count > 0) {
-    Serial.print("nodes ");
-    Serial.print(node_batch.start_index);
-    Serial.print("-");
-    Serial.println(node_batch.start_index + node_batch.count - 1);
-  } else {
-    Serial.println("empty");
-  }
-
-  Serial.println("==================");
+  unsigned long cardSizeMB = (unsigned long)(cardSizeBytes / (1024ULL * 1024ULL));
+  unsigned long cardSizeGB10 = cardSizeMB * 10 / 1024;
+  LOG_INFO("=== MUSIC INDEX STATS ===\n"
+           "String pool size: %lu bytes\n"
+           "Node count: %lu\n"
+           "Result count: %lu\n"
+           "String offset count: %lu\n"
+           "Base address: 0x%lX\n"
+           "String pool offset: 0x%lX\n"
+           "Nodes offset: 0x%lX\n"
+           "Results offset: 0x%lX\n"
+           "SD card size: %lu MB (%lu.%lu GB)\n"
+           "========================",
+           (unsigned long)header.string_pool_size,
+           (unsigned long)header.node_count, (unsigned long)header.result_count,
+           (unsigned long)header.string_offset_count,
+           (unsigned long)base_address, (unsigned long)string_pool_offset,
+           (unsigned long)nodes_offset, (unsigned long)results_offset,
+           cardSizeMB, cardSizeGB10 / 10, cardSizeGB10 % 10);
 }
 
 void MusicIndex::printSearchResult(const search_result_t &result) {
   char name[128];
   getResultName(result, name, sizeof(name));
 
-  Serial.print("[");
-  Serial.print(getSearchTypeName((SearchType)result.type));
-  Serial.print("] ");
-  Serial.print(name);
-  Serial.print(" (ID: ");
-  Serial.print(result.id);
-  Serial.print(", Relevance: ");
-  Serial.print(result.relevance);
-  Serial.println(")");
+  LOG_INFO("[%s] %s (ID: %lu, Relevance: %lu)",
+           getSearchTypeName((SearchType)result.type), name,
+           (unsigned long)result.id, (unsigned long)result.relevance);
 }

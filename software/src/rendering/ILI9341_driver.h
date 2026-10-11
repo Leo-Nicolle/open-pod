@@ -2,15 +2,16 @@
 #include <Adafruit_GFX.h>
 #include <Arduino.h>
 #include "sound/Spi1Bus.h"
+#include "logging.h"
 
 // BROKEN_NUCLEO: workaround for one specific hand-soldered prototype board,
-// NOT a general hardware feature. On that board, PC14/PC15 (D14/D15) were
-// confirmed dead at the silicon level - continuity from the panel FPC to the
-// Nucleo header is fine, no oscillator/solder-bridge connection exists to
-// those pins, and a direct pin-toggle test showed the voltage never moves no
-// matter what firmware writes. See .agents/screen-red-problem.md for the
-// full diagnosis. On any other/working Nucleo, leave this undefined (default)
-// and the original single-`GPIOC->ODR`-write bus stays intact.
+// NOT a general hardware feature. On that board, PC14/PC15 (D14/D15) never
+// reached the Nucleo header: on MB1136 C-02+ boards they are wired to the X2
+// 32 kHz crystal, and SB48/SB49 (header link) ship open. Closing SB48/SB49
+// and removing R34/R36 reconnects them (see .agents/screen-red-problem.md
+// and docs/next-step-pinout.md). On any other/working Nucleo, leave this
+// undefined (default) and the original single-`GPIOC->ODR`-write bus stays
+// intact.
 //
 // Toggle via `-DBROKEN_NUCLEO=1` in platformio.ini's build_flags, not by
 // editing this file, so switching boards doesn't require touching source.
@@ -20,9 +21,22 @@
 // two lines are driven through GPIOA->BSRR (atomic set/reset of a single
 // bit) rather than a raw GPIOA->ODR write, because GPIOA also carries the
 // VS1053/SD card SPI1 pins (PA4-PA11) that an ODR overwrite would clobber.
+// PC14/PC15 are then left alone (BUS_PORTC_MASK) so they can serve as slow
+// GPIOs (lock switch, power enables) once reconnected.
 
 class ILI9341_Driver {
 public:
+  // Port C pins that carry the data bus. Everything outside the mask is left
+  // untouched by mode changes and bus writes.
+#ifdef BROKEN_NUCLEO
+  static const uint16_t BUS_PORTC_MASK = 0x3FFF; // PC0-PC13
+#else
+  static const uint16_t BUS_PORTC_MASK = 0xFFFF; // PC0-PC15
+#endif
+  // Two MODER/OSPEEDR bits per pin.
+  static const uint32_t BUS_PORTC_MASK2 =
+      BUS_PORTC_MASK == 0xFFFF ? 0xFFFFFFFFu : (1u << (2 * 14)) - 1;
+
   // Pin definitions - CORRECTED
   static const int TFT_DC = PB8;   // Data/Command
   static const int TFT_WR = PB9;   // Write
@@ -46,12 +60,10 @@ public:
     // Enable GPIO clocks
     RCC->AHB1ENR |= RCC_AHB1ENR_GPIOBEN | RCC_AHB1ENR_GPIOCEN;
 
-    // Set all PC0-PC15 pins to output mode (data bus)
-    GPIOC->MODER = 0x55555555; // Set all 16 pins to output mode (01 pattern)
-
-    // Set all data pins to push-pull, high speed
-    GPIOC->OTYPER = 0x0000;      // All push-pull
-    GPIOC->OSPEEDR = 0xFFFFFFFF; // All high speed
+    // Data bus pins on port C -> output (01 pattern), push-pull, high speed
+    GPIOC->MODER = (GPIOC->MODER & ~BUS_PORTC_MASK2) | (0x55555555u & BUS_PORTC_MASK2);
+    GPIOC->OTYPER &= ~(uint32_t)BUS_PORTC_MASK;
+    GPIOC->OSPEEDR |= BUS_PORTC_MASK2;
 
 #ifdef BROKEN_NUCLEO
     // D14/D15 relocated to PA0/PA1 - see the BROKEN_NUCLEO note at the top of
@@ -77,6 +89,20 @@ public:
   }
 #endif
 
+  // Port C register + value that put a bus word on PC0-PC15. Under
+  // BROKEN_NUCLEO this is a BSRR write (one atomic store that sets/resets
+  // PC0-PC13 only, leaving PC14/PC15 to whatever else drives them);
+  // otherwise a plain ODR write.
+#ifdef BROKEN_NUCLEO
+  static inline volatile uint32_t &portCReg() { return GPIOC->BSRR; }
+  static inline uint32_t portCWord(uint16_t data) {
+    return (data & BUS_PORTC_MASK) | ((uint32_t)(~data & BUS_PORTC_MASK) << 16);
+  }
+#else
+  static inline volatile uint32_t &portCReg() { return GPIOC->ODR; }
+  static inline uint32_t portCWord(uint16_t data) { return data; }
+#endif
+
   inline void pulseWR() {
     // GPIOB->BSRR = (1 << (9 + 16));
     // // for(int i = 0; i< 250; i++){
@@ -89,8 +115,7 @@ public:
   }
 
   inline void write16(uint16_t data) {
-    GPIOC->ODR = data; // Set data (D14/D15 land on the dead PC14/PC15 pins
-                        // under BROKEN_NUCLEO - harmless, nothing listens)
+    portCReg() = portCWord(data);
 #ifdef BROKEN_NUCLEO
     writeBrokenBits(data);
 #endif
@@ -99,19 +124,19 @@ public:
     pulseWR();
   }
   void setBusToInput() {
-    // Set all PC0-PC15 pins to input mode
-    GPIOC->MODER = 0x00000000; // All input mode (00 pattern)
+    // Data bus pins on port C -> input mode (00 pattern)
+    GPIOC->MODER &= ~BUS_PORTC_MASK2;
   }
 
   void setBusToOutput() {
-    // Set all PC0-PC15 pins back to output mode
-    GPIOC->MODER = 0x55555555; // All output mode (01 pattern)
+    // Data bus pins on port C -> back to output mode (01 pattern)
+    GPIOC->MODER = (GPIOC->MODER & ~BUS_PORTC_MASK2) | (0x55555555u & BUS_PORTC_MASK2);
   }
 
   uint16_t readBus16() {
     //  Direct 16-bit read from PC0-PC15.
     // NOTE: under BROKEN_NUCLEO this does NOT read back D14/D15 from their
-    // relocated PA0/PA1 pins - it still reads the dead PC14/PC15 bits. Left
+    // relocated PA0/PA1 pins - it still reads the PC14/PC15 bits. Left
     // as-is because the only callers (detectController()/printRegister(),
     // panel ID reads) aren't used in the running app and don't depend on the
     // top 2 bits; revisit if that changes.
@@ -326,19 +351,11 @@ public:
     uint8_t data[4] = {0};
     readRegisterBytes(reg, data, len);
 
-    Serial.print(name);
-    Serial.print(" (0x");
-    Serial.print(reg, HEX);
-    Serial.print("): ");
-
+    LOG_RAW(LOG_LEVEL >= 2, "%s (0x%X): ", name, reg);
     for (uint8_t i = 0; i < len; i++) {
-      Serial.print("0x");
-      if (data[i] < 0x10)
-        Serial.print("0");
-      Serial.print(data[i], HEX);
-      Serial.print(" ");
+      LOG_RAW(LOG_LEVEL >= 2, "0x%02X ", data[i]);
     }
-    Serial.println();
+    LOG_RAW(LOG_LEVEL >= 2, "\n");
   }
 
   void setWindow(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1) {
@@ -371,7 +388,7 @@ public:
   }
 
   void detectController() {
-    Serial.println("=== Controller Detection ===");
+    LOG_INFO("=== Controller Detection ===");
 
     // Try different ID registers
     printRegister("ID (0x04)", 0x04, 3);
@@ -381,7 +398,7 @@ public:
     printRegister("ID (0xDC)", 0xDC, 1); // Read ID3
 
     // Check if it might be ST7789
-    Serial.println("Checking for ST7789...");
+    LOG_INFO("Checking for ST7789...");
     writeCommand(0x04); // Get ID for ST7789
     digitalWrite(TFT_DC, HIGH);
     read16(); // dummy
@@ -389,12 +406,7 @@ public:
     uint8_t id2 = read16() & 0xFF;
     uint8_t id3 = read16() & 0xFF;
 
-    Serial.print("ST7789 Style ID: 0x");
-    Serial.print(id1, HEX);
-    Serial.print(" 0x");
-    Serial.print(id2, HEX);
-    Serial.print(" 0x");
-    Serial.println(id3, HEX);
+    LOG_INFO("ST7789 Style ID: 0x%X 0x%X 0x%X", id1, id2, id3);
   }
 
   // Color conversion helpers for RGB888 to RGB565

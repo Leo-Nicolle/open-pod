@@ -1,5 +1,6 @@
 #pragma once
 #include "Adafruit_MPR121.h"
+#include "logging.h"
 #include <Arduino.h>
 #include <Wire.h>
 
@@ -138,7 +139,7 @@ public:
       wheelBaseline[i] = mpr121->filteredData(i);
     }
     baselineTaken = true;
-    Serial.println("ClickWheel baseline taken");
+    LOG_INFO("ClickWheel baseline taken");
   }
 
   // Fix angle mapping to match your coordinate system
@@ -339,7 +340,7 @@ public:
 
   void startSensitivityCalibration() {
     if (!baselineTaken) {
-      Serial.println("ERROR: Take baseline first!");
+      LOG_ERROR("Take baseline first!");
       return;
     }
     
@@ -351,8 +352,8 @@ public:
       maxCalibValues[i] = 0;
     }
     
-    Serial.println("=== AUTO SENSITIVITY CALIBRATION ===");
-    Serial.println("Touch each electrode FIRMLY when prompted");
+    LOG_INFO("=== AUTO SENSITIVITY CALIBRATION ===\n"
+             "Touch each electrode FIRMLY when prompted");
     printCurrentCalibInstruction();
   }
 
@@ -368,8 +369,7 @@ public:
     }
 
     if (elapsed >= CALIB_TIME_PER_ELECTRODE) {
-      Serial.print("Max: ");
-      Serial.println(maxCalibValues[currentCalibElectrode]);
+      LOG_INFO("Max: %d", maxCalibValues[currentCalibElectrode]);
       
       currentCalibElectrode++;
       calibStartTime = millis();
@@ -428,10 +428,7 @@ public:
 
   void printDebugInfo() {
     int16_t angle = getWheelAngle();
-    Serial.print("Angle: ");
-    Serial.print(angle);
-    Serial.print("° Buttons: 0x");
-    Serial.println(pressedMask(), HEX);
+    LOG_INFO("Angle: %d° Buttons: 0x%X", angle, pressedMask());
   }
 
 private:
@@ -500,9 +497,7 @@ private:
 
   void printCurrentCalibInstruction() {
     const char* names[] = {"TOP", "RIGHT", "BOTTOM", "LEFT"};
-    Serial.print("Touch ");
-    Serial.print(names[currentCalibElectrode]);
-    Serial.println(" electrode NOW!");
+    LOG_INFO("Touch %s electrode NOW!", names[currentCalibElectrode]);
   }
 
   void finishCalibration() {
@@ -516,7 +511,7 @@ private:
     }
     
     if (minValue == 0) {
-      Serial.println("Calibration failed!");
+      LOG_ERROR("Calibration failed!");
       calibrationState = CALIB_IDLE;
       return;
     }
@@ -528,12 +523,14 @@ private:
     
     sensitivityCalibrated = true;
     
-    Serial.println("Calibration complete!");
-    Serial.print("wheel.setSensitivities(");
+    LOG_INFO("Calibration complete!");
+    // Pasteable line; no %f in nano printf, so 3 decimals by hand.
+    LOG_RAW(LOG_LEVEL >= 2, "wheel.setSensitivities(");
     for (uint8_t i = 0; i < WHEEL_ELECTRODES; i++) {
-      Serial.print(electrodeSensitivity[i], 3);
-      if (i < WHEEL_ELECTRODES - 1) Serial.print(", ");
+      int milli = (int)(electrodeSensitivity[i] * 1000 + 0.5f);
+      LOG_RAW(LOG_LEVEL >= 2, "%d.%03d%s", milli / 1000, milli % 1000,
+              i < WHEEL_ELECTRODES - 1 ? ", " : "");
     }
-    Serial.println(");");
+    LOG_RAW(LOG_LEVEL >= 2, ");\n");
   }
 };

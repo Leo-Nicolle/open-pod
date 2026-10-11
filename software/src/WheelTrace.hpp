@@ -4,7 +4,9 @@
 #include <Arduino.h>
 #include <math.h>
 
+#ifndef DEG_TO_RAD
 #define DEG_TO_RAD 0.0174532925
+#endif
 
 class WheelTrace {
 public:

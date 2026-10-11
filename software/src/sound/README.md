@@ -75,7 +75,7 @@ player.audioPlayer.configureAudioQuality(48000); // 48kHz target
 
 // Check maximum supported sample rate
 uint32_t maxRate = player.audioPlayer.getMaxSampleRate();
-Serial.printf("Max sample rate: %lu Hz\n", maxRate);
+LOG_INFO("Max sample rate: %lu Hz", maxRate);
 ```
 
 ### Advanced Clock Configuration

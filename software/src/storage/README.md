@@ -69,17 +69,17 @@ MusicIndex musicIndex(&psram);
 void setup() {
     // Initialize PSRAM
     if (!psram.init()) {
-        Serial.println("PSRAM init failed!");
+        LOG_ERROR("PSRAM init failed!");
         return;
     }
 
     // Initialize music index (loads from SD card)
     if (!musicIndex.init("/openpod/music_index.bin")) {
-        Serial.println("Music index init failed!");
+        LOG_ERROR("Music index init failed!");
         return;
     }
 
-    Serial.println("Music index ready!");
+    LOG_INFO("Music index ready!");
 }
 ```
 

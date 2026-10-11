@@ -73,7 +73,7 @@ The complete FLAC plugin must be obtained from **VLSI Solution** (the VS1053b ma
 
 - [`VS1053_FLAC_plugin.h`](VS1053_FLAC_plugin.h) - Plugin data header (placeholder)
 - [`VS1053_driver.h`](VS1053_driver.h) - FLAC method declarations
-- [`VS1053_driver.cpp`](VS1053_driver.cpp) - FLAC plugin loading implementation
+- [`VS1053_driver_config.cpp`](VS1053_driver_config.cpp) - FLAC plugin loading implementation
 
 ### Key Methods
 

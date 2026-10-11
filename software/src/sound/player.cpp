@@ -1,18 +1,19 @@
 #include "player.h"
+#include "../logging.h"
 #include <math.h>
 
 PodPlayer *PodPlayer::instance = nullptr;
 
 void PodPlayer::setup() {
-  Serial.println("=== OpenPod Audio System Initialization ===");
+  LOG_INFO("=== OpenPod Audio System Initialization ===");
 
   if (!audioPlayer.begin()) {
-    Serial.println("Couldn't find VS1053, check pin definitions");
+    LOG_ERROR("Couldn't find VS1053, check pin definitions");
     return;
   }
   // Set volume (0-255, lower = louder)
   audioPlayer.setVolume(20, 20);
-  Serial.println("\n=== VS1053 Register Status ===");
+  LOG_CAT(VS1053, "\n=== VS1053 Register Status ===");
   audioPlayer.dumpRegisters();
 
   state.addEventListener(onStateEvent);
@@ -77,7 +78,7 @@ void PodPlayer::startPendingTrack() {
       return; // no point prefetching after a track that won't play
     }
   } else {
-    Serial.printf("Could not resolve path for track id %d\n", trackId);
+    LOG_ERROR("Could not resolve path for track id %d", trackId);
     playbackFailed = true;
     return;
   }
@@ -135,7 +136,7 @@ void PodPlayer::loop() {
   audioPlayer.loop();
   if (playbackFailed || audioPlayer.hasFailed()) {
     playbackFailed = false;
-    Serial.println("Playback failed, stopping");
+    LOG_ERROR("Playback failed, stopping");
     audioPlayer.stopPlaying();
     state.stopPlayback();
     return;
