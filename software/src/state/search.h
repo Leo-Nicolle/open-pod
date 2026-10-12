@@ -1,6 +1,7 @@
 #pragma once
 #include "../storage/Music_index.h"
 #include "../storage/Music_lookup.h"
+#include "text_entry.h"
 #include <Arduino.h>
 
 // The search screen's model: the query typed on the letter ribbon, the
@@ -59,9 +60,10 @@ public:
 
   // Accessors for the view and State
   Mode getMode() const { return mode; }
-  const char *getQuery() const { return query; }
-  int getCursor() const { return cursor; }
-  char getCursorChar() const { return RIBBON[cursor]; }
+  const char *getQuery() const { return entry.text(); }
+  int getCursor() const { return entry.cursor(); }
+  char getCursorChar() const { return entry.cursorChar(); }
+  const TextEntry &getEntry() const { return entry; }
   int getHitCount() const { return hitCount; }
   const Hit &getHit(int i) const { return hits[i]; }
   int getSelected() const { return selected; }
@@ -90,8 +92,7 @@ public:
 private:
   MusicIndex *index;
   Mode mode;
-  char query[MAX_QUERY + 1];
-  int cursor;
+  TextEntry entry; // the query, typed on RIBBON
 
   Hit hits[MAX_HITS];
   int hitCount;

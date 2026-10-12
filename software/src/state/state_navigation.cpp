@@ -54,6 +54,14 @@ void State::loadCurrentRouteData(MusicLookup &musicLookup) {
     currentRoute.totalResults = search.getHitCount();
     return;
 
+  case Route_t::SETTINGS:
+  case Route_t::BT_LIST:
+  case Route_t::BT_DEVICE:
+  case Route_t::BT_FORGET:
+  case Route_t::BT_RENAME:
+    // Rows come from BtMenu (state/bt_menu.h), drawn by ui/menu_view.hpp.
+    return;
+
   case Route_t::GENRES:
     count = musicLookup.getAllGenres(
         elementsBuffer, ELEMENTS_BUFFER_SIZE, stringPointers,
@@ -153,7 +161,7 @@ void State::goToSelected(MusicLookup &musicLookup) {
       newRouteType = Route_t::SEARCH_RESULTS;
       break;
     case 6: // Settings
-      // TODO: Implement settings menu
+      newRouteType = Route_t::SETTINGS;
       break;
     case 7: // Now Playing
       newRouteType = Route_t::NOW_PLAYING;
@@ -272,6 +280,10 @@ void State::goToSelected(MusicLookup &musicLookup) {
     newRouteType = Route_t::NOW_PLAYING;
     break;
   }
+
+  default:
+    // Settings and the Bluetooth screens navigate with pushMenuRoute().
+    break;
   }
 
   // Unimplemented menu items (Tracks/Search/Settings from ROOT) and failed
@@ -331,6 +343,31 @@ bool State::back(MusicLookup &musicLookup) {
   emitEvent(EVENT_ROUTE_CHANGED, &event);
 
   return true;
+}
+
+bool State::backTo(Route_t::RouteType type, MusicLookup &musicLookup) {
+  // Drop the routes in between, then back() into `type` with one transition.
+  while (router.stackDepth > 1 &&
+         router.routeStack[router.stackDepth - 1].type != type) {
+    router.popRoute();
+  }
+  return back(musicLookup);
+}
+
+void State::pushMenuRoute(Route_t::RouteType type, uint32_t entityId,
+                          const char *title, int selected) {
+  Route_t::RouteType oldRouteType = router.getCurrentRoute().type;
+  // The current menu route already holds its own selection (BtMenu::sync).
+  router.pushRoute(type, entityId, title);
+  Route_t &route = router.getCurrentRoute();
+  route.selectedIndex = selected;
+  route.topVisibleIndex = 0;
+  RouteChangedEvent event = {oldRouteType, type,  entityId,
+                             0,            (uint32_t)selected,
+                             title,        true,  router.canGoBack()};
+  setAnimating(true);
+  fastScrollActive = false;
+  emitEvent(EVENT_ROUTE_CHANGED, &event);
 }
 
 void State::backToMain(MusicLookup &musicLookup) {
@@ -478,6 +515,13 @@ const char *State::getHeaderTitle() {
     return "Search";
   case Route_t::NOW_PLAYING:
     return "Now Playing";
+  case Route_t::SETTINGS:
+    return "Settings";
+  case Route_t::BT_LIST:
+  case Route_t::BT_DEVICE:
+  case Route_t::BT_FORGET:
+  case Route_t::BT_RENAME:
+    return "Bluetooth";
   }
   return "OpenPod";
 }

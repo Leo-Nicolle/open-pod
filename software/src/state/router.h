@@ -2,7 +2,22 @@
 #include <Arduino.h>
 
 struct Route_t {
-  enum RouteType { ROOT, SEARCH_RESULTS, GENRES, ARTISTS, ALBUMS, TRACKS, NOW_PLAYING };
+  enum RouteType {
+    ROOT,
+    SEARCH_RESULTS,
+    GENRES,
+    ARTISTS,
+    ALBUMS,
+    TRACKS,
+    NOW_PLAYING,
+    // Settings and the Bluetooth screens (state/bt_menu.h). Their rows come
+    // from BtMenu, not from the elements list; entityId is the device slot.
+    SETTINGS,
+    BT_LIST,
+    BT_DEVICE,
+    BT_FORGET,
+    BT_RENAME,
+  };
   RouteType type;
   uint32_t entityId;     // ID of current entity (genre_id, artist_id, etc.)
   // What kind of entity entityId is (ARTISTS -> an artist id, ...). Usually

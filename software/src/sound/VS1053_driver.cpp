@@ -158,7 +158,7 @@ void VS1053_driver::setI2SOutput(bool enabled) {
 
 // Datasheet 11.14: GPIO4-7 as outputs, then I2S_CONFIG. 0x4 = enabled at
 // 48 kHz: SCLK = 12.288 MHz / 8 = 1.536 MHz, i.e. 16-bit words, which is what
-// the FSC-BT1035 expects with AT+I2SCFG=3 (see Bluetooth.hpp). The rate bits
+// the FSC-BT1035 expects with AT+I2SCFG=3 (see bluetooth/Bluetooth.hpp). The rate bits
 // can only change while I2S is disabled, hence the 0 first.
 void VS1053_driver::applyI2SOutput() {
   if (!_i2sOutput)

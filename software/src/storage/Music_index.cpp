@@ -133,14 +133,11 @@ bool MusicIndex::loadFromSDCard(const char *filename) {
   // Reset file position to beginning
   file.seekSet(0);
 
-  // Read entire file to PSRAM in larger chunks for speed
-  const uint32_t CHUNK_SIZE = 4096; // Increased chunk size
-  uint8_t *buffer = (uint8_t *)malloc(CHUNK_SIZE);
-  if (!buffer) {
-    LOG_ERROR("Failed to allocate buffer");
-    file.close();
-    return false;
-  }
+  // One SD sector at a time, on the stack: SdFat reads whole aligned sectors
+  // straight into it, and there's no heap left for a bigger one (the list
+  // cache takes most of it).
+  const uint32_t CHUNK_SIZE = 512;
+  uint8_t buffer[CHUNK_SIZE];
 
   uint32_t bytes_read = 0;
   uint32_t psram_addr = base_address;
@@ -151,7 +148,6 @@ bool MusicIndex::loadFromSDCard(const char *filename) {
 
     if (actual_read == 0) {
       LOG_ERROR("Failed to read from file");
-      free(buffer);
       file.close();
       return false;
     }
@@ -167,7 +163,6 @@ bool MusicIndex::loadFromSDCard(const char *filename) {
     }
   }
 
-  free(buffer);
   file.close();
 
   LOG_CAT(INDEX_USAGE, "Successfully loaded %lu bytes to PSRAM",

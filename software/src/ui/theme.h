@@ -27,7 +27,7 @@
 #define COLOR_LINE        HEX_TO_RGB565(0x968D88)
 #define COLOR_TEXT        HEX_TO_RGB565(0xFDA326)
 #define COLOR_DIM         HEX_TO_RGB565(0xDEDEDE)
-#define COLOR_MUTED       HEX_TO_RGB565(0x000000)
+#define COLOR_MUTED       HEX_TO_RGB565(0x6B2B)
 #define COLOR_ACCENT      HEX_TO_RGB565(0xEB980A)
 #define COLOR_ACCENT_DK   HEX_TO_RGB565(0x664014)
 #define COLOR_ACCENT_ALT  HEX_TO_RGB565(0xFFD15C)
@@ -39,3 +39,13 @@
 #define COLOR_RIBBON       HEX_TO_RGB565(0x171513)
 #define COLOR_SEPARATOR    HEX_TO_RGB565(0x1B1917)
 #define COLOR_SCROLL_TRACK HEX_TO_RGB565(0x23201E)
+
+// Bluetooth screens (.agents/bluetooth-design/): the ui-builder's palette
+// defaults for these keys. A theme.h exported from the builder now has them
+// (and COLOR_TEXT_HI), so drop this block after a re-download.
+#define COLOR_TEXT_HI      HEX_TO_RGB565(0xFFFFFF)
+#define COLOR_DISABLED     HEX_TO_RGB565(0x4F4844)
+#define COLOR_BAR_OFF      HEX_TO_RGB565(0x3A3532)
+#define COLOR_BAR_OFF_HI   HEX_TO_RGB565(0x2E6E6D)
+#define COLOR_ERROR        HEX_TO_RGB565(0xA82020)
+#define COLOR_DESTRUCTIVE  HEX_TO_RGB565(0xD9665C)

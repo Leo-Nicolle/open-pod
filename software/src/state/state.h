@@ -192,6 +192,13 @@ public:
   bool back(MusicLookup& musicLookup);          // Go back one level
   void backToMain(MusicLookup& musicLookup);    // Go back to root menu
   void goToNowPlaying(MusicLookup& musicLookup); // Jump to Now Playing from anywhere
+  // Back to the route of type `type` below the current one, in one step
+  // (e.g. from the forget confirmation straight to the device list).
+  bool backTo(Route_t::RouteType type, MusicLookup &musicLookup);
+  // Opens a Settings/Bluetooth screen (their rows come from BtMenu) with
+  // the cursor on row `selected`.
+  void pushMenuRoute(Route_t::RouteType type, uint32_t entityId,
+                     const char *title, int selected);
   
   // Scroll navigation (still needed for UI)
   void scrollUp();

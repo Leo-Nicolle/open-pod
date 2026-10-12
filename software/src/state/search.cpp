@@ -16,12 +16,14 @@ const char SearchModel::RIBBON[RIBBON_LEN + 1] =
 // Raw trie hits before dedup. Static rather than on the stack: 2 KB.
 static search_result_t rawHits[SearchModel::MAX_HITS];
 
-SearchModel::SearchModel() : index(nullptr) { reset(); }
+SearchModel::SearchModel()
+    : index(nullptr), entry(RIBBON, MAX_QUERY, false) {
+  reset();
+}
 
 void SearchModel::reset() {
   mode = TYPING;
-  query[0] = '\0';
-  cursor = 0;
+  entry.reset();
   hitCount = 0;
   selected = 0;
   first = 0;
@@ -33,41 +35,27 @@ void SearchModel::reset() {
   }
 }
 
-bool SearchModel::moveCursor(int clicks) {
-  int next = constrain(cursor + clicks, 0, RIBBON_LEN - 1);
-  if (next == cursor)
-    return false;
-  cursor = next;
-  return true;
-}
+bool SearchModel::moveCursor(int clicks) { return entry.moveCursor(clicks); }
 
 bool SearchModel::append(MusicLookup &lookup) {
-  size_t len = strlen(query);
-  if (len >= MAX_QUERY)
-    return false;
   // The ribbon shows capitals; the index is lowercase.
-  char c = RIBBON[cursor];
-  query[len] = (c >= 'A' && c <= 'Z') ? c - 'A' + 'a' : c;
-  query[len + 1] = '\0';
+  char c = entry.cursorChar();
+  if (!entry.appendChar((c >= 'A' && c <= 'Z') ? c - 'A' + 'a' : c))
+    return false;
   runQuery(lookup);
   return true;
 }
 
 bool SearchModel::backspace(MusicLookup &lookup) {
-  size_t len = strlen(query);
-  if (len == 0)
+  if (!entry.backspace())
     return false;
-  query[len - 1] = '\0';
   runQuery(lookup);
   return true;
 }
 
 bool SearchModel::space(MusicLookup &lookup) {
-  size_t len = strlen(query);
-  if (len == 0 || len >= MAX_QUERY || query[len - 1] == ' ')
+  if (!entry.space())
     return false;
-  query[len] = ' ';
-  query[len + 1] = '\0';
   runQuery(lookup);
   return true;
 }
@@ -176,7 +164,7 @@ void SearchModel::runQuery(MusicLookup &lookup) {
   rowsCount = 0;
 
   char normalized[MAX_QUERY + 1];
-  normalizeQuery(query, normalized, sizeof(normalized));
+  normalizeQuery(entry.text(), normalized, sizeof(normalized));
   if (normalized[0] != '\0' && index && index->isInitialized()) {
     uint32_t n = index->searchByPrefix(normalized, rawHits, MAX_HITS);
     hitCount = rankHits(rawHits, (int)n, hits, MAX_HITS);

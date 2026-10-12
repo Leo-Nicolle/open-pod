@@ -3,6 +3,7 @@
 #include "../fonts/IBMPlexSans16.h"
 #include "../rendering/ILI9341_GFX.h"
 #include "../state/search.h"
+#include "bt_widgets.hpp"
 #include "sprites.h"
 #include "theme.h"
 #include "ui_types.h"
@@ -146,6 +147,10 @@ private:
   }
 
   void composeHeader(uint16_t *buf, const SearchModel &s) {
+    if (uikit::headerStatus.toastActive) {
+      uikit::drawToast(buf, *uikit::headerStatus.toast);
+      return;
+    }
     fill(buf, 0, 0, SCREEN_WIDTH, CHUNK_HEIGHT - 1, COLOR_SURFACE);
     fill(buf, 0, CHUNK_HEIGHT - 1, SCREEN_WIDTH, CHUNK_HEIGHT, COLOR_LINE);
     blitRows(buf, CHEVRON, 11, 8, 10, COLOR_ACCENT);
@@ -153,7 +158,7 @@ private:
 
     // The query grows at its end, so a long one keeps its tail in view.
     const int queryX = 42;
-    const int maxWidth = 240;
+    const int maxWidth = uikit::HEADER_TITLE_RIGHT - 8 - queryX; // caret too
     const char *query = s.getQuery();
     char shown[SearchModel::MAX_QUERY + 4];
     strncpy(shown, query, sizeof(shown) - 1);
@@ -169,36 +174,12 @@ private:
       fill(buf, queryX + textWidth + 1, 8, queryX + textWidth + 3, 23,
            COLOR_ACCENT);
 
-    // Battery, as in HeaderComponent::composeChrome
-    blitSprite(buf, SCREEN_WIDTH, CHUNK_HEIGHT, SPR_BATTERY, 290, 9);
-    fill(buf, 293, 12, 297, 17, COLOR_TEXT);
-    fill(buf, 298, 12, 302, 17, COLOR_TEXT);
-    fill(buf, 303, 12, 307, 17, COLOR_LINE);
+    // Bluetooth icon and battery, as in HeaderComponent::composeChrome
+    uikit::drawHeaderRight(buf, false);
   }
 
   void composeRibbon(uint16_t *buf, const SearchModel &s) {
-    fill(buf, 0, 0, SCREEN_WIDTH, CHUNK_HEIGHT - 1, COLOR_RIBBON);
-    fill(buf, 0, CHUNK_HEIGHT - 1, SCREEN_WIDTH, CHUNK_HEIGHT, COLOR_LINE);
-
-    // 13 cells of 19x20 with a 2px gap, a window over the 36-char ribbon
-    // that keeps the cursor centered until it nears either end.
-    const int cells = 13, cellW = 19, cellH = 20, gap = 2, cellY = 5;
-    const int x0 = (SCREEN_WIDTH - (cells * cellW + (cells - 1) * gap)) / 2;
-    int start = constrain(s.getCursor() - cells / 2, 0,
-                          SearchModel::RIBBON_LEN - cells);
-    for (int i = 0; i < cells; i++) {
-      int index = start + i;
-      int x = x0 + i * (cellW + gap);
-      bool on = index == s.getCursor();
-      uint16_t bg = on ? COLOR_ACCENT : COLOR_RIBBON;
-      if (on)
-        fill(buf, x, cellY, x + cellW, cellY + cellH, bg);
-      char letter[2] = {SearchModel::RIBBON[index], '\0'};
-      int w = fontRenderer.measureText(letter, IBMPlexSans12);
-      fontRenderer.renderText(letter, x + (cellW - w) / 2,
-                              cellY + (cellH - IBMPlexSans12.baseline) / 2,
-                              IBMPlexSans12, on ? COLOR_BG : COLOR_DIM, bg);
-    }
+    uikit::drawRibbon(buf, s.getEntry(), COLOR_DIM);
   }
 
   void composeRow(uint16_t *buf, const SearchModel &s, int row, int screenY) {

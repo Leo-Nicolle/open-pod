@@ -230,6 +230,12 @@ void OpenPodUIEngine::handleNavigationChanged(const RouteChangedEvent *event)
           (int)event->newRouteType);
   nowPlaying.invalidateArt(); // the transition draws over the whole screen
   updateFastScrollOverlay();  // route changes clear fast scroll
+  if (onMenu())
+  {
+    // The slide draws the new screen's rows: have them ready.
+    btMenu.sync(state.getCurrentRoute(), millis());
+    menuView.invalidate();
+  }
   // return;
   // Handle transitions between states
   if (event->oldRouteType != Route_t::RouteType::NOW_PLAYING &&
@@ -273,7 +279,7 @@ void OpenPodUIEngine::handleTrackListUpdated(const ListEvent *event)
   elementList.setElements(event->elements, event->totalElements);
   updateScrollbar();
   // Re-render if we're showing the track list
-  if (!booting && !state.getIsAnimating() && !onSearch())
+  if (!booting && !state.getIsAnimating() && !onSearch() && !onMenu())
   {
     renderTrackList();
   }

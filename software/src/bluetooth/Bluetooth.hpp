@@ -1,6 +1,7 @@
 #pragma once
-#include "logging.h"
-#include "pinout.h"
+#include "../logging.h"
+#include "../pinout.h"
+#include "BtModel.h"
 #include <Arduino.h>
 
 // FSC-BT1035 Bluetooth module as an A2DP source: the VS1053's I2S output
@@ -8,25 +9,18 @@
 // it to headphones/speakers. Wiring: docs/BT-pinout.md. AT commands:
 // datasheets/FSC-BT1035_programming_user_guide.pdf.
 //
-// The module stores its settings and reconnects to the last device by itself
-// at power-on, so this class only:
-//   - powers it on (SYS_CTRL high, kept high),
+// This class owns the UART:
+//   - powers the module on (SYS_CTRL high, kept high),
 //   - waits for it to answer, then makes sure its audio input is I2S (slave,
 //     48 kHz, 16 bit) - writing the settings only when they differ,
-//   - logs its events (connection state, device, codec),
-//   - forwards lines typed on the debug serial that start with "AT" to it,
-//     to pair a new device by hand (AT+SCAN=1, AT+A2DPCONN=<MAC>).
+//   - then sends the commands BtModel queues (scan, connect, ...), one at a
+//     time, each waiting for its OK/ERROR,
+//   - hands every line the module sends to BtModel,
+//   - forwards lines typed on the debug serial that start with "AT" to it.
 // Everything is non-blocking: call loop() every main-loop iteration.
 class Bluetooth {
 public:
-  enum A2dpState : uint8_t {
-    A2DP_UNSUPPORTED,
-    A2DP_STANDBY,
-    A2DP_CONNECTING,
-    A2DP_CONNECTED,
-    A2DP_STREAMING,
-    A2DP_PAUSED,
-  };
+  explicit Bluetooth(BtModel &model) : model(model) {}
 
   void begin() {
     // SYS_CTRL has no internal pull. High > 20 ms powers the module on; it
@@ -54,7 +48,7 @@ public:
       }
       break;
     case Phase::Configuring:
-      if (awaiting && now - lastSendMs > 1000) {
+      if (awaiting && now - lastSendMs > COMMAND_TIMEOUT_MS) {
         LOG_WARN("Bluetooth: no answer to a config command, skipping it");
         awaiting = false;
         nextConfigStep();
@@ -63,13 +57,23 @@ public:
         runConfigStep();
       break;
     case Phase::Ready:
+      if (awaiting && now - lastSendMs > COMMAND_TIMEOUT_MS) {
+        LOG_WARN("Bluetooth: no answer to %s", inFlight);
+        awaiting = false;
+        model.onCommandDone(false, now);
+      }
+      if (!awaiting && model.nextCommand(inFlight, sizeof(inFlight))) {
+        send(inFlight);
+        awaiting = true;
+      }
+      break;
     case Phase::Failed:
     case Phase::Off:
       break;
     }
+    model.tick(now);
   }
 
-  A2dpState a2dpState() const { return a2dp; }
   bool ready() const { return phase == Phase::Ready; }
 
 private:
@@ -86,12 +90,13 @@ private:
   static constexpr Setting SETTINGS[] = {{"AUXCFG", 3}, {"I2SCFG", 3}};
   static constexpr uint8_t N_SETTINGS = sizeof(SETTINGS) / sizeof(SETTINGS[0]);
   static const uint32_t BOOT_TIMEOUT_MS = 8000;
+  static const uint32_t COMMAND_TIMEOUT_MS = 1000;
 
+  BtModel &model;
   Uart uart{BT_UART_RX, BT_UART_TX};
   Phase phase = Phase::Off;
   uint32_t phaseStartMs = 0;
   uint32_t lastSendMs = 0;
-  A2dpState a2dp = A2DP_UNSUPPORTED;
 
   // Configuring: setting index, whether it was queried / written yet, and the
   // value the query returned (-1: none).
@@ -100,6 +105,7 @@ private:
   bool configWritten = false;
   bool awaiting = false; // a command is waiting for OK/ERROR
   int queriedValue = -1;
+  char inFlight[BtModel::CMD_LEN];
 
   char rxLine[96];
   uint8_t rxLen = 0;
@@ -117,6 +123,7 @@ private:
     if (configStep >= N_SETTINGS) {
       phase = Phase::Ready;
       LOG_INFO("✅ Bluetooth ready (I2S input)");
+      model.onModuleReady();
       return;
     }
     const Setting &s = SETTINGS[configStep];
@@ -154,9 +161,17 @@ private:
       }
       return;
     }
-    if (phase != Phase::Configuring || !awaiting)
+    if (!awaiting)
       return;
     awaiting = false;
+    if (phase == Phase::Ready) {
+      if (!ok)
+        LOG_WARN("Bluetooth: %s failed", inFlight);
+      model.onCommandDone(ok, millis());
+      return;
+    }
+    if (phase != Phase::Configuring)
+      return;
     const Setting &s = SETTINGS[configStep];
     if (!ok) {
       LOG_WARN("Bluetooth: AT+%s failed", s.name);
@@ -178,39 +193,14 @@ private:
       onCommandDone(false);
       return;
     }
-    if (line[0] != '+')
-      return;
-    const char *eq = strchr(line, '=');
-    if (!eq)
-      return;
-    const char *value = eq + 1;
-    size_t keyLen = eq - line - 1;
-
     if (phase == Phase::Configuring && configStep < N_SETTINGS &&
-        keyLen == strlen(SETTINGS[configStep].name) &&
-        !strncmp(line + 1, SETTINGS[configStep].name, keyLen)) {
-      queriedValue = atoi(value);
-    } else if (!strncmp(line, "+A2DPSTAT=", 10)) {
-      static const char *const NAMES[] = {"unsupported", "standby",
-                                          "connecting",  "connected",
-                                          "streaming",   "paused"};
-      int st = atoi(value);
-      if (st >= 0 && st <= A2DP_PAUSED) {
-        a2dp = (A2dpState)st;
-        LOG_INFO("Bluetooth A2DP: %s", NAMES[st]);
-      }
-    } else if (!strncmp(line, "+A2DPDEV=", 9)) {
-      LOG_INFO("Bluetooth connected to %s", value); // MAC,name
-    } else if (!strncmp(line, "+A2DPENC=", 9)) {
-      static const char *const CODECS[] = {"?",       "SBC",     "aptX",
-                                           "aptX HD", "aptX LL", "aptX Adaptive"};
-      int c = atoi(value);
-      LOG_INFO("Bluetooth codec: %s", c >= 1 && c <= 5 ? CODECS[c] : "?");
-    } else if (!strncmp(line, "+SCAN=", 6)) {
-      LOG_INFO("Bluetooth scan: %s", value); // index,type,MAC,RSSI,len,name,class
-    } else if (!strncmp(line, "+PAIRED=", 8)) {
-      LOG_INFO("Bluetooth paired with %s", value);
+        line[0] == '+') {
+      const char *name = SETTINGS[configStep].name;
+      size_t n = strlen(name);
+      if (!strncmp(line + 1, name, n) && line[n + 1] == '=')
+        queriedValue = atoi(line + n + 2);
     }
+    model.onLine(line, millis());
   }
 
   void readModule() {

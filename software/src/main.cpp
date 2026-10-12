@@ -1,5 +1,6 @@
 #include "Adafruit_MPR121.h"
-#include "Bluetooth.hpp"
+#include "bluetooth/Bluetooth.hpp"
+#include "bluetooth/BtConfig.h"
 #include "app/app.h"
 #include "logging.h"
 #include "pinout.h"
@@ -32,7 +33,12 @@ TwoWire Wire3(PB4, PA8);
 Adafruit_MPR121 cap = Adafruit_MPR121();
 ClickWheel wheel(&cap);
 Haptics haptics;
-Bluetooth bluetooth;
+// Bluetooth: the module's state (BtModel), its UART driver, the settings
+// saved on the SD card, and the Settings/Bluetooth screens' model.
+BtModel btModel;
+Bluetooth bluetooth(btModel);
+BtConfig btConfig;
+BtMenu btMenu(btModel);
 
 void setup()
 {
@@ -52,6 +58,11 @@ void setup()
   // First, so the module boots (~1.5 s) and reconnects to the last device
   // while the rest of the init runs; bluetooth.loop() finishes its setup.
   bluetooth.begin();
+  // Headphones gone (off, out of range): pause, like unplugging wired ones.
+  btModel.onLinkLost = [] {
+    if (state.getIsPlaying())
+      state.togglePlayback();
+  };
 
   state.addEventListener(onNavigationStateEvent); // see app/input.cpp
 
@@ -92,6 +103,7 @@ void setup()
   boot.runStep([] {
     musicLookup.init();
     albumArt.init(musicLookup.getSD());
+    btMenu.setStorageAvailable(btConfig.begin(musicLookup.getSD(), btModel));
     if (DEBUG_LINK_BENCH)
     {
       runLinkBench(player.audioPlayer, musicLookup);
@@ -233,6 +245,7 @@ void loop()
   updateAudioProgress();
 
   bluetooth.loop();
+  btConfig.saveIfDirty(btModel);
 
   // Optional trace visualization
   if (DEBUG_WHEEL_TRACE)

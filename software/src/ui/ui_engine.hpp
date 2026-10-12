@@ -4,8 +4,11 @@
 #include "../state/state.h"
 #include "../state/fast_scroll.h"
 #include "../storage/Music_lookup.h"
+#include "../bluetooth/BtModel.h"
+#include "../state/bt_menu.h"
 #include "header.hpp"
 #include "list/list_component.hpp"
+#include "menu_view.hpp"
 #include "nowplaying.hpp"
 #include "scrollbar.hpp"
 #include "search_view.hpp"
@@ -16,6 +19,8 @@
 // Forward declaration for global state
 extern State state;
 extern MusicLookup musicLookup;
+extern BtModel btModel;
+extern BtMenu btMenu;
 
 class OpenPodUIEngine
 {
@@ -29,6 +34,7 @@ private:
   ListComponent elementList;
   NowPlayingComponent nowPlaying;
   SearchView searchView;
+  MenuView menuView;
 
   int lastDrawnOffset;
   bool animatingLeftToRight; // Track direction of last transition
@@ -36,6 +42,13 @@ private:
   // Volume overlay auto-hide: 0 means no overlay currently shown.
   unsigned long volumeOverlayHideAt = 0;
   static const unsigned long VOLUME_OVERLAY_HIDE_DELAY = 1500; // ms
+
+  // Bluetooth: toast timeout and menu redraw pacing (see updateBluetooth()).
+  unsigned long toastHideAt = 0;
+  uint8_t toastSerial = 0; // btModel.toastSerial() last shown
+  static const unsigned long TOAST_MS = 2500;
+  unsigned long lastMenuRefresh = 0;
+  static const unsigned long MENU_REFRESH_MS = 20;
 
   // Fast-scroll letter overlay label (state.getFastScrollActive() says
   // whether it's shown).
@@ -87,6 +100,7 @@ public:
   void renderNowPlaying(int xOffset = 0, int width = SCREEN_WIDTH);
   void renderTrackListArea();
   void renderSearch();
+  void renderMenu();
 
   // Transitions (triggered by events)
   void transitionToNowPlaying();
@@ -105,6 +119,12 @@ private:
   void updateFastScrollOverlay();
   bool isAnimating() const { return state.getIsAnimating(); }
   bool onSearch() { return state.getCurrentRoute().type == Route_t::SEARCH_RESULTS; }
+  // Settings and the Bluetooth screens (drawn by menuView from btMenu).
+  bool onMenu() { return BtMenu::isMenuRoute(state.getCurrentRoute().type); }
+  // Header status (toast, Bluetooth icon, codec tag) and menu redraws.
+  void updateBluetooth();
+  // Repaints the header chunk of whatever screen is shown.
+  void repaintHeader();
   // True from begin() until endBoot(): state still flows in, nothing renders.
   bool booting = false;
   // One CHUNK_HEIGHT slice of the body (the list, or the search screen
@@ -122,7 +142,8 @@ OpenPodUIEngine *OpenPodUIEngine::instance = nullptr;
 
 // Implementation
 OpenPodUIEngine::OpenPodUIEngine(ILI9341_GFX *disp)
-    : display(disp), elementList(nullptr, 0), lastDrawnOffset(0)
+    : display(disp), elementList(nullptr, 0), menuView(header),
+      lastDrawnOffset(0)
 {
   fastScrollLabelText[0] = '\0';
 
@@ -172,6 +193,7 @@ bool OpenPodUIEngine::update()
 {
   // Update animation manager
   bool result = animManager.update();
+  updateBluetooth();
 
   if (volumeOverlayHideAt != 0 && millis() >= volumeOverlayHideAt)
   {
@@ -203,6 +225,92 @@ void OpenPodUIEngine::renderSearch()
   searchView.renderAll(display, state.getSearch());
 }
 
+void OpenPodUIEngine::renderMenu()
+{
+  btMenu.sync(state.getCurrentRoute(), millis());
+  menuView.renderAll(display, btMenu, state.getIsPlaying());
+}
+
+void OpenPodUIEngine::repaintHeader()
+{
+  if (onMenu())
+  {
+    menuView.invalidateHeader();
+    menuView.renderChunk(display, btMenu, state.getIsPlaying(), 0);
+  }
+  else if (onSearch())
+  {
+    searchView.renderChunk(display, state.getSearch(), 0);
+  }
+  else
+  {
+    header.render(display, state.getHeaderTitle(), state.getIsPlaying(),
+                  state.getCurrentRoute().type == Route_t::NOW_PLAYING);
+  }
+}
+
+void OpenPodUIEngine::updateBluetooth()
+{
+  unsigned long now = millis();
+  uikit::HeaderStatus &hs = uikit::headerStatus;
+  bool headerDirty = false;
+
+  if (btModel.toastSerial() != toastSerial)
+  {
+    toastSerial = btModel.toastSerial();
+    hs.toast = &btModel.lastToast();
+    hs.toastActive = true;
+    toastHideAt = now + TOAST_MS;
+    headerDirty = true;
+  }
+  else if (hs.toastActive && (long)(now - toastHideAt) >= 0)
+  {
+    hs.toastActive = false;
+    headerDirty = true;
+  }
+
+  BtModel::Icon icon = btModel.icon();
+  bool blinkOn = icon == BtModel::ICON_CONNECTING && (now / 500) % 2 == 0;
+  bool iconDirty = icon != hs.icon || blinkOn != hs.blinkOn;
+  hs.icon = icon;
+  hs.blinkOn = blinkOn;
+
+  // Codec tag on Now Playing: the codec in use, hidden when not connected.
+  const char *codec = nullptr;
+  int slot = btModel.linkSlot();
+  if (btModel.link() == BtModel::LINK_CONNECTED && slot >= 0 &&
+      btModel.device(slot).codecInUse != BtModel::CODEC_AUTO)
+    codec = BtModel::codecName(btModel.device(slot).codecInUse);
+  if (codec != hs.codec)
+  {
+    hs.codec = codec;
+    if (state.getCurrentRoute().type == Route_t::NOW_PLAYING)
+      headerDirty = true;
+  }
+
+  // Mid-transition the final render draws the current state anyway.
+  if (booting || state.getIsAnimating())
+    return;
+
+  if (onMenu())
+  {
+    if (headerDirty || now - lastMenuRefresh >= MENU_REFRESH_MS)
+    {
+      lastMenuRefresh = now;
+      btMenu.sync(state.getCurrentRoute(), now);
+      if (headerDirty)
+        menuView.invalidateHeader();
+      menuView.renderChanged(display, btMenu, state.getIsPlaying());
+    }
+  }
+  else if (headerDirty)
+  {
+    repaintHeader();
+  }
+  if (iconDirty && !headerDirty)
+    header.renderIconBox(display);
+}
+
 void OpenPodUIEngine::renderBodySlice(int x, int chunkY, int width, int height)
 {
   if (onSearch())
@@ -210,6 +318,12 @@ void OpenPodUIEngine::renderBodySlice(int x, int chunkY, int width, int height)
     searchView.renderChunk(display, state.getSearch(),
                            (BODY_Y + chunkY) / CHUNK_HEIGHT, x, width, x,
                            BODY_Y + chunkY);
+  }
+  else if (onMenu())
+  {
+    menuView.renderChunk(display, btMenu, state.getIsPlaying(),
+                         (BODY_Y + chunkY) / CHUNK_HEIGHT, x, width, x,
+                         BODY_Y + chunkY);
   }
   else
   {
@@ -262,6 +376,10 @@ void OpenPodUIEngine::renderCurrentState()
   {
     renderSearch();
   }
+  else if (onMenu())
+  {
+    renderMenu();
+  }
   else
   {
     renderTrackList();
@@ -277,7 +395,7 @@ void OpenPodUIEngine::renderTrackList()
 
 void OpenPodUIEngine::renderNowPlaying(int xOffset, int width)
 {
-  header.render(display, state.getHeaderTitle(), state.getIsPlaying());
+  header.render(display, state.getHeaderTitle(), state.getIsPlaying(), true);
 
   const char *trackName = state.getPlayingTrackName();
   if (!trackName)

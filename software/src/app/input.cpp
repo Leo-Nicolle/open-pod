@@ -54,6 +54,7 @@ static void onButtonLongPress(ClickWheel::Button button);
 static void onButtonVeryLongPress(ClickWheel::Button button);
 static void onScroll(int scrollClicks);
 static void onSearchButtonClick(ClickWheel::Button button);
+static void onMenuButtonClick(ClickWheel::Button button);
 static void trackFastScroll(int scrollClicks);
 static void commitPendingSeek();
 
@@ -127,6 +128,11 @@ static void onButtonClick(ClickWheel::Button button)
   if (state.getCurrentRoute().type == Route_t::RouteType::SEARCH_RESULTS)
   {
     onSearchButtonClick(button);
+    return;
+  }
+  if (BtMenu::isMenuRoute(state.getCurrentRoute().type))
+  {
+    onMenuButtonClick(button);
     return;
   }
 
@@ -247,6 +253,62 @@ static void onSearchButtonClick(ClickWheel::Button button)
   }
 }
 
+static void applyMenuNav(const BtMenu::Nav &nav)
+{
+  switch (nav.kind)
+  {
+  case BtMenu::Nav::PUSH:
+    state.pushMenuRoute(nav.route, nav.slot, nav.title, nav.selected);
+    break;
+  case BtMenu::Nav::BACK:
+    state.back(musicLookup);
+    break;
+  case BtMenu::Nav::BACK_TO_LIST:
+    state.backTo(Route_t::BT_LIST, musicLookup);
+    break;
+  default:
+    break;
+  }
+}
+
+// Settings and the Bluetooth screens. Center runs the highlighted row, Top
+// goes back. On the rename screen (same keys as search): Center adds the
+// ribbon letter, Left deletes one, Right adds a space, Bottom (play) saves,
+// Top cancels. The UI picks up every change on its next refresh.
+static void onMenuButtonClick(ClickWheel::Button button)
+{
+  Route_t &route = state.getCurrentRoute();
+  btMenu.sync(route, millis());
+  bool renaming = route.type == Route_t::BT_RENAME;
+  switch (button)
+  {
+  case ClickWheel::Button::Center:
+    if (renaming)
+      btMenu.renameAppend();
+    else if (!navigationBusy)
+      applyMenuNav(btMenu.click(route, millis()));
+    break;
+  case ClickWheel::Button::Top:
+    if (!navigationBusy)
+      state.back(musicLookup);
+    break;
+  case ClickWheel::Button::Left:
+    if (renaming)
+      btMenu.renameBackspace();
+    break;
+  case ClickWheel::Button::Right:
+    if (renaming)
+      btMenu.renameSpace();
+    break;
+  case ClickWheel::Button::Bottom:
+    if (renaming && !navigationBusy)
+      applyMenuNav(btMenu.renameSave());
+    break;
+  default:
+    break;
+  }
+}
+
 static void onButtonLongPress(ClickWheel::Button button)
 {
   if (button == ClickWheel::Button::Center && !navigationBusy)
@@ -304,6 +366,17 @@ static void onScroll(int scrollClicks)
   else if (state.getCurrentRoute().type == Route_t::RouteType::SEARCH_RESULTS)
   {
     state.searchScroll(scrollClicks, musicLookup);
+  }
+  else if (BtMenu::isMenuRoute(state.getCurrentRoute().type))
+  {
+    Route_t &route = state.getCurrentRoute();
+    if (route.type == Route_t::BT_RENAME)
+      btMenu.renameMove(-scrollClicks); // forward = down, as in search
+    else
+    {
+      btMenu.sync(route, millis());
+      btMenu.scroll(route, scrollClicks);
+    }
   }
   else
   {

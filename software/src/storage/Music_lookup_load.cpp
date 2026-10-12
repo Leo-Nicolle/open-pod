@@ -222,12 +222,11 @@ bool MusicLookup::loadRelationFromSDCard(const char *filename,
 }
 
 bool MusicLookup::loadDataFromSDCard(uint32_t base_address, uint32_t size) {
-  const uint32_t CHUNK_SIZE = 4096;
-  uint8_t *buffer = (uint8_t *)malloc(CHUNK_SIZE);
-  if (!buffer) {
-    LOG_ERROR("Failed to allocate buffer");
-    return false;
-  }
+  // One SD sector at a time, on the stack: SdFat reads whole aligned sectors
+  // straight into it, and there's no heap left for a bigger one (the list
+  // cache takes most of it).
+  const uint32_t CHUNK_SIZE = 512;
+  uint8_t buffer[CHUNK_SIZE];
 
   uint32_t bytes_read = 0;
   uint32_t psram_addr = base_address;
@@ -238,7 +237,6 @@ bool MusicLookup::loadDataFromSDCard(uint32_t base_address, uint32_t size) {
 
     if (actual_read == 0) {
       LOG_ERROR("Failed to read from file");
-      free(buffer);
       return false;
     }
 
@@ -247,7 +245,6 @@ bool MusicLookup::loadDataFromSDCard(uint32_t base_address, uint32_t size) {
     bytes_read += actual_read;
   }
 
-  free(buffer);
   return true;
 }
 

@@ -10,12 +10,14 @@
 #include "../Haptics.hpp"
 #include "../rendering/ILI9341_GFX.h"
 #include "../sound/player.h"
+#include "../state/bt_menu.h"
 #include "../state/state.h"
 
 extern ILI9341_GFX display;
 extern PodPlayer player;
 extern ClickWheel wheel;
 extern Haptics haptics;
+extern BtMenu btMenu;
 
 // Idle tracking (app/idle.cpp), also moved/read by the input handlers.
 extern unsigned long lastUserInput;
