@@ -1,7 +1,7 @@
 // Display bus throughput benchmark. Built only by the `display_bench` env
 // (pio run -e display_bench -t upload, then pio device monitor): measures how
 // fast the 16-bit parallel bus pushes pixels, to compare against the 2 MHz
-// limit of the backup-domain pins (PC13-PC15), see docs/next-step-pinout.md.
+// limit of the backup-domain pins (PC13-PC15), see notes/next-step-pinout.md.
 #include "logging.h"
 #include "rendering/ILI9341_GFX.h"
 #include <Arduino.h>

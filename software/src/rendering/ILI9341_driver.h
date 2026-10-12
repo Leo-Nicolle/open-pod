@@ -9,7 +9,7 @@
 // reached the Nucleo header: on MB1136 C-02+ boards they are wired to the X2
 // 32 kHz crystal, and SB48/SB49 (header link) ship open. Closing SB48/SB49
 // and removing R34/R36 reconnects them (see .agents/screen-red-problem.md
-// and docs/next-step-pinout.md). On any other/working Nucleo, leave this
+// and notes/next-step-pinout.md). On any other/working Nucleo, leave this
 // undefined (default) and the original single-`GPIOC->ODR`-write bus stays
 // intact.
 //

@@ -4,7 +4,7 @@
 //
 // Build and run: pio run -e bt_test -t upload -t monitor (platformio.ini).
 // The player itself (main.cpp) drives the module with bluetooth/Bluetooth.hpp.
-// Wiring: docs/BT-pinout.md.
+// Wiring: notes/BT-pinout.md.
 //
 // Type in the monitor:
 //   AT+VER         any line not starting with '!' goes to the module + "\r\n"
