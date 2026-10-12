@@ -5,6 +5,7 @@ import IndexCalculator from "./components/index-calculator.vue";
 import UIBuilder from "./components/ui-builder/UIBuilder.vue";
 import PinoutViewer from "./components/pinmap/PinoutViewer.vue";
 import PinoutLayout from "./layouts/PinoutLayout.vue";
+import SyncLayout from "./layouts/SyncLayout.vue";
 import { setup } from "@css-render/vue3-ssr";
 import { NConfigProvider } from "naive-ui";
 import DefaultTheme from "vitepress/theme";
@@ -61,6 +62,7 @@ export default {
     app.component("UIBuilder", UIBuilder);
     app.component("PinoutViewer", PinoutViewer);
     app.component("PinoutLayout", PinoutLayout);
+    app.component("SyncLayout", SyncLayout);
 
     if (import.meta.env.SSR) {
       const { collect } = setup(app);

@@ -28,6 +28,7 @@ export default defineConfig({
         text: "Tools",
         activeMatch: "^/tools/",
         items: [
+          { text: "OpenPod Sync", link: "/tools/sync" },
           { text: "Click wheel designer", link: "/tools/clickwheel" },
           { text: "Pinout", link: "/tools/pinout" },
           { text: "UI builder", link: "/tools/ui-builder" },
@@ -49,6 +50,7 @@ export default defineConfig({
           text: "Tools",
           items: [
             { text: "Overview", link: "/tools/" },
+            { text: "OpenPod Sync", link: "/tools/sync" },
             { text: "Click wheel designer", link: "/tools/clickwheel" },
             { text: "UI builder", link: "/tools/ui-builder" },
           ],
