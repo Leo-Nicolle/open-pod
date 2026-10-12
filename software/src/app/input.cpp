@@ -34,6 +34,17 @@ static int pendingSeekTarget = 0; // seconds, valid only while seekPending
 static unsigned long lastSeekScrollTime = 0;
 static const unsigned long SEEK_COMMIT_DELAY = 400; // ms of no scrolling
 
+// Seek acceleration: the step doubles every SEEK_ACCEL_CLICKS clicks of one
+// continuous scrub (24 clicks/turn), capped so the whole track spans
+// SEEK_FULL_SWEEP_CLICKS clicks. A pause or a direction change starts a new,
+// fine-grained scrub. Short tracks hit the cap at once, so songs keep the
+// fixed SEEK_SECONDS_PER_CLICK step. Starting values - tune on hardware.
+static const int SEEK_ACCEL_CLICKS = 8;
+static const int SEEK_FULL_SWEEP_CLICKS = 60;
+static const unsigned long SEEK_SCRUB_GAP_MS = 300;
+static int seekScrubClicks = 0;
+static int seekScrubDir = 0;
+
 // Fast scrolling jumps a whole screen per tick; on short lists that overshoots,
 // so it is only enabled when the list spans more than this many screens.
 static const int FAST_SCROLL_MIN_PAGES = 3;
@@ -53,8 +64,10 @@ static void onButtonClick(ClickWheel::Button button);
 static void onButtonLongPress(ClickWheel::Button button);
 static void onButtonVeryLongPress(ClickWheel::Button button);
 static void onScroll(int scrollClicks);
+static int seekStepSeconds(int scrollClicks, int duration);
 static void onSearchButtonClick(ClickWheel::Button button);
 static void onMenuButtonClick(ClickWheel::Button button);
+static void onPodcastButtonClick(ClickWheel::Button button);
 static void trackFastScroll(int scrollClicks);
 static void commitPendingSeek();
 
@@ -133,6 +146,11 @@ static void onButtonClick(ClickWheel::Button button)
   if (BtMenu::isMenuRoute(state.getCurrentRoute().type))
   {
     onMenuButtonClick(button);
+    return;
+  }
+  if (PodcastMenu::isPodcastRoute(state.getCurrentRoute().type))
+  {
+    onPodcastButtonClick(button);
     return;
   }
 
@@ -309,8 +327,57 @@ static void onMenuButtonClick(ClickWheel::Button button)
   }
 }
 
+static void applyPodcastNav(const PodcastMenu::Nav &nav)
+{
+  switch (nav.kind)
+  {
+  case PodcastMenu::Nav::PUSH:
+    state.pushMenuRoute(nav.route, nav.entity, nav.title, nav.selected);
+    break;
+  case PodcastMenu::Nav::BACK:
+    state.back(musicLookup);
+    break;
+  case PodcastMenu::Nav::PLAY:
+    state.startPodcast(nav.episode, nav.fromStart, musicLookup);
+    break;
+  default:
+    break;
+  }
+}
+
+// The podcast screens: Center opens a folder or plays an episode (or runs
+// an action), Top goes back. Hold Center is in onButtonLongPress.
+static void onPodcastButtonClick(ClickWheel::Button button)
+{
+  Route_t &route = state.getCurrentRoute();
+  switch (button)
+  {
+  case ClickWheel::Button::Center:
+    if (!navigationBusy)
+      applyPodcastNav(podcastMenu.click(route));
+    break;
+  case ClickWheel::Button::Top:
+    if (!navigationBusy)
+      state.back(musicLookup);
+    break;
+  default:
+    break;
+  }
+}
+
 static void onButtonLongPress(ClickWheel::Button button)
 {
+  // On a podcast episode, holding Center opens its actions.
+  if (button == ClickWheel::Button::Center && !navigationBusy &&
+      PodcastMenu::isPodcastRoute(state.getCurrentRoute().type))
+  {
+    PodcastMenu::Nav nav = podcastMenu.hold(state.getCurrentRoute());
+    if (nav.kind != PodcastMenu::Nav::STAY)
+    {
+      applyPodcastNav(nav);
+      return;
+    }
+  }
   if (button == ClickWheel::Button::Center && !navigationBusy)
   {
     LOG_CAT(USER_INPUT, "⏭️ Jumping to Now Playing");
@@ -342,7 +409,8 @@ static void onScroll(int scrollClicks)
                            : (int)player.audioPlayer.getDecodeTime();
     int duration = (int)player.audioPlayer.getDurationSeconds();
     pendingSeekTarget = constrain(
-        base - scrollClicks * SEEK_SECONDS_PER_CLICK, 0, duration);
+        base - scrollClicks * seekStepSeconds(scrollClicks, duration), 0,
+        duration);
     seekPending = true;
     state.updateProgress(pendingSeekTarget); // preview only, no file seek yet
     seekModeLastInteraction = millis();
@@ -366,6 +434,10 @@ static void onScroll(int scrollClicks)
   else if (state.getCurrentRoute().type == Route_t::RouteType::SEARCH_RESULTS)
   {
     state.searchScroll(scrollClicks, musicLookup);
+  }
+  else if (PodcastMenu::isPodcastRoute(state.getCurrentRoute().type))
+  {
+    podcastMenu.scroll(state.getCurrentRoute(), scrollClicks);
   }
   else if (BtMenu::isMenuRoute(state.getCurrentRoute().type))
   {
@@ -410,6 +482,20 @@ static void onScroll(int scrollClicks)
       }
     }
   }
+}
+
+// Seconds per click for this scroll event (see SEEK_ACCEL_CLICKS). Call
+// before lastSeekScrollTime is updated.
+static int seekStepSeconds(int scrollClicks, int duration)
+{
+  int dir = scrollClicks < 0 ? -1 : 1;
+  if (millis() - lastSeekScrollTime > SEEK_SCRUB_GAP_MS || dir != seekScrubDir)
+    seekScrubClicks = 0;
+  seekScrubDir = dir;
+  int shift = min(seekScrubClicks / SEEK_ACCEL_CLICKS, 8);
+  seekScrubClicks += abs(scrollClicks);
+  int cap = max(SEEK_SECONDS_PER_CLICK, duration / SEEK_FULL_SWEEP_CLICKS);
+  return min(SEEK_SECONDS_PER_CLICK << shift, cap);
 }
 
 // List scrolling: counts clicks in a FAST_SCROLL_WINDOW_MS window and shows

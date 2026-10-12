@@ -1,6 +1,7 @@
 #pragma once
 #include "../pinout.h"
 #include "PSRAM_controller.hpp"
+#include "../state/podcast_source.h"
 #include "types.h"
 #include <Arduino.h>
 #include <SdFat.h>
@@ -130,7 +131,7 @@ public:
   int getDepth() { return stackDepth; }
 };
 
-class MusicLookup {
+class MusicLookup : public PodcastSource {
 private:
   bool initialized;
   uint32_t psram_base_address;
@@ -175,6 +176,28 @@ private:
   track_to_id_index_t track_to_artist_h;
   track_to_id_index_t album_to_artist_h;
   album_cover_index_t album_cover_h;
+
+  // Podcasts (optional: a card without podcast tables has no Podcasts
+  // screen). See state/podcast_source.h.
+  bool podcasts_loaded;
+  uint32_t podcast_generation;
+  index_header_t pod_folder_names_h;
+  index_header_t pod_episode_titles_h;
+  index_header_t pod_episode_paths_h;
+  track_to_id_index_t pod_folder_parent_h;
+  track_to_id_index_t pod_folder_flags_h;
+  track_to_id_index_t pod_folder_span_h; // 2 values per folder
+  track_to_id_index_t pod_episode_folder_h;
+  track_to_id_index_t pod_episode_date_h;
+  track_to_id_index_t pod_episode_number_h;
+  relation_header_t pod_folder_children_h;
+  relation_header_t pod_folder_episodes_h;
+  duration_index_t pod_episode_durations_h;
+  album_cover_index_t pod_folder_cover_h;
+  // Loads every podcast table after `address`; false (and nothing
+  // loaded) when one is missing or the meta file doesn't match.
+  bool loadPodcasts(uint32_t &address);
+  uint32_t readDense(const track_to_id_index_t &h, uint32_t i);
 
   // Private helper methods
   bool loadIndexFromSDCard(const char *filename, uint32_t &base_address,
@@ -227,7 +250,8 @@ public:
   bool isInitialized() const { return initialized; }
   void printStats();
 
-  // Path lookup
+  // Path lookup. Podcast episodes (PODCAST_TRACK_BIT set) resolve through
+  // the podcast tables here and in getTrackName / getTrackDurationSeconds.
   bool getTrackPath(uint32_t track_id, char *buffer, uint32_t buffer_size);
 
   // String lookups
@@ -321,4 +345,33 @@ public:
   uint32_t getTrackIdByGenreAtIndex(uint32_t genreId, uint32_t index);
   uint32_t getAlbumIdByArtistAtIndex(uint32_t artistId, uint32_t index);
   uint32_t getAlbumIdByGenreAtIndex(uint32_t genreId, uint32_t index);
+
+  // Show art of a podcast folder (podcast_thumbs.bin), inherited from its
+  // parent when it has none.
+  bool getPodcastCoverEntry(uint32_t folder, album_cover_entry_t &out);
+
+  // PodcastSource
+  bool hasPodcasts() const override { return initialized && podcasts_loaded; }
+  uint32_t podcastGeneration() const override { return podcast_generation; }
+  uint32_t podcastFolderCount() const override {
+    return podcasts_loaded ? pod_folder_names_h.entry_count : 0;
+  }
+  uint32_t podcastEpisodeCount() const override {
+    return podcasts_loaded ? pod_episode_titles_h.entry_count : 0;
+  }
+  bool podcastFolderName(uint32_t folder, char *buf, uint32_t size) override;
+  uint32_t podcastFolderParent(uint32_t folder) override;
+  bool podcastFolderIsSeries(uint32_t folder) override;
+  void podcastFolderSpan(uint32_t folder, uint32_t &first,
+                         uint32_t &end) override;
+  uint32_t podcastSubfolderCount(uint32_t folder) override;
+  uint32_t podcastSubfolderAt(uint32_t folder, uint32_t index) override;
+  uint32_t podcastOwnEpisodeCount(uint32_t folder) override;
+  uint32_t podcastOwnEpisodeAt(uint32_t folder, uint32_t index) override;
+  bool podcastEpisodeTitle(uint32_t episode, char *buf, uint32_t size) override;
+  bool podcastEpisodePath(uint32_t episode, char *buf, uint32_t size) override;
+  uint32_t podcastEpisodeDuration(uint32_t episode) override;
+  uint32_t podcastEpisodeFolder(uint32_t episode) override;
+  uint32_t podcastEpisodeDate(uint32_t episode) override;
+  uint32_t podcastEpisodeNumber(uint32_t episode) override;
 };

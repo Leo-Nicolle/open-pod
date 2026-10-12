@@ -39,6 +39,8 @@ BtModel btModel;
 Bluetooth bluetooth(btModel);
 BtConfig btConfig;
 BtMenu btMenu(btModel);
+PodcastState podcastState;
+PodcastMenu podcastMenu(musicLookup, podcastState);
 
 void setup()
 {
@@ -103,6 +105,14 @@ void setup()
   boot.runStep([] {
     musicLookup.init();
     albumArt.init(musicLookup.getSD());
+    // The listening state sits in PSRAM right after the lookup tables (the
+    // search index goes after it, see below).
+    if (musicLookup.hasPodcasts())
+      podcastState.load(musicLookup.getSD(), musicLookup.getLastPSRAMAddress(),
+                        musicLookup.podcastEpisodeCount(),
+                        musicLookup.podcastGeneration());
+    state.setPodcasts(musicLookup.hasPodcasts() ? &musicLookup : nullptr,
+                      &podcastState);
     btMenu.setStorageAvailable(btConfig.begin(musicLookup.getSD(), btModel));
     if (DEBUG_LINK_BENCH)
     {
@@ -153,7 +163,8 @@ void setup()
 
   boot.runStep([] {
     // --- MusicIndex initialization and artist/track search ---
-    if (!musicIndex.init(musicLookup.getLastPSRAMAddress()))
+    if (!musicIndex.init(musicLookup.getLastPSRAMAddress() +
+                         podcastState.bytesUsed()))
     {
       LOG_ERROR("Failed to initialize MusicIndex!");
     }

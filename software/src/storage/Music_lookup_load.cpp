@@ -63,10 +63,66 @@ bool MusicLookup::init() {
   if (!loadRelationFromSDCard(genre_to_tracks_path, current_address,
                               genre_to_tracks_h))
     return false;
+  // Optional: without podcast tables there is no Podcasts screen.
+  initialized = true; // the podcast loader reads back through getters
+  podcasts_loaded = loadPodcasts(current_address);
   psram_last_address = current_address;
-  initialized = true;
   LOG_INFO("Music lookup initialized successfully");
   test();
+  return true;
+}
+
+bool MusicLookup::loadPodcasts(uint32_t &address) {
+  // "OPPI" | u16 version | u16 0 | u32 episodes | u32 generation
+  if (!file.open("/openpod/podcast_meta.bin", O_RDONLY)) {
+    return false;
+  }
+  uint32_t magic = readLittleEndian32(file);
+  uint32_t version = readLittleEndian32(file) & 0xFFFF;
+  uint32_t episodes = readLittleEndian32(file);
+  podcast_generation = readLittleEndian32(file);
+  file.close();
+  if (magic != 0x4950504Fu /* "OPPI" */ || version != 1) {
+    LOG_ERROR("podcast_meta.bin: unknown format");
+    return false;
+  }
+
+  uint32_t start = address;
+  bool ok =
+      loadIndexFromSDCard("/openpod/podcast_folder_names.bin", address,
+                          pod_folder_names_h) &&
+      loadIndexFromSDCard("/openpod/podcast_episode_titles.bin", address,
+                          pod_episode_titles_h) &&
+      loadIndexFromSDCard("/openpod/podcast_episode_paths.bin", address,
+                          pod_episode_paths_h) &&
+      loadTrackToIdIndexFromSDCard("/openpod/podcast_folder_parent.bin",
+                                   address, pod_folder_parent_h) &&
+      loadTrackToIdIndexFromSDCard("/openpod/podcast_folder_flags.bin",
+                                   address, pod_folder_flags_h) &&
+      loadTrackToIdIndexFromSDCard("/openpod/podcast_folder_span.bin", address,
+                                   pod_folder_span_h) &&
+      loadTrackToIdIndexFromSDCard("/openpod/podcast_episode_folder.bin",
+                                   address, pod_episode_folder_h) &&
+      loadTrackToIdIndexFromSDCard("/openpod/podcast_episode_date.bin",
+                                   address, pod_episode_date_h) &&
+      loadTrackToIdIndexFromSDCard("/openpod/podcast_episode_number.bin",
+                                   address, pod_episode_number_h) &&
+      loadRelationFromSDCard("/openpod/podcast_folder_children.bin", address,
+                             pod_folder_children_h) &&
+      loadRelationFromSDCard("/openpod/podcast_folder_episodes.bin", address,
+                             pod_folder_episodes_h) &&
+      loadDurationIndexFromSDCard("/openpod/podcast_episode_durations.bin",
+                                  address, pod_episode_durations_h) &&
+      loadAlbumCoverIndexFromSDCard("/openpod/podcast_folder_to_cover.bin",
+                                    address, pod_folder_cover_h);
+  if (!ok || pod_episode_titles_h.entry_count != episodes) {
+    LOG_ERROR("Podcast tables incomplete: no Podcasts screen");
+    address = start;
+    return false;
+  }
+  LOG_INFO("Podcasts: %lu episodes in %lu folders",
+           (unsigned long)episodes,
+           (unsigned long)pod_folder_names_h.entry_count);
   return true;
 }
 

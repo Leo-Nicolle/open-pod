@@ -23,7 +23,9 @@
 class AlbumArt {
 private:
   FsFile thumbsFile;
+  FsFile podcastFile; // podcast_thumbs.bin: show art
   bool ready = false;
+  bool podcastReady = false;
   static const uint32_t COVER_WIDTH = 160; // matches indexer's THUMB_SIZE
   static const uint32_t ROW_BYTES = COVER_WIDTH * 2; // raw565: 2 bytes/pixel
 
@@ -38,6 +40,8 @@ public:
     if (!ready) {
       LOG_ERROR("AlbumArt could not open /openpod/thumbs.bin");
     }
+    // Optional: cards without podcasts have none.
+    podcastReady = podcastFile.open("/openpod/podcast_thumbs.bin", O_RDONLY);
     return ready;
   }
 
@@ -55,8 +59,10 @@ public:
   // fill rather than show garbage.
   bool blitCoverRows(uint16_t *destBuffer, int destStride, int destRow0,
                      int destCol0, uint32_t coverOffset, uint32_t coverLength,
-                     int coverRowStart, int rowCount) {
-    if (!ready || !destBuffer || rowCount <= 0 || coverRowStart < 0) {
+                     int coverRowStart, int rowCount, bool podcast = false) {
+    FsFile &file = podcast ? podcastFile : thumbsFile;
+    if (!(podcast ? podcastReady : ready) || !destBuffer || rowCount <= 0 ||
+        coverRowStart < 0) {
       return false;
     }
 
@@ -74,12 +80,12 @@ public:
       }
       uint32_t fileOffset =
           coverOffset + (uint32_t)(coverRowStart + row) * ROW_BYTES;
-      if (!thumbsFile.seekSet(fileOffset)) {
+      if (!file.seekSet(fileOffset)) {
         return false;
       }
       uint16_t *dest =
           destBuffer + (size_t)(destRow0 + row) * destStride + destCol0;
-      int bytesRead = thumbsFile.read((uint8_t *)dest, ROW_BYTES);
+      int bytesRead = file.read((uint8_t *)dest, ROW_BYTES);
       if (bytesRead != (int)ROW_BYTES) {
         return false;
       }

@@ -24,6 +24,10 @@ class PodPlayer {
     // opens/primes the one landed on (the UI/state still update at once).
     static const unsigned long TRACK_START_DELAY_MS = 200;
     int pendingTrackId = -1;
+    int pendingStartAt = 0; // seconds to seek to once started (podcast resume)
+    int resumeAt = 0;       // a resume seek still to do (see loop())
+    unsigned long resumeDeadline = 0;
+    static const unsigned long RESUME_SEEK_TIMEOUT_MS = 2000;
     // The delay is counted from the first loop() pass after the change,
     // not from the change itself: the UI redraw it triggers (album art) can
     // block for longer than the delay, and a click made meanwhile is only
@@ -41,6 +45,9 @@ class PodPlayer {
     static PodPlayer *instance;
 
 public:
+    // A podcast resume seek is still pending: the decode time doesn't
+    // say where playback is yet.
+    bool isResuming() const { return resumeAt > 0; }
     AudioPlayer audioPlayer;
 
     PodPlayer() : audioPlayer(MP3_RESET, MP3CS, MP3XDCS, MP3DREQ, CARDCS) {

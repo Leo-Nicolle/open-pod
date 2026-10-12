@@ -67,6 +67,8 @@ public:
     // Where the device name sits in text (drawn bold), length 0 if none.
     uint8_t nameStart;
     uint8_t nameLen;
+    // No Bluetooth icon: the text starts at x=8 (podcast toasts).
+    bool plain;
   };
 
   BtModel();

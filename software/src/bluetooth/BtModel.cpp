@@ -782,6 +782,7 @@ void BtModel::raiseToast(uint8_t tone, const char *before, const char *name,
     len = sizeof(toast.text) - 1 - start;
   toast.nameStart = start;
   toast.nameLen = len;
+  toast.plain = false;
   toastCount++;
 }
 

@@ -40,7 +40,8 @@ void updateAudioProgress()
   // position (bar + timestamp), and this periodic poll would otherwise
   // fight it - overwriting the preview with the real, not-yet-committed
   // decode time every second and making the bar jump back and forth.
-  if (state.getIsPlaying() && !state.getSeekModeActive())
+  if (state.getIsPlaying() && !state.getSeekModeActive() &&
+      !player.isResuming())
   {
     unsigned long now = millis();
     if (now - lastProgressUpdate >= PROGRESS_UPDATE_INTERVAL)

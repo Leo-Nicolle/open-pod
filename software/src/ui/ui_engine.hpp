@@ -6,10 +6,13 @@
 #include "../storage/Music_lookup.h"
 #include "../bluetooth/BtModel.h"
 #include "../state/bt_menu.h"
+#include "../state/app_toast.h"
+#include "../state/podcast_menu.h"
 #include "header.hpp"
 #include "list/list_component.hpp"
 #include "menu_view.hpp"
 #include "nowplaying.hpp"
+#include "podcast_view.hpp"
 #include "scrollbar.hpp"
 #include "search_view.hpp"
 #include "ui_types.h"
@@ -21,6 +24,7 @@ extern State state;
 extern MusicLookup musicLookup;
 extern BtModel btModel;
 extern BtMenu btMenu;
+extern PodcastMenu podcastMenu;
 
 class OpenPodUIEngine
 {
@@ -35,6 +39,7 @@ private:
   NowPlayingComponent nowPlaying;
   SearchView searchView;
   MenuView menuView;
+  PodcastView podcastView;
 
   int lastDrawnOffset;
   bool animatingLeftToRight; // Track direction of last transition
@@ -46,6 +51,7 @@ private:
   // Bluetooth: toast timeout and menu redraw pacing (see updateBluetooth()).
   unsigned long toastHideAt = 0;
   uint8_t toastSerial = 0; // btModel.toastSerial() last shown
+  uint8_t appToastSerial = 0; // appToast.serial() last shown
   static const unsigned long TOAST_MS = 2500;
   unsigned long lastMenuRefresh = 0;
   static const unsigned long MENU_REFRESH_MS = 20;
@@ -101,6 +107,7 @@ public:
   void renderTrackListArea();
   void renderSearch();
   void renderMenu();
+  void renderPodcasts();
 
   // Transitions (triggered by events)
   void transitionToNowPlaying();
@@ -121,6 +128,11 @@ private:
   bool onSearch() { return state.getCurrentRoute().type == Route_t::SEARCH_RESULTS; }
   // Settings and the Bluetooth screens (drawn by menuView from btMenu).
   bool onMenu() { return BtMenu::isMenuRoute(state.getCurrentRoute().type); }
+  // The podcast screens (drawn by podcastView from podcastMenu).
+  bool onPodcast()
+  {
+    return PodcastMenu::isPodcastRoute(state.getCurrentRoute().type);
+  }
   // Header status (toast, Bluetooth icon, codec tag) and menu redraws.
   void updateBluetooth();
   // Repaints the header chunk of whatever screen is shown.
@@ -143,6 +155,7 @@ OpenPodUIEngine *OpenPodUIEngine::instance = nullptr;
 // Implementation
 OpenPodUIEngine::OpenPodUIEngine(ILI9341_GFX *disp)
     : display(disp), elementList(nullptr, 0), menuView(header),
+      podcastView(header),
       lastDrawnOffset(0)
 {
   fastScrollLabelText[0] = '\0';
@@ -231,9 +244,20 @@ void OpenPodUIEngine::renderMenu()
   menuView.renderAll(display, btMenu, state.getIsPlaying());
 }
 
+void OpenPodUIEngine::renderPodcasts()
+{
+  podcastMenu.sync(state.getCurrentRoute());
+  podcastView.renderAll(display, podcastMenu, state.getIsPlaying());
+}
+
 void OpenPodUIEngine::repaintHeader()
 {
-  if (onMenu())
+  if (onPodcast())
+  {
+    podcastView.invalidateHeader();
+    podcastView.renderChunk(display, podcastMenu, state.getIsPlaying(), 0);
+  }
+  else if (onMenu())
   {
     menuView.invalidateHeader();
     menuView.renderChunk(display, btMenu, state.getIsPlaying(), 0);
@@ -259,6 +283,14 @@ void OpenPodUIEngine::updateBluetooth()
   {
     toastSerial = btModel.toastSerial();
     hs.toast = &btModel.lastToast();
+    hs.toastActive = true;
+    toastHideAt = now + TOAST_MS;
+    headerDirty = true;
+  }
+  else if (appToast.serial() != appToastSerial)
+  {
+    appToastSerial = appToast.serial();
+    hs.toast = &appToast.last();
     hs.toastActive = true;
     toastHideAt = now + TOAST_MS;
     headerDirty = true;
@@ -292,7 +324,19 @@ void OpenPodUIEngine::updateBluetooth()
   if (booting || state.getIsAnimating())
     return;
 
-  if (onMenu())
+  if (onPodcast())
+  {
+    // Rows change with the cursor and the listening state: redraw what moved.
+    if (headerDirty || now - lastMenuRefresh >= MENU_REFRESH_MS)
+    {
+      lastMenuRefresh = now;
+      podcastMenu.sync(state.getCurrentRoute());
+      if (headerDirty)
+        podcastView.invalidateHeader();
+      podcastView.renderChanged(display, podcastMenu, state.getIsPlaying());
+    }
+  }
+  else if (onMenu())
   {
     if (headerDirty || now - lastMenuRefresh >= MENU_REFRESH_MS)
     {
@@ -324,6 +368,12 @@ void OpenPodUIEngine::renderBodySlice(int x, int chunkY, int width, int height)
     menuView.renderChunk(display, btMenu, state.getIsPlaying(),
                          (BODY_Y + chunkY) / CHUNK_HEIGHT, x, width, x,
                          BODY_Y + chunkY);
+  }
+  else if (onPodcast())
+  {
+    podcastView.renderChunk(display, podcastMenu, state.getIsPlaying(),
+                            (BODY_Y + chunkY) / CHUNK_HEIGHT, x, width, x,
+                            BODY_Y + chunkY);
   }
   else
   {
@@ -380,6 +430,10 @@ void OpenPodUIEngine::renderCurrentState()
   {
     renderMenu();
   }
+  else if (onPodcast())
+  {
+    renderPodcasts();
+  }
   else
   {
     renderTrackList();
@@ -422,11 +476,39 @@ void OpenPodUIEngine::renderNowPlaying(int xOffset, int width)
 
 void OpenPodUIEngine::updateAlbumArtForTrack(int trackId)
 {
+  nowPlaying.setPodcastMode(false);
   if (trackId < 0)
   {
     nowPlaying.clearAlbumArt();
     nowPlaying.setAlbumName(nullptr);
     nowPlaying.setArtistName(nullptr);
+    return;
+  }
+  if (isPodcastTrack((uint32_t)trackId))
+  {
+    // Show art, the show (its folder) and, for a series, the show folder
+    // above it; for a dated episode its full date.
+    uint32_t episode = podcastEpisodeOf((uint32_t)trackId);
+    uint32_t folder = musicLookup.podcastEpisodeFolder(episode);
+    nowPlaying.setPodcastMode(true);
+    album_cover_entry_t cover;
+    if (musicLookup.getPodcastCoverEntry(folder, cover))
+      nowPlaying.setAlbumArt(cover.offset, cover.length, cover.format, true);
+    else
+      nowPlaying.clearAlbumArt();
+    char show[64];
+    nowPlaying.setArtistName(
+        musicLookup.podcastFolderName(folder, show, sizeof(show)) ? show
+                                                                  : nullptr);
+    char third[64] = "";
+    uint32_t parent = musicLookup.podcastFolderParent(folder);
+    if (musicLookup.podcastFolderIsSeries(folder) &&
+        parent != PodcastSource::NONE && parent != 0)
+      musicLookup.podcastFolderName(parent, third, sizeof(third));
+    else
+      podfmt::longDate(musicLookup.podcastEpisodeDate(episode), third,
+                       sizeof(third));
+    nowPlaying.setAlbumName(third[0] ? third : nullptr);
     return;
   }
 

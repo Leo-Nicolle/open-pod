@@ -17,6 +17,12 @@ struct Route_t {
     BT_DEVICE,
     BT_FORGET,
     BT_RENAME,
+    // Podcasts (state/podcast_menu.h): rows come from PodcastMenu.
+    // PODCASTS is the root folder, PODCAST_FOLDER's entityId a folder id,
+    // PODCAST_ACTIONS' an episode id.
+    PODCASTS,
+    PODCAST_FOLDER,
+    PODCAST_ACTIONS,
   };
   RouteType type;
   uint32_t entityId;     // ID of current entity (genre_id, artist_id, etc.)

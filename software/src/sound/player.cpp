@@ -54,6 +54,7 @@ void PodPlayer::handleTrackPlaybackStarted(const PlaybackEvent *event) {
     audioPlayer.stopPlaying();
   }
   pendingTrackId = event->trackId;
+  pendingStartAt = event->startAt;
   pendingArmed = autoAdvancing; // auto-advance: no delay
   pendingTrackAt = millis() - (autoAdvancing ? TRACK_START_DELAY_MS : 0);
   uint32_t indexedDuration =
@@ -69,6 +70,11 @@ void PodPlayer::startPendingTrack() {
   if (musicLookup.getTrackPath(trackId, currentPath, sizeof(currentPath))) {
     uint32_t indexedDuration = musicLookup.getTrackDurationSeconds(trackId);
     if (audioPlayer.startPlaying(currentPath, indexedDuration)) {
+      // Podcast resume: the decoder may not accept a jump yet, so loop()
+      // retries for a moment.
+      resumeAt = pendingStartAt;
+      resumeDeadline = millis() + RESUME_SEEK_TIMEOUT_MS;
+      pendingStartAt = 0;
       if (!state.getIsPlaying()) {
         audioPlayer.pausePlaying(true); // paused while the start was pending
       }
@@ -108,6 +114,7 @@ void PodPlayer::handlePlaybackResumed(const PlaybackEvent *event) {
 
 void PodPlayer::handlePlaybackStopped(const PlaybackEvent *event) {
   pendingTrackId = -1;
+  resumeAt = 0;
   audioPlayer.stopPlaying();
 }
 
@@ -134,6 +141,12 @@ void PodPlayer::loop() {
     }
   }
   audioPlayer.loop();
+  if (resumeAt > 0) {
+    if (audioPlayer.seekToSeconds((uint32_t)resumeAt) ||
+        (long)(millis() - resumeDeadline) >= 0) {
+      resumeAt = 0;
+    }
+  }
   if (playbackFailed || audioPlayer.hasFailed()) {
     playbackFailed = false;
     LOG_ERROR("Playback failed, stopping");

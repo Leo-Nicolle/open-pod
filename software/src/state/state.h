@@ -3,6 +3,8 @@
 #include "../ui/theme.h"
 #include "../ui/ui_types.h"
 #include "event-target.h"
+#include "podcast_source.h"
+#include "podcast_state.h"
 #include "router.h"
 #include "search.h"
 #include <Arduino.h>
@@ -68,6 +70,7 @@ struct PlaybackEvent {
   int trackId;    // Global track ID, as used by MusicLookup::getTrackPath()
   const char *trackName;
   bool isPlaying;
+  int startAt; // EVENT_PLAYBACK_STARTED: seconds to seek to (podcast resume)
 };
 
 struct ProgressEvent {
@@ -152,7 +155,7 @@ private:
   bool isPlaying;
   int playbackPosition; // in seconds
   int trackDuration;    // in seconds
-  char playingTrackName[64]; // owned copy - elements[] may point at a
+  char playingTrackName[128]; // owned copy - elements[] may point at a
                               // different list by the time this is read
 
   // Source-list context captured at playback-start time (not re-derived
@@ -162,6 +165,11 @@ private:
   Route_t::RouteType playingListParentType;
   uint32_t playingListEntityId;
   int playingListTotalTracks;
+
+  // Podcasts: the tables and the listening state (null without them).
+  PodcastSource *podcastSource;
+  PodcastState *podcastState;
+  int lastPodcastSave; // playback position last saved, seconds
 
   int volume;          // 0-100 logical volume
   bool seekModeActive; // Now Playing seek-mode (center press to enter)
@@ -197,6 +205,9 @@ private:
   // Shows the current route's list (windowed) with `count` rows.
   void setWindowedElements(MusicLookup &musicLookup, int count);
   void restoreSelectionState();
+  // Podcast playback (state.cpp).
+  int32_t nextSeriesEpisode();
+  void podcastEnded(MusicLookup &musicLookup);
   // Resolves the global track ID for a row position in the TRACKS list,
   // given the current route is NOW_PLAYING (TRACKS is one level below it).
   uint32_t resolveTrackId(MusicLookup &musicLookup, int index);
@@ -226,8 +237,9 @@ public:
   void pageUp();
   void pageDown();
   
-  // Playback control
-  void startPlayback(int trackIndex, uint32_t trackId, MusicLookup &musicLookup);
+  // Playback control. startAt: seconds to start from.
+  void startPlayback(int trackIndex, uint32_t trackId, MusicLookup &musicLookup,
+                     int startAt = 0);
   void togglePlayback();
   void stopPlayback();
   void updateProgress(int position);
@@ -249,6 +261,34 @@ public:
   // is playing.
   bool previousTrack(MusicLookup &musicLookup);
   static const int PREVIOUS_RESTART_SECONDS = 1;
+
+  // Podcasts (state/podcast_menu.h). Without them the Podcasts screen
+  // shows its empty hint.
+  void setPodcasts(PodcastSource *source, PodcastState *listening) {
+    podcastSource = source;
+    podcastState = listening;
+  }
+  PodcastSource *getPodcastSource() { return podcastSource; }
+  PodcastState *getPodcastState() { return podcastState; }
+  // Plays an episode within its folder, from its saved position (minus
+  // RESUME_REWIND_SECONDS) unless fromStart, and opens Now Playing.
+  void startPodcast(uint32_t episode, bool fromStart, MusicLookup &musicLookup);
+  // Whether the playing track is a podcast episode.
+  bool isPlayingPodcast() const {
+    return playingTrackIndex >= 0 && isPodcastTrack((uint32_t)playingTrackId);
+  }
+  // Saves the playing episode's position (leaving: paused, stopped or
+  // switched, so a position in its tail counts as played, see
+  // PodcastState::playedTail). Called on those and every
+  // PODCAST_SAVE_SECONDS while playing; call it before powering off too.
+  void savePodcastPosition(bool leaving);
+  // Where an episode starts: a started one resumes RESUME_REWIND_SECONDS
+  // before its saved position (with a toast), anything else from the top.
+  int podcastStartAt(uint32_t episode);
+  // Plays the playing folder's own episode at `index` (next/previous).
+  bool playPodcastAt(int index, MusicLookup &musicLookup);
+  static const int RESUME_REWIND_SECONDS = 5;
+  static const int PODCAST_SAVE_SECONDS = 30;
 
   // Volume control (Now Playing wheel scroll)
   void setVolume(int vol);

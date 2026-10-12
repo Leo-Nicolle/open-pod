@@ -94,6 +94,7 @@ StaticMenu StaticMenu::createRootMenu() {
   menu.addItem("Artists", 2, true);
   menu.addItem("Albums", 3, true);
   menu.addItem("Genres", 4, true);
+  menu.addItem("Podcasts", 8, true);
   menu.addItem("Search", 5, true);
   menu.addItem("Settings", 6, true);
   menu.addItem("Now Playing", 7, true);

@@ -309,15 +309,16 @@ inline void drawToast(uint16_t *buf, const BtModel::Toast &t) {
   if (t.tone == BtModel::TOAST_SUCCESS) {
     fill(buf, SCREEN_WIDTH, CHUNK_HEIGHT, 0, 28, SCREEN_WIDTH, 30,
          COLOR_ACCENT);
-    drawBtIcon(buf, SCREEN_WIDTH, CHUNK_HEIGHT, 8, 10, COLOR_ACCENT_ALT, true,
-               COLOR_ACCENT_ALT, bg);
-  } else {
+    if (!t.plain)
+      drawBtIcon(buf, SCREEN_WIDTH, CHUNK_HEIGHT, 8, 10, COLOR_ACCENT_ALT, true,
+                 COLOR_ACCENT_ALT, bg);
+  } else if (!t.plain) {
     drawBtIcon(buf, SCREEN_WIDTH, CHUNK_HEIGHT, 8, 10, COLOR_TEXT, false,
                COLOR_TEXT, bg);
   }
 
   fontRenderer.setBuffer(buf, SCREEN_WIDTH, CHUNK_HEIGHT);
-  const int x0 = 27, maxW = SCREEN_WIDTH - 8 - x0;
+  const int x0 = t.plain ? 8 : 27, maxW = SCREEN_WIDTH - 8 - x0;
   int len = strlen(t.text);
   int ns = min((int)t.nameStart, len);
   int nl = min((int)t.nameLen, len - ns);

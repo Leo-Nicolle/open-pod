@@ -236,6 +236,11 @@ void OpenPodUIEngine::handleNavigationChanged(const RouteChangedEvent *event)
     btMenu.sync(state.getCurrentRoute(), millis());
     menuView.invalidate();
   }
+  if (onPodcast())
+  {
+    podcastMenu.sync(state.getCurrentRoute());
+    podcastView.invalidate();
+  }
   // return;
   // Handle transitions between states
   if (event->oldRouteType != Route_t::RouteType::NOW_PLAYING &&
@@ -248,7 +253,10 @@ void OpenPodUIEngine::handleNavigationChanged(const RouteChangedEvent *event)
   {
     transitionToTrackList(!event->isForward);
   }
-  else if (event->oldRouteType != event->newRouteType)
+  // Same type but animating: a podcast folder into/out of a subfolder. Only
+  // the transition's end clears isAnimating, so it must run.
+  else if (event->oldRouteType != event->newRouteType ||
+           state.getIsAnimating())
   {
     transitionToTrackList(!event->isForward);
   }
@@ -279,7 +287,8 @@ void OpenPodUIEngine::handleTrackListUpdated(const ListEvent *event)
   elementList.setElements(event->visibleElements, event->totalElements);
   updateScrollbar();
   // Re-render if we're showing the track list
-  if (!booting && !state.getIsAnimating() && !onSearch() && !onMenu())
+  if (!booting && !state.getIsAnimating() && !onSearch() && !onMenu() &&
+      !onPodcast())
   {
     renderTrackList();
   }
@@ -347,7 +356,7 @@ void OpenPodUIEngine::handleFastScrollChanged(const FastScrollEvent *event)
 {
   updateFastScrollOverlay();
   Route_t::RouteType route = state.getCurrentRoute().type;
-  if (state.getIsAnimating() || onSearch() ||
+  if (state.getIsAnimating() || onSearch() || onPodcast() ||
       route == Route_t::RouteType::NOW_PLAYING)
     return;
   // The overlay covers rows 2-4 (chunks 3-5) only.

@@ -1,4 +1,6 @@
 #include "state.h"
+#include "app_toast.h"
+#include "podcast_menu.h"
 
 // Application state management (route navigation and search are in
 // state_navigation.cpp)
@@ -8,7 +10,9 @@ State::State()
       windowStart(0), windowCount(0), playingTrackIndex(-1),
       playingTrackId(-1), isPlaying(false), playbackPosition(0),
       trackDuration(0), playingListParentType(Route_t::ROOT),
-      playingListEntityId(0), playingListTotalTracks(0), volume(60),
+      playingListEntityId(0), playingListTotalTracks(0),
+      podcastSource(nullptr), podcastState(nullptr), lastPodcastSave(0),
+      volume(60),
       seekModeActive(false), fastScrollActive(false), selectedIndex(0), topVisibleIndex(0),
       isAnimating(false), scrollAnimId(0),
       transitionAnimId(0), isRotatedMode(false) {
@@ -16,7 +20,7 @@ State::State()
 }
 
 void State::startPlayback(int trackIndex, uint32_t trackId,
-                          MusicLookup &musicLookup) {
+                          MusicLookup &musicLookup, int startAt) {
   if (trackIndex == -1) {
     trackIndex = selectedIndex;
   }
@@ -24,23 +28,86 @@ void State::startPlayback(int trackIndex, uint32_t trackId,
   // currently displayed - the user may have browsed elsewhere since this
   // list was loaded (see playingListTotalTracks).
   if (trackIndex >= 0 && trackIndex < playingListTotalTracks) {
+    if (isPlayingPodcast() && (uint32_t)playingTrackId != trackId) {
+      savePodcastPosition(true); // leaving an episode: remember where
+    }
     playingTrackIndex = trackIndex;
     playingTrackId = (int)trackId;
     isPlaying = true;
-    playbackPosition = 0;
+    playbackPosition = startAt;
+    lastPodcastSave = startAt;
     if (!musicLookup.getTrackName(trackId, playingTrackName,
                                   sizeof(playingTrackName))) {
       playingTrackName[0] = '\0';
     }
     PlaybackEvent event = {trackIndex, (int)trackId, getPlayingTrackName(),
-                           true};
+                           true, startAt};
     emitEvent(EVENT_PLAYBACK_STARTED, &event);
   }
+}
+
+void State::startPodcast(uint32_t episode, bool fromStart,
+                         MusicLookup &musicLookup) {
+  if (!podcastSource || episode >= podcastSource->podcastEpisodeCount()) {
+    return;
+  }
+  // The episode plays within its folder: next/previous and the series
+  // auto-advance walk the folder's own episodes.
+  uint32_t folder = podcastSource->podcastEpisodeFolder(episode);
+  uint32_t first, end;
+  podcastSource->podcastFolderSpan(folder, first, end);
+  playingListParentType = Route_t::PODCAST_FOLDER;
+  playingListEntityId = folder;
+  playingListTotalTracks = (int)podcastSource->podcastOwnEpisodeCount(folder);
+  startPlayback((int)(episode - first), podcastTrackId(episode), musicLookup,
+                fromStart ? 0 : podcastStartAt(episode));
+  goToNowPlaying(musicLookup);
+}
+
+int State::podcastStartAt(uint32_t episode) {
+  if (!podcastState) {
+    return 0;
+  }
+  PodcastState::Entry e = podcastState->get(episode);
+  if (e.mark() != PodcastState::MARK_PROGRESS) {
+    return 0;
+  }
+  char at[16];
+  podfmt::duration(e.position, at, sizeof(at));
+  appToast.show(BtModel::TOAST_NEUTRAL, "Resumed at ", at);
+  return max(0, (int)e.position - RESUME_REWIND_SECONDS);
+}
+
+bool State::playPodcastAt(int index, MusicLookup &musicLookup) {
+  if (!podcastSource || index < 0 || index >= playingListTotalTracks) {
+    return false;
+  }
+  uint32_t episode =
+      podcastSource->podcastOwnEpisodeAt(playingListEntityId, (uint32_t)index);
+  if (episode == 0xFFFFFFFFu) {
+    return false;
+  }
+  startPlayback(index, podcastTrackId(episode), musicLookup,
+                podcastStartAt(episode));
+  return true;
+}
+
+void State::savePodcastPosition(bool leaving) {
+  if (!isPlayingPodcast() || !podcastState) {
+    return;
+  }
+  podcastState->savePosition(podcastEpisodeOf((uint32_t)playingTrackId),
+                             (uint32_t)max(0, playbackPosition),
+                             (uint32_t)max(0, trackDuration), leaving);
+  lastPodcastSave = playbackPosition;
 }
 
 void State::togglePlayback() {
   if (playingTrackIndex >= 0) {
     isPlaying = !isPlaying;
+    if (!isPlaying) {
+      savePodcastPosition(true);
+    }
     PlaybackEvent event = {playingTrackIndex, playingTrackId,
                            getPlayingTrackName(), isPlaying};
     emitEvent(isPlaying ? EVENT_PLAYBACK_RESUMED : EVENT_PLAYBACK_PAUSED,
@@ -50,6 +117,7 @@ void State::togglePlayback() {
 
 void State::stopPlayback() {
   if (playingTrackIndex >= 0) {
+    savePodcastPosition(true);
     int stoppedTrackIndex = playingTrackIndex;
     int stoppedTrackId = playingTrackId;
     const char *stoppedTrackName = getPlayingTrackName();
@@ -66,6 +134,13 @@ void State::stopPlayback() {
 void State::updateProgress(int position) {
   if (position != playbackPosition && trackDuration > 0) {
     playbackPosition = position;
+    if (position < lastPodcastSave) {
+      lastPodcastSave = position; // sought back: count from here
+    }
+    if (isPlayingPodcast() &&
+        position - lastPodcastSave >= PODCAST_SAVE_SECONDS) {
+      savePodcastPosition(false);
+    }
     ProgressEvent event = {position, trackDuration,
                            trackDuration > 0 ? (float)position / trackDuration
                                              : 0.0f};
@@ -81,6 +156,13 @@ void State::setTrackDuration(int duration) {
 }
 
 void State::notifyTrackEnded(MusicLookup &musicLookup) {
+  if (isPlayingPodcast()) {
+    PlaybackEvent event = {playingTrackIndex, playingTrackId,
+                           getPlayingTrackName(), false};
+    emitEvent(EVENT_TRACK_ENDED, &event);
+    podcastEnded(musicLookup);
+    return;
+  }
   if (playingTrackIndex >= 0) {
     PlaybackEvent event = {playingTrackIndex, playingTrackId,
                            getPlayingTrackName(), false};
@@ -99,7 +181,89 @@ void State::notifyTrackEnded(MusicLookup &musicLookup) {
   }
 }
 
+// The episode of the folder numbered right after the playing one, or -1
+// (a dated show, or the next number isn't on the card).
+int32_t State::nextSeriesEpisode() {
+  if (!isPlayingPodcast() || !podcastSource) {
+    return -1;
+  }
+  uint32_t episode = podcastEpisodeOf((uint32_t)playingTrackId);
+  uint32_t number = podcastSource->podcastEpisodeNumber(episode) & 0xFFFF;
+  uint32_t folder = playingListEntityId;
+  if (!number || !podcastSource->podcastFolderIsSeries(folder)) {
+    return -1;
+  }
+  uint32_t n = podcastSource->podcastOwnEpisodeCount(folder);
+  for (uint32_t i = 0; i < n; i++) {
+    uint32_t e = podcastSource->podcastOwnEpisodeAt(folder, i);
+    if ((podcastSource->podcastEpisodeNumber(e) & 0xFFFF) == number + 1) {
+      return (int32_t)e;
+    }
+  }
+  return -1;
+}
+
+// End of an episode (README §5): it is played. A series goes on with the
+// next number; a dated show stops and its list comes back with the cursor
+// on the next unfinished episode.
+void State::podcastEnded(MusicLookup &musicLookup) {
+  uint32_t episode = podcastEpisodeOf((uint32_t)playingTrackId);
+  uint32_t folder = playingListEntityId;
+  if (podcastState) {
+    podcastState->markFinished(episode);
+  }
+  int32_t next = nextSeriesEpisode();
+  if (next >= 0) {
+    uint32_t number = podcastSource->podcastEpisodeNumber(episode);
+    uint32_t total = number >> 16;
+    char done[12], after[32];
+    snprintf(done, sizeof(done), "%lu/%lu", (unsigned long)(number & 0xFFFF),
+             (unsigned long)total);
+    snprintf(after, sizeof(after), " \xB7 playing %lu/%lu",
+             (unsigned long)((number & 0xFFFF) + 1), (unsigned long)total);
+    appToast.show(BtModel::TOAST_SUCCESS, "Finished ", done, after);
+    uint32_t first, end;
+    podcastSource->podcastFolderSpan(folder, first, end);
+    lastPodcastSave = 0;
+    // The finished episode's position is saved by markFinished(): don't
+    // let startPlayback() save its (end) position over a later replay.
+    playingTrackId = -1;
+    int startAt = 0;
+    if (podcastState) {
+      PodcastState::Entry e = podcastState->get((uint32_t)next);
+      if (e.mark() == PodcastState::MARK_PROGRESS)
+        startAt = max(0, (int)e.position - RESUME_REWIND_SECONDS);
+    }
+    startPlayback((int)((uint32_t)next - first), podcastTrackId((uint32_t)next),
+                  musicLookup, startAt);
+    return;
+  }
+  appToast.show(BtModel::TOAST_SUCCESS, "Finished \xB7 marked as played");
+  stopPlayback(); // saves the end position; the played flag stays
+  // Back to the show's list, if Now Playing was opened from it.
+  // The current route is routeStack[depth] (ROOT sits at 0).
+  int depth = router.getDepth();
+  if (router.getCurrentRoute().type == Route_t::NOW_PLAYING && depth >= 2) {
+    Route_t &below = router.routeStack[depth - 1];
+    bool fromFolder =
+        (below.type == Route_t::PODCAST_FOLDER && below.entityId == folder) ||
+        (below.type == Route_t::PODCASTS && folder == 0);
+    if (fromFolder && podcastSource && podcastState) {
+      below.selectedIndex =
+          PodcastMenu::initialRow(*podcastSource, *podcastState, folder);
+      back(musicLookup);
+    }
+  }
+}
+
 bool State::getNextTrackId(MusicLookup &musicLookup, uint32_t &nextTrackId) {
+  if (isPlayingPodcast()) {
+    int32_t next = nextSeriesEpisode();
+    if (next < 0)
+      return false;
+    nextTrackId = podcastTrackId((uint32_t)next);
+    return true;
+  }
   if (playingTrackIndex >= 0 &&
       playingTrackIndex < playingListTotalTracks - 1) {
     uint32_t id = resolveTrackId(musicLookup, playingTrackIndex + 1);
@@ -111,7 +275,12 @@ bool State::getNextTrackId(MusicLookup &musicLookup, uint32_t &nextTrackId) {
   return false;
 }
 
+// Next/previous on a podcast walk the folder's list, as on an album; the end
+// of an episode only chains within a series (getNextTrackId).
 bool State::nextTrack(MusicLookup &musicLookup) {
+  if (isPlayingPodcast()) {
+    return playPodcastAt(playingTrackIndex + 1, musicLookup);
+  }
   uint32_t nextTrackId;
   if (!getNextTrackId(musicLookup, nextTrackId)) {
     return false;
@@ -125,10 +294,17 @@ bool State::previousTrack(MusicLookup &musicLookup) {
     return false;
   }
   if (playbackPosition <= PREVIOUS_RESTART_SECONDS && playingTrackIndex > 0) {
-    uint32_t prevTrackId = resolveTrackId(musicLookup, playingTrackIndex - 1);
-    if (prevTrackId != UINT32_MAX) {
-      startPlayback(playingTrackIndex - 1, prevTrackId, musicLookup);
-      return true;
+    if (isPlayingPodcast()) {
+      if (playPodcastAt(playingTrackIndex - 1, musicLookup)) {
+        return true;
+      }
+    } else {
+      uint32_t prevTrackId =
+          resolveTrackId(musicLookup, playingTrackIndex - 1);
+      if (prevTrackId != UINT32_MAX) {
+        startPlayback(playingTrackIndex - 1, prevTrackId, musicLookup);
+        return true;
+      }
     }
   }
   // Restart the current track

@@ -19,6 +19,8 @@ MusicLookup::MusicLookup(uint32_t psram_base_addr)
   memset(&track_to_artist_h, 0, sizeof(track_to_artist_h));
   memset(&album_to_artist_h, 0, sizeof(album_to_artist_h));
   memset(&album_cover_h, 0, sizeof(album_cover_h));
+  podcasts_loaded = false;
+  podcast_generation = 0;
 }
 
 MusicLookup::~MusicLookup() {
@@ -29,6 +31,9 @@ bool MusicLookup::getTrackPath(uint32_t track_id, char *buffer,
                                uint32_t buffer_size) {
   if (!initialized || !buffer || buffer_size == 0) {
     return false;
+  }
+  if (isPodcastTrack(track_id)) {
+    return podcastEpisodePath(podcastEpisodeOf(track_id), buffer, buffer_size);
   }
 
   // Binary search for track ID in path index
@@ -54,6 +59,9 @@ bool MusicLookup::getTrackPath(uint32_t track_id, char *buffer,
 }
 
 uint32_t MusicLookup::getTrackDurationSeconds(uint32_t track_id) {
+  if (isPodcastTrack(track_id)) {
+    return podcastEpisodeDuration(podcastEpisodeOf(track_id));
+  }
   if (!initialized || track_id >= duration_index_h.entry_count) {
     return 0;
   }
@@ -475,6 +483,9 @@ bool MusicLookup::getGenreName(uint32_t genre_id, char *buffer,
 
 bool MusicLookup::getTrackName(uint32_t track_id, char *buffer,
                                uint32_t buffer_size) {
+  if (isPodcastTrack(track_id)) {
+    return podcastEpisodeTitle(podcastEpisodeOf(track_id), buffer, buffer_size);
+  }
   return getString(track_id, track_index_h, buffer, buffer_size);
 }
 uint32_t MusicLookup::getLastPSRAMAddress() { return psram_last_address; }
@@ -586,4 +597,110 @@ uint32_t MusicLookup::getAlbumIdByArtistAtIndex(uint32_t artistId,
 uint32_t MusicLookup::getAlbumIdByGenreAtIndex(uint32_t genreId,
                                                uint32_t index) {
   return getRelatedIdAtIndex(genreId, genre_to_albums_h, index);
+}
+
+// --- podcasts ------------------------------------------------------------------
+
+uint32_t MusicLookup::readDense(const track_to_id_index_t &h, uint32_t i) {
+  if (!podcasts_loaded || i >= h.entry_count) {
+    return 0xFFFFFFFFu;
+  }
+  uint32_t v = 0;
+  psram.readData(h.baseOffset + i * sizeof(uint32_t), (uint8_t *)&v,
+                 sizeof(uint32_t));
+  return v;
+}
+
+bool MusicLookup::podcastFolderName(uint32_t folder, char *buf,
+                                    uint32_t size) {
+  return podcasts_loaded && getString(folder, pod_folder_names_h, buf, size);
+}
+
+uint32_t MusicLookup::podcastFolderParent(uint32_t folder) {
+  return readDense(pod_folder_parent_h, folder);
+}
+
+bool MusicLookup::podcastFolderIsSeries(uint32_t folder) {
+  uint32_t flags = readDense(pod_folder_flags_h, folder);
+  return flags != 0xFFFFFFFFu && (flags & 1);
+}
+
+void MusicLookup::podcastFolderSpan(uint32_t folder, uint32_t &first,
+                                    uint32_t &end) {
+  first = readDense(pod_folder_span_h, folder * 2);
+  end = readDense(pod_folder_span_h, folder * 2 + 1);
+  if (first == 0xFFFFFFFFu || end == 0xFFFFFFFFu || end < first) {
+    first = end = 0;
+  }
+}
+
+uint32_t MusicLookup::podcastSubfolderCount(uint32_t folder) {
+  return podcasts_loaded ? getRelatedCount(folder, pod_folder_children_h) : 0;
+}
+
+uint32_t MusicLookup::podcastSubfolderAt(uint32_t folder, uint32_t index) {
+  return podcasts_loaded
+             ? getRelatedIdAtIndex(folder, pod_folder_children_h, index)
+             : 0xFFFFFFFFu;
+}
+
+uint32_t MusicLookup::podcastOwnEpisodeCount(uint32_t folder) {
+  return podcasts_loaded ? getRelatedCount(folder, pod_folder_episodes_h) : 0;
+}
+
+uint32_t MusicLookup::podcastOwnEpisodeAt(uint32_t folder, uint32_t index) {
+  // A folder's own episodes are the first ids of its span.
+  if (index >= podcastOwnEpisodeCount(folder)) {
+    return 0xFFFFFFFFu;
+  }
+  uint32_t first, end;
+  podcastFolderSpan(folder, first, end);
+  return first + index;
+}
+
+bool MusicLookup::podcastEpisodeTitle(uint32_t episode, char *buf,
+                                      uint32_t size) {
+  return podcasts_loaded && getString(episode, pod_episode_titles_h, buf, size);
+}
+
+bool MusicLookup::podcastEpisodePath(uint32_t episode, char *buf,
+                                     uint32_t size) {
+  return podcasts_loaded && getString(episode, pod_episode_paths_h, buf, size);
+}
+
+uint32_t MusicLookup::podcastEpisodeDuration(uint32_t episode) {
+  if (!podcasts_loaded || episode >= pod_episode_durations_h.entry_count) {
+    return 0;
+  }
+  uint16_t seconds = 0;
+  psram.readData(pod_episode_durations_h.baseOffset + episode * 2,
+                 (uint8_t *)&seconds, 2);
+  return seconds;
+}
+
+uint32_t MusicLookup::podcastEpisodeFolder(uint32_t episode) {
+  return readDense(pod_episode_folder_h, episode);
+}
+
+uint32_t MusicLookup::podcastEpisodeDate(uint32_t episode) {
+  uint32_t d = readDense(pod_episode_date_h, episode);
+  return d == 0xFFFFFFFFu ? 0 : d;
+}
+
+uint32_t MusicLookup::podcastEpisodeNumber(uint32_t episode) {
+  uint32_t n = readDense(pod_episode_number_h, episode);
+  return n == 0xFFFFFFFFu ? 0 : n;
+}
+
+bool MusicLookup::getPodcastCoverEntry(uint32_t folder,
+                                       album_cover_entry_t &out) {
+  if (!podcasts_loaded || folder >= pod_folder_cover_h.entry_count) {
+    return false;
+  }
+  const uint32_t ENTRY_SIZE = 9;
+  uint32_t addr = pod_folder_cover_h.baseOffset + folder * ENTRY_SIZE;
+  psram.readData(addr, (uint8_t *)&out.offset, sizeof(uint32_t));
+  psram.readData(addr + 4, (uint8_t *)&out.length, sizeof(uint32_t));
+  psram.readData(addr + 8, (uint8_t *)&out.format, sizeof(uint8_t));
+  return out.length > 0;
 }

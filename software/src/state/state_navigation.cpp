@@ -101,6 +101,13 @@ void State::loadCurrentRouteData(MusicLookup &musicLookup) {
     // Rows come from BtMenu (state/bt_menu.h), drawn by ui/menu_view.hpp.
     return;
 
+  case Route_t::PODCASTS:
+  case Route_t::PODCAST_FOLDER:
+  case Route_t::PODCAST_ACTIONS:
+    // Rows come from PodcastMenu (state/podcast_menu.h), drawn by
+    // ui/podcast_view.hpp.
+    return;
+
   case Route_t::ROOT: {
     // The root menu is a static list.
     uint32_t count = rootMenu.getItemCount();
@@ -149,6 +156,9 @@ void State::goToSelected(MusicLookup &musicLookup) {
       break;
     case 4: // Genres
       newRouteType = Route_t::GENRES;
+      break;
+    case 8: // Podcasts
+      newRouteType = Route_t::PODCASTS;
       break;
     case 5: // Search
       search.reset();
@@ -507,6 +517,10 @@ const char *State::getHeaderTitle() {
   case Route_t::BT_FORGET:
   case Route_t::BT_RENAME:
     return "Bluetooth";
+  case Route_t::PODCASTS:
+  case Route_t::PODCAST_FOLDER:
+  case Route_t::PODCAST_ACTIONS:
+    return "Podcasts";
   }
   return "OpenPod";
 }

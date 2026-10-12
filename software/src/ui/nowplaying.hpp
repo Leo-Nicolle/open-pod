@@ -68,12 +68,18 @@ private:
   uint32_t coverLength;
   uint8_t coverFormat; // 1 = raw565 (see indexer's ALBUM_COVER_FORMAT_BYTE)
   bool coverValid;
+  bool coverPodcast; // from podcast_thumbs.bin
+  // Podcast episode (README "Now Playing (podcast)"): title on up to 5
+  // lines, then the show (artistName, DIM) and the series folder or the
+  // date (albumName, MUTED); time left instead of the length.
+  bool podcastMode;
   // What a full-width render last put in the art area. The cover is read
   // from SD row by row on every blit, so a render whose cover didn't change
   // (next track on the same album, pause, duration update...) skips it.
   bool artOnScreen;
   bool drawnCoverValid;
   uint32_t drawnCoverOffset;
+  bool drawnCoverPodcast;
 
   // Layout constants (dark theme: art on the left, metadata on the right,
   // every animated element in the bottom 30px chunk). Matches
@@ -115,12 +121,15 @@ public:
     volumeLevel = level;
     volumeOverlayVisible = visible;
   }
-  void setAlbumArt(uint32_t offset, uint32_t length, uint8_t format) {
+  void setAlbumArt(uint32_t offset, uint32_t length, uint8_t format,
+                   bool podcast = false) {
     coverOffset = offset;
     coverLength = length;
     coverFormat = format;
     coverValid = length > 0;
+    coverPodcast = podcast;
   }
+  void setPodcastMode(bool on) { podcastMode = on; }
   void clearAlbumArt() { coverValid = false; }
   // Call when something else drew over the art area (e.g. leaving the
   // screen), so the next render() redraws the cover.
@@ -154,6 +163,10 @@ private:
   static bool lineInChunk(int lineY, int lineH, int y, int h) {
     return lineY < y + h && lineY + lineH > y;
   }
+  // Greedy word wrap of `text` into at most maxLines lines of maxWidth,
+  // the last one ellipsized. Returns the line count.
+  static int wrapLines(const char *text, const FastFont &font, int maxWidth,
+                       int maxLines, char (*lines)[96]);
   // Draw one metadata line at (METADATA_X, lineY), ellipsized to maxWidth.
   void drawMetadataLine(const char *text, int lineY, const FastFont &font,
                         uint16_t color, int x, int y, int maxWidth);
@@ -169,7 +182,8 @@ NowPlayingComponent::NowPlayingComponent()
     : currentTrack(""), isPlaying(false), trackLength(0), progress(0),
       seekModeActive(false), volumeLevel(0), volumeOverlayVisible(false),
       coverOffset(0), coverLength(0), coverFormat(0), coverValid(false),
-      artOnScreen(false), drawnCoverValid(false), drawnCoverOffset(0) {
+      coverPodcast(false), podcastMode(false), artOnScreen(false),
+      drawnCoverValid(false), drawnCoverOffset(0), drawnCoverPodcast(false) {
   artistName[0] = '\0';
   albumName[0] = '\0';
 }
@@ -178,7 +192,8 @@ void NowPlayingComponent::render(ILI9341_GFX *display, int x, int width) {
   bool fullWidth = x == 0 && width >= SCREEN_WIDTH;
   bool artUnchanged = fullWidth && artOnScreen &&
                       drawnCoverValid == coverValid &&
-                      (!coverValid || drawnCoverOffset == coverOffset);
+                      (!coverValid || (drawnCoverOffset == coverOffset &&
+                                       drawnCoverPodcast == coverPodcast));
   // Body strips start right of the art when it's already up to date (the
   // left margin is plain background); the bottom band always spans it all.
   int bodyX = artUnchanged ? ALBUM_ART_X + ALBUM_ART_SIZE : x;
@@ -193,6 +208,7 @@ void NowPlayingComponent::render(ILI9341_GFX *display, int x, int width) {
     artOnScreen = true;
     drawnCoverValid = coverValid;
     drawnCoverOffset = coverOffset;
+    drawnCoverPodcast = coverPodcast;
   }
 }
 
@@ -244,7 +260,7 @@ void NowPlayingComponent::renderBodyChunk(ILI9341_GFX *display, int x, int y,
       int rowCount = overlapBottom - overlapTop;
       blitted = albumArt.blitCoverRows(buffer, actualWidth, destRow0, destCol0,
                                        coverOffset, coverLength,
-                                       coverRowStart, rowCount);
+                                       coverRowStart, rowCount, coverPodcast);
     }
     if (!blitted) {
       // Solid art-plate placeholder.
@@ -285,6 +301,28 @@ void NowPlayingComponent::renderBodyChunk(ILI9341_GFX *display, int x, int y,
   fontRenderer.setBuffer(buffer, actualWidth, actualHeight);
   const int metadataMaxWidth = SCREEN_WIDTH - METADATA_X - 8;
 
+  if (podcastMode) {
+    if (METADATA_X >= x && METADATA_X < x + actualWidth) {
+      char lines[5][96];
+      const int lh = IBMPlexSans16.lineHeight;
+      int n = wrapLines(currentTrack ? currentTrack : "", IBMPlexSans16,
+                        metadataMaxWidth, 5, lines);
+      for (int i = 0; i < n; i++)
+        if (lineInChunk(TITLE_Y + i * lh, lh, y, actualHeight))
+          fontRenderer.renderText(lines[i], METADATA_X - x,
+                                  TITLE_Y + i * lh - y, IBMPlexSans16,
+                                  COLOR_TEXT, COLOR_BG);
+      const int smallLineH = IBMPlexSans12.lineHeight;
+      int showY = TITLE_Y + n * lh + 8;
+      int thirdY = showY + smallLineH + 2;
+      if (artistName[0] && lineInChunk(showY, smallLineH, y, actualHeight))
+        drawMetadataLine(artistName, showY, IBMPlexSans12, COLOR_DIM, x, y,
+                         metadataMaxWidth);
+      if (albumName[0] && lineInChunk(thirdY, smallLineH, y, actualHeight))
+        drawMetadataLine(albumName, thirdY, IBMPlexSans12, COLOR_MUTED, x, y,
+                         metadataMaxWidth);
+    }
+  } else {
   // Title wraps onto a second line (instead of truncating with "...") when
   // it doesn't fit in one; only the second line gets ellipsized if it's
   // still too long. Each renderBodyChunk call only sees one 30px band, so
@@ -354,6 +392,7 @@ void NowPlayingComponent::renderBodyChunk(ILI9341_GFX *display, int x, int y,
       drawMetadataLine(albumName, ALBUM_Y, IBMPlexSans12, COLOR_ACCENT, x, y,
                        metadataMaxWidth);
   }
+  } // music metadata
 
   if (tx < 0)
     tx = x;
@@ -362,6 +401,65 @@ void NowPlayingComponent::renderBodyChunk(ILI9341_GFX *display, int x, int y,
   display->setWindow(tx, ty, tx + actualWidth - 1, ty + actualHeight - 1);
   display->pushPixels(buffer, actualWidth * actualHeight);
   g_buffers.swapBuffers();
+}
+
+int NowPlayingComponent::wrapLines(const char *text, const FastFont &font,
+                                   int maxWidth, int maxLines,
+                                   char (*lines)[96]) {
+  int n = 0;
+  const char *p = text;
+  while (*p == ' ')
+    p++;
+  while (*p && n < maxLines) {
+    char *line = lines[n];
+    if (n == maxLines - 1) {
+      // Last line: the rest, ellipsized.
+      char rest[96];
+      snprintf(rest, sizeof(rest), "%s", p);
+      if (fontRenderer.measureText(rest, font) > maxWidth) {
+        int len = strlen(rest);
+        while (len > 1) {
+          snprintf(line, 96, "%.*s...", len, rest);
+          if (fontRenderer.measureText(line, font) <= maxWidth)
+            break;
+          len--;
+        }
+      } else {
+        snprintf(line, 96, "%s", rest);
+      }
+      return n + 1;
+    }
+    // Longest run of whole words that fits (a hard break if one word doesn't).
+    int fit = 0, end = 0;
+    while (p[end]) {
+      int next = end;
+      while (p[next] && p[next] != ' ')
+        next++;
+      snprintf(line, 96, "%.*s", next, p);
+      if (fontRenderer.measureText(line, font) > maxWidth)
+        break;
+      fit = next;
+      end = next;
+      while (p[end] == ' ')
+        end++;
+    }
+    if (fit == 0) {
+      while (p[fit + 1]) {
+        snprintf(line, 96, "%.*s", fit + 1, p);
+        if (fontRenderer.measureText(line, font) > maxWidth)
+          break;
+        fit++;
+      }
+      fit = max(fit, 1);
+      end = fit;
+    }
+    snprintf(line, 96, "%.*s", fit, p);
+    n++;
+    p += end;
+    while (*p == ' ')
+      p++;
+  }
+  return n;
 }
 
 void NowPlayingComponent::drawMetadataLine(const char *text, int lineY,
@@ -450,6 +548,10 @@ void NowPlayingComponent::renderBandChunk(ILI9341_GFX *display, int x,
     int tm = trackLength / 60, ts = trackLength % 60;
     snprintf(elapsed, sizeof(elapsed), "%d:%02d", em, es);
     snprintf(total, sizeof(total), "%d:%02d", tm, ts);
+    if (podcastMode) {
+      int left = max(0, trackLength - progress);
+      snprintf(total, sizeof(total), "-%d:%02d", left / 60, left % 60);
+    }
 
     fontRenderer.renderText(elapsed, 8 - x, 212 - y, IBMPlexSans12,
                             COLOR_TEXT, COLOR_BG);
