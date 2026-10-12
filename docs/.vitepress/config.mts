@@ -4,7 +4,7 @@ const fileAndStyles: Record<string, string> = {};
 
 export default defineConfig({
   title: "Openpod",
-  description: "An ESP32 mp3 player",
+  description: "An open-source iPod-style music player",
   base: "/open-pod/",
   head: [
     ["link", { rel: "icon", href: "/open-pod/favicon.svg" }],
@@ -20,24 +20,74 @@ export default defineConfig({
   ],
   themeConfig: {
     // https://vitepress.dev/reference/default-theme-config
+    logo: "/openpod_logo.svg",
+    siteTitle: "Openpod",
     nav: [
-      { text: "Home", link: "/" },
+      { text: "Manual", link: "/manual/", activeMatch: "^/manual/" },
+      {
+        text: "Tools",
+        activeMatch: "^/tools/",
+        items: [
+          { text: "Click wheel designer", link: "/tools/clickwheel" },
+          { text: "Pinout", link: "/tools/pinout" },
+          { text: "UI builder", link: "/tools/ui-builder" },
+        ],
+      },
+      { text: "Blog", link: "/blog/", activeMatch: "^/blog/" },
       { text: "About", link: "/about" },
-      { text: "Clickwheel", link: "/clickwheel" },
-      { text: "Pinout", link: "/pinout" },
-      { text: "UI builder", link: "/ui-builder" },
-      { text: "Blog", link: "/blog" },
     ],
 
-    sidebar: [
-      // {
-      //   text: "Examples",
-      //   items: [
-      //     { text: "Markdown Examples", link: "/markdown-examples" },
-      //     { text: "Runtime API Examples", link: "/api-examples" },
-      //   ],
-      // },
-    ],
+    sidebar: {
+      "/manual/": [
+        {
+          text: "User manual",
+          items: [{ text: "Overview", link: "/manual/" }],
+        },
+      ],
+      "/tools/": [
+        {
+          text: "Tools",
+          items: [
+            { text: "Overview", link: "/tools/" },
+            { text: "Click wheel designer", link: "/tools/clickwheel" },
+            { text: "UI builder", link: "/tools/ui-builder" },
+          ],
+        },
+        {
+          text: "Pinout",
+          items: [
+            { text: "Interactive pinout", link: "/tools/pinout" },
+            { text: "LQFP100 table (final board)", link: "/tools/pinout-table-lqfp100" },
+            { text: "LQFP64 table (Nucleo)", link: "/tools/pinout-table" },
+          ],
+        },
+      ],
+      "/blog/": [
+        {
+          text: "Blog",
+          items: [{ text: "All articles", link: "/blog/" }],
+        },
+        {
+          text: "2026",
+          items: [
+            { text: "Bluetooth module setup", link: "/blog/11-10" },
+            { text: "Smooth FLAC", link: "/blog/09-10" },
+            { text: "Displaying covers", link: "/blog/20-09" },
+          ],
+        },
+        {
+          text: "2025",
+          items: [
+            { text: "Indexing and search", link: "/blog/01-07" },
+            { text: "Fast track scrolling", link: "/blog/14-06" },
+            { text: "Scrolling and transitions", link: "/blog/03-06" },
+            { text: "Vibecoding the UI", link: "/blog/01-06" },
+            { text: "Working with the screen", link: "/blog/31-05" },
+            { text: "Designing a click wheel", link: "/blog/15-04" },
+          ],
+        },
+      ],
+    },
 
     socialLinks: [
       { icon: "github", link: "https://github.com/Leo-Nicolle/open-pod" },

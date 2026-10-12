@@ -287,11 +287,6 @@ export function buildSpritesHeader(p: Palette): string {
 
 // --- downloads -----------------------------------------------------------------
 
-export function downloadText(filename: string, text: string): void {
-  const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
-  downloadBlob(filename, blob);
-}
-
 export function downloadBlob(filename: string, blob: Blob): void {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -345,33 +340,19 @@ export function spriteToPngBlob(def: SpriteDef, data: RasterResult, zoom = 8): P
   });
 }
 
-/** Export every sprite as a PNG, triggering one download per file. */
-export async function exportAllPngs(p: Palette): Promise<void> {
+/** Every export file in one zip: the three headers, the palette and 8× sprite PNGs. */
+export async function buildExportZip(p: Palette, logoHeader: string): Promise<Blob> {
+  const { strToU8, zipSync } = await import('fflate');
+  const files: Record<string, Uint8Array> = {
+    'sprites.h': strToU8(buildSpritesHeader(p)),
+    'theme.h': strToU8(buildThemeHeader(p)),
+    'logo.h': strToU8(logoHeader),
+    'palette.json': strToU8(JSON.stringify(p, null, 2) + '\n'),
+  };
   for (const def of SPRITES) {
-    const data = rasterize(def, p);
-    const blob = await spriteToPngBlob(def, data, 8);
-    downloadBlob(`sprite-${def.id}.png`, blob);
+    const png = await spriteToPngBlob(def, rasterize(def, p), 8);
+    files[`png/sprite-${def.id}.png`] = new Uint8Array(await png.arrayBuffer());
   }
-}
-
-export async function copyToClipboard(text: string): Promise<boolean> {
-  try {
-    await navigator.clipboard.writeText(text);
-    return true;
-  } catch {
-    // Fallback for environments without the async clipboard API.
-    try {
-      const ta = document.createElement('textarea');
-      ta.value = text;
-      ta.style.position = 'fixed';
-      ta.style.opacity = '0';
-      document.body.appendChild(ta);
-      ta.select();
-      const ok = document.execCommand('copy');
-      document.body.removeChild(ta);
-      return ok;
-    } catch {
-      return false;
-    }
-  }
+  const zip = zipSync(files);
+  return new Blob([zip], { type: 'application/zip' });
 }

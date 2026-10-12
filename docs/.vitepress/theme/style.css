@@ -1,0 +1,219 @@
+/* Openpod theme overrides. Brand colours come from the logo (openpod_logo.svg). */
+
+:root {
+  --op-magenta: #972d6f;
+  --op-magenta-light: #cb5297;
+  --op-magenta-dark: #6f1d55;
+  --op-green: #60a534;
+  --op-green-light: #96dd42;
+  --op-cream: #e8e0cc;
+
+  --vp-c-brand-1: var(--op-magenta);
+  --vp-c-brand-2: #b03d83;
+  --vp-c-brand-3: var(--op-magenta);
+  --vp-c-brand-soft: rgba(151, 45, 111, 0.14);
+
+  --vp-font-family-base: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+  --vp-font-family-mono: "IBM Plex Mono", ui-monospace, monospace;
+
+  --vp-home-hero-name-color: transparent;
+  --vp-home-hero-name-background: linear-gradient(120deg, var(--op-magenta) 10%, var(--op-magenta-light) 55%, var(--op-green) 95%);
+  --vp-home-hero-image-background-image: radial-gradient(circle, rgba(203, 82, 151, 0.35) 0%, rgba(150, 221, 66, 0.25) 55%, transparent 72%);
+  --vp-home-hero-image-filter: blur(56px);
+}
+
+.dark {
+  --vp-c-brand-1: var(--op-magenta-light);
+  --vp-c-brand-2: #d86aa8;
+  --vp-c-brand-3: var(--op-magenta);
+  --vp-c-brand-soft: rgba(203, 82, 151, 0.16);
+}
+
+.VPHero .image-src {
+  max-width: 220px;
+  max-height: 260px;
+}
+@media (min-width: 960px) {
+  .VPHero .image-src {
+    max-width: 280px;
+    max-height: 340px;
+  }
+}
+
+/* ------------------------------------------------------------ home blocks */
+/* The home layout already centres and pads its markdown container. */
+.op-section {
+  margin: 56px 0 0;
+}
+.op-section > h2 {
+  margin: 0 0 8px;
+  font-size: 24px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  border: 0;
+  padding: 0;
+}
+.op-section > p.op-lead {
+  margin: 0 0 24px;
+  color: var(--vp-c-text-2);
+  max-width: 720px;
+  line-height: 1.6;
+}
+
+.op-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+}
+.op-stat {
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 12px;
+  background: var(--vp-c-bg-soft);
+  padding: 16px 18px;
+}
+.op-stat-value {
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  color: var(--vp-c-brand-1);
+}
+.op-stat-unit {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--vp-c-text-2);
+  margin-left: 2px;
+}
+.op-stat-label {
+  margin-top: 6px;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--vp-c-text-2);
+}
+
+.vp-doc table.op-specs {
+  display: table;
+  width: 100%;
+  margin: 0;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+.vp-doc .op-specs tr {
+  background: transparent;
+}
+.vp-doc .op-specs th,
+.vp-doc .op-specs td {
+  border-left: 0;
+  border-right: 0;
+  text-align: left;
+  vertical-align: top;
+  padding: 10px 12px;
+  border-top: 1px solid var(--vp-c-divider);
+}
+.vp-doc .op-specs th {
+  width: 140px;
+  background: transparent;
+  font-weight: 600;
+  color: var(--vp-c-text-1);
+  white-space: nowrap;
+}
+.vp-doc .op-specs td {
+  color: var(--vp-c-text-2);
+}
+.op-specs td small {
+  display: block;
+  margin-top: 2px;
+  font-size: 12px;
+  color: var(--vp-c-text-3);
+}
+@media (max-width: 560px) {
+  .vp-doc .op-specs th {
+    width: auto;
+    white-space: normal;
+  }
+}
+
+.op-tag {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 0 7px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 18px;
+  vertical-align: 1px;
+}
+.op-tag.ok {
+  background: rgba(96, 165, 52, 0.16);
+  color: var(--op-green);
+}
+.op-tag.wip {
+  background: rgba(200, 146, 36, 0.18);
+  color: #b07d15;
+}
+
+.op-status {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 16px;
+}
+.op-status > div {
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 12px;
+  padding: 16px 20px;
+}
+.op-status h3 {
+  margin: 0 0 8px;
+  font-size: 15px;
+  font-weight: 600;
+}
+.op-status ul {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--vp-c-text-2);
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.op-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+}
+.op-card {
+  display: block;
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 12px;
+  background: var(--vp-c-bg-soft);
+  padding: 18px 20px;
+  color: inherit;
+  text-decoration: none !important;
+  transition: border-color 0.2s;
+}
+.op-card:hover {
+  border-color: var(--vp-c-brand-1);
+}
+.op-card strong {
+  display: block;
+  font-size: 16px;
+  color: var(--vp-c-text-1);
+}
+.op-card span {
+  display: block;
+  margin-top: 6px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--vp-c-text-2);
+}
+
+.op-video {
+  margin-bottom: 96px;
+}
+
+/* Page header logo (About) */
+.op-page-logo {
+  display: block;
+  width: 88px;
+  height: auto;
+  margin: 0 0 16px;
+}

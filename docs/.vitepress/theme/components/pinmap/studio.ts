@@ -1,7 +1,6 @@
 /**
- * Pure data + logic for the Nucleo Pinout Studio, ported from the design
- * handoff (docs/design_handoff_nucleo_pinout_studio). Kept framework-free so
- * PinoutStudio.vue only has to wire reactive state to these functions.
+ * Pure data + logic for the pinout viewer. Kept framework-free so
+ * usePinout.ts only has to wire reactive state to these functions.
  */
 import { PACKAGE_PINS, arduinoLabel, morphoLabel, type PackageId, type PinDef } from "./pins";
 import { PACKAGE_ASSIGNMENTS } from "./mapping";
@@ -53,7 +52,8 @@ export const CAT: Record<Cat | "used", string> = {
   used: "oklch(0.80 0.15 195)",
 };
 export const PHUES = [205, 25, 155, 285, 75, 330, 120, 250];
-export const BG = "oklch(0.19 0.012 255)";
+/** the viewer background, light or dark (PinoutViewer.vue) */
+export const BG = "var(--pv-bg)";
 
 export function mix(color: string, pct: number): string {
   return `color-mix(in oklab, ${color} ${pct}%, ${BG})`;
@@ -75,7 +75,7 @@ function catFor(type: PinDef["type"], signal: string): Cat {
   return "io";
 }
 
-export function buildPins(pkg: PackageId = "LQFP64"): StudioPin[] {
+export function buildPins(pkg: PackageId): StudioPin[] {
   return [...PACKAGE_PINS[pkg]]
     .sort((a, b) => a.num - b.num)
     .map((p) => ({
@@ -106,7 +106,7 @@ export function indexByBase(pins: StudioPin[]): Map<string, StudioPin> {
 /* --------------------------------------------------------------- rows */
 
 /** Firmware default mapping, flattened from mapping.json's grouped shape. */
-export function firmwareRows(pkg: PackageId = "LQFP64"): MappingRow[] {
+export function firmwareRows(pkg: PackageId): MappingRow[] {
   const out: MappingRow[] = [];
   for (const a of PACKAGE_ASSIGNMENTS[pkg]) {
     for (const p of a.pins) {
@@ -219,9 +219,9 @@ export function issuesByBase(issues: Issue[]): Map<string, Issue[]> {
 }
 
 export const SEV_COLOR: Record<Issue["sev"], string> = {
-  error: "oklch(0.78 0.13 25)",
-  warn: "oklch(0.80 0.13 60)",
-  info: "oklch(0.72 0.13 250)",
+  error: "var(--pv-error)",
+  warn: "var(--pv-warn)",
+  info: "var(--pv-info)",
 };
 
 /* ------------------------------------------------------------ match set */
@@ -270,91 +270,3 @@ export function matchSet(
   }
   return set;
 }
-
-/* ------------------------------------------------------------------ exports */
-
-function pad(s: string, n: number): string {
-  return s.length >= n ? s : s + " ".repeat(n - s.length);
-}
-
-export function exportCpp(rows: MappingRow[]): string {
-  const groups: Record<string, MappingRow[]> = {};
-  const order: string[] = [];
-  for (const r of rows) {
-    if (!groups[r.p]) { groups[r.p] = []; order.push(r.p); }
-    groups[r.p].push(r);
-  }
-  let out = "#pragma once\n// Generated from the Nucleo pinout studio\n";
-  for (const p of order) {
-    const bus = groups[p][0].bus;
-    out += `\n// ${p}${bus ? ` — ${bus}` : ""}\n`;
-    const names = groups[p].map(
-      (r) => r.macro || (`${p}_${r.role.replace(/\s*\(.*\)/, "")}`).replace(/[^A-Za-z0-9]+/g, "_").toUpperCase()
-    );
-    const w = Math.max(...names.map((n) => n.length));
-    groups[p].forEach((r, i) => {
-      out += `#define ${pad(names[i], w)} ${r.pin}\n`;
-    });
-  }
-  return out;
-}
-
-export function exportMdRows(rows: MappingRow[]): string {
-  let out = "| Peripheral | Bus | Pin | Role |\n|---|---|---|---|\n";
-  for (const r of rows) out += `| ${r.p} | ${r.bus} | \`${r.pin}\` | ${r.role} |\n`;
-  return out;
-}
-
-export function exportJsonRows(rows: MappingRow[]): string {
-  const groups: { peripheral: string; bus: string; pins: { pin: string; role: string; macro?: string }[] }[] = [];
-  for (const r of rows) {
-    let g = groups.find((x) => x.peripheral === r.p);
-    if (!g) { g = { peripheral: r.p, bus: r.bus, pins: [] }; groups.push(g); }
-    const e: { pin: string; role: string; macro?: string } = { pin: r.pin, role: r.role };
-    if (r.macro) e.macro = r.macro;
-    g.pins.push(e);
-  }
-  return JSON.stringify(groups, null, 2);
-}
-
-/** Parses the grouped JSON shape back into flat rows. Throws on invalid JSON. */
-export function parseJsonRows(text: string): MappingRow[] {
-  const data = JSON.parse(text);
-  const next: MappingRow[] = [];
-  for (const g of data) {
-    for (const p of g.pins || []) {
-      next.push({ p: g.peripheral, bus: g.bus || "", pin: p.pin, role: p.role || "", macro: p.macro || "" });
-    }
-  }
-  return next;
-}
-
-/* ------------------------------------------------------------------ misc */
-
-export const TAB_STYLE = (active: boolean) => ({
-  padding: "6px 11px",
-  borderRadius: "5px",
-  border: "none",
-  cursor: "pointer",
-  fontSize: "12px",
-  fontWeight: active ? 600 : 400,
-  background: active ? "oklch(0.80 0.15 195)" : "transparent",
-  color: active ? "oklch(0.19 0.03 195)" : "oklch(0.78 0.010 255)",
-  fontFamily: "'Space Grotesk', sans-serif",
-  whiteSpace: "nowrap" as const,
-});
-
-export const CHIP_STYLE = (active: boolean, color: string) => ({
-  display: "inline-flex",
-  alignItems: "center",
-  gap: "6px",
-  padding: "4px 9px",
-  borderRadius: "20px",
-  cursor: "pointer",
-  fontSize: "11.5px",
-  fontFamily: "'IBM Plex Mono', monospace",
-  background: active ? mix(color, 26) : "oklch(0.235 0.014 255)",
-  border: `1px solid ${active ? mix(color, 75) : "oklch(0.32 0.014 255)"}`,
-  color: active ? "oklch(0.96 0.006 255)" : "oklch(0.80 0.010 255)",
-  transition: "background .12s, border-color .12s",
-});

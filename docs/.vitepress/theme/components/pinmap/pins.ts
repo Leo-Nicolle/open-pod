@@ -38,23 +38,28 @@ export type PackageId = "LQFP64" | "LQFP100";
 export interface PackageInfo {
   id: PackageId;
   chip: string;
+  /** short tab label */
+  label: string;
   /** dev board whose headers are in board.ts, null when there is no board view */
   board: string | null;
   blurb: string;
 }
 
+/** First entry is the default package shown by the viewer. */
 export const PACKAGES: PackageInfo[] = [
-  {
-    id: "LQFP64",
-    chip: "STM32F446RET6",
-    board: "Nucleo-F446RE",
-    blurb: "LQFP64 as wired on the MP3 project board.",
-  },
   {
     id: "LQFP100",
     chip: "STM32F446VET6",
+    label: "LQFP100 · final board",
     board: null,
-    blurb: "LQFP100 allocation for the final board (datasheets/lqfp100-pins.md), developed on a NUCLEO-F446ZE.",
+    blurb: "Pin allocation of the final Openpod board (datasheets/lqfp100-pins.md), developed on a NUCLEO-F446ZE.",
+  },
+  {
+    id: "LQFP64",
+    chip: "STM32F446RET6",
+    label: "LQFP64 · Nucleo prototype",
+    board: "Nucleo-F446RE",
+    blurb: "How the breadboard prototype is wired on the Nucleo-F446RE.",
   },
 ];
 
@@ -62,30 +67,6 @@ export const PACKAGE_PINS: Record<PackageId, PinDef[]> = {
   LQFP64: lqfp64 as PinDef[],
   LQFP100: lqfp100 as PinDef[],
 };
-
-export const PINS: PinDef[] = PACKAGE_PINS.LQFP64;
-
-const byName = new Map<string, PinDef>();
-const byNum = new Map<number, PinDef>();
-for (const p of PINS) {
-  byName.set(p.name.toUpperCase(), p);
-  if (p.fullName) byName.set(p.fullName.toUpperCase(), p);
-  byNum.set(p.num, p);
-}
-
-/** Normalize a user-provided pin reference ("PA5", "pa5", "5", "14") to a PinDef. */
-export function findPin(ref: string | number): PinDef | undefined {
-  if (typeof ref === "number") return byNum.get(ref);
-  const s = String(ref).trim();
-  if (!s) return undefined;
-  const upper = s.toUpperCase();
-  if (byName.has(upper)) return byName.get(upper);
-  if (/^\d+$/.test(s)) return byNum.get(parseInt(s, 10));
-  // strip a trailing "-WKUP"/"-BOOT1" style suffix, e.g. "PA0-WKUP"
-  const base = upper.replace(/[-_].*$/, "");
-  if (byName.has(base)) return byName.get(base);
-  return undefined;
-}
 
 export function arduinoLabel(p: PinDef): string {
   return p.arduino.map((a) => a.pin).join(", ");

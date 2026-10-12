@@ -11,23 +11,8 @@ import {
   drawTrackList,
   H,
   W,
-  type BtIconsOpts,
-  type ForgetOpts,
-  type MenuScreenOpts,
-  type NowPlayingOpts,
-  type RenameOpts,
-  type SearchOpts,
-  type TrackListOpts,
 } from './screens';
-
-type Screen =
-  | { kind: 'nowplaying'; opts: NowPlayingOpts }
-  | { kind: 'tracklist'; opts: TrackListOpts }
-  | { kind: 'search'; opts: SearchOpts }
-  | { kind: 'menu'; opts: MenuScreenOpts }
-  | { kind: 'forget'; opts: ForgetOpts }
-  | { kind: 'rename'; opts: RenameOpts }
-  | { kind: 'bticons'; opts: BtIconsOpts };
+import type { Screen } from './screenStates';
 
 const props = defineProps<{
   palette: Palette;
@@ -82,7 +67,7 @@ watch(() => [props.palette, props.screen], scheduleRedraw, { deep: true });
   <canvas
     ref="canvas"
     class="screen"
-    :style="{ width: `${W * (zoom ?? 1)}px`, height: `${H * (zoom ?? 1)}px` }"
+    :style="{ width: `${W * (zoom ?? 1)}px` }"
   />
 </template>
 
@@ -90,6 +75,9 @@ watch(() => [props.palette, props.screen], scheduleRedraw, { deep: true });
 .screen {
   image-rendering: pixelated;
   display: block;
+  max-width: 100%;
+  height: auto;
+  aspect-ratio: 4 / 3;
   border-radius: 4px;
 }
 </style>

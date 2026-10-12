@@ -1,6 +1,6 @@
 # Blog
 
-You'll find here some articles on how the project is adcancing, how I made it work, and some tips and tricks.
+You'll find here some articles on how the project is advancing, how I made it work, and some tips and tricks.
 
 ## Articles
 
@@ -8,10 +8,12 @@ You'll find here some articles on how the project is adcancing, how I made it wo
 
 - [11-10](11-10.md): Bluetooth module setup
 - [09-10](09-10.md): Smooth FLAC: buses, buffers and an audio interrupt
-- [20-09](20-09.md): Displayng covers
+- [20-09](20-09.md): Displaying covers
 
 ### 2025
 - [01-07](01-07.md): Indexing and search into the music library.
+- [14-06](14-06.md): Fast track scrolling
+- [03-06](03-06.md): Scrolling, buffering and transitions
 - [01-06](01-06.md): Vibecoding the UI!
-- [31-05](31-05.md): How to use a TFT ILI9341 screen with 16bits parrallel, STM32 and Arduino_GFX
+- [31-05](31-05.md): How to use a TFT ILI9341 screen with 16bits parallel, STM32 and Arduino_GFX
 - [15-04](15-04.md): Clickwheel design, how to make a capacitive touch wheel with Kicad and a tool to simulate it

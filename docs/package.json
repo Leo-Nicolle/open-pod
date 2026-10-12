@@ -12,6 +12,7 @@
     "vitepress": "^2.0.0-alpha.5"
   },
   "dependencies": {
+    "fflate": "^0.8.2",
     "naive-ui": "^2.41.0"
   }
 }

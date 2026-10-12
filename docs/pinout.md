@@ -1,8 +1,10 @@
 ---
-layout: PinoutLayout
-hero:
-  name: Nucleo-F446RE pinout
+# Redirect stub: this page moved to /tools/pinout
+head:
+  - - meta
+    - http-equiv: refresh
+      content: 0; url=/open-pod/tools/pinout
+sitemap: false
 ---
 
-
-<PinoutStudio />
+This page moved to [Tools › pinout](/tools/pinout).

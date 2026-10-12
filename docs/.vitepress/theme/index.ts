@@ -3,12 +3,12 @@ import Clickwheel from "./components/clickwheel.vue";
 import Video from "./components/video.vue";
 import IndexCalculator from "./components/index-calculator.vue";
 import UIBuilder from "./components/ui-builder/UIBuilder.vue";
-import Pinout from "./components/pinmap/Pinout.vue";
-import PinoutStudio from "./components/pinmap/PinoutStudio.vue";
+import PinoutViewer from "./components/pinmap/PinoutViewer.vue";
 import PinoutLayout from "./layouts/PinoutLayout.vue";
 import { setup } from "@css-render/vue3-ssr";
 import { NConfigProvider } from "naive-ui";
 import DefaultTheme from "vitepress/theme";
+import "./style.css";
 import { defineComponent, h, inject } from "vue";
 
 const { Layout } = DefaultTheme;
@@ -59,8 +59,7 @@ export default {
     app.component("Video", Video);
     app.component("IndexCalculator", IndexCalculator);
     app.component("UIBuilder", UIBuilder);
-    app.component("Pinout", Pinout);
-    app.component("PinoutStudio", PinoutStudio);
+    app.component("PinoutViewer", PinoutViewer);
     app.component("PinoutLayout", PinoutLayout);
 
     if (import.meta.env.SSR) {

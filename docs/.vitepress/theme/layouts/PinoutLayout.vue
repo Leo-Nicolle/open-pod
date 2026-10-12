@@ -39,7 +39,7 @@ const actions = computed(() => (hero.value.actions ?? []) as HeroAction[]);
     </header>
 
     <main class="content">
-      <Content />
+      <Content class="vp-doc" />
     </main>
   </div>
 </template>

@@ -174,5 +174,7 @@ watch(
   image-rendering: pixelated;
   display: block;
   max-width: 100%;
+  height: auto;
+  border-radius: 4px;
 }
 </style>
