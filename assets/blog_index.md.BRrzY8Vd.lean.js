@@ -1,0 +1,1 @@
+import{_ as e,a as l,o as i,ay as t}from"./chunks/framework.BUrXLeUq.js";const f=JSON.parse('{"title":"Blog","description":"","frontmatter":{},"headers":[],"relativePath":"blog/index.md","filePath":"blog/index.md"}'),r={name:"blog/index.md"};function o(n,a,h,s,d,c){return i(),l("div",null,a[0]||(a[0]=[t("",7)]))}const _=e(r,[["render",o]]);export{f as __pageData,_ as default};
