@@ -150,6 +150,23 @@ const SPEAKER_ROWS = [
   '.....##.....',
 ];
 
+// Bluetooth rune (7×11); the "connected" state adds two 2×3 ticks beside it.
+export const BT_ROWS = [
+  '...#...',
+  '...##..',
+  '.#.#.#.',
+  '..##..#',
+  '...#.#.',
+  '...##..',
+  '...#.#.',
+  '..##..#',
+  '.#.#.#.',
+  '...##..',
+  '...#...',
+];
+
+const CHEVRON_R_ROWS = ['#...', '##..', '###.', '####', '####', '###.', '##..', '#...'];
+
 export const SPRITES: SpriteDef[] = [
   {
     kind: 'glyph',
@@ -260,6 +277,24 @@ export const SPRITES: SpriteDef[] = [
       ctx.fillRect(0, 0, 3, 4);
       ctx.fillRect(0, 26, 3, 4);
     },
+  },
+  {
+    kind: 'glyph',
+    id: 'bt',
+    w: 7,
+    h: 11,
+    tint: 'accent',
+    rows: BT_ROWS,
+    note: 'Bluetooth rune, drawn at x+2 in the 11×11 header icon box (270,10). Tinted per state: MUTED off, TEXT on, ACCENT connected. The firmware draws the same rows (ui/bt_widgets.hpp).',
+  },
+  {
+    kind: 'glyph',
+    id: 'chevron_r',
+    w: 4,
+    h: 8,
+    tint: 'muted',
+    rows: CHEVRON_R_ROWS,
+    note: 'Submenu chevron at the right edge of a row (x=300). TEXT on the selected row.',
   },
 ];
 

@@ -3,8 +3,8 @@
  * handoff (docs/design_handoff_nucleo_pinout_studio). Kept framework-free so
  * PinoutStudio.vue only has to wire reactive state to these functions.
  */
-import { PINS, arduinoLabel, morphoLabel, type PinDef } from "./pins";
-import { ASSIGNMENTS } from "./mapping";
+import { PACKAGE_PINS, arduinoLabel, morphoLabel, type PackageId, type PinDef } from "./pins";
+import { PACKAGE_ASSIGNMENTS } from "./mapping";
 
 export type Cat = "power" | "ref" | "reset" | "boot" | "debug" | "io" | "nc";
 
@@ -19,6 +19,9 @@ export interface StudioPin {
   ard: string;
   morpho: string;
   note: string;
+  maxSpeed: string;
+  domain: string;
+  remarks: string[];
   cat: Cat;
   blob: string; // default + alternates + additional, for matching
 }
@@ -72,8 +75,8 @@ function catFor(type: PinDef["type"], signal: string): Cat {
   return "io";
 }
 
-export function buildPins(): StudioPin[] {
-  return [...PINS]
+export function buildPins(pkg: PackageId = "LQFP64"): StudioPin[] {
+  return [...PACKAGE_PINS[pkg]]
     .sort((a, b) => a.num - b.num)
     .map((p) => ({
       num: p.num,
@@ -86,6 +89,9 @@ export function buildPins(): StudioPin[] {
       ard: arduinoLabel(p),
       morpho: morphoLabel(p),
       note: p.note || "",
+      maxSpeed: p.maxSpeed || "",
+      domain: p.domain || "",
+      remarks: p.remarks || [],
       cat: catFor(p.type, p.signal),
       blob: [p.signal, p.alt.join(", "), p.extra.join(", ")].join(" "),
     }));
@@ -100,9 +106,9 @@ export function indexByBase(pins: StudioPin[]): Map<string, StudioPin> {
 /* --------------------------------------------------------------- rows */
 
 /** Firmware default mapping, flattened from mapping.json's grouped shape. */
-export function firmwareRows(): MappingRow[] {
+export function firmwareRows(pkg: PackageId = "LQFP64"): MappingRow[] {
   const out: MappingRow[] = [];
-  for (const a of ASSIGNMENTS) {
+  for (const a of PACKAGE_ASSIGNMENTS[pkg]) {
     for (const p of a.pins) {
       out.push({ p: a.peripheral, bus: a.bus || "", pin: p.pin, role: p.role, macro: p.macro || "" });
     }
@@ -132,7 +138,7 @@ export const FAMS = [
   "SPI1", "SPI2", "SPI3", "I2S1", "I2S2", "I2S3", "I2C1", "I2C2", "I2C3", "FMPI2C1",
   "USART1", "USART2", "USART3", "USART6", "UART4", "UART5", "CAN1", "CAN2",
   "TIM1", "TIM2", "TIM3", "TIM4", "TIM5", "TIM8", "TIM9", "TIM10", "TIM11", "TIM12", "TIM13", "TIM14",
-  "ADC", "DAC", "SAI1", "SAI2", "SPDIFRX", "QUADSPI", "SDIO", "DCMI", "FMC", "USB", "RTC", "HDMI_CEC", "MCO", "SWD",
+  "ADC", "DAC", "SAI1", "SAI2", "SPDIFRX", "QUADSPI", "SDIO", "DCMI", "FMC", "USB", "RTC", "HDMI_CEC", "MCO", "SWD", "TRACE",
 ];
 
 const reCache: Record<string, RegExp> = {};

@@ -5,7 +5,7 @@
 // through the sprite definitions so the preview matches the exported arrays.
 
 import { hexToRgb, type Palette } from './palette';
-import { drawGlyph, drawSpriteAt, findSprite, rr, type GlyphDef } from './sprites';
+import { BT_ROWS, drawGlyph, drawSpriteAt, findSprite, rr, type GlyphDef } from './sprites';
 
 export const W = 320;
 export const H = 240;
@@ -263,6 +263,10 @@ export interface NowPlayingOpts {
   mode: NowPlayingMode;
   playing: boolean;
   grid: boolean;
+  /** Bluetooth icon state, and the codec tag (hidden on the built-in output) */
+  bt?: BtIconState;
+  codec?: string;
+  toast?: ToastSpec;
 }
 
 function coverPlaceholder(ctx: Ctx, p: Palette, x: number, y: number, size: number) {
@@ -298,8 +302,12 @@ export function drawNowPlaying(ctx: Ctx, p: Palette, o: NowPlayingOpts) {
   text(ctx, '3/12', 24, 8, `{s} ${MONO}`, 11, p.dim, { lh: 14, spacing: 0.22 });
   const sw = chip(ctx, 'SHUF', 62, 8, p.accent, p.accentDark);
   chip(ctx, 'RPT', 62 + sw + 7, 8, p.muted, p.line);
-  text(ctx, '14:32', 283, 7, `{s} ${MONO}`, 12, p.text, { align: 'right', lh: 16 });
+  const clockW = text(ctx, '14:32', 283, 7, `{s} ${MONO}`, 12, p.text, { align: 'right', lh: 16 });
   battery(ctx, p, 290, 9);
+  // Bluetooth, option A: icon, 4px, codec tag, 7px, clock, battery.
+  let bx = Math.round(283 - clockW - 7);
+  if (o.codec) bx -= btTag(ctx, p, o.codec, bx, 9, true) + 4;
+  btIcon(ctx, p, o.bt ?? 'connected', bx - 11, 10);
 
   // ---- album art (8,40 160x160) ----
   coverPlaceholder(ctx, p, 8, 40, 160);
@@ -348,6 +356,7 @@ export function drawNowPlaying(ctx: Ctx, p: Palette, o: NowPlayingOpts) {
     rr(ctx, 8, 232, Math.round(304 * (83 / 245)), 6, 3);
   }
 
+  if (o.toast) drawToast(ctx, p, o.toast);
   if (o.grid) chunkGrid(ctx, p, [210, 30]);
 }
 
@@ -382,7 +391,8 @@ export function drawTrackList(ctx: Ctx, p: Palette, o: TrackListOpts) {
 
   header(ctx, p);
   drawGlyph(ctx, CHEVRON, p, 8, 10);
-  text(ctx, o.heading, 23, 0, `600 {s} ${SANS}`, 14, p.text, { lh: 30, maxW: 282 - 23, spacing: -0.14 });
+  text(ctx, o.heading, 23, 0, `600 {s} ${SANS}`, 14, p.text, { lh: 30, maxW: TITLE_RIGHT - 23, spacing: -0.14 });
+  btIcon(ctx, p, 'on', BT_ICON_X, BT_ICON_Y);
   battery(ctx, p, 290, 9);
 
   // With an explicit `total` larger than the sample, `tracks` is just the
@@ -444,11 +454,12 @@ export function drawSearch(ctx: Ctx, p: Palette, o: SearchOpts) {
   header(ctx, p);
   drawGlyph(ctx, CHEVRON, p, 8, 10);
   magnifier(ctx, p, 23, 9);
-  const qw = text(ctx, o.query, 42, 0, `{s} ${SANS}`, 14, p.text, { lh: 30, maxW: 240 });
+  const qw = text(ctx, o.query, 42, 0, `{s} ${SANS}`, 14, p.text, { lh: 30, maxW: TITLE_RIGHT - 8 - 42 });
   if (typing) {
     ctx.fillStyle = p.accent;
     ctx.fillRect(Math.round(42 + qw + 1), 8, 2, 15);
   }
+  btIcon(ctx, p, 'on', BT_ICON_X, BT_ICON_Y);
   battery(ctx, p, 290, 9);
 
   // ---- letter ribbon (chunk 1, typing only) ----
@@ -549,3 +560,447 @@ export const KID_RESULTS: SearchResult[] = [
   { kind: 'TRK', title: 'Kid Charlemagne', sub: 'Steely Dan' },
   { kind: 'TRK', title: 'Kidsticks', sub: 'Beth Orton' },
 ];
+
+// --- bluetooth ----------------------------------------------------------------------
+// Settings and the Bluetooth screens (.agents/bluetooth-design/, README.md).
+// Same grid as the track list: every row is one chunk, and the header icon has
+// a fixed 11×11 box so a state change repaints only that box. The firmware
+// mirrors this in software/src/ui/menu_view.hpp + bt_widgets.hpp.
+
+export type BtIconState = 'off' | 'on' | 'connecting' | 'connected';
+
+/** Header icon box, and where header titles stop. */
+export const BT_ICON_X = 270;
+export const BT_ICON_Y = 10;
+const TITLE_RIGHT = BT_ICON_X - 8;
+
+/**
+ * The 11×11 icon: rune at x+2, plus two 2×3 ticks when connected. `blinkOn`
+ * is the "connected" half of the connecting blink (500 ms each).
+ */
+export function btIcon(
+  ctx: Ctx,
+  p: Palette,
+  state: BtIconState,
+  x: number,
+  y: number,
+  opts: { blinkOn?: boolean; rune?: string; ticks?: string; bg?: string } = {},
+) {
+  const connected = state === 'connected' || (state === 'connecting' && !!opts.blinkOn);
+  ctx.fillStyle = opts.bg ?? p.surface;
+  ctx.fillRect(x, y, 11, 11);
+  ctx.fillStyle = opts.rune ?? (state === 'off' ? p.muted : connected ? p.accent : p.text);
+  BT_ROWS.forEach((row, ry) => {
+    for (let rx = 0; rx < row.length; rx++) if (row[rx] === '#') ctx.fillRect(x + 2 + rx, y + ry, 1, 1);
+  });
+  if (connected || opts.ticks) {
+    ctx.fillStyle = opts.ticks ?? p.accent;
+    ctx.fillRect(x, y + 4, 2, 3);
+    ctx.fillRect(x + 9, y + 4, 2, 3);
+  }
+}
+
+/** Key/codec tag: 9px caps-ish, 1px border, r=2. Returns its width; `right` puts its right edge at x. */
+function btTag(ctx: Ctx, p: Palette, label: string, x: number, y: number, right = false, fg = p.dim): number {
+  ctx.font = `9px ${SANS}`;
+  setSpacing(ctx, 0.72);
+  const w = Math.ceil(ctx.measureText(label).width) + 7;
+  setSpacing(ctx, 0);
+  const left = right ? x - w : x;
+  strokeBox(ctx, left, y, w, 13, 2, p.line);
+  text(ctx, label, left + 3.5, y + 0.5, `{s} ${SANS}`, 9, fg, { lh: 12, spacing: 0.72 });
+  return w;
+}
+
+/** 3 bars (3px, 1px gap, 4/7/10 tall) in an 11×10 box. */
+export function signalBars(ctx: Ctx, p: Palette, x: number, y: number, bars: number, hi = false) {
+  [4, 7, 10].forEach((h, i) => {
+    ctx.fillStyle = i < bars ? (hi ? p.text : p.dim) : hi ? p.barOffHi : p.barOff;
+    ctx.fillRect(x + i * 4, y + 10 - h, 3, h);
+  });
+}
+
+export function rssiBars(rssi: number): number {
+  return rssi >= -60 ? 3 : rssi >= -75 ? 2 : 1;
+}
+
+/** 22×12 switch, radius 6, 8×8 knob. */
+function toggle(ctx: Ctx, p: Palette, x: number, y: number, on: boolean) {
+  if (on) {
+    ctx.fillStyle = p.accent;
+    rr(ctx, x, y, 22, 12, 6);
+  } else {
+    strokeBox(ctx, x, y, 22, 12, 6, p.dim);
+  }
+  ctx.fillStyle = on ? p.bg : p.dim;
+  ctx.beginPath();
+  ctx.arc(on ? x + 22 - 2 - 4 : x + 2 + 4, y + 6, 4, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+const CHEVRON_R: GlyphDef = {
+  kind: 'glyph',
+  id: 'chevron_r_inline',
+  w: 4,
+  h: 8,
+  tint: 'muted',
+  rows: ['#...', '##..', '###.', '####', '####', '###.', '##..', '#...'],
+  note: '',
+};
+
+/** Three 3×3 dots, 3px apart; the first `lit` are on. */
+function scanDots(ctx: Ctx, p: Palette, x: number, y: number, lit: number) {
+  for (let i = 0; i < 3; i++) {
+    ctx.fillStyle = i < lit ? p.textHi : p.barOffHi;
+    ctx.fillRect(x + i * 6, y, 3, 3);
+  }
+}
+
+export type Tone = 'accent' | 'dim' | 'dimmer' | 'cream' | 'count' | 'disabled';
+
+function toneColor(p: Palette, tone: Tone, hi: boolean): string {
+  switch (tone) {
+    case 'accent':
+      return hi ? p.accentAlt : p.accent;
+    case 'dimmer':
+      return hi ? p.text : p.muted;
+    case 'cream':
+      return p.accentAlt;
+    case 'count':
+      return hi ? p.accentAlt : p.dim;
+    case 'disabled':
+      return p.disabled;
+    default:
+      return hi ? p.text : p.dim;
+  }
+}
+
+export interface MenuRowSpec {
+  label: string;
+  /** readonly / disabled rows are skipped by the cursor */
+  kind?: 'normal' | 'readonly' | 'disabled' | 'destructive' | 'failed';
+  /** Scanning / Connecting: 1–3 lit dots after the label */
+  dots?: number;
+  note?: string;
+  noteTone?: Tone;
+  value?: string;
+  valueTone?: Tone;
+  mono?: boolean;
+  bars?: number;
+  trail?: 'chevron' | 'switchOn' | 'switchOff';
+  /** Scan progress line width, 0–320 */
+  progress?: number;
+  /** Label in Mono 13 (a MAC address) */
+  monoLabel?: boolean;
+}
+
+/** One row: fill, edge, label at x=10, status right-aligned at x=304 (8px apart). */
+function menuRow(ctx: Ctx, p: Palette, top: number, r: MenuRowSpec, selected: boolean) {
+  const failed = r.kind === 'failed';
+  const lit = selected || failed;
+  if (failed || selected) {
+    ctx.fillStyle = failed ? p.error : p.accentDark;
+    ctx.fillRect(0, top, W, ROW_H);
+    ctx.fillStyle = failed ? p.accentAlt : p.accent;
+    ctx.fillRect(0, top, 3, ROW_H);
+  }
+  let x = 304;
+  if (r.trail === 'chevron') {
+    x -= 4;
+    drawGlyph(ctx, { ...CHEVRON_R, tint: lit ? 'text' : 'muted' }, p, x, top + 11);
+    x -= 8;
+  } else if (r.trail) {
+    x -= 22;
+    toggle(ctx, p, x, top + 9, r.trail === 'switchOn');
+    x -= 8;
+  }
+  if (r.bars) {
+    x -= 11;
+    signalBars(ctx, p, x, top + 10, r.bars, lit);
+    x -= 8;
+  }
+  if (r.value) {
+    const font = r.mono ? `{s} ${MONO}` : `{s} ${SANS}`;
+    ctx.font = font.replace('{s}', '11px');
+    x -= ctx.measureText(r.value).width;
+    text(ctx, r.value, x, top + 8, font, 11, toneColor(p, r.valueTone ?? 'dim', lit), { lh: 14 });
+    x -= 8;
+  }
+  if (r.note) {
+    ctx.font = `11px ${SANS}`;
+    const shown = ellipsize(ctx, r.note, Math.max(0, x - 140));
+    x -= ctx.measureText(shown).width;
+    text(ctx, shown, x, top + 8, `{s} ${SANS}`, 11, toneColor(p, r.noteTone ?? 'dim', lit), { lh: 14 });
+    x -= 8;
+  }
+  const fg =
+    r.kind === 'readonly'
+      ? p.muted
+      : r.kind === 'disabled'
+        ? p.disabled
+        : r.kind === 'destructive'
+          ? p.destructive
+          : lit
+            ? p.textHi
+            : p.text;
+  const dotsW = r.dots ? 6 + 15 : 0;
+  const lw = r.monoLabel
+    ? text(ctx, r.label, 10, top + 6, `{s} ${MONO}`, 13, p.dim, { lh: 18, maxW: x - 10 - dotsW })
+    : text(ctx, r.label, 10, top + 6, `{s} ${SANS}`, 14, fg, { lh: 18, maxW: x - 10 - dotsW });
+  if (r.dots) scanDots(ctx, p, Math.round(10 + lw + 6), top + 17, r.dots);
+  if (r.progress) {
+    ctx.fillStyle = p.bg;
+    ctx.fillRect(0, top + ROW_H - 3, W, 2);
+    ctx.fillStyle = p.accent;
+    ctx.fillRect(0, top + ROW_H - 3, Math.round(r.progress), 2);
+  }
+  if (!lit) {
+    ctx.fillStyle = p.separator;
+    ctx.fillRect(0, top + ROW_H - 1, W, 1);
+  }
+}
+
+export interface ToastSpec {
+  tone: 'success' | 'neutral' | 'error';
+  /** Plain text before / after the device name, which is drawn bold */
+  before: string;
+  name?: string;
+  after?: string;
+}
+
+/** The toast takes over the header chunk for 2.5 s; never a list row. */
+export function drawToast(ctx: Ctx, p: Palette, t: ToastSpec) {
+  const fill = t.tone === 'success' ? p.accentDark : t.tone === 'error' ? p.error : p.line;
+  const fg = t.tone === 'neutral' ? p.text : p.textHi;
+  ctx.fillStyle = fill;
+  ctx.fillRect(0, 0, W, 30);
+  if (t.tone === 'success') {
+    ctx.fillStyle = p.accent;
+    ctx.fillRect(0, 28, W, 2);
+    btIcon(ctx, p, 'connected', 8, 10, { rune: p.accentAlt, ticks: p.accentAlt, bg: fill });
+  } else {
+    btIcon(ctx, p, 'on', 8, 10, { rune: p.text, bg: fill });
+  }
+  const maxW = W - 8 - 27;
+  ctx.font = `13px ${SANS}`;
+  const fixed = ctx.measureText(t.before + (t.after ?? '')).width;
+  let x = 27;
+  x += text(ctx, t.before, x, 0, `{s} ${SANS}`, 13, fg, { lh: 30 });
+  if (t.name) x += text(ctx, t.name, x, 0, `600 {s} ${SANS}`, 13, fg, { lh: 30, maxW: Math.max(0, maxW - fixed) });
+  if (t.after) text(ctx, t.after, x, 0, `{s} ${SANS}`, 13, fg, { lh: 30 });
+}
+
+function menuHeader(ctx: Ctx, p: Palette, title: string, icon: BtIconState, blinkOn = false) {
+  header(ctx, p);
+  drawGlyph(ctx, CHEVRON, p, 8, 10);
+  text(ctx, title, 23, 0, `600 {s} ${SANS}`, 14, p.text, { lh: 30, maxW: TITLE_RIGHT - 23, spacing: -0.14 });
+  btIcon(ctx, p, icon, BT_ICON_X, BT_ICON_Y, { blinkOn });
+  battery(ctx, p, 290, 9);
+}
+
+function centeredHint(ctx: Ctx, p: Palette, fromChunk: number, title: string, sub: string) {
+  const areaTop = fromChunk * ROW_H;
+  const top = areaTop + Math.round((H - areaTop - 38) / 2);
+  text(ctx, title, W / 2, top, `{s} ${SANS}`, 14, p.dim, { align: 'center', lh: 18 });
+  text(ctx, sub, W / 2, top + 24, `{s} ${MONO}`, 11, p.muted, { align: 'center', lh: 14 });
+}
+
+export interface MenuScreenOpts {
+  title: string;
+  rows: MenuRowSpec[];
+  selected: number;
+  first?: number;
+  /** Centered hint over the empty rows, from screen chunk `fromChunk` down */
+  hint?: { fromChunk: number; title: string; sub: string };
+  icon: BtIconState;
+  blinkOn?: boolean;
+  toast?: ToastSpec;
+  grid: boolean;
+}
+
+/** Settings, the device list and the device screen: header + up to 7 rows. */
+export function drawMenuScreen(ctx: Ctx, p: Palette, o: MenuScreenOpts) {
+  ctx.fillStyle = p.bg;
+  ctx.fillRect(0, 0, W, H);
+  menuHeader(ctx, p, o.title, o.icon, o.blinkOn);
+  const first = o.first ?? 0;
+  o.rows.slice(first, first + VISIBLE_ROWS).forEach((r, i) => menuRow(ctx, p, 30 + i * ROW_H, r, first + i === o.selected));
+  if (o.hint) centeredHint(ctx, p, o.hint.fromChunk, o.hint.title, o.hint.sub);
+  scrollbar(ctx, p, 32, 204, VISIBLE_ROWS, o.rows.length, first);
+  if (o.toast) drawToast(ctx, p, o.toast);
+  if (o.grid) chunkGrid(ctx, p);
+}
+
+export interface ForgetOpts {
+  name: string;
+  /** 0 = Cancel (preselected), 1 = Forget */
+  selected: number;
+  icon: BtIconState;
+  grid: boolean;
+}
+
+/** "Forget device?": text in chunks 1–3, Cancel in chunk 4, Forget in chunk 5. */
+export function drawForget(ctx: Ctx, p: Palette, o: ForgetOpts) {
+  ctx.fillStyle = p.bg;
+  ctx.fillRect(0, 0, W, H);
+  menuHeader(ctx, p, 'Forget device?', o.icon);
+  text(ctx, o.name, 10, 44, `600 {s} ${SANS}`, 14, p.text, { lh: 18, maxW: W - 26 });
+  ctx.font = `12px ${SANS}`;
+  wrap(ctx, 'will be unpaired. To use it again, pair it from a new scan.', W - 26, 3).forEach((line, i) =>
+    text(ctx, line, 10, 68 + i * 17, `{s} ${SANS}`, 12, p.dim, { lh: 17 }),
+  );
+  menuRow(ctx, p, 120, { label: 'Cancel' }, o.selected === 0);
+  menuRow(ctx, p, 150, { label: 'Forget', kind: 'destructive' }, o.selected === 1);
+  if (o.grid) chunkGrid(ctx, p);
+}
+
+export interface RenameOpts {
+  text: string;
+  /** Character under the ribbon cursor (a–z, 0–9) */
+  letter: string;
+  broadcastName: string;
+  icon: BtIconState;
+  toast?: ToastSpec;
+  grid: boolean;
+}
+
+const RENAME_CHARS = 'abcdefghijklmnopqrstuvwxyz0123456789'.split('');
+
+/** Same input as search, lowercase and wrapping, with the key help in chunk 7. */
+export function drawRename(ctx: Ctx, p: Palette, o: RenameOpts) {
+  ctx.fillStyle = p.bg;
+  ctx.fillRect(0, 0, W, H);
+  menuHeader(ctx, p, 'Rename', o.icon);
+
+  // ribbon (chunk 1): the cursor stays centered, the ribbon wraps from 9 to a
+  ctx.fillStyle = p.ribbon;
+  ctx.fillRect(0, 30, W, 30);
+  ctx.fillStyle = p.line;
+  ctx.fillRect(0, 59, W, 1);
+  const n = RENAME_CHARS.length;
+  const ci = Math.max(0, RENAME_CHARS.indexOf(o.letter));
+  const x0 = Math.floor((W - (13 * 19 + 12 * 2)) / 2);
+  for (let i = 0; i < 13; i++) {
+    const c = RENAME_CHARS[(((ci - 6 + i) % n) + n) % n];
+    const x = x0 + i * 21;
+    const on = i === 6;
+    if (on) {
+      ctx.fillStyle = p.accent;
+      rr(ctx, x, 35, 19, 20, 2);
+    }
+    text(ctx, c, x + 9.5, 35, `{s} ${MONO}`, 13, on ? p.bg : p.muted, { align: 'center', lh: 20 });
+  }
+
+  // text (y 60–179): 30px line + 8 + 14px hint, centered
+  const top = 60 + Math.round((120 - 52) / 2);
+  const tw = text(ctx, o.text, 12, top, `600 {s} ${SANS}`, 24, p.text, { lh: 30, maxW: W - 24 - 4 });
+  ctx.fillStyle = p.accent;
+  ctx.fillRect(Math.round(12 + tw + 2), top + 3, 2, 24);
+  const count = `${o.text.length}/24`;
+  ctx.font = `11px ${MONO}`;
+  const cw = ctx.measureText(count).width;
+  text(ctx, `empty name restores “${o.broadcastName}”`, 12, top + 38, `{s} ${MONO}`, 11, p.muted, {
+    lh: 14,
+    maxW: W - 24 - cw - 8,
+  });
+  text(ctx, count, W - 12, top + 38, `{s} ${MONO}`, 11, p.muted, { align: 'right', lh: 14 });
+
+  // footer (chunk 7)
+  ctx.fillStyle = p.ribbon;
+  ctx.fillRect(0, 210, W, 30);
+  ctx.fillStyle = p.line;
+  ctx.fillRect(0, 210, W, 1);
+  const keys: [string, string][] = [
+    ['MENU', 'cancel'],
+    ['BACK', 'delete'],
+    ['NEXT', 'space'],
+    ['PLAY', 'save'],
+  ];
+  ctx.font = `10px ${MONO}`;
+  const widths = keys.map(([k, l]) => {
+    ctx.font = `9px ${SANS}`;
+    const tag = Math.ceil(ctx.measureText(k).width + k.length * 0.72) + 7;
+    ctx.font = `10px ${MONO}`;
+    return tag + 4 + ctx.measureText(l).width;
+  });
+  const gap = (W - 16 - widths.reduce((a, b) => a + b, 0)) / (keys.length - 1);
+  let x = 8;
+  keys.forEach(([k, l], i) => {
+    const tw2 = btTag(ctx, p, k, x, 218);
+    text(ctx, l, x + tw2 + 4, 217, `{s} ${MONO}`, 10, p.dim, { lh: 14 });
+    x += widths[i] + gap;
+  });
+
+  if (o.toast) drawToast(ctx, p, o.toast);
+  if (o.grid) chunkGrid(ctx, p);
+}
+
+export interface BtIconsOpts {
+  grid: boolean;
+}
+
+/** The four header icon states at 1× (left) and 6× (right), and the signal bars. */
+export function drawBtIcons(ctx: Ctx, p: Palette, _o: BtIconsOpts) {
+  ctx.fillStyle = p.bg;
+  ctx.fillRect(0, 0, W, H);
+  const states: [BtIconState, string, boolean][] = [
+    ['off', 'Off — radio disabled', false],
+    ['on', 'On, not connected', false],
+    ['connecting', 'Connecting — blinks 500 ms', true],
+    ['connected', 'Connected — ticks', false],
+  ];
+  states.forEach(([state, label, blink], i) => {
+    const top = i * 45 + 6;
+    ctx.fillStyle = p.surface;
+    ctx.fillRect(0, top, W, 36);
+    // 1× in its header box, then 6× (the connecting row shows both halves)
+    btIcon(ctx, p, state, 12, top + 12);
+    ctx.save();
+    ctx.translate(40, top - 3);
+    ctx.scale(3.5, 3.5);
+    btIcon(ctx, p, state, 0, 0, { blinkOn: false });
+    if (blink) btIcon(ctx, p, state, 13, 0, { blinkOn: true });
+    ctx.restore();
+    text(ctx, label, 140, top, `{s} ${SANS}`, 12, p.text, { lh: 36 });
+  });
+  const top = 4 * 45 + 10;
+  text(ctx, 'signal', 12, top, `{s} ${MONO}`, 11, p.muted, { lh: 40 });
+  [1, 2, 3].forEach((b, i) => {
+    ctx.save();
+    ctx.translate(70 + i * 62, top + 5);
+    ctx.scale(3, 3);
+    signalBars(ctx, p, 0, 0, b);
+    ctx.restore();
+  });
+  text(ctx, '< −75 · −75…−60 · ≥ −60 dBm', 12, top + 32, `{s} ${MONO}`, 9, p.muted, { lh: 12 });
+}
+
+// Sample devices for the previews.
+export interface SampleDevice {
+  name: string;
+  status: 'connected' | 'connecting' | 'paired' | 'found';
+  rssi: number;
+  mono?: boolean;
+}
+
+export const BT_DEVICES: SampleDevice[] = [
+  { name: 'Sony WH-1000XM4', status: 'connected', rssi: -54 },
+  { name: 'Kitchen', status: 'paired', rssi: -71 },
+  { name: 'Car Audio', status: 'paired', rssi: -80 },
+  { name: 'Bose QC45', status: 'found', rssi: -58 },
+  { name: 'Marshall Acton II', status: 'found', rssi: -62 },
+  { name: 'AirPods Pro', status: 'found', rssi: -69 },
+  { name: 'UE BOOM 3', status: 'found', rssi: -77 },
+  { name: '00:1A:7D:DA:71:13', status: 'found', rssi: -88, mono: true },
+];
+
+/** Device rows for the Bluetooth list. */
+export function btDeviceRows(devices: SampleDevice[]): MenuRowSpec[] {
+  return devices.map((d) => {
+    const row: MenuRowSpec = { label: d.name, monoLabel: d.mono };
+    if (d.status === 'connected') return { ...row, note: 'Connected', noteTone: 'accent' };
+    if (d.status === 'connecting') return { ...row, note: 'Connecting', noteTone: 'dim' };
+    if (d.status === 'paired') return { ...row, note: 'Paired', noteTone: 'dimmer' };
+    return { ...row, bars: rssiBars(d.rssi) };
+  });
+}

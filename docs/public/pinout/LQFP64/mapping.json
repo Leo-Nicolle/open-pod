@@ -230,8 +230,8 @@
       },
       {
         "pin": "PA15",
-        "role": "BT RESET (active low, module pin 8)",
-        "macro": "BT_RESET",
+        "role": "BT SYS_CTRL (power-on, module pin 34; high > 20 ms boots the module)",
+        "macro": "BT_SYS_CTRL",
         "note": "Audio does not go through the STM32: the VS1053 I2S output (GPIO4 LROUT, GPIO6 SCLK, GPIO7 SDATA) feeds the module's PCM_SYNC/PCM_CLK/PCM_IN (pins 7/4/5) directly."
       }
     ]

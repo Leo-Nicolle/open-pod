@@ -24,7 +24,16 @@ import {
   type Wordmark,
 } from './logo';
 import { renderWordmark } from './wordmark';
-import { KID_A, KID_RESULTS, LIBRARY, RADIOHEAD } from './screens';
+import {
+  BT_DEVICES,
+  btDeviceRows,
+  KID_A,
+  KID_RESULTS,
+  LIBRARY,
+  RADIOHEAD,
+  type MenuRowSpec,
+  type MenuScreenOpts,
+} from './screens';
 import { GEOMETRY, REDRAW_NOTES } from './spec';
 
 const palette = reactive<Palette>({ ...DEFAULT_PALETTE });
@@ -49,7 +58,10 @@ const states = [
 const nowPlaying = computed(() =>
   states.map((s) => ({
     label: s.label,
-    screen: { kind: 'nowplaying' as const, opts: { mode: s.key, playing: playing.value, grid: grid.value } },
+    screen: {
+      kind: 'nowplaying' as const,
+      opts: { mode: s.key, playing: playing.value, grid: grid.value, bt: 'connected' as const, codec: 'aptX HD' },
+    },
   })),
 );
 
@@ -102,6 +114,167 @@ const searches = computed(() => {
       },
     },
   ];
+});
+
+// Bluetooth (.agents/bluetooth-design/README.md). Rows mirror the firmware's
+// BtMenu (software/src/state/bt_menu.cpp).
+const settingsRows = (status: MenuRowSpec): MenuRowSpec[] => [
+  { label: 'Bluetooth', trail: 'chevron', ...status },
+  { label: 'Display', trail: 'chevron' },
+  { label: 'Audio', trail: 'chevron' },
+  { label: 'System', trail: 'chevron' },
+  { label: 'Reset', kind: 'destructive' },
+];
+const radioRow = (on: boolean): MenuRowSpec => ({ label: 'Bluetooth', trail: on ? 'switchOn' : 'switchOff' });
+const scanRow: MenuRowSpec = { label: 'Scan for devices' };
+const scanningRow = (remaining: number): MenuRowSpec => ({
+  label: 'Scanning',
+  dots: 2,
+  note: 'Stop',
+  value: `${Math.ceil(remaining / 1000)}s`,
+  valueTone: 'count',
+  mono: true,
+  progress: (320 * remaining) / 10000,
+});
+const deviceRows = (o: { link: 'connected' | 'idle' | 'connecting' | 'failed'; paired: boolean; alias?: string }) => {
+  const rows: MenuRowSpec[] = [];
+  if (o.link === 'connected') rows.push({ label: 'Disconnect' });
+  else if (o.link === 'connecting') rows.push({ label: 'Connecting', dots: 1, note: 'Cancel' });
+  else if (o.link === 'failed') rows.push({ label: "Couldn't connect", kind: 'failed', note: 'is it on?', noteTone: 'cream' });
+  else rows.push({ label: 'Connect' });
+  if (o.paired) rows.push({ label: 'Codec', value: 'Auto' });
+  if (o.link === 'connected') rows.push({ label: 'In use', kind: 'readonly', note: 'aptX HD', noteTone: 'accent' });
+  if (o.link === 'connected') rows.push({ label: 'Signal', kind: 'readonly', value: '−54 dBm', mono: true, bars: 3 });
+  else rows.push({ label: 'Signal', kind: 'readonly', note: 'last scan', noteTone: 'dimmer', value: '−71 dBm', mono: true, bars: 2 });
+  rows.push(o.alias ? { label: 'Rename…', note: o.alias, noteTone: 'dimmer' } : { label: 'Rename…' });
+  if (o.paired) rows.push({ label: 'Forget device', kind: 'destructive' });
+  return rows;
+};
+
+const bluetooth = computed(() => {
+  const g = grid.value;
+  const menu = (opts: Omit<MenuScreenOpts, 'grid' | 'icon' | 'selected'> & Partial<MenuScreenOpts>) => ({
+    kind: 'menu' as const,
+    opts: { grid: g, icon: 'connected', selected: 0, ...opts } as MenuScreenOpts,
+  });
+  return {
+    icons: [{ label: 'header icon states (11×11 box at 270,10) and signal bars', screen: { kind: 'bticons' as const, opts: { grid: g } } }],
+    lists: [
+      {
+        label: 'Settings — Bluetooth is the first entry',
+        screen: menu({ title: 'Settings', rows: settingsRows({ note: 'Sony WH-1000XM4', noteTone: 'accent' }) }),
+      },
+      {
+        label: 'radio off — other rows hidden',
+        screen: menu({
+          title: 'Bluetooth',
+          icon: 'off',
+          rows: [radioRow(false)],
+          hint: { fromChunk: 2, title: 'Bluetooth is off', sub: 'paired devices are kept' },
+        }),
+      },
+      {
+        label: 'empty — cursor on Scan',
+        screen: menu({
+          title: 'Bluetooth',
+          icon: 'on',
+          rows: [radioRow(true), scanRow],
+          selected: 1,
+          hint: { fromChunk: 3, title: 'No devices yet', sub: 'scan to find headphones' },
+        }),
+      },
+      {
+        label: 'scanning — only row 2 repaints',
+        screen: menu({
+          title: 'Bluetooth',
+          icon: 'on',
+          rows: [radioRow(true), scanningRow(5600), ...btDeviceRows(BT_DEVICES.slice(3, 6))],
+          selected: 1,
+        }),
+      },
+      {
+        label: 'populated — connected, paired, then by signal',
+        screen: menu({
+          title: 'Bluetooth',
+          rows: [radioRow(true), scanRow, ...btDeviceRows(BT_DEVICES)],
+          selected: 3,
+          first: 1,
+        }),
+      },
+    ],
+    devices: [
+      {
+        label: 'connected — cursor on Codec',
+        screen: menu({ title: 'Sony WH-1000XM4', rows: deviceRows({ link: 'connected', paired: true }), selected: 1 }),
+      },
+      {
+        label: 'paired, not connected (alias set)',
+        screen: menu({
+          title: 'Kitchen',
+          icon: 'on',
+          rows: deviceRows({ link: 'idle', paired: true, alias: 'JBL Charge 4' }),
+        }),
+      },
+      {
+        label: 'connecting — icon blinks',
+        screen: menu({
+          title: 'Bose QC45',
+          icon: 'connecting',
+          blinkOn: true,
+          rows: deviceRows({ link: 'connecting', paired: false }),
+        }),
+      },
+      {
+        label: 'connect failed — 2 s',
+        screen: menu({ title: 'Bose QC45', icon: 'on', rows: deviceRows({ link: 'failed', paired: false }) }),
+      },
+      {
+        label: 'forget confirmation — Cancel preselected',
+        screen: { kind: 'forget' as const, opts: { name: 'Kitchen', selected: 0, icon: 'on' as const, grid: g } },
+      },
+      {
+        label: 'rename — same input as search',
+        screen: {
+          kind: 'rename' as const,
+          opts: { text: 'kitchen', letter: 'n', broadcastName: 'JBL Charge 4', icon: 'on' as const, grid: g },
+        },
+      },
+    ],
+    toasts: [
+      {
+        label: 'success — over a list',
+        screen: menu({
+          title: 'Bluetooth',
+          rows: [radioRow(true), scanRow, ...btDeviceRows(BT_DEVICES.slice(0, 3))],
+          selected: 2,
+          toast: { tone: 'success', before: 'Connected to ', name: 'Sony WH-1000XM4' },
+        }),
+      },
+      {
+        label: 'neutral — something the user did',
+        screen: menu({
+          title: 'Bluetooth',
+          icon: 'on',
+          rows: [radioRow(true), scanRow, ...btDeviceRows(BT_DEVICES.slice(1, 8))],
+          selected: 1,
+          toast: { tone: 'neutral', before: 'Scan finished' },
+        }),
+      },
+      {
+        label: 'error — over Now Playing, playback paused',
+        screen: {
+          kind: 'nowplaying' as const,
+          opts: {
+            mode: 'play' as const,
+            playing: false,
+            grid: g,
+            bt: 'on' as const,
+            toast: { tone: 'error' as const, before: 'Lost ', name: 'Sony WH-1000XM4', after: ' · paused' },
+          },
+        },
+      },
+    ],
+  };
 });
 
 // Title screen. The logo frames never depend on the theme; the wordmark needs
@@ -380,6 +553,35 @@ async function copyTheme() {
         </p>
         <div class="states">
           <figure v-for="s in searches" :key="s.label" class="state">
+            <ScreenCanvas :palette="palette" :screen="s.screen" :zoom="zoom" />
+            <figcaption>{{ s.label }}</figcaption>
+          </figure>
+        </div>
+      </section>
+
+      <section>
+        <h3>Bluetooth</h3>
+        <p class="lede">
+          Settings › Bluetooth uses the track list's grid: a 30px header and seven 30px rows, so every
+          Bluetooth event repaints the header, the 11×11 icon box at (270,10), one row or a run of rows,
+          never the whole screen. Read-only rows (In use, Signal) are skipped by the cursor. Toasts take
+          over the header chunk for 2.5s and never cover a row. On Now Playing the icon and the codec in
+          use sit before the clock.
+        </p>
+        <div class="states">
+          <figure v-for="s in [...bluetooth.icons, ...bluetooth.lists]" :key="s.label" class="state">
+            <ScreenCanvas :palette="palette" :screen="s.screen" :zoom="zoom" />
+            <figcaption>{{ s.label }}</figcaption>
+          </figure>
+        </div>
+        <div class="states">
+          <figure v-for="s in bluetooth.devices" :key="s.label" class="state">
+            <ScreenCanvas :palette="palette" :screen="s.screen" :zoom="zoom" />
+            <figcaption>{{ s.label }}</figcaption>
+          </figure>
+        </div>
+        <div class="states">
+          <figure v-for="s in bluetooth.toasts" :key="s.label" class="state">
             <ScreenCanvas :palette="palette" :screen="s.screen" :zoom="zoom" />
             <figcaption>{{ s.label }}</figcaption>
           </figure>

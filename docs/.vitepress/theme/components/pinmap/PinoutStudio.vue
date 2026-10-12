@@ -1,6 +1,8 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
 import { CONNECTORS, type ConnectorPin } from "./board";
+import { PACKAGES, type PackageId } from "./pins";
+import { busFor } from "./buses";
 import {
   buildPins,
   indexByBase,
@@ -27,15 +29,19 @@ import {
 } from "./studio";
 
 /* ---------------------------------------------------------------- static data */
-const pins = buildPins();
-const byBase = indexByBase(pins);
-const STORAGE_KEY = "nucleo-pinmap-v1";
+const PKG_KEY = "nucleo-pinmap-package";
+// LQFP64 keeps the original key so mappings saved before packages existed survive.
+const storageKey = (id: PackageId) => (id === "LQFP64" ? "nucleo-pinmap-v1" : `nucleo-pinmap-${id}-v1`);
 
 const LEFT_IDS = ["CN7", "CN6", "CN8"];
 const RIGHT_IDS = ["CN5", "CN9", "CN10"];
 const connById = new Map(CONNECTORS.map((c) => [c.id, c]));
 
 /* --------------------------------------------------------------------- state */
+const pkg = ref<PackageId>("LQFP64");
+const pkgInfo = computed(() => PACKAGES.find((p) => p.id === pkg.value)!);
+const pins = computed(() => buildPins(pkg.value));
+const byBase = computed(() => indexByBase(pins.value));
 const rows = ref<MappingRow[] | null>(null);
 const view = ref<"board" | "chip" | "table">("board");
 const naming = ref<"board" | "mcu" | "signal">("board");
@@ -60,24 +66,48 @@ const aMacro = ref("");
 const copied = ref(false);
 let copyTimer: ReturnType<typeof setTimeout> | undefined;
 
-onMounted(() => {
+function loadRows() {
   let saved: MappingRow[] | null = null;
   try {
-    const s = localStorage.getItem(STORAGE_KEY);
+    const s = localStorage.getItem(storageKey(pkg.value));
     if (s) saved = JSON.parse(s);
   } catch {
     /* ignore */
   }
-  rows.value = saved && saved.length ? saved : firmwareRows();
+  rows.value = saved && saved.length ? saved : firmwareRows(pkg.value);
+}
+
+onMounted(() => {
+  try {
+    const p = localStorage.getItem(PKG_KEY);
+    if (p && PACKAGES.some((x) => x.id === p)) pkg.value = p as PackageId;
+  } catch {
+    /* ignore */
+  }
+  loadRows();
 });
 
-const effRows = computed(() => rows.value ?? firmwareRows());
+watch(pkg, (id) => {
+  try {
+    localStorage.setItem(PKG_KEY, id);
+  } catch {
+    /* ignore */
+  }
+  jsonBuffer.value = "";
+  jsonErr.value = "";
+  periph.value = [];
+  if (!byBase.value.has(sel.value)) sel.value = pins.value.find((p) => p.cat === "io")?.name ?? "";
+  if (view.value === "board" && !pkgInfo.value.board) view.value = "chip";
+  loadRows();
+});
+
+const effRows = computed(() => rows.value ?? firmwareRows(pkg.value));
 
 function save(next: MappingRow[]) {
   rows.value = next;
   jsonBuffer.value = "";
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+    localStorage.setItem(storageKey(pkg.value), JSON.stringify(next));
   } catch {
     /* ignore */
   }
@@ -86,10 +116,10 @@ function save(next: MappingRow[]) {
 /* ------------------------------------------------------------------- derived */
 const used = computed(() => usedIndex(effRows.value));
 const periphNames = computed(() => peripheralList(effRows.value));
-const issues = computed(() => issueList(effRows.value, byBase));
+const issues = computed(() => issueList(effRows.value, byBase.value));
 const issuesByBaseMap = computed(() => issuesByBase(issues.value));
 const matchSetVal = computed(() =>
-  matchSet(pins, used.value, {
+  matchSet(pins.value, used.value, {
     fn: fn.value,
     hoverFn: hoverFn.value,
     periph: periph.value,
@@ -99,7 +129,7 @@ const matchSetVal = computed(() =>
   })
 );
 
-const selPin = computed(() => byBase.get(sel.value) ?? null);
+const selPin = computed(() => byBase.value.get(sel.value) ?? null);
 const selUsedRows = computed(() => (selPin.value ? (used.value.get(selPin.value.name) ?? []) : []));
 
 /* --------------------------------------------------------------------- cells */
@@ -115,7 +145,7 @@ interface CellVM {
 }
 
 function buildCell(opts: { base: string; label: string; num: number | null; key: string; catOverride?: Cat }): CellVM {
-  const p = opts.base ? (byBase.get(opts.base) ?? null) : null;
+  const p = opts.base ? (byBase.value.get(opts.base) ?? null) : null;
   const usedRows = p ? (used.value.get(p.name) ?? []) : [];
   const modeV = color.value;
   const namingV = naming.value;
@@ -200,7 +230,7 @@ function connectorVM(id: string) {
   const cells: CellVM[] = [];
   cn.columns.forEach((col, ci) => {
     col.forEach((p: ConnectorPin, ri: number) => {
-      const base = p.chip && byBase.has(p.chip) ? p.chip : "";
+      const base = p.chip && byBase.value.has(p.chip) ? p.chip : "";
       const cell = buildCell({ base, label: p.label, num: p.pos, key: `${cn.id}-${ci}-${ri}`, catOverride: p.kind });
       if (cols === 2) {
         cell.style.gridColumn = flip.value ? 2 - ci : ci + 1;
@@ -226,8 +256,10 @@ const boardLeft = computed(() => (flip.value ? [...RIGHT_IDS].reverse() : LEFT_I
 const boardRight = computed(() => (flip.value ? [...LEFT_IDS].reverse() : RIGHT_IDS).map(connectorVM));
 
 /* ---------------------------------------------------------------- chip view */
+/** pins per side of the quad package: 16 for LQFP64, 25 for LQFP100 */
+const perSide = computed(() => pins.value.length / 4);
 const chipCells = computed<CellVM[]>(() =>
-  pins.map((p) => {
+  pins.value.map((p) => {
     const label = naming.value === "board" ? p.ard || p.morpho || p.name : p.name;
     const cell = buildCell({ base: p.name, label, num: p.num, key: `ic-${p.num}` });
     const n = p.num;
@@ -246,39 +278,45 @@ const chipCells = computed<CellVM[]>(() =>
         textOverflow: "ellipsis",
       };
     };
+    const k = perSide.value;
+    const last = k + 2; // grid line count: a corner cell each side of the k pins
     let col: number, row: number;
-    if (n <= 16) {
+    if (n <= k) {
       col = 1;
       row = n + 1;
       cell.style.flexDirection = "row";
-    } else if (n <= 32) {
-      col = n - 15;
-      row = 18;
+    } else if (n <= 2 * k) {
+      col = n - k + 1;
+      row = last;
       setVertical("column");
-    } else if (n <= 48) {
-      col = 18;
-      row = 18 - (n - 32);
+    } else if (n <= 3 * k) {
+      col = last;
+      row = last - (n - 2 * k);
       cell.style.flexDirection = "row-reverse";
       cell.style.textAlign = "right";
     } else {
-      col = 18 - (n - 48);
+      col = last - (n - 3 * k);
       row = 1;
       setVertical("column-reverse");
     }
-    cell.style.gridColumn = flip.value ? 19 - col : col;
+    cell.style.gridColumn = flip.value ? last + 1 - col : col;
     cell.style.gridRow = row;
     cell.style.overflow = "hidden";
     return cell;
   })
 );
-const chipGrid = {
+const chipGrid = computed(() => ({
   display: "grid",
-  gridTemplateColumns: "140px repeat(16, 34px) 140px",
-  gridTemplateRows: "140px repeat(16, 26px) 140px",
+  gridTemplateColumns: `140px repeat(${perSide.value}, 34px) 140px`,
+  gridTemplateRows: `140px repeat(${perSide.value}, 26px) 140px`,
   gap: "2px",
-};
+}));
+const chipBodyStyle = computed(() => ({
+  gridColumn: `2 / span ${perSide.value}`,
+  gridRow: `2 / span ${perSide.value}`,
+}));
 const chipCaption = computed(
-  () => `LQFP64 · pin 1 ${flip.value ? "top-right · clockwise" : "top-left · counter-clockwise"}`
+  () => `${pkg.value} · pin 1 ${flip.value ? "top-right · clockwise" : "top-left · counter-clockwise"}`
 );
 const chipDotStyle = computed(() => ({
   position: "absolute",
@@ -294,7 +332,7 @@ const chipDotStyle = computed(() => ({
 /* --------------------------------------------------------------- table view */
 const tableRows = computed(() => {
   const ms = matchSetVal.value;
-  return pins
+  return pins.value
     .filter((p) => !ms || ms.has(p.name))
     .map((p) => {
       const rs = used.value.get(p.name) ?? [];
@@ -325,7 +363,7 @@ const tableRows = computed(() => {
 const usedCount = computed(() => new Set(effRows.value.map((r) => r.pin)).size);
 const catCounts = computed(() => {
   const m: Record<string, number> = {};
-  for (const p of pins) m[p.cat] = (m[p.cat] || 0) + 1;
+  for (const p of pins.value) m[p.cat] = (m[p.cat] || 0) + 1;
   return m;
 });
 const statFree = computed(() => Math.max(0, (catCounts.value.io || 0) - usedCount.value));
@@ -356,7 +394,7 @@ const periphChips = computed(() =>
 );
 
 const fnOptions = computed(() =>
-  FAMS.map((f) => ({ id: f, label: `${f} (${pins.filter((p) => famRe(f).test(p.blob)).length})` })).filter(
+  FAMS.map((f) => ({ id: f, label: `${f} (${pins.value.filter((p) => famRe(f).test(p.blob)).length})` })).filter(
     (o) => !o.label.includes("(0)")
   )
 );
@@ -366,11 +404,14 @@ const viewTabs = computed(() =>
   (
     [
       ["board", "Nucleo board"],
-      ["chip", "LQFP64 chip"],
+      ["chip", `${pkg.value} chip`],
       ["table", "Pin table"],
     ] as const
-  ).map(([id, label]) => ({ id, label, style: TAB_STYLE(view.value === id) }))
+  )
+    .filter(([id]) => id !== "board" || !!pkgInfo.value.board)
+    .map(([id, label]) => ({ id, label, style: TAB_STYLE(view.value === id) }))
 );
+const pkgTabs = computed(() => PACKAGES.map((p) => ({ id: p.id, label: p.id, style: TAB_STYLE(pkg.value === p.id) })));
 const nameTabs = computed(() =>
   (
     [
@@ -485,6 +526,15 @@ const selUsed = computed(() =>
     };
   })
 );
+/** Bus limits of every peripheral this pin can carry (buses.json). */
+const selBuses = computed(() => {
+  if (!selPin.value) return [];
+  const blob = selPin.value.af.concat(selPin.value.add).join(" ");
+  return FAMS.filter((f) => famRe(f).test(blob))
+    .map((f) => busFor(f))
+    .filter((b) => !!b)
+    .map((b) => ({ ...b!, title: `${b!.detail} (${b!.source})` }));
+});
 const selSuggest = computed(() =>
   selPin.value
     ? selPin.value.af
@@ -504,14 +554,14 @@ const editRows = computed(() =>
     return {
       ...r,
       i,
-      pinBorder: byBase.has(r.pin) ? "oklch(0.30 0.014 255)" : "oklch(0.60 0.13 25)",
+      pinBorder: byBase.value.has(r.pin) ? "oklch(0.30 0.014 255)" : "oklch(0.60 0.13 25)",
       check: bad ? bad.msg : "",
       checkColor: bad ? SEV_COLOR[bad.sev] : "oklch(0.60 0.012 255)",
       style: { background: sel.value === r.pin ? "oklch(0.27 0.02 195)" : "oklch(0.205 0.012 255)" },
     };
   })
 );
-const pinNames = pins.map((p) => p.name);
+const pinNames = computed(() => pins.value.map((p) => p.name));
 const mapStatus = computed(() => `${periphNames.value.length} peripherals · ${effRows.value.length} assignments`);
 const jsonText = computed(() => jsonBuffer.value || exportJsonRows(effRows.value));
 const jsonErrColor = computed(() => (jsonErr.value ? "oklch(0.78 0.13 25)" : "oklch(0.60 0.012 255)"));
@@ -617,7 +667,7 @@ function onAddRow() {
   ]);
 }
 function onResetFw() {
-  save(firmwareRows());
+  save(firmwareRows(pkg.value));
   jsonErr.value = "";
 }
 function onJsonInput(e: Event) {
@@ -684,11 +734,12 @@ function onCopy() {
           >Pinout studio</span
         >
         <h1 style="margin: 0; font-size: 26px; font-weight: 600; letter-spacing: -0.01em">
-          STM32F446RE <span style="color: oklch(0.66 0.012 255); font-weight: 400">/ Nucleo-F446RE</span>
+          {{ pkgInfo.chip
+          }}<span v-if="pkgInfo.board" style="color: oklch(0.66 0.012 255); font-weight: 400"> / {{ pkgInfo.board }}</span>
         </h1>
       </div>
       <p style="margin: 0; max-width: 52ch; font-size: 13px; line-height: 1.5; color: oklch(0.72 0.012 255)">
-        LQFP64 as wired on the MP3 project board. Hover any pin or legend swatch to trace it; click to pin it open.
+        {{ pkgInfo.blurb }} Hover any pin or legend swatch to trace it; click to pin it open.
         Edits are kept locally and export to C++, Markdown or JSON.
       </p>
       <div style="margin-left: auto; display: flex; gap: 18px; font-family: 'IBM Plex Mono', monospace; font-size: 12px">
@@ -726,6 +777,24 @@ function onCopy() {
         border-radius: 10px;
       "
     >
+      <label
+        style="
+          display: flex;
+          align-items: center;
+          gap: 7px;
+          font-size: 11px;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+          color: oklch(0.66 0.012 255);
+        "
+      >
+        Package
+        <div style="display: flex; gap: 2px; padding: 2px; background: oklch(0.19 0.012 255); border-radius: 7px">
+          <button v-for="t in pkgTabs" :key="t.id" type="button" :style="t.style" @click="pkg = t.id">
+            {{ t.label }}
+          </button>
+        </div>
+      </label>
       <div style="display: flex; gap: 2px; padding: 2px; background: oklch(0.19 0.012 255); border-radius: 7px">
         <button
           v-for="t in viewTabs"
@@ -964,9 +1033,8 @@ function onCopy() {
         <div v-else-if="view === 'chip'" style="display: flex; justify-content: center; overflow: auto">
           <div :style="chipGrid">
             <div
+              :style="chipBodyStyle"
               style="
-                grid-column: 2 / span 16;
-                grid-row: 2 / span 16;
                 border: 1px solid oklch(0.4 0.014 255);
                 background: oklch(0.26 0.012 255);
                 border-radius: 6px;
@@ -980,7 +1048,7 @@ function onCopy() {
             >
               <span :style="chipDotStyle"></span>
               <span style="font-family: 'IBM Plex Mono', monospace; font-size: 15px; font-weight: 600; letter-spacing: 0.02em"
-                >STM32F446RET6</span
+                >{{ pkgInfo.chip }}</span
               >
               <span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: oklch(0.66 0.012 255)">{{
                 chipCaption
@@ -1103,6 +1171,18 @@ function onCopy() {
                 >
                 <span>{{ selIoText }}</span>
               </div>
+              <div v-if="selPin.maxSpeed" style="display: flex; gap: 10px">
+                <span style="flex: 0 0 78px; color: oklch(0.64 0.012 255); font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; padding-top: 1px"
+                  >Speed</span
+                >
+                <span>{{ selPin.maxSpeed }}</span>
+              </div>
+              <div v-if="selPin.domain" style="display: flex; gap: 10px">
+                <span style="flex: 0 0 78px; color: oklch(0.64 0.012 255); font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; padding-top: 1px"
+                  >Supply</span
+                >
+                <span>{{ selPin.domain }}</span>
+              </div>
               <div style="display: flex; gap: 10px">
                 <span style="flex: 0 0 78px; color: oklch(0.64 0.012 255); font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; padding-top: 3px"
                   >Alternate</span
@@ -1126,6 +1206,28 @@ function onCopy() {
                   >Board</span
                 >
                 <span style="font-size: 11.5px; line-height: 1.45; color: oklch(0.82 0.05 60)">{{ selPin.note }}</span>
+              </div>
+              <div v-if="selBuses.length" style="display: flex; gap: 10px">
+                <span style="flex: 0 0 78px; color: oklch(0.64 0.012 255); font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; padding-top: 1px"
+                  >Buses</span
+                >
+                <div style="display: flex; flex-direction: column; gap: 3px; flex: 1">
+                  <span
+                    v-for="b in selBuses"
+                    :key="b.family"
+                    :title="b.title"
+                    style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: oklch(0.8 0.01 255)"
+                    >{{ b.family }} · {{ b.bus }} · <span style="color: oklch(0.86 0.10 195)">{{ b.maxRate }}</span></span
+                  >
+                </div>
+              </div>
+              <div v-if="selPin.remarks.length" style="display: flex; gap: 10px">
+                <span style="flex: 0 0 78px; color: oklch(0.64 0.012 255); font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; padding-top: 1px"
+                  >Datasheet</span
+                >
+                <ul style="margin: 0; padding-left: 14px; font-size: 11.5px; line-height: 1.45; color: oklch(0.82 0.05 60)">
+                  <li v-for="r in selPin.remarks" :key="r">{{ r }}</li>
+                </ul>
               </div>
               <div v-if="selPin.add.length" style="display: flex; gap: 10px">
                 <span style="flex: 0 0 78px; color: oklch(0.64 0.012 255); font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; padding-top: 1px"

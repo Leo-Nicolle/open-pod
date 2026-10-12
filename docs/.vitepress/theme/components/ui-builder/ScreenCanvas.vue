@@ -2,12 +2,20 @@
 import { onBeforeUnmount, onMounted, watch, ref } from 'vue';
 import type { Palette } from './palette';
 import {
+  drawBtIcons,
+  drawForget,
+  drawMenuScreen,
   drawNowPlaying,
+  drawRename,
   drawSearch,
   drawTrackList,
   H,
   W,
+  type BtIconsOpts,
+  type ForgetOpts,
+  type MenuScreenOpts,
   type NowPlayingOpts,
+  type RenameOpts,
   type SearchOpts,
   type TrackListOpts,
 } from './screens';
@@ -15,7 +23,11 @@ import {
 type Screen =
   | { kind: 'nowplaying'; opts: NowPlayingOpts }
   | { kind: 'tracklist'; opts: TrackListOpts }
-  | { kind: 'search'; opts: SearchOpts };
+  | { kind: 'search'; opts: SearchOpts }
+  | { kind: 'menu'; opts: MenuScreenOpts }
+  | { kind: 'forget'; opts: ForgetOpts }
+  | { kind: 'rename'; opts: RenameOpts }
+  | { kind: 'bticons'; opts: BtIconsOpts };
 
 const props = defineProps<{
   palette: Palette;
@@ -48,7 +60,11 @@ function redraw() {
   const s = props.screen;
   if (s.kind === 'nowplaying') drawNowPlaying(ctx, props.palette, s.opts);
   else if (s.kind === 'tracklist') drawTrackList(ctx, props.palette, s.opts);
-  else drawSearch(ctx, props.palette, s.opts);
+  else if (s.kind === 'search') drawSearch(ctx, props.palette, s.opts);
+  else if (s.kind === 'menu') drawMenuScreen(ctx, props.palette, s.opts);
+  else if (s.kind === 'forget') drawForget(ctx, props.palette, s.opts);
+  else if (s.kind === 'rename') drawRename(ctx, props.palette, s.opts);
+  else drawBtIcons(ctx, props.palette, s.opts);
 }
 
 onMounted(() => {

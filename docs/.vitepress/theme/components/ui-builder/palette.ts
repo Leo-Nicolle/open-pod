@@ -1,8 +1,9 @@
 // Color palette model for the Now Playing UI builder.
 //
-// The screen (ILI9341, 320x240, RGB565) is themed by 13 colors: ten
-// "structural" ones (background, surfaces, text levels, list chrome) and the
-// three-color accent family. All of them are editable here.
+// The screen (ILI9341, 320x240, RGB565) is themed by 18 colors: ten
+// "structural" ones (background, surfaces, text levels, list chrome), the
+// three-color accent family, and five for the Bluetooth screens (disabled
+// rows, signal bars, errors). All of them are editable here.
 
 export type PaletteKey =
   | 'bg'
@@ -17,7 +18,12 @@ export type PaletteKey =
   | 'ribbon'
   | 'accent'
   | 'accentDark'
-  | 'accentAlt';
+  | 'accentAlt'
+  | 'disabled'
+  | 'barOff'
+  | 'barOffHi'
+  | 'error'
+  | 'destructive';
 
 export interface Palette {
   bg: string; // #RRGGBB
@@ -33,6 +39,11 @@ export interface Palette {
   accent: string;
   accentDark: string;
   accentAlt: string;
+  disabled: string;
+  barOff: string;
+  barOffHi: string;
+  error: string;
+  destructive: string;
 }
 
 export interface PaletteMeta {
@@ -58,6 +69,11 @@ export const PALETTE_META: PaletteMeta[] = [
   { key: 'accent', name: 'COLOR_ACCENT', label: 'Accent', description: 'Progress fill, active state, album' },
   { key: 'accentDark', name: 'COLOR_ACCENT_DK', label: 'Accent dark', description: 'Seek track fill behind the handle' },
   { key: 'accentAlt', name: 'COLOR_ACCENT_ALT', label: 'Accent alt', description: 'Seek handle, SEEK chip' },
+  { key: 'disabled', name: 'COLOR_DISABLED', label: 'Disabled', description: 'Disabled row label and reason (Rename without SD card)' },
+  { key: 'barOff', name: 'COLOR_BAR_OFF', label: 'Bar off', description: 'Unlit signal bar' },
+  { key: 'barOffHi', name: 'COLOR_BAR_OFF_HI', label: 'Bar off (selected)', description: 'Unlit signal bar / scan dot on the selected row' },
+  { key: 'error', name: 'COLOR_ERROR', label: 'Error', description: 'Failed-connection row, "connection lost" toast' },
+  { key: 'destructive', name: 'COLOR_DESTRUCTIVE', label: 'Destructive', description: '"Forget device", "Forget", "Reset" labels' },
 ];
 
 export const DEFAULT_PALETTE: Palette = {
@@ -74,6 +90,11 @@ export const DEFAULT_PALETTE: Palette = {
   accent: '#31AAA9',
   accentDark: '#6C1A1A',
   accentAlt: '#F8E0A4',
+  disabled: '#4F4844',
+  barOff: '#3A3532',
+  barOffHi: '#2E6E6D',
+  error: '#A82020',
+  destructive: '#D9665C',
 };
 
 /** Parse a "#RRGGBB" (or "#RGB") string into [r, g, b] 0-255. */

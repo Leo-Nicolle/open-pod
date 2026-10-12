@@ -1,0 +1,403 @@
+[
+  {
+    "peripheral": "Screen (ILI9341)",
+    "bus": "16-bit parallel",
+    "pins": [
+      {
+        "pin": "PD0",
+        "role": "D0",
+        "note": "Whole port D: one GPIOD->ODR/BSRR write per pixel. Unlike LQFP64, no data bit sits on the slow PC13-PC15 backup-domain pins."
+      },
+      {
+        "pin": "PD1",
+        "role": "D1"
+      },
+      {
+        "pin": "PD2",
+        "role": "D2"
+      },
+      {
+        "pin": "PD3",
+        "role": "D3"
+      },
+      {
+        "pin": "PD4",
+        "role": "D4"
+      },
+      {
+        "pin": "PD5",
+        "role": "D5"
+      },
+      {
+        "pin": "PD6",
+        "role": "D6"
+      },
+      {
+        "pin": "PD7",
+        "role": "D7"
+      },
+      {
+        "pin": "PD8",
+        "role": "D8"
+      },
+      {
+        "pin": "PD9",
+        "role": "D9"
+      },
+      {
+        "pin": "PD10",
+        "role": "D10"
+      },
+      {
+        "pin": "PD11",
+        "role": "D11"
+      },
+      {
+        "pin": "PD12",
+        "role": "D12"
+      },
+      {
+        "pin": "PD13",
+        "role": "D13"
+      },
+      {
+        "pin": "PD14",
+        "role": "D14"
+      },
+      {
+        "pin": "PD15",
+        "role": "D15"
+      },
+      {
+        "pin": "PB8",
+        "role": "TFT_DC",
+        "macro": "TFT_DC"
+      },
+      {
+        "pin": "PB9",
+        "role": "TFT_WR",
+        "macro": "TFT_WR",
+        "note": "Toggled per pixel."
+      },
+      {
+        "pin": "PB10",
+        "role": "Backlight PWM (TIM2_CH3)",
+        "macro": "TFT_BL",
+        "note": "Drives a low-side N-MOSFET. TFT_RD is tied to 3V3 and TFT_RST to NRST or an RC, so they take no pins."
+      }
+    ]
+  },
+  {
+    "peripheral": "PSRAM (APS6404L)",
+    "bus": "QUADSPI bank 2",
+    "pins": [
+      {
+        "pin": "PB2",
+        "role": "PSRAM_CLK (QUADSPI_CLK)",
+        "macro": "PSRAM_CLK",
+        "note": "Also BOOT1: only sampled at reset when BOOT0 = 1."
+      },
+      {
+        "pin": "PC11",
+        "role": "PSRAM_CS (QUADSPI_BK2_NCS)",
+        "macro": "PSRAM_CS",
+        "note": "Bank 2 chip select. The bank 1 NCS is only on PB6, which I2C1 needs."
+      },
+      {
+        "pin": "PE7",
+        "role": "PSRAM_IO0 (QUADSPI_BK2_IO0)"
+      },
+      {
+        "pin": "PE8",
+        "role": "PSRAM_IO1 (QUADSPI_BK2_IO1)"
+      },
+      {
+        "pin": "PE9",
+        "role": "PSRAM_IO2 (QUADSPI_BK2_IO2)",
+        "note": "IO2 only exists on PE2 (bank 1) or PE9 (bank 2) in this package."
+      },
+      {
+        "pin": "PE10",
+        "role": "PSRAM_IO3 (QUADSPI_BK2_IO3)"
+      }
+    ]
+  },
+  {
+    "peripheral": "SD card",
+    "bus": "SPI1",
+    "pins": [
+      {
+        "pin": "PA4",
+        "role": "CARDCS (chip select)",
+        "macro": "CARDCS"
+      },
+      {
+        "pin": "PA5",
+        "role": "SPI1_SCK"
+      },
+      {
+        "pin": "PA6",
+        "role": "SPI1_MISO"
+      },
+      {
+        "pin": "PA7",
+        "role": "SPI1_MOSI"
+      },
+      {
+        "pin": "PC0",
+        "role": "SD_EN (TPS22917 ON)",
+        "macro": "SD_EN",
+        "note": "Hold PA4-PA7 low while the card is off so nothing back-powers it."
+      }
+    ]
+  },
+  {
+    "peripheral": "VS1053",
+    "bus": "SPI2",
+    "pins": [
+      {
+        "pin": "PB12",
+        "role": "MP3CS (chip select)",
+        "macro": "MP3CS"
+      },
+      {
+        "pin": "PB13",
+        "role": "SPI2_SCK"
+      },
+      {
+        "pin": "PB14",
+        "role": "SPI2_MISO"
+      },
+      {
+        "pin": "PB15",
+        "role": "SPI2_MOSI"
+      },
+      {
+        "pin": "PC2",
+        "role": "MP3XDCS (data/command)",
+        "macro": "MP3XDCS"
+      },
+      {
+        "pin": "PC3",
+        "role": "MP3_RESET",
+        "macro": "MP3_RESET"
+      },
+      {
+        "pin": "PE5",
+        "role": "MP3DREQ",
+        "macro": "MP3DREQ"
+      },
+      {
+        "pin": "PC4",
+        "role": "VS_EN (TPS22917 ON)",
+        "macro": "VS_EN",
+        "note": "Hold XRESET low and the SPI2 lines low while the VS1053 is off. SPI2 is on APB1: 22.5 MHz max SCK."
+      }
+    ]
+  },
+  {
+    "peripheral": "MPR121",
+    "bus": "I2C1",
+    "pins": [
+      {
+        "pin": "PB6",
+        "role": "SCL (I2C1_SCL)",
+        "note": "Shared with the DRV2605L (0x5A) and the MAX17048 (0x36). MPR121 ADDR tied to 3.3V (0x5B)."
+      },
+      {
+        "pin": "PB7",
+        "role": "SDA (I2C1_SDA)"
+      },
+      {
+        "pin": "PE4",
+        "role": "~IRQ (active low, open-drain)",
+        "macro": "MPR121_IRQ"
+      }
+    ]
+  },
+  {
+    "peripheral": "DRV2605L (haptic)",
+    "bus": "I2C1",
+    "pins": [
+      {
+        "pin": "PB6",
+        "role": "SCL (I2C1_SCL)"
+      },
+      {
+        "pin": "PB7",
+        "role": "SDA (I2C1_SDA)"
+      },
+      {
+        "pin": "PC6",
+        "role": "EN (hardware shutdown)",
+        "macro": "DRV_EN",
+        "note": "Optional."
+      }
+    ]
+  },
+  {
+    "peripheral": "MAX17048 (fuel gauge)",
+    "bus": "I2C1",
+    "pins": [
+      {
+        "pin": "PB6",
+        "role": "SCL (I2C1_SCL)"
+      },
+      {
+        "pin": "PB7",
+        "role": "SDA (I2C1_SDA)"
+      },
+      {
+        "pin": "PE6",
+        "role": "~ALRT (low battery, open-drain)",
+        "macro": "FG_ALRT"
+      }
+    ]
+  },
+  {
+    "peripheral": "Bluetooth (FSC-BT1035)",
+    "bus": "UART4",
+    "pins": [
+      {
+        "pin": "PA0",
+        "role": "UART4_TX -> BT_RX",
+        "macro": "BT_UART_TX"
+      },
+      {
+        "pin": "PA1",
+        "role": "UART4_RX <- BT_TX",
+        "macro": "BT_UART_RX"
+      },
+      {
+        "pin": "PB0",
+        "role": "UART4_CTS <- BT_RTS",
+        "macro": "BT_CTS",
+        "note": "Optional hardware flow control."
+      },
+      {
+        "pin": "PA15",
+        "role": "UART4_RTS -> BT_CTS",
+        "macro": "BT_RTS",
+        "note": "Optional hardware flow control. JTDI after reset: free once debug is SWD only."
+      },
+      {
+        "pin": "PC7",
+        "role": "BT_EN (TPS22917 ON)",
+        "macro": "BT_EN",
+        "note": "The module's auto power-on circuit boots it once powered. Audio goes VS1053 I2S -> module directly, not through the STM32."
+      },
+      {
+        "pin": "PC8",
+        "role": "BT_RESET (open-drain)",
+        "macro": "BT_RESET",
+        "note": "Optional."
+      }
+    ]
+  },
+  {
+    "peripheral": "Click-wheel buttons",
+    "bus": "GPIO",
+    "pins": [
+      {
+        "pin": "PE11",
+        "role": "Center",
+        "macro": "BTN_CENTER"
+      },
+      {
+        "pin": "PE12",
+        "role": "Top",
+        "macro": "BTN_TOP"
+      },
+      {
+        "pin": "PE13",
+        "role": "Right",
+        "macro": "BTN_RIGHT"
+      },
+      {
+        "pin": "PE14",
+        "role": "Bottom",
+        "macro": "BTN_BOTTOM"
+      },
+      {
+        "pin": "PE15",
+        "role": "Left",
+        "macro": "BTN_LEFT",
+        "note": "PE11-PE15 are adjacent package pins 42-46, each on its own EXTI line (EXTI10-15 share one NVIC vector)."
+      }
+    ]
+  },
+  {
+    "peripheral": "Lock switch",
+    "bus": "GPIO",
+    "pins": [
+      {
+        "pin": "PE3",
+        "role": "LOCK",
+        "macro": "LOCK_SW",
+        "note": "Own EXTI line, can wake the MCU."
+      }
+    ]
+  },
+  {
+    "peripheral": "USB",
+    "bus": "OTG_FS",
+    "pins": [
+      {
+        "pin": "PA11",
+        "role": "D- (OTG_FS_DM)"
+      },
+      {
+        "pin": "PA12",
+        "role": "D+ (OTG_FS_DP)"
+      },
+      {
+        "pin": "PA9",
+        "role": "VBUS sense (OTG_FS_VBUS)",
+        "macro": "USB_VBUS",
+        "note": "Also tells the firmware a charger is attached."
+      }
+    ]
+  },
+  {
+    "peripheral": "HSE crystal",
+    "bus": "Clock",
+    "pins": [
+      {
+        "pin": "PH0",
+        "role": "OSC_IN (8 MHz crystal)",
+        "note": "USB needs an accurate 48 MHz clock, the HSI is not good enough."
+      },
+      {
+        "pin": "PH1",
+        "role": "OSC_OUT"
+      }
+    ]
+  },
+  {
+    "peripheral": "Debug",
+    "bus": "SWD + USART2",
+    "pins": [
+      {
+        "pin": "PA13",
+        "role": "SWDIO"
+      },
+      {
+        "pin": "PA14",
+        "role": "SWCLK"
+      },
+      {
+        "pin": "PB3",
+        "role": "SWO (trace output)",
+        "note": "Optional: printf over SWD."
+      },
+      {
+        "pin": "PA2",
+        "role": "Log USART2_TX"
+      },
+      {
+        "pin": "PA3",
+        "role": "Log USART2_RX"
+      }
+    ]
+  }
+]
