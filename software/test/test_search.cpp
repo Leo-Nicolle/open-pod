@@ -313,8 +313,8 @@ TEST_SUITE("State search navigation") {
                   const char *text) {
     state.getSearch().setIndex(&index);
     state.loadCurrentRouteData(lookup);
-    for (int i = 0; i < 4; i++)
-      state.scrollDown(); // "Search" root menu item
+    while (std::string(state.getCurrentTrackName()) != "Search")
+      state.scrollDown(); // the "Search" root menu item
     state.goToSelected(lookup);
     REQUIRE(state.getCurrentRoute().type == Route_t::SEARCH_RESULTS);
     type(state.getSearch(), lookup, text);

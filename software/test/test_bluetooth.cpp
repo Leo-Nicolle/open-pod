@@ -571,8 +571,8 @@ TEST_SUITE("Bluetooth menu") {
     MusicLookup lookup;
     REQUIRE(lookup.init());
     state.loadCurrentRouteData(lookup);
-    for (int i = 0; i < 5; i++)
-      state.scrollDown(); // "Settings"
+    while (std::string(state.getCurrentTrackName()) != "Settings")
+      state.scrollDown();
     state.goToSelected(lookup);
     CHECK(state.getCurrentRoute().type == Route_t::SETTINGS);
     CHECK(std::string(state.getHeaderTitle()) == "Settings");
@@ -587,6 +587,6 @@ TEST_SUITE("Bluetooth menu") {
     REQUIRE(state.back(lookup));
     REQUIRE(state.back(lookup));
     CHECK(state.getCurrentRoute().type == Route_t::ROOT);
-    CHECK(state.getSelectedIndex() == 5);
+    CHECK(std::string(state.getCurrentTrackName()) == "Settings");
   }
 }

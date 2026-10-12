@@ -16,6 +16,9 @@
 #ifndef O_RDONLY
 #define O_RDONLY 0x01
 #endif
+#ifndef O_RDWR
+#define O_RDWR 0x02
+#endif
 
 #ifndef SHARED_SPI
 #define SHARED_SPI 0
@@ -97,6 +100,19 @@ public:
     }
     pos_ = (pos > data_->size()) ? data_->size() : pos;
     return true;
+  }
+
+  // Overwrites in place, growing the file if needed.
+  size_t write(const void *buf, size_t count) {
+    if (!open_ || !buf) {
+      return 0;
+    }
+    if (pos_ + count > data_->size()) {
+      data_->resize(pos_ + count);
+    }
+    memcpy(data_->data() + pos_, buf, count);
+    pos_ += count;
+    return count;
   }
 
   void close() {
