@@ -4,7 +4,7 @@ Things that came to my mind on the improvement and steps. Not ordered, not prior
 ## UI/UX
 
  - ~~Volume: make it use a log. only the top quarter of the volume setting is usefulll and it is too aggressive~~
- - Startup: add some LOGO/animations, remove the sin test, and see how we can avoid noise on the jack
+ - ~~Startup: add some LOGO/animations, remove the sin test, and see how we can avoid noise on the jack~~
  - ~~Menus without a scrollbar: when switching to them the pixels on the scrollbar positions are not redrawn (animation side effect) and we see some artefacts of the previous menu.~~
  - Settings: Add a setting window with anything that could be usefull for the user to rweak
  - ~~Equilizer: see if the VS1053 has one, is it on the DAC level ? In this case we will have to sync it with the bluetooth Equilizer (if it has one)~~
@@ -12,7 +12,7 @@ Things that came to my mind on the improvement and steps. Not ordered, not prior
  - Goto feature: When we are on the NowPLaying we should have a way to go to the track's album/artist/genre pages, maybe by center long press or double click? 
  - ~~Fast scroll: Display one or two letters on top of the list to represent the current first or firsts letters in the current rows.~~
  - ~~Boot: add an animtaion and sound~~
-
+ - Bluetooth: on the header bar, when no one is connected, but BT is enabled it should show with dimmed color, for now it shows the same as when connected. 
 ## Developement tools
  - Wrap all the Serial.println into a macro and use platformio flags to turn them on/off
   (LOG_LEVEL=0,1,2, LOG_AUDIO_BUFFER, LOG_INDEX_USAGE, LOG_USER_INPUT ... ) with some docs somewhere about all thoose flags, probably within the macro definition.COLOR
@@ -37,6 +37,7 @@ Things that came to my mind on the improvement and steps. Not ordered, not prior
  - Battery, buttons and power management: we are runing out of pins (and 2 are dead on the current nucleo I am using), I ll have a lock button, which might need a pin (might not if I use it to short the buttons physically?). I ll need a couple of MOSFET, maybe 3: one for the screen backlights, one for the SD card and maybe one fo the bluetooth card module ? I might be short on pins !!!!
 
  ## Indexer
+ - Plan: [sync-tool.md](sync-tool.md) (Rust core + CLI, additive multi-computer sync, Tauri and WASM later). Phase 1 (indexer port) is in `syncer/`.
  - I might want to make it a Rust app/CMD. Tauri? I would have it compiled for all platforms on github actions and copy it to the SD card to always have it. It would be nice to have a nice managment UI for adding/sharing/removing stuff to the lib. Let's see if we need a whole collection view(Itunes like) or just a nice folder selector + loading bar.
  - Could we have a emscripten version of the Rust backend and use it directly from the website? So you can add music just by visiting the website? 
 

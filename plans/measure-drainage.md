@@ -39,6 +39,24 @@ sometimes a power LED. The final board uses the bare chips, so:
   figure.
 - Remove or cut power LEDs before measuring, or measure them separately.
 
+### Measuring the total
+
+Don't measure in the USB cable: it also carries the ST-LINK half of the
+Nucleo (its own MCU and LEDs, tens of mA), which hides every µA figure. Cutting
+the USB GND is worse: the USB data lines and the ST-LINK's UART and SWD lines
+all share that ground, so current finds other paths.
+
+Measure two points instead:
+
+- **All modules together:** the 3V3 (and 5V, if a module uses it) feed of the
+  detachable board. Leave that pin out of the Nucleo header (bend it, or cut it
+  on a stacking header) and bridge the gap with the meter. Measured on the
+  supply side, there's no phantom ground path.
+- **MCU alone:** JP6 (IDD), see the MCU section below.
+
+Per-module GND measurements should add up to the modules' total. If they don't,
+something is leaking through a signal line.
+
 ### Equipment
 
 - A multimeter with a µA range (and a second one for the burden check).
@@ -48,9 +66,11 @@ sometimes a power LED. The final board uses the bare chips, so:
 
 ### Firmware
 
-Write a test sketch (a new `software/src/main_power_test.cpp` env, like
-`main_bt_test.cpp`) that moves each module through the states below on a
-key press over the serial log, and prints the state it's in. All the MCU lines
+Write a test sketch, `software/src/main_power_test.cpp`, with its own
+`[env:power_test]` in `platformio.ini` (like `bt_test`). It moves each module
+through the states below on a key press over the serial log, and prints the
+state it's in. Also step with one of the device's own buttons, so it works
+without the serial (not the Nucleo's B1: PC13 is the screen's D13). All the MCU lines
 to a module that is "off" should be driven low, or set as analog/hi-Z inputs,
 so nothing back-powers it.
 
@@ -73,14 +93,23 @@ varies a lot between them.
 
 ### Screen (ILI9341)
 
-Measure the backlight and the logic separately (the backlight already has its
-own MOSFET on PB10).
+The backlight LEDs are on 3.3 V for now (the final board drives them through a
+MOSFET on PB10). For drain, disconnect the LED pins: the backlight is off in
+standby anyway, so only the logic matters. Measure the backlight once on its
+own, for the battery budget:
 
-1. Display on, showing the UI, backlight on.
-2. Same, backlight off: the logic's current alone.
-3. Display off (command `0x28`), backlight off.
-4. Sleep In (command `0x10`), backlight off. Wait at least 5 ms after the
-   command before reading.
+- LED pins on 3.3 V (full brightness), current in the LED wire.
+- If you want the figure at usable brightness, PWM the LEDs through a MOSFET:
+  the current scales with the duty cycle, so one reading at 100% and one at
+  50% are enough. A multimeter averages a PWM of a few kHz well enough.
+
+Logic states, LED pins disconnected:
+
+1. Display on, showing the UI.
+2. Same, no SPI traffic (static image).
+3. Display off (command `0x28`).
+4. Sleep In (command `0x10`). Wait at least 5 ms after the command before
+   reading.
 
 If state 4 is low, the screen needs no load switch.
 
@@ -145,8 +174,10 @@ Fill in one row per state, in µA (or mA when marked).
 | SD card | idle after init | | | |
 | SD card | reading | | | |
 | SD card | writing (peak / avg) | | | |
-| Screen | on + backlight | | | |
-| Screen | on, backlight off | | | |
+| Screen backlight | 3.3 V (100%) | mA | | |
+| Screen backlight | PWM 50% | mA | | |
+| Screen | on, UI | | | |
+| Screen | on, static | | | |
 | Screen | display off | | | |
 | Screen | Sleep In | | | |
 | VS1053 | playing | | | |
