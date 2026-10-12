@@ -6,7 +6,7 @@ export interface GeometryRow {
   box: string;
   note: string;
   /** slideshow group the element belongs to (see screenStates.ts) */
-  group: 'nowplaying' | 'tracklist' | 'search' | 'bluetooth';
+  group: 'nowplaying' | 'tracklist' | 'search' | 'bluetooth' | 'podcasts';
 }
 
 export const GEOMETRY: GeometryRow[] = [
@@ -55,6 +55,15 @@ export const GEOMETRY: GeometryRow[] = [
   { el: 'rename ribbon', box: '0,30 320×30', note: 'a–z0–9, wraps; cursor always centered. Other cells MUTED', group: 'bluetooth' },
   { el: 'rename text', box: '12,94 · 24/600', note: '2×24 ACCENT caret, then Mono 11 MUTED hint and n/24 at y=132', group: 'bluetooth' },
   { el: 'rename footer', box: '0,210 320×30', note: 'RIBBON band, LINE top, MENU cancel · BACK delete · NEXT space · PLAY save', group: 'bluetooth' },
+  { el: 'state mark', box: '10,+12 6×6', note: 'New: filled ACCENT. In progress: 1px ACCENT outline, left 3px filled. Played: none (slot kept). CREAM on the highlighted row', group: 'podcasts' },
+  { el: 'row · title (podcast)', box: '24,+6 · 14px', note: 'TEXT; played DIM; #FFFFFF highlighted. Ellipsis before the status shrinks', group: 'podcasts' },
+  { el: 'row · number column', box: '24,+8 28px · Mono 11', note: 'Series only: "N/M" stripped from the title (with " : ", ":" or " "), MUTED (TEXT highlighted). Title then starts at x=60', group: 'podcasts' },
+  { el: 'row · status', box: 'right edge 304 · 11px', note: '"N new" ACCENT (CREAM hl) · "N ep" / date MUTED · duration and time left Mono. Folder rows end with the 4×8 chevron, 8px after', group: 'podcasts' },
+  { el: 'progress underline', box: '0,+28 320×2', note: 'In-progress episodes only, replaces the row rule. Track SCROLL_TRACK (BG highlighted), fill ACCENT, w = round(320 × position / duration)', group: 'podcasts' },
+  { el: 'continue row', box: 'row 0 of Podcasts', note: 'Most recently played in-progress episode: half mark, time left "−34:13" Mono ACCENT, underline. Hidden when nothing is in progress', group: 'podcasts' },
+  { el: 'NP · podcast title', box: '180,40 132w · 14/600 lh 16', note: 'Clamped to 5 lines with ellipsis; 8px gap, show name 12px DIM, 2px gap, series folder 12px or the full date Mono 11 MUTED', group: 'podcasts' },
+  { el: 'NP · time left', box: 'right 8,212 · Mono 12', note: '"−11:03" MUTED replaces the length. Header index: episode number (series) or position in the show', group: 'podcasts' },
+  { el: 'podcast toast', box: '0,0 320×30', note: 'No icon, text at x=8. Neutral LINE (you did it), success ACCENT_DK + 2px ACCENT (it happened on its own)', group: 'podcasts' },
 ];
 
 export const REDRAW_NOTES: { i: string; t: string }[] = [
@@ -67,4 +76,5 @@ export const REDRAW_NOTES: { i: string; t: string }[] = [
   { i: '07', t: 'Cover at 160×160 is the largest square that leaves a readable 132px metadata column. A 176px cover would push the title under 120px, which starts wrapping most titles to three lines.' },
   { i: '08', t: 'Fast-scroll overlay sits on chunks 3–5, so it is composed into those three row buffers before they are pushed: rows never flash under it while scrolling. Hiding it re-renders rows 2…4 only.' },
   { i: '09', t: 'Bluetooth: a link change repaints only the 11×11 icon box at (270,10), and its connecting blink the same box every 500ms. A device status change repaints its row (or the rows it moved across); a scan tick repaints row 2 only; a codec change or signal refresh one row; a toast the header chunk.' },
+  { i: '10', t: 'Podcasts: a highlight move repaints two rows; the 30s position save repaints the playing episode\'s row (its underline) when its list is on screen; mark as played/unplayed repaints that row on return. Folder marks and counts are rolled up when a list opens: the episodes below a folder are one contiguous id range, so it is one linear scan of the state file.' },
 ];

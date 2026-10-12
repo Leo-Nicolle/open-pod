@@ -6,6 +6,7 @@ import {
   drawForget,
   drawMenuScreen,
   drawNowPlaying,
+  drawPodcastList,
   drawRename,
   drawSearch,
   drawTrackList,
@@ -47,6 +48,7 @@ function redraw() {
   else if (s.kind === 'tracklist') drawTrackList(ctx, props.palette, s.opts);
   else if (s.kind === 'search') drawSearch(ctx, props.palette, s.opts);
   else if (s.kind === 'menu') drawMenuScreen(ctx, props.palette, s.opts);
+  else if (s.kind === 'podcast') drawPodcastList(ctx, props.palette, s.opts);
   else if (s.kind === 'forget') drawForget(ctx, props.palette, s.opts);
   else if (s.kind === 'rename') drawRename(ctx, props.palette, s.opts);
   else drawBtIcons(ctx, props.palette, s.opts);

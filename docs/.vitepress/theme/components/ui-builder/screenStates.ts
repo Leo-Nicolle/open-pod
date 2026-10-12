@@ -13,6 +13,8 @@ import {
   type MenuRowSpec,
   type MenuScreenOpts,
   type NowPlayingOpts,
+  type PodcastListOpts,
+  type PodRowSpec,
   type RenameOpts,
   type SearchOpts,
   type TrackListOpts,
@@ -23,11 +25,12 @@ export type Screen =
   | { kind: 'tracklist'; opts: TrackListOpts }
   | { kind: 'search'; opts: SearchOpts }
   | { kind: 'menu'; opts: MenuScreenOpts }
+  | { kind: 'podcast'; opts: PodcastListOpts }
   | { kind: 'forget'; opts: ForgetOpts }
   | { kind: 'rename'; opts: RenameOpts }
   | { kind: 'bticons'; opts: BtIconsOpts };
 
-export type GroupId = 'nowplaying' | 'tracklist' | 'search' | 'bluetooth' | 'title';
+export type GroupId = 'nowplaying' | 'tracklist' | 'search' | 'bluetooth' | 'podcasts' | 'title';
 
 export interface SlideGroup {
   id: GroupId;
@@ -74,6 +77,12 @@ export const GROUPS: SlideGroup[] = [
     lede: 'Settings › Bluetooth uses the track list\'s grid: a 30px header and seven 30px rows, so every Bluetooth event repaints the header, the 11×11 icon box at (270,10), one row or a run of rows, never the whole screen. Read-only rows (In use, Signal) are skipped by the cursor. Toasts take over the header chunk for 2.5s and never cover a row. On Now Playing the icon and the codec in use sit before the clock.',
   },
   {
+    id: 'podcasts',
+    title: 'Podcasts',
+    summary: 'Browse publisher, show and episodes. A square marks what is new, a half square what you started, and a line under the row shows how far you got. Playback resumes where you stopped; hold Center on an episode for its actions.',
+    lede: 'The track list\'s grid: a 30px header and seven 30px rows. A 6×6 mark at x=10 carries the state by shape (full, half, none), so it survives the highlight, where it turns cream; folders roll the marks up from what is inside. The 2px progress underline replaces the row rule on in-progress episodes. Series folders (every title starts with "N/M") show the number in a 28px Mono column and sort by it; other shows sort newest first. Toasts take over the header with no icon, text at x=8: grey for what you did, teal for what happened on its own.',
+  },
+  {
     id: 'title',
     title: 'Title screen',
     summary: 'The bird drops in, the "openpod" wordmark types itself, then the menu wipes in.',
@@ -115,6 +124,44 @@ const deviceRows = (o: { link: 'connected' | 'idle' | 'connecting' | 'failed'; p
   return rows;
 };
 
+// Podcast rows, France Culture sample data from the design handoff.
+const TCHEKHOV = 'Envie de dormir : troubles dans le sommeil : Anton Tchekhov, fatigué de la vie';
+const WEIL = 'Simone Weil au pouvoir : défendons nos besoins essentiels !';
+const VARGAS = 'Fred vargas: Debout les morts';
+const continueRow: PodRowSpec = { title: TCHEKHOV, mark: 'progress', status: '−34:13', statusTone: 'accent', statusMono: true, progress: 0.41 };
+const folder = (title: string, o: { new?: number; eps?: number; mark?: PodRowSpec['mark']; played?: boolean }): PodRowSpec => ({
+  title,
+  mark: o.mark ?? (o.new ? 'new' : 'none'),
+  played: o.played,
+  status: o.new ? `${o.new} new` : `${o.eps} ep`,
+  statusTone: o.new ? 'accent' : 'dimmer',
+  chevron: true,
+});
+const datedRows = (o: { tchekhovPlayed?: boolean } = {}): PodRowSpec[] => [
+  o.tchekhovPlayed
+    ? { title: TCHEKHOV, mark: 'none', played: true, status: '12 Oct' }
+    : { title: TCHEKHOV, mark: 'progress', status: '12 Oct', progress: 0.41 },
+  { title: WEIL, mark: 'new', status: '10 Oct' },
+  { title: 'Hannah Arendt, penser sans rampe', mark: 'new', status: '9 Oct' },
+  { title: "Lucrèce, la nature des choses", mark: 'none', played: true, status: '8 Oct' },
+  { title: 'Spinoza et la joie', mark: 'none', played: true, status: '7 Oct' },
+  { title: 'Montaigne, que sais-je ?', mark: 'none', played: true, status: '6 Oct' },
+  { title: 'Pascal, le divertissement', mark: 'none', played: true, status: '3 Oct' },
+];
+const seriesRows: PodRowSpec[] = [
+  { title: 'Le hêtre', number: '1/10', mark: 'none', played: true, status: '28:40', statusMono: true },
+  { title: 'Marc, Mathias et Lucien', number: '2/10', mark: 'progress', status: '29:05', statusMono: true, progress: 0.62 },
+];
+const actions = (state: 'progress' | 'new' | 'played'): MenuRowSpec[] => [
+  ...(state === 'progress'
+    ? [{ label: 'Resume', value: '23:47', mono: true, valueTone: 'dimmer' as const }, { label: 'Play from start' }, { label: 'Mark as played' }]
+    : state === 'new'
+      ? [{ label: 'Play' }, { label: 'Mark as played' }]
+      : [{ label: 'Play' }, { label: 'Mark as unplayed' }]),
+  { label: 'Published', kind: 'readonly', value: 'Mon, 12 Oct 2026', valueTone: 'dimmer' },
+  { label: 'Length', kind: 'readonly', value: '58:00', mono: true, valueTone: 'dimmer' },
+];
+
 export function buildSlides(o: { grid: boolean; playing: boolean }): Slide[] {
   const g = o.grid;
   const menu = (opts: Omit<MenuScreenOpts, 'grid' | 'icon' | 'selected'> & Partial<MenuScreenOpts>): Screen => ({
@@ -124,6 +171,14 @@ export function buildSlides(o: { grid: boolean; playing: boolean }): Slide[] {
   const np = (mode: NowPlayingOpts['mode']): Screen => ({
     kind: 'nowplaying',
     opts: { mode, playing: o.playing, grid: g, bt: 'connected', codec: 'aptX HD' },
+  });
+  const pod = (opts: Omit<PodcastListOpts, 'grid' | 'selected'> & Partial<PodcastListOpts>): Screen => ({
+    kind: 'podcast',
+    opts: { grid: g, selected: 0, ...opts } as PodcastListOpts,
+  });
+  const podNp = (podcast: NonNullable<NowPlayingOpts['podcast']>, toast?: NowPlayingOpts['toast']): Screen => ({
+    kind: 'nowplaying',
+    opts: { mode: 'play', playing: o.playing, grid: g, bt: 'connected', podcast, toast },
   });
   const search = { query: 'kid', letter: 'K', results: KID_RESULTS, total: 24, selected: 0, first: 0, grid: g };
 
@@ -317,6 +372,103 @@ export function buildSlides(o: { grid: boolean; playing: boolean }): Slide[] {
       label: 'Header icon and signal bars',
       spec: '11×11 icon box at (270,10)',
       screen: { kind: 'bticons', opts: { grid: g } },
+    },
+
+    {
+      id: 'pc-root',
+      group: 'podcasts',
+      label: 'Podcasts',
+      spec: 'continue row on top, cursor starts there',
+      screen: pod({ title: 'Podcasts', rows: [continueRow, folder('France Culture', { new: 3 }), folder("L'Équipe", { eps: 4, mark: 'none', played: true })] }),
+    },
+    {
+      id: 'pc-publisher',
+      group: 'podcasts',
+      label: 'Publisher',
+      spec: 'folder marks rolled up',
+      screen: pod({ title: 'France Culture', rows: [folder('Les chemins de la philosophie', { new: 1 }), folder('La serie Fiction', { new: 2 })] }),
+    },
+    {
+      id: 'pc-dated',
+      group: 'podcasts',
+      label: 'Dated show',
+      spec: 'newest first, cursor on the newest unfinished',
+      screen: pod({ title: 'Les chemins de la philosophie', rows: datedRows() }),
+    },
+    {
+      id: 'pc-show-series',
+      group: 'podcasts',
+      label: 'Show with series',
+      spec: 'a series is a sub-folder',
+      screen: pod({
+        title: 'La serie Fiction',
+        rows: [folder(VARGAS, { eps: 2, mark: 'progress' }), folder('"Jane Eyre" de Charlotte Brontë', { new: 2 }), folder('Older series', { eps: 5, played: true })],
+      }),
+    },
+    {
+      id: 'pc-series',
+      group: 'podcasts',
+      label: 'Series episodes',
+      spec: '"N/M" moves to the Mono column',
+      screen: pod({ title: VARGAS, rows: seriesRows, selected: 1 }),
+    },
+    {
+      id: 'pc-np-series',
+      group: 'podcasts',
+      label: 'Now playing, series',
+      spec: 'time left on the right',
+      screen: podNp({ index: '2/10', title: 'Marc, Mathias et Lucien', show: VARGAS, third: 'La serie Fiction', elapsed: '18:02', left: '−11:03', frac: 0.62 }),
+    },
+    {
+      id: 'pc-np-resumed',
+      group: 'podcasts',
+      label: 'Resumed',
+      spec: 'neutral toast, title clamped at 5 lines',
+      screen: podNp(
+        { index: '1/7', title: TCHEKHOV, show: 'Les chemins de la philosophie', third: 'Mon, 12 Oct 2026', thirdMono: true, elapsed: '23:42', left: '−34:18', frac: 0.41 },
+        { tone: 'neutral', icon: false, before: 'Resumed at ', name: '23:47' },
+      ),
+    },
+    {
+      id: 'pc-actions',
+      group: 'podcasts',
+      label: 'Episode actions, in progress',
+      spec: 'hold Center on an episode row',
+      screen: menu({ title: TCHEKHOV, icon: 'on', rows: actions('progress') }),
+    },
+    {
+      id: 'pc-actions-new',
+      group: 'podcasts',
+      label: 'Episode actions, new',
+      screen: menu({ title: WEIL, icon: 'on', rows: actions('new') }),
+    },
+    {
+      id: 'pc-actions-played',
+      group: 'podcasts',
+      label: 'Episode actions, played',
+      screen: menu({ title: 'Spinoza et la joie', icon: 'on', rows: actions('played') }),
+    },
+    {
+      id: 'pc-end-series',
+      group: 'podcasts',
+      label: 'End of a series episode',
+      spec: 'the next number starts on its own',
+      screen: podNp(
+        { index: '2/10', title: 'Marc, Mathias et Lucien', show: VARGAS, third: 'La serie Fiction', elapsed: '0:00', left: '−29:05', frac: 0 },
+        { tone: 'success', icon: false, before: 'Finished ', name: '1/10', after: ' · playing 2/10' },
+      ),
+    },
+    {
+      id: 'pc-end-dated',
+      group: 'podcasts',
+      label: 'End of a dated episode',
+      spec: 'stops, back to the list, cursor on the next unfinished',
+      screen: pod({
+        title: 'Les chemins de la philosophie',
+        rows: datedRows({ tchekhovPlayed: true }),
+        selected: 1,
+        toast: { tone: 'success', icon: false, before: 'Finished · marked as played' },
+      }),
     },
 
     { id: 'title', group: 'title', label: 'Title screen animation', spec: 'live loop of logo.h' },

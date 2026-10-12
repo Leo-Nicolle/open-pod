@@ -267,9 +267,27 @@ export interface NowPlayingOpts {
   bt?: BtIconState;
   codec?: string;
   toast?: ToastSpec;
+  /** Podcast episode: time left on the right instead of the length, no SHUF/RPT */
+  podcast?: PodcastPlaying;
 }
 
-function coverPlaceholder(ctx: Ctx, p: Palette, x: number, y: number, size: number) {
+export interface PodcastPlaying {
+  /** Header index: the episode number ("2/10") or the position in the show list */
+  index: string;
+  title: string;
+  /** Show (or series) folder name, DIM */
+  show: string;
+  /** Series: the show folder name; dated: the full date ("Mon, 12 Oct 2026", Mono) */
+  third: string;
+  thirdMono?: boolean;
+  elapsed: string;
+  /** "−11:03" */
+  left: string;
+  /** Progress 0–1 */
+  frac: number;
+}
+
+function coverPlaceholder(ctx: Ctx, p: Palette, x: number, y: number, size: number, label = 'cover') {
   // 135deg stripes, 4px each, measured across the stripe. Written as one
   // ImageData: per-pixel fillRect is far too slow for live color edits.
   const img = ctx.createImageData(size, size);
@@ -287,7 +305,7 @@ function coverPlaceholder(ctx: Ctx, p: Palette, x: number, y: number, size: numb
   }
   ctx.putImageData(img, x, y);
   strokeBox(ctx, x, y, size, size, 0, p.line);
-  text(ctx, 'cover', x + size / 2, y + size / 2 - 14, `{s} ${MONO}`, 10, p.muted, { align: 'center', lh: 14 });
+  text(ctx, label, x + size / 2, y + size / 2 - 14, `{s} ${MONO}`, 10, p.muted, { align: 'center', lh: 14 });
   text(ctx, '160×160', x + size / 2, y + size / 2, `{s} ${MONO}`, 10, p.muted, { align: 'center', lh: 14 });
 }
 
@@ -299,9 +317,12 @@ export function drawNowPlaying(ctx: Ctx, p: Palette, o: NowPlayingOpts) {
   header(ctx, p);
   const glyph = findSprite(o.playing ? 'pause' : 'play');
   if (glyph && glyph.kind === 'glyph') drawGlyph(ctx, glyph, p, 8, 10);
-  text(ctx, '3/12', 24, 8, `{s} ${MONO}`, 11, p.dim, { lh: 14, spacing: 0.22 });
-  const sw = chip(ctx, 'SHUF', 62, 8, p.accent, p.accentDark);
-  chip(ctx, 'RPT', 62 + sw + 7, 8, p.muted, p.line);
+  const pod = o.podcast;
+  text(ctx, pod ? pod.index : '3/12', 24, 8, `{s} ${MONO}`, 11, p.dim, { lh: 14, spacing: 0.22 });
+  if (!pod) {
+    const sw = chip(ctx, 'SHUF', 62, 8, p.accent, p.accentDark);
+    chip(ctx, 'RPT', 62 + sw + 7, 8, p.muted, p.line);
+  }
   const clockW = text(ctx, '14:32', 283, 7, `{s} ${MONO}`, 12, p.text, { align: 'right', lh: 16 });
   battery(ctx, p, 290, 9);
   // Bluetooth, option A: icon, 4px, codec tag, 7px, clock, battery.
@@ -310,7 +331,14 @@ export function drawNowPlaying(ctx: Ctx, p: Palette, o: NowPlayingOpts) {
   btIcon(ctx, p, o.bt ?? 'connected', bx - 11, 10);
 
   // ---- album art (8,40 160x160) ----
-  coverPlaceholder(ctx, p, 8, 40, 160);
+  coverPlaceholder(ctx, p, 8, 40, 160, pod ? 'show art' : 'cover');
+
+  if (pod) {
+    drawPodcastPlaying(ctx, p, pod);
+    if (o.toast) drawToast(ctx, p, o.toast);
+    if (o.grid) chunkGrid(ctx, p, [210, 30]);
+    return;
+  }
 
   // ---- metadata column (180,40 132 wide) ----
   ctx.font = `600 14px ${SANS}`;
@@ -358,6 +386,25 @@ export function drawNowPlaying(ctx: Ctx, p: Palette, o: NowPlayingOpts) {
 
   if (o.toast) drawToast(ctx, p, o.toast);
   if (o.grid) chunkGrid(ctx, p, [210, 30]);
+}
+
+/** Podcast metadata column and bottom band: title clamped to 5 lines, then the time left. */
+function drawPodcastPlaying(ctx: Ctx, p: Palette, pod: PodcastPlaying) {
+  ctx.font = `600 14px ${SANS}`;
+  const lines = wrap(ctx, pod.title, 132, 5);
+  lines.forEach((line, i) => text(ctx, line, 180, 40 + i * 16, `600 {s} ${SANS}`, 14, p.text, { lh: 16, spacing: -0.14 }));
+  let y = 40 + lines.length * 16 + 8;
+  text(ctx, pod.show, 180, y, `{s} ${SANS}`, 12, p.dim, { lh: 16, maxW: 132 });
+  y += 16 + 2;
+  if (pod.thirdMono) text(ctx, pod.third, 180, y, `{s} ${MONO}`, 11, p.muted, { lh: 14, maxW: 132 });
+  else text(ctx, pod.third, 180, y, `{s} ${SANS}`, 12, p.muted, { lh: 16, maxW: 132 });
+
+  text(ctx, pod.elapsed, 8, 212, `{s} ${MONO}`, 12, p.text, { lh: 16 });
+  text(ctx, pod.left, 312, 212, `{s} ${MONO}`, 12, p.muted, { align: 'right', lh: 16 });
+  ctx.fillStyle = p.line;
+  rr(ctx, 8, 232, 304, 6, 3);
+  ctx.fillStyle = p.accent;
+  rr(ctx, 8, 232, Math.max(6, Math.round(304 * pod.frac)), 6, 3);
 }
 
 // --- track list -------------------------------------------------------------------
@@ -766,6 +813,8 @@ export interface ToastSpec {
   before: string;
   name?: string;
   after?: string;
+  /** Bluetooth rune before the text (default). Podcast toasts have none: the text starts at x=8. */
+  icon?: boolean;
 }
 
 /** The toast takes over the header chunk for 2.5 s; never a list row. */
@@ -774,17 +823,19 @@ export function drawToast(ctx: Ctx, p: Palette, t: ToastSpec) {
   const fg = t.tone === 'neutral' ? p.text : p.textHi;
   ctx.fillStyle = fill;
   ctx.fillRect(0, 0, W, 30);
+  const icon = t.icon ?? true;
   if (t.tone === 'success') {
     ctx.fillStyle = p.accent;
     ctx.fillRect(0, 28, W, 2);
-    btIcon(ctx, p, 'connected', 8, 10, { rune: p.accentAlt, ticks: p.accentAlt, bg: fill });
-  } else {
+    if (icon) btIcon(ctx, p, 'connected', 8, 10, { rune: p.accentAlt, ticks: p.accentAlt, bg: fill });
+  } else if (icon) {
     btIcon(ctx, p, 'on', 8, 10, { rune: p.text, bg: fill });
   }
-  const maxW = W - 8 - 27;
+  const x0 = icon ? 27 : 8;
+  const maxW = W - 8 - x0;
   ctx.font = `13px ${SANS}`;
   const fixed = ctx.measureText(t.before + (t.after ?? '')).width;
-  let x = 27;
+  let x = x0;
   x += text(ctx, t.before, x, 0, `{s} ${SANS}`, 13, fg, { lh: 30 });
   if (t.name) x += text(ctx, t.name, x, 0, `600 {s} ${SANS}`, 13, fg, { lh: 30, maxW: Math.max(0, maxW - fixed) });
   if (t.after) text(ctx, t.after, x, 0, `{s} ${SANS}`, 13, fg, { lh: 30 });
@@ -826,6 +877,101 @@ export function drawMenuScreen(ctx: Ctx, p: Palette, o: MenuScreenOpts) {
   const first = o.first ?? 0;
   o.rows.slice(first, first + VISIBLE_ROWS).forEach((r, i) => menuRow(ctx, p, 30 + i * ROW_H, r, first + i === o.selected));
   if (o.hint) centeredHint(ctx, p, o.hint.fromChunk, o.hint.title, o.hint.sub);
+  scrollbar(ctx, p, 32, 204, VISIBLE_ROWS, o.rows.length, first);
+  if (o.toast) drawToast(ctx, p, o.toast);
+  if (o.grid) chunkGrid(ctx, p);
+}
+
+// --- podcasts -------------------------------------------------------------------------
+
+/** Episode / folder state, read by shape so it survives the highlight. */
+export type PodMark = 'new' | 'progress' | 'none';
+
+export interface PodRowSpec {
+  title: string;
+  mark: PodMark;
+  /** Played episode, or a folder with everything played: DIM title */
+  played?: boolean;
+  /** Series episode number ("1/10"), Mono in a 28px column after the mark */
+  number?: string;
+  status?: string;
+  /** accent: "N new" and the continue row's time left; dimmer: dates, "N ep", durations */
+  statusTone?: 'accent' | 'dimmer';
+  statusMono?: boolean;
+  chevron?: boolean;
+  /** In-progress episode: 2px underline, position / duration (0–1) */
+  progress?: number;
+}
+
+export interface PodcastListOpts {
+  title: string;
+  rows: PodRowSpec[];
+  selected: number;
+  first?: number;
+  toast?: ToastSpec;
+  grid: boolean;
+}
+
+/** 6×6 mark at x=10: filled (new), 1px outline with the left 3px filled (in progress), nothing (played). */
+function podMark(ctx: Ctx, color: string, x: number, y: number, mark: PodMark) {
+  if (mark === 'none') return;
+  ctx.fillStyle = color;
+  if (mark === 'new') {
+    ctx.fillRect(x, y, 6, 6);
+    return;
+  }
+  ctx.fillRect(x, y, 3, 6);
+  ctx.fillRect(x + 3, y, 3, 1);
+  ctx.fillRect(x + 3, y + 5, 3, 1);
+  ctx.fillRect(x + 5, y, 1, 6);
+}
+
+/** One podcast row: mark, [number], title from x=24, status and chevron right-aligned at x=304. */
+function podRow(ctx: Ctx, p: Palette, top: number, r: PodRowSpec, hi: boolean) {
+  if (hi) {
+    ctx.fillStyle = p.accentDark;
+    ctx.fillRect(0, top, W, ROW_H);
+    ctx.fillStyle = p.accent;
+    ctx.fillRect(0, top, 3, ROW_H);
+  }
+  podMark(ctx, hi ? p.accentAlt : p.accent, 10, top + 12, r.mark);
+  let x = 304;
+  if (r.chevron) {
+    x -= 4;
+    drawGlyph(ctx, { ...CHEVRON_R, tint: hi ? 'text' : 'muted' }, p, x, top + 11);
+    x -= 8;
+  }
+  if (r.status) {
+    const font = r.statusMono ? `{s} ${MONO}` : `{s} ${SANS}`;
+    ctx.font = font.replace('{s}', '11px');
+    x -= ctx.measureText(r.status).width;
+    text(ctx, r.status, x, top + 8, font, 11, toneColor(p, r.statusTone ?? 'dimmer', hi), { lh: 14 });
+    x -= 8;
+  }
+  let tx = 24;
+  if (r.number) {
+    text(ctx, r.number, tx, top + 8, `{s} ${MONO}`, 11, hi ? p.text : p.muted, { lh: 14 });
+    tx += 28 + 8;
+  }
+  const fg = hi ? p.textHi : r.played ? p.dim : p.text;
+  text(ctx, r.title, tx, top + 6, `{s} ${SANS}`, 14, fg, { lh: 18, maxW: x - tx });
+  ctx.fillStyle = p.separator;
+  ctx.fillRect(0, top + ROW_H - 1, W, 1);
+  if (r.progress !== undefined) {
+    ctx.fillStyle = hi ? p.bg : p.scrollTrack;
+    ctx.fillRect(0, top + ROW_H - 2, W, 2);
+    ctx.fillStyle = p.accent;
+    ctx.fillRect(0, top + ROW_H - 2, Math.round(W * r.progress), 2);
+  }
+}
+
+/** Podcasts root, publisher, show and series screens: the track list's grid with state marks. */
+export function drawPodcastList(ctx: Ctx, p: Palette, o: PodcastListOpts) {
+  ctx.fillStyle = p.bg;
+  ctx.fillRect(0, 0, W, H);
+  menuHeader(ctx, p, o.title, 'on');
+  const first = o.first ?? 0;
+  o.rows.slice(first, first + VISIBLE_ROWS).forEach((r, i) => podRow(ctx, p, 30 + i * ROW_H, r, first + i === o.selected));
   scrollbar(ctx, p, 32, 204, VISIBLE_ROWS, o.rows.length, first);
   if (o.toast) drawToast(ctx, p, o.toast);
   if (o.grid) chunkGrid(ctx, p);
