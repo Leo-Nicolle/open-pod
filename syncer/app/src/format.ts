@@ -60,6 +60,15 @@ export const shortDay = (unix: number) => {
   return `${d.getDate()} ${SHORT[d.getMonth()]}`;
 };
 
+/** A date in days since 1970 (podcast episodes): "5 Oct", or "5 Oct 2017"
+ * outside the current year; '' when unknown. */
+export function epDay(days: number): string {
+  if (!days) return '';
+  const d = new Date(days * 86_400_000);
+  const y = d.getUTCFullYear() !== new Date().getFullYear() ? ` ${d.getUTCFullYear()}` : '';
+  return `${d.getUTCDate()} ${SHORT[d.getUTCMonth()]}${y}`;
+}
+
 /** "today 14:32", "yesterday 09:10", "3 October 14:32". */
 export function when(unix: number): string {
   const d = new Date(unix * 1000);

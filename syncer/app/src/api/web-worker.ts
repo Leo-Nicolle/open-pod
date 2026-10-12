@@ -1,10 +1,11 @@
 // A Web Worker running openpod-web: reads library and card files
 // synchronously (FileReaderSync) for the per-file work. The page's pool
 // (web.ts) sends one request at a time.
-import init, { art, convert, hash, probe } from '../wasm/openpod_web.js';
+import init, { art, convert, hash, probe, probe_episode } from '../wasm/openpod_web.js';
 
 export type Request =
   | { id: number; op: 'probe'; file: File; name: string; rel: string }
+  | { id: number; op: 'probeEpisode'; file: File; name: string; rel: string }
   | { id: number; op: 'hash'; file: File }
   | { id: number; op: 'convert'; file: File; name: string; policy: string }
   | { id: number; op: 'art'; file: File; name: string };
@@ -22,6 +23,9 @@ self.onmessage = async (e: MessageEvent<Request>) => {
     switch (r.op) {
       case 'probe':
         value = probe(r.file, r.name, r.rel);
+        break;
+      case 'probeEpisode':
+        value = probe_episode(r.file, r.name, r.rel);
         break;
       case 'hash':
         value = hash(r.file);

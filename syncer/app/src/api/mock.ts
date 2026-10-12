@@ -5,6 +5,8 @@ import type {
   Api,
   CardAlbum,
   CardInfo,
+  CardPodcasts,
+  CardShow,
   LibraryView,
   PlanAlbum,
   PlanSummary,
@@ -57,7 +59,8 @@ let settings: Settings = {
     { path: 'D:\\Musique', exists: true, tracks: 1412, albums: 71, formats: ['FLAC', 'MP3'] },
     { path: 'E:\\Rips\\Vinyl', exists: true, tracks: 188, albums: 9, formats: ['FLAC', 'WAV'] },
   ],
-  exclude: ['Podcasts'],
+  podcasts: { path: 'D:\\Podcasts', exists: true, episodes: 134, shows: 6 },
+  exclude: [],
   albumKey: 'artist-album',
   ffmpeg: '6.1',
   configPath: '~/.config/openpod/config.toml',
@@ -125,6 +128,32 @@ const plan = (): PlanSummary => {
     unchanged: upToDate ? 1583 : 0,
     removed: 0,
     albumList: upToDate ? [] : planAlbums,
+    podcasts: settings.podcasts
+      ? {
+          new: upToDate ? 0 : 7,
+          moved: upToDate ? 0 : 2,
+          deleted: upToDate ? 0 : 4,
+          leaving: upToDate ? 0 : 4,
+          bytes: upToDate ? 0 : 412 * MB,
+          shows: upToDate
+            ? []
+            : [
+                { key: 'France Culture/Avec philosophie', folder: 'France Culture / Avec philosophie', episodes: 1, leaving: 1, bytes: 54 * MB, cover: 'tone:3' },
+                { key: 'France Culture/La Série fiction', folder: 'France Culture / La Série fiction', episodes: 2, leaving: 2, bytes: 96 * MB, cover: 'tone:4' },
+                { key: 'Radio Nova/Nuits de Nova', folder: 'Radio Nova / Nuits de Nova', episodes: 3, leaving: 1, bytes: 210 * MB, cover: 'tone:6' },
+                { key: 'Studio Ardoise/Le Temps long', folder: 'Studio Ardoise / Le Temps long', episodes: 1, leaving: 0, bytes: 52 * MB, cover: 'tone:7' },
+              ],
+          episodes: upToDate
+            ? []
+            : [
+                { show: 'France Culture/Avec philosophie', title: "Phèdre de Platon : bien parler d'amour", date: OCT(5), duration: 3492, bytes: 54 * MB, held: false },
+                { show: 'France Culture/Avec philosophie', title: "Ménon : la vertu peut-elle s'apprendre ?", date: OCT(-1), duration: 3501, bytes: 54 * MB, held: true },
+                { show: 'France Culture/Avec philosophie', title: 'Apologie de Socrate : parler devant ses juges', date: OCT(-4), duration: 3468, bytes: 54 * MB, held: true },
+                { show: 'France Culture/Avec philosophie', title: 'Criton : faut-il obéir aux lois injustes ?', date: OCT(-5), duration: 3510, bytes: 54 * MB, held: true },
+              ],
+          skipped: [],
+        }
+      : undefined,
     skipped: [],
     unreadable: upToDate
       ? []
@@ -132,6 +161,78 @@ const plan = (): PlanSummary => {
           { path: 'E:\\Rips\\Vinyl\\scratch.aiff', reason: "Can't be read: the file is damaged" },
           { path: 'D:\\Musique\\Cypress Hill\\IV\\14 Riot Starter.mp3', reason: "Can't be read: the file ends early" },
         ],
+  };
+};
+
+/** Days since 1970 of a day in October 2026 (0: 30 September). */
+const OCT = (d: number) => 20727 + d - 1;
+
+const ep = (title: string, date: number, duration: number, state: '' | 'played' | number = '') => ({
+  title,
+  date,
+  duration,
+  bytes: Math.round((duration / 60) * 0.93 * MB),
+  path: `Podcasts/${title}.mp3`,
+  position: typeof state === 'number' ? state : 0,
+  played: state === 'played',
+});
+const show = (key: string, keep: number | null, source: string, cover: number, episodes: CardShow['episodes']): CardShow => {
+  const parts = key.split('/');
+  return {
+    key,
+    title: parts[parts.length - 1],
+    publisher: parts.slice(0, -1).join(' / '),
+    keep,
+    source,
+    machines: ['leo-pc'],
+    bytes: episodes.reduce((n, e) => n + e.bytes, 0),
+    cover: `tone:${cover}`,
+    episodes,
+  };
+};
+let podShows: CardShow[] = [
+  show('France Culture/Avec philosophie', 3, 'D:\\Podcasts\\France Culture\\Avec philosophie', 3, [
+    ep("Le Banquet : qui a le droit de parler d'amour ?", OCT(2), 3520, 2260),
+    ep('Gorgias, la rhétorique contre la philosophie', OCT(1), 3475, 'played'),
+    ep('Ion : le poète est-il inspiré ?', OCT(0), 3483, 'played'),
+  ]),
+  show('France Culture/La Série fiction', 5, 'D:\\Podcasts\\France Culture\\La Série fiction', 4, [
+    ep('Debout les morts de Fred Vargas 10/10', OCT(9), 1680),
+    ep('Debout les morts de Fred Vargas 9/10', OCT(8), 1702),
+    ep('Debout les morts de Fred Vargas 8/10', OCT(7), 1655, 'played'),
+    ep('Debout les morts de Fred Vargas 7/10', OCT(6), 1690, 'played'),
+    ep('Debout les morts de Fred Vargas 6/10', OCT(5), 1671),
+  ]),
+  show(
+    'Chemins de la philo 2017',
+    null,
+    'D:\\Musique\\Podcasts\\CheminsdelaPhilo2017',
+    5,
+    Array.from({ length: 40 }, (_, i) =>
+      ep(`Les chemins de la philosophie ${40 - i}`, 17_450 - i * 7, 3300, i >= 28 ? 'played' : ''),
+    ),
+  ),
+  show('Radio Nova/Nuits de Nova', 3, 'D:\\Podcasts\\Radio Nova\\Nuits de Nova', 6, [
+    ep('Nuit du 10 octobre', OCT(10), 7200),
+    ep('Nuit du 3 octobre', OCT(3), 7140),
+    ep('Nuit du 26 septembre', OCT(-4), 7230),
+  ]),
+  show('Studio Ardoise/Le Temps long', 3, 'D:\\Podcasts\\Studio Ardoise\\Le Temps long', 7, [
+    ep('Les forêts', OCT(8), 2900, 'played'),
+    ep('Le sel', OCT(1), 2840, 'played'),
+    ep('Les cartes', OCT(-6), 2950, 'played'),
+  ]),
+];
+const podView = (): CardPodcasts => {
+  const shows = q.get('pod') === 'empty' || !settings.podcasts ? [] : podShows;
+  const all = shows.flatMap((s) => s.episodes);
+  return {
+    shows,
+    episodes: all.length,
+    bytes: all.reduce((n, e) => n + e.bytes, 0),
+    played: all.filter((e) => e.played).length,
+    started: all.filter((e) => !e.played && e.position > 0).length,
+    stateRead: true,
   };
 };
 
@@ -200,6 +301,9 @@ const report = (interrupted: boolean, written: number): SyncReport => ({
   warnings: ['cover art of Birds on a Wire/Nuées ardentes/01 Ramages.flac can’t be read; the album gets the placeholder'],
   cardTracks: 1583,
   cardAlbums: 83,
+  podcasts: settings.podcasts
+    ? { copied: 5, moved: 2, deleted: 3, bytesWritten: 280 * MB, skipped: [], failed: [], episodes: 136, shows: 6, listened: 41 }
+    : undefined,
 });
 
 export const mockApi: Api = {
@@ -215,6 +319,9 @@ export const mockApi: Api = {
       ...(u.machine !== undefined ? { machine: u.machine || settings.hostname } : {}),
       ...(u.exclude ? { exclude: u.exclude } : {}),
       ...(u.albumKey ? { albumKey: u.albumKey } : {}),
+      ...(u.podcasts !== undefined
+        ? { podcasts: u.podcasts ? { path: u.podcasts, exists: true, episodes: 134, shows: 6 } : null }
+        : {}),
       ...(u.libraries
         ? {
             libraries: u.libraries.map(
@@ -319,6 +426,23 @@ export const mockApi: Api = {
       ],
     };
     return lib;
+  },
+  async podcasts() {
+    await wait();
+    return podView();
+  },
+  async setPodcastKeep(key, keep) {
+    await wait(60);
+    podShows = podShows.map((s) => (s.key === key ? { ...s, keep } : s));
+    return podView();
+  },
+  async setPodcastPlayed(path, played) {
+    await wait(60);
+    podShows = podShows.map((s) => ({
+      ...s,
+      episodes: s.episodes.map((e) => (e.path === path ? { ...e, played, position: played ? e.position : 0 } : e)),
+    }));
+    return podView();
   },
   async bringBack(id) {
     await wait();

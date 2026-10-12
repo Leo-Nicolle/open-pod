@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import ScreenHeader from '../components/ScreenHeader.vue';
+import { api } from '../api';
 import { about, day, gb, num, plural } from '../format';
 import {
   addExclude,
@@ -9,10 +10,12 @@ import {
   card,
   check,
   chooseCardFolder,
+  choosePodcasts,
   readCard,
   refreshCards,
   removeExclude,
   removeLibrary,
+  stopPodcasts,
   store,
   useCard,
 } from '../store';
@@ -38,12 +41,19 @@ const libLine = (l: { tracks: number; albums: number; formats: string[]; exists:
     ? [plural(l.tracks, 'track'), plural(l.albums, 'album'), l.formats.join(', ')].filter(Boolean).join(' · ')
     : 'Folder not found';
 const read = computed(() => store.read.progress);
+const pod = computed(() => store.settings?.podcasts ?? null);
+const podLine = computed(() => {
+  const p = pod.value;
+  if (!p) return '';
+  if (!p.exists) return 'Folder not found';
+  return api.desktop ? [plural(p.episodes, 'episode'), plural(p.shows, 'folder')].join(' · ') : '';
+});
 </script>
 
 <template>
   <ScreenHeader
     title="Card &amp; music"
-    sub="Plug in the card and choose your music folders. Nothing is written until you confirm."
+    sub="Plug in the card and choose your music and podcasts folders. Nothing is written until you confirm."
   >
     <button class="btn primary" :disabled="!canCheck" @click="check">Check what's new</button>
   </ScreenHeader>
@@ -183,38 +193,60 @@ const read = computed(() => store.read.progress);
         </div>
       </section>
 
-      <section class="panel" style="gap: 14px">
-        <div class="label">Music folders on this computer</div>
-        <div v-if="store.settings">
-          <div v-for="l in store.settings.libraries" :key="l.path" class="lib">
+      <div style="display: flex; flex-direction: column; gap: 20px">
+        <section class="panel" style="gap: 14px">
+          <div class="label">Music folders on this computer</div>
+          <div v-if="store.settings">
+            <div v-for="l in store.settings.libraries" :key="l.path" class="lib">
+              <div style="flex: 1; min-width: 0">
+                <div class="mono ellipsis" style="font-size: 14px">{{ l.path }}</div>
+                <div class="mu sm" style="margin-top: 2px" :style="{ color: l.exists ? '' : 'var(--red)' }">
+                  {{ libLine(l) }}
+                </div>
+              </div>
+              <button class="quiet" @click="removeLibrary(l.path)">Remove</button>
+            </div>
+            <p v-if="!store.settings.libraries.length" class="mu" style="margin: 0 0 4px; font-size: 14px">
+              Add the folder your music lives in. You can add several.
+            </p>
+          </div>
+          <div><button class="btn xs" @click="addLibrary">Add folder…</button></div>
+          <div class="sep" style="display: flex; flex-direction: column; gap: 10px; padding-top: 12px">
+            <button class="disclosure" @click="adv = !adv">
+              <span class="arrow">{{ adv ? '▾' : '▸' }}</span>Advanced: folders to leave out ({{
+                store.settings?.exclude.length ?? 0
+              }})
+            </button>
+            <template v-if="adv && store.settings">
+              <div v-for="e in store.settings.exclude" :key="e" class="excl">
+                <div class="mono" style="flex: 1; font-size: 13px">{{ e }}</div>
+                <button class="quiet" style="height: auto; padding: 0" @click="removeExclude(e)">Remove</button>
+              </div>
+              <div><button class="link sm" @click="addExclude">Leave out a folder…</button></div>
+            </template>
+          </div>
+        </section>
+
+        <section class="panel" style="gap: 14px">
+          <div class="label">Podcasts folder on this computer</div>
+          <div v-if="pod" class="lib">
             <div style="flex: 1; min-width: 0">
-              <div class="mono ellipsis" style="font-size: 14px">{{ l.path }}</div>
-              <div class="mu sm" style="margin-top: 2px" :style="{ color: l.exists ? '' : 'var(--red)' }">
-                {{ libLine(l) }}
+              <div class="mono ellipsis" style="font-size: 14px">{{ pod.path }}</div>
+              <div v-if="podLine" class="mu sm" style="margin-top: 2px" :style="{ color: pod.exists ? '' : 'var(--red)' }">
+                {{ podLine }}
               </div>
             </div>
-            <button class="quiet" @click="removeLibrary(l.path)">Remove</button>
+            <button class="quiet" @click="stopPodcasts">Stop syncing</button>
           </div>
-          <p v-if="!store.settings.libraries.length" class="mu" style="margin: 0 0 4px; font-size: 14px">
-            Add the folder your music lives in. You can add several.
+          <p class="mu sm" style="margin: 0">
+            Copied to the card's Podcasts folder as it is laid out (publisher, show, series). Episodes you delete here
+            are deleted from the card too; what you listened to is kept.
           </p>
-        </div>
-        <div><button class="btn xs" @click="addLibrary">Add folder…</button></div>
-        <div class="sep" style="display: flex; flex-direction: column; gap: 10px; padding-top: 12px">
-          <button class="disclosure" @click="adv = !adv">
-            <span class="arrow">{{ adv ? '▾' : '▸' }}</span>Advanced: folders to leave out ({{
-              store.settings?.exclude.length ?? 0
-            }})
-          </button>
-          <template v-if="adv && store.settings">
-            <div v-for="e in store.settings.exclude" :key="e" class="excl">
-              <div class="mono" style="flex: 1; font-size: 13px">{{ e }}</div>
-              <button class="quiet" style="height: auto; padding: 0" @click="removeExclude(e)">Remove</button>
-            </div>
-            <div><button class="link sm" @click="addExclude">Leave out a folder…</button></div>
-          </template>
-        </div>
-      </section>
+          <div>
+            <button class="btn xs" @click="choosePodcasts">{{ pod ? 'Change folder…' : 'Choose folder…' }}</button>
+          </div>
+        </section>
+      </div>
     </div>
     <div class="mu" style="font-size: 13px" v-if="store.settings">
       This computer is called <span class="mono" style="color: var(--tx)">{{ store.settings.machine }}</span>. Albums

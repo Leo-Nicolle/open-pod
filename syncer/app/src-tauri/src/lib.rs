@@ -16,6 +16,7 @@ use openpod_core::config::{self, Config};
 use openpod_core::index::AlbumKey;
 use openpod_core::library::{self, PlanInfo};
 use openpod_core::manifest::{self, Manifest};
+use openpod_core::podcasts::{self, PodcastManifest, mirror};
 use openpod_core::sync::{self, PlanOptions};
 use openpod_core::view::{self, CardAlbum, PlanSummary, RemovedView, SyncReport};
 use openpod_core::convert;
@@ -84,6 +85,8 @@ struct Settings {
     machine: String,
     hostname: String,
     libraries: Vec<LibraryInfo>,
+    /// The podcasts folder mirrored to the card, if set.
+    podcasts: Option<PodcastsInfo>,
     exclude: Vec<String>,
     album_key: AlbumKey,
     /// ffmpeg's version when it is installed.
@@ -109,6 +112,31 @@ fn library_info(path: &Path, exclude: &[String]) -> LibraryInfo {
     LibraryInfo { path: path.to_string_lossy().into_owned(), exists: path.is_dir(), tracks: files.len(), albums: albums.len(), formats }
 }
 
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct PodcastsInfo {
+    path: String,
+    exists: bool,
+    episodes: usize,
+    /// Folders holding episodes.
+    shows: usize,
+}
+
+fn podcasts_info(path: &Path) -> PodcastsInfo {
+    let files = if path.is_dir() { sync::scan(&[path.to_path_buf()], &[]).unwrap_or_default() } else { Vec::new() };
+    let shows: HashSet<&Path> = files.iter().filter_map(|f| f.abs.parent()).collect();
+    PodcastsInfo { path: path.to_string_lossy().into_owned(), exists: path.is_dir(), episodes: files.len(), shows: shows.len() }
+}
+
+/// Music excludes, plus the podcasts folder when it sits in a library.
+fn music_excludes(cfg: &Config) -> Vec<String> {
+    let mut exclude = cfg.exclude.clone();
+    if let Some(p) = cfg.podcasts() {
+        exclude.extend(podcasts::library_excludes(&cfg.libraries(), &p));
+    }
+    exclude
+}
+
 fn ffmpeg_version() -> Option<String> {
     let out = std::process::Command::new("ffmpeg").arg("-version").output().ok()?;
     let text = String::from_utf8_lossy(&out.stdout);
@@ -121,7 +149,8 @@ fn settings_of(cfg: &Config) -> Settings {
     Settings {
         machine: cfg.machine(),
         hostname: config::hostname(),
-        libraries: cfg.libraries().iter().map(|p| library_info(p, &cfg.exclude)).collect(),
+        libraries: cfg.libraries().iter().map(|p| library_info(p, &music_excludes(cfg))).collect(),
+        podcasts: cfg.podcasts().map(|p| podcasts_info(&p)),
         exclude: cfg.exclude.clone(),
         album_key: cfg.album_key(),
         ffmpeg: ffmpeg_version(),
@@ -142,6 +171,8 @@ struct SettingsUpdate {
     libraries: Option<Vec<String>>,
     exclude: Option<Vec<String>>,
     album_key: Option<AlbumKey>,
+    /// "" unsets it.
+    podcasts: Option<String>,
 }
 
 #[tauri::command]
@@ -160,6 +191,9 @@ async fn save_settings(app: State<'_, App>, update: SettingsUpdate) -> Res<Setti
         }
         if let Some(k) = update.album_key {
             cfg.album_key = Some(k);
+        }
+        if let Some(p) = update.podcasts {
+            cfg.podcasts = (!p.trim().is_empty()).then(|| PathBuf::from(p.trim()));
         }
         cfg.save().map_err(err)?;
         cfg.clone()
@@ -293,6 +327,8 @@ struct Prepared {
     album_key: AlbumKey,
     m: Manifest,
     plan: sync::Plan,
+    /// The podcast mirror, when a podcasts folder is set.
+    podcasts: Option<(PodcastManifest, mirror::MirrorPlan)>,
 }
 
 /// Scans the libraries and plans against the card's manifest.
@@ -312,7 +348,7 @@ fn prepare(cfg: &Config) -> Res<Prepared> {
     if libraries.is_empty() {
         return Err("Add a music folder first".into());
     }
-    let files = sync::scan(&libraries, &cfg.exclude).map_err(err)?;
+    let files = sync::scan(&libraries, &music_excludes(cfg)).map_err(err)?;
     let opts = PlanOptions {
         machine: cfg.machine(),
         have_ffmpeg: convert::ffmpeg_available(),
@@ -320,7 +356,17 @@ fn prepare(cfg: &Config) -> Res<Prepared> {
         include_removed: false,
     };
     let plan = sync::plan(&m, files, &opts);
-    Ok(Prepared { card, machine: opts.machine, album_key: cfg.album_key(), m, plan })
+    let podcasts = match cfg.podcasts() {
+        Some(root) if root.is_dir() => {
+            let pm = podcasts::load(&card).map_err(err)?;
+            let popts = mirror::Options { machine: opts.machine.clone(), have_ffmpeg: opts.have_ffmpeg };
+            let pplan = mirror::plan(&pm, &root, &popts).map_err(err)?;
+            Some((pm, pplan))
+        }
+        Some(root) => return Err(format!("Podcasts folder not found: {}", root.display())),
+        None => None,
+    };
+    Ok(Prepared { card, machine: opts.machine, album_key: cfg.album_key(), m, plan, podcasts })
 }
 
 #[tauri::command]
@@ -329,7 +375,11 @@ async fn check(app: State<'_, App>) -> Res<PlanSummary> {
     tauri::async_runtime::spawn_blocking(move || {
         let p = prepare(&cfg)?;
         let free = free_space(&p.card);
-        Ok(view::plan_summary(&p.plan, &p.m, free))
+        let summary = view::plan_summary(&p.plan, &p.m, free);
+        Ok(match &p.podcasts {
+            Some((pm, plan)) => summary.with_podcasts(pm, plan),
+            None => summary,
+        })
     })
     .await
     .map_err(err)?
@@ -357,20 +407,35 @@ fn sync_start(handle: AppHandle, app: State<'_, App>) -> Res<()> {
             let card = cfg.card().ok_or("No card chosen")?;
             card::check_writable(&card).map_err(|e| format!("This card can't be written to: {e}"))?;
             sync::remove_partial_files(&card);
-            let Prepared { card, machine, album_key, mut m, plan } = prepare(&cfg)?;
+            let Prepared { card, machine, album_key, mut m, plan, podcasts } = prepare(&cfg)?;
             let free = free_space(&card);
-            if plan.bytes_needed() > free {
+            let pod_bytes = podcasts.as_ref().map_or(0, |(_, p)| p.bytes_needed());
+            let pod_files = podcasts.as_ref().map_or(0, |(_, p)| p.copies.len());
+            if plan.bytes_needed() + pod_bytes > free {
                 return Err("Not enough space on the card".into());
             }
             let info = PlanInfo::from(&plan);
-            let reporter = Arc::new(progress::Reporter::new(handle.clone(), &card));
+            // One reporter for both passes: one bar, one time left.
+            let reporter = Arc::new(progress::Reporter::new(
+                handle.clone(),
+                &card,
+                plan.writes.len() + pod_files,
+                plan.bytes_needed() + pod_bytes,
+            ));
             *state.reporter.lock().unwrap() = Some(reporter.clone());
             let jobs = std::thread::available_parallelism().map_or(4, |n| n.get());
             let start = Instant::now();
             let out = sync::execute(&card, &mut m, plan, jobs, &stop, &*reporter).map_err(err)?;
             reporter.flush();
-            let done = library::finish_sync(&card, &mut m, &machine, album_key, &info, &out, start.elapsed().as_secs())
+            let mut done = library::finish_sync(&card, &mut m, &machine, album_key, &info, &out, start.elapsed().as_secs())
                 .map_err(err)?;
+            // Then the podcast mirror, continuing the same bar.
+            if let Some((mut pm, pplan)) = podcasts.filter(|_| !stop.load(Ordering::SeqCst)) {
+                let pout = mirror::execute(&card, &mut pm, &pplan, &machine, jobs, &stop, &*reporter).map_err(err)?;
+                reporter.flush();
+                let (report, _) = podcasts::finish(&card, &mut pm, &pplan, &pout).map_err(err)?;
+                done.report.podcasts = Some(report);
+            }
             Ok(done.report)
         })();
         *state.reporter.lock().unwrap() = None;
@@ -466,6 +531,52 @@ async fn bring_back(app: State<'_, App>, id: String) -> Res<LibraryView> {
     .map_err(err)?
 }
 
+/// The card's podcasts by show, with the listening state the player wrote.
+fn podcasts_view(card: &Path, machine: &str) -> Res<view::CardPodcasts> {
+    let m = podcasts::load(card).map_err(err)?;
+    let state = std::fs::read(card.join(manifest::DIR).join(podcasts::state::FILE)).ok();
+    let mut v = view::card_podcasts(&m, state.as_deref(), machine);
+    for s in &mut v.shows {
+        s.cover = card.join(&s.cover).to_string_lossy().into_owned();
+    }
+    Ok(v)
+}
+
+#[tauri::command]
+async fn podcasts(app: State<'_, App>) -> Res<view::CardPodcasts> {
+    let card = app.card()?;
+    let machine = app.cfg.lock().unwrap().machine();
+    tauri::async_runtime::spawn_blocking(move || podcasts_view(&card, &machine)).await.map_err(err)?
+}
+
+/// How many latest episodes a show keeps on the card (None: all). The next
+/// sync applies it.
+#[tauri::command]
+async fn set_podcast_keep(app: State<'_, App>, show: String, keep: Option<u32>) -> Res<view::CardPodcasts> {
+    let card = app.card()?;
+    let machine = app.cfg.lock().unwrap().machine();
+    tauri::async_runtime::spawn_blocking(move || {
+        podcasts::set_keep(&card, &show, keep).map_err(err)?;
+        podcasts_view(&card, &machine)
+    })
+    .await
+    .map_err(err)?
+}
+
+/// Marks a podcast episode (card path) played or not, as the player's
+/// "Mark as played/unplayed" does.
+#[tauri::command]
+async fn set_podcast_played(app: State<'_, App>, path: String, played: bool) -> Res<view::CardPodcasts> {
+    let card = app.card()?;
+    let machine = app.cfg.lock().unwrap().machine();
+    tauri::async_runtime::spawn_blocking(move || {
+        podcasts::set_played(&card, &path, played).map_err(err)?;
+        podcasts_view(&card, &machine)
+    })
+    .await
+    .map_err(err)?
+}
+
 /// Copies this app's binary to `<card>/openpod/tools/`, so the card carries
 /// it to other computers.
 #[tauri::command]
@@ -518,6 +629,9 @@ pub fn run() {
             library_albums,
             remove_albums,
             bring_back,
+            podcasts,
+            set_podcast_keep,
+            set_podcast_played,
             install_on_card,
         ])
         .run(tauri::generate_context!())

@@ -12,6 +12,7 @@ use indicatif::{ProgressBar, ProgressStyle};
 use openpod_core::index::{self, AlbumKey, thumbs};
 use openpod_core::library::{self, Filter, PlanInfo};
 use openpod_core::sync::{self, PlanOptions, WriteReason};
+use openpod_core::podcasts::{self, mirror};
 use openpod_core::{convert, manifest, policy, tags};
 
 #[derive(Parser)]
@@ -44,6 +45,11 @@ struct LibraryArgs {
     /// Also bring back tracks that were removed with `rm`.
     #[arg(long)]
     include_removed: bool,
+    /// Podcasts folder to mirror to <card>/Podcasts (default:
+    /// $OPENPOD_PODCASTS, then `podcasts` in the config file). The mirror
+    /// adds, moves and deletes episodes.
+    #[arg(long)]
+    podcasts: Option<PathBuf>,
 }
 
 #[derive(Subcommand)]
@@ -294,6 +300,7 @@ struct Resolved {
     libraries: Vec<PathBuf>,
     excludes: Vec<String>,
     machine: String,
+    podcasts: Option<PathBuf>,
 }
 
 fn resolve(cfg: &config::Config, lib: LibraryArgs) -> anyhow::Result<Resolved> {
@@ -304,7 +311,57 @@ fn resolve(cfg: &config::Config, lib: LibraryArgs) -> anyhow::Result<Resolved> {
             bail!("library not found: {}", l.display());
         }
     }
-    Ok(Resolved { include_removed: lib.include_removed, card, libraries, excludes: cfg.excludes(lib.exclude), machine: cfg.machine(lib.machine) })
+    let podcasts = cfg.podcasts(lib.podcasts);
+    let mut excludes = cfg.excludes(lib.exclude);
+    if let Some(p) = &podcasts {
+        if !p.is_dir() {
+            bail!("podcasts folder not found: {}", p.display());
+        }
+        excludes.extend(podcasts::library_excludes(&libraries, p));
+    }
+    Ok(Resolved {
+        include_removed: lib.include_removed,
+        card,
+        libraries,
+        excludes,
+        machine: cfg.machine(lib.machine),
+        podcasts,
+    })
+}
+
+/// The podcast mirror's plan, when a podcasts folder is set.
+fn make_podcast_plan(r: &Resolved, m: &podcasts::PodcastManifest) -> anyhow::Result<Option<mirror::MirrorPlan>> {
+    let Some(root) = &r.podcasts else { return Ok(None) };
+    let spinner = ProgressBar::new_spinner().with_message(format!("Comparing {} with the card's podcasts…", root.display()));
+    spinner.enable_steady_tick(Duration::from_millis(120));
+    let opts = mirror::Options { machine: r.machine.clone(), have_ffmpeg: convert::ffmpeg_available() };
+    let plan = mirror::plan(m, root, &opts)?;
+    spinner.finish_and_clear();
+    Ok(Some(plan))
+}
+
+fn print_podcast_plan(plan: &mirror::MirrorPlan, verbose: bool) {
+    let unchanged = plan.links.len() - plan.moves();
+    println!(
+        "  Podcasts: {} new episodes, {} moved, {} to delete, {} unchanged",
+        plan.copies.len(),
+        plan.moves(),
+        plan.deletes.len(),
+        unchanged
+    );
+    let limit = if verbose { usize::MAX } else { 10 };
+    for c in plan.copies.iter().take(limit) {
+        println!("    + {}", c.dest);
+    }
+    for (from, to) in plan.links.iter().filter_map(|l| l.moved.as_ref()).take(limit) {
+        println!("    > {from} -> {to}");
+    }
+    for p in plan.deletes.iter().take(limit) {
+        println!("    - {p}");
+    }
+    for (p, why) in plan.unsupported.iter().chain(&plan.unreadable).take(limit) {
+        println!("    skipped {} — {why}", p.display());
+    }
 }
 
 fn human(bytes: u64) -> String {
@@ -389,8 +446,14 @@ fn cmd_status(cfg: &config::Config, lib: LibraryArgs, verbose: bool) -> anyhow::
     let m = load_manifest(&r.card)?;
     let plan = make_plan(&r, &m)?;
     print_plan(&plan, verbose);
+    let pm = podcasts::load(&r.card)?;
+    let pplan = make_podcast_plan(&r, &pm)?;
+    if let Some(p) = &pplan {
+        print_podcast_plan(p, verbose);
+    }
     let free = fs4::available_space(&r.card).unwrap_or(0);
-    println!("  ~{} to write, {} free on the card", human(plan.bytes_needed()), human(free));
+    let needed = plan.bytes_needed() + pplan.as_ref().map_or(0, |p| p.bytes_needed());
+    println!("  ~{} to write, {} free on the card", human(needed), human(free));
     Ok(())
 }
 
@@ -438,7 +501,12 @@ fn cmd_sync(cfg: &config::Config, lib: LibraryArgs, jobs: Option<usize>, album_k
     let mut m = load_manifest(&r.card)?;
     let plan = make_plan(&r, &m)?;
     print_plan(&plan, false);
-    space_check(&r.card, plan.bytes_needed())?;
+    let mut pm = podcasts::load(&r.card)?;
+    let pplan = make_podcast_plan(&r, &pm)?;
+    if let Some(p) = &pplan {
+        print_podcast_plan(p, false);
+    }
+    space_check(&r.card, plan.bytes_needed() + pplan.as_ref().map_or(0, |p| p.bytes_needed()))?;
     let info = PlanInfo::from(&plan);
 
     ctrlc::set_handler(|| {
@@ -477,8 +545,31 @@ fn cmd_sync(cfg: &config::Config, lib: LibraryArgs, jobs: Option<usize>, album_k
         }
         None => println!("Index unchanged."),
     }
+    if let Some(pplan) = pplan {
+        if STOP.load(Ordering::Relaxed) {
+            println!("Podcasts skipped: interrupted.");
+        } else {
+            let bar = ProgressBar::new(0).with_style(ProgressStyle::with_template("{bar:30} {bytes}/{total_bytes} {wide_msg}").unwrap());
+            let pout = mirror::execute(&r.card, &mut pm, &pplan, &r.machine, jobs, &STOP, &Bar::new(bar.clone()))?;
+            bar.finish_and_clear();
+            let (report, index) = podcasts::finish(&r.card, &mut pm, &pplan, &pout)?;
+            println!(
+                "Podcasts: copied {}, moved {}, deleted {}{}.",
+                report.copied,
+                report.moved,
+                report.deleted,
+                if report.failed.is_empty() { String::new() } else { format!(", {} failed", report.failed.len()) }
+            );
+            if let Some(s) = index {
+                for w in &s.warnings {
+                    println!("warning: {w}");
+                }
+                println!("Podcast index: {} episodes in {} folders, listening state kept for {}.", s.episodes, s.folders, s.kept_state);
+            }
+        }
+    }
     println!("Report: {}", done.text_report.display());
-    if out.interrupted {
+    if out.interrupted || STOP.load(Ordering::Relaxed) {
         println!("Interrupted: run sync again to copy the rest.");
     }
     println!("Eject the card (or run the `sync` shell command) before unplugging it.");
@@ -578,6 +669,11 @@ fn cmd_index_card(card: &Path, album_key: AlbumKey) -> anyhow::Result<()> {
         s.genres,
         start.elapsed().as_secs_f64()
     );
+    if podcasts::path(card).is_file() {
+        let mut pm = podcasts::load(card)?;
+        let s = podcasts::reindex(card, &mut pm)?;
+        println!("Podcasts: {} episodes in {} folders, listening state kept for {}.", s.episodes, s.folders, s.kept_state);
+    }
     Ok(())
 }
 

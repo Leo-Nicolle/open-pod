@@ -10,6 +10,7 @@ const p = computed(() => store.sync.progress);
 const r = computed(() => store.sync.report);
 const pct = computed(() => (p.value && p.value.bytesTotal ? (p.value.bytesDone / p.value.bytesTotal) * 100 : 0));
 const cardName = computed(() => card.value?.name ?? 'the card');
+const files = computed(() => (store.sync.episodes ? 'tracks & episodes' : 'tracks'));
 
 const title = computed(
   () =>
@@ -44,6 +45,7 @@ const issues = computed(() => {
   const out: [string, string][] = [];
   for (const w of r.value?.warnings ?? []) out.push(['Cover not readable', w]);
   for (const f of r.value?.failed ?? []) out.push(['File not copied', `${f.path}: ${f.reason}`]);
+  for (const f of r.value?.podcasts?.failed ?? []) out.push(['Episode not copied', `${f.path}: ${f.reason}`]);
   return out;
 });
 const avg = computed(() => (r.value && r.value.seconds ? r.value.bytesWritten / r.value.seconds : 0));
@@ -89,7 +91,7 @@ const [doneVal, doneUnit] = [
           <div><div class="k">Elapsed</div><div class="v mono">{{ clock(p?.elapsed ?? 0) }}</div></div>
           <div><div class="k">Time left</div><div class="v mono">{{ p?.eta != null ? about(p.eta) : '…' }}</div></div>
           <div>
-            <div class="k">Tracks</div>
+            <div class="k">{{ store.sync.episodes ? 'Tracks & episodes' : 'Tracks' }}</div>
             <div class="v mono">{{ num(p?.filesDone ?? 0) }} <span class="mu">/ {{ num(p?.filesTotal ?? 0) }}</span></div>
           </div>
         </div>
@@ -136,7 +138,7 @@ const [doneVal, doneUnit] = [
     <section v-else-if="store.sync.state === 'stopped'" class="panel big" style="gap: 16px">
       <div style="font-size: 21px; font-weight: 600">
         Stopped: <span class="mono" style="font-weight: 500">{{ num(p?.filesDone ?? r?.written ?? 0) }}</span> of
-        <span class="mono" style="font-weight: 500">{{ num(p?.filesTotal ?? store.sync.total) }}</span> tracks copied.
+        <span class="mono" style="font-weight: 500">{{ num(p?.filesTotal ?? store.sync.total) }}</span> {{ files }} copied.
         Sync again to continue.
       </div>
       <div class="bar stopped"><div :style="{ width: pct + '%' }"></div></div>
@@ -165,6 +167,14 @@ const [doneVal, doneUnit] = [
           <div class="k">Upgraded</div>
           <div class="v" style="color: var(--mag)">{{ num(r.upgraded) }}</div>
           <div class="s">MP3 → FLAC</div>
+        </div>
+        <div v-if="r.podcasts">
+          <div class="k">Podcasts</div>
+          <div class="v">{{ num(r.podcasts.copied) }}</div>
+          <div class="s">
+            new episodes{{ r.podcasts.moved ? `, ${num(r.podcasts.moved)} moved` : ''
+            }}{{ r.podcasts.deleted ? `, ${num(r.podcasts.deleted)} removed` : '' }}
+          </div>
         </div>
         <div>
           <div class="k">Time taken</div>

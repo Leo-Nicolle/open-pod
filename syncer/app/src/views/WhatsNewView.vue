@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue';
 import AlbumCard from '../components/AlbumCard.vue';
+import Cover from '../components/Cover.vue';
 import ScreenHeader from '../components/ScreenHeader.vue';
 import { api } from '../api';
 import { bytes, bytesParts, gb, num, plural, speed } from '../format';
@@ -19,7 +20,31 @@ onMounted(autoCheck);
 watch(canCheck, autoCheck);
 
 const s = computed(() => store.plan.summary);
-const upToDate = computed(() => !!s.value && s.value.tracks + s.value.upgrades + s.value.fixes === 0);
+const pod = computed(() => s.value?.podcasts);
+const podChanges = computed(() => (pod.value ? pod.value.new + pod.value.moved + pod.value.deleted : 0));
+/** Episodes removed from the card because they are gone from the folder (not past a keep setting). */
+const podGone = computed(() => (pod.value ? pod.value.deleted - (pod.value.leaving ?? 0) : 0));
+const upToDate = computed(() => !!s.value && s.value.tracks + s.value.upgrades + s.value.fixes === 0 && !podChanges.value);
+const podLine = computed(() => {
+  const p = pod.value;
+  if (!p) return '';
+  const parts = [];
+  if (p.new) parts.push(plural(p.new, 'new episode'));
+  if (p.leaving) parts.push(`${num(p.leaving)} leave the card`);
+  if (p.bytes) parts.push(bytes(p.bytes));
+  return parts.join(' · ');
+});
+const podNote = computed(() => {
+  const p = pod.value;
+  if (!p) return '';
+  const parts = [];
+  if (p.leaving) parts.push("Episodes that leave the card are older than their show's keep setting. They stay on this computer.");
+  if (podGone.value) parts.push(`${plural(podGone.value, 'episode')} gone from your podcasts folder ${podGone.value === 1 ? 'is' : 'are'} removed from the card.`);
+  if (p.moved) parts.push(`${plural(p.moved, 'episode')} moved in your folder ${p.moved === 1 ? 'is' : 'are'} renamed on the card, not copied again.`);
+  return parts.join(' ');
+});
+const showName = (folder: string) => folder.split(' / ').pop() || 'Podcasts';
+const showParent = (folder: string) => folder.split(' / ').slice(0, -1).join(' / ');
 // free 0: unknown (the browser can't see it).
 const noSpace = computed(() => !!s.value && s.value.free > 0 && s.value.bytes > s.value.free);
 const [toWrite, toWriteUnit] = [computed(() => bytesParts(s.value?.bytes ?? 0)[0]), computed(() => bytesParts(s.value?.bytes ?? 0)[1])];
@@ -68,7 +93,7 @@ const filtered = computed(() => {
 });
 const shown = computed(() => (showAll.value ? filtered.value : filtered.value.slice(0, 10)));
 
-const skipped = computed(() => [...(s.value?.skipped ?? []), ...(s.value?.unreadable ?? [])]);
+const skipped = computed(() => [...(s.value?.skipped ?? []), ...(s.value?.unreadable ?? []), ...(pod.value?.skipped ?? [])]);
 const skipSub = computed(() => {
   const parts = [];
   if (s.value?.skipped.length) parts.push(api.desktop ? `${s.value.skipped.length} can't be converted` : `${s.value.skipped.length} need the desktop app`);
@@ -194,7 +219,7 @@ function chooseRemovals() {
         <button class="link" @click="store.screen = 'library'; store.libraryTab = 'removed'">See Removed</button>
       </div>
 
-      <div style="display: flex; flex-direction: column; gap: 14px">
+      <div v-if="s.albumList.length" style="display: flex; flex-direction: column; gap: 14px">
         <div style="display: flex; align-items: center; gap: 14px; flex-wrap: wrap">
           <h2 style="margin: 0; font-size: 17px; font-weight: 600">Albums to write</h2>
           <div style="display: flex; gap: 6px; flex-wrap: wrap">
@@ -228,6 +253,30 @@ function chooseRemovals() {
         </div>
       </div>
 
+      <div v-if="podChanges" style="display: flex; flex-direction: column; gap: 14px">
+        <div style="display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap">
+          <h2 style="margin: 0; font-size: 17px; font-weight: 600">Podcasts</h2>
+          <span v-if="podLine" class="mono mu" style="font-size: 13px">{{ podLine }}</span>
+        </div>
+        <div v-if="pod?.shows.length" class="podlist">
+          <div v-for="sh in pod.shows" :key="sh.key" class="podrow">
+            <Cover class="thumb" :path="sh.cover" />
+            <div style="flex: 1; min-width: 140px">
+              <div class="ellipsis" style="font-weight: 600; font-size: 14px">{{ showName(sh.folder) }}</div>
+              <div class="mu" style="font-size: 13px">{{ showParent(sh.folder) }}</div>
+            </div>
+            <div style="display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end">
+              <span v-if="sh.episodes" class="badge new" style="white-space: nowrap">+{{ sh.episodes }} new</span>
+              <span v-if="sh.leaving" class="badge leave" style="white-space: nowrap">
+                {{ sh.leaving === 1 ? '1 leaves' : `${sh.leaving} leave` }}
+              </span>
+            </div>
+            <span class="mono mu" style="font-size: 13px; width: 64px; text-align: right; flex: none">{{ sh.bytes ? bytes(sh.bytes) : '' }}</span>
+          </div>
+        </div>
+        <div v-if="podNote" class="mu" style="font-size: 13px; line-height: 1.5; text-wrap: pretty">{{ podNote }}</div>
+      </div>
+
       <div v-if="skipped.length" class="skip">
         <button class="skip-head" @click="skipOpen = !skipOpen">
           <span class="mono mu" style="width: 10px">{{ skipOpen ? '▾' : '▸' }}</span>
@@ -247,6 +296,24 @@ function chooseRemovals() {
 </template>
 
 <style scoped>
+.podlist {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--ln);
+  border-radius: 12px;
+  background: var(--sf);
+  overflow: hidden;
+}
+.podrow {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--ln);
+}
+.podrow:last-child {
+  border-bottom: none;
+}
 .empty {
   flex: 1;
   display: flex;

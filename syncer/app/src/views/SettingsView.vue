@@ -3,7 +3,7 @@ import { computed, onMounted, ref, watch } from 'vue';
 import ScreenHeader from '../components/ScreenHeader.vue';
 import { api, type AlbumKey } from '../api';
 import { num, when } from '../format';
-import { installOnCard, loadReport, saveSettings, store } from '../store';
+import { choosePodcasts, installOnCard, loadReport, saveSettings, stopPodcasts, store } from '../store';
 
 const props = defineProps<{ focusName?: number }>();
 const name = ref(store.settings?.machine ?? '');
@@ -33,6 +33,13 @@ const folders = computed(() => {
   const libs = st.libraries.map((l) => l.path).join(', ') || 'none yet';
   return st.exclude.length ? `${libs} · ${st.exclude.length} left out` : libs;
 });
+const podcasts = computed(() => {
+  const p = s.value?.podcasts;
+  if (!p) return 'Not synced';
+  if (!p.exists) return `${p.path} · not found`;
+  return api.desktop ? `${p.path} · ${num(p.episodes)} episodes in ${num(p.shows)} folders` : p.path;
+});
+const pr = computed(() => r.value?.podcasts);
 const setKey = (k: AlbumKey) => void saveSettings({ albumKey: k });
 const skipped = computed(() => [...(r.value?.skipped ?? []), ...(r.value?.failed ?? [])]);
 </script>
@@ -64,6 +71,18 @@ const skipped = computed(() => [...(r.value?.skipped ?? []), ...(r.value?.failed
               <span class="mono">{{ k.path }}</span> <span class="mu">· {{ k.reason }}</span>
             </div>
             <div v-if="!skipped.length" class="mu" style="font-size: 13px">Nothing.</div>
+          </div>
+          <div v-if="pr" class="group sep">
+            <div style="font-weight: 600">Podcasts</div>
+            <div class="line"><span>Copied</span><span class="mono mu">{{ num(pr.copied) }}</span></div>
+            <div class="line"><span>Moved on the card</span><span class="mono mu">{{ num(pr.moved) }}</span></div>
+            <div class="line"><span>Removed (gone from the folder)</span><span class="mono mu">{{ num(pr.deleted) }}</span></div>
+            <div class="mu" style="font-size: 13px">
+              {{ num(pr.episodes) }} episodes on the card, {{ num(pr.listened) }} started or played.
+            </div>
+            <div v-for="k in [...pr.failed, ...pr.skipped]" :key="k.path" style="font-size: 13px; line-height: 1.5; overflow-wrap: anywhere">
+              <span class="mono">{{ k.path }}</span> <span class="mu">· {{ k.reason }}</span>
+            </div>
           </div>
           <div class="group sep">
             <div style="font-weight: 600">
@@ -101,6 +120,24 @@ const skipped = computed(() => [...(r.value?.skipped ?? []), ...(r.value?.failed
               <div class="mono mu ellipsis" style="font-size: 13px">{{ folders }}</div>
             </div>
             <button class="link" style="font-size: 14px; white-space: nowrap" @click="store.screen = 'setup'">Change…</button>
+          </div>
+          <div class="sep" style="display: flex; justify-content: space-between; align-items: center; gap: 12px; padding-top: 16px">
+            <div style="min-width: 0">
+              <div style="font-weight: 600; font-size: 14px">Podcasts folder</div>
+              <div class="mono mu ellipsis" style="font-size: 13px">{{ podcasts }}</div>
+              <div class="mu" style="font-size: 13px; line-height: 1.5; margin-top: 3px">
+                Copied to the card's Podcasts folder as it is laid out (publisher, show, series). Episodes you delete
+                here are deleted from the card too; what you listened to is kept.
+              </div>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 4px; align-items: flex-end">
+              <button class="link" style="font-size: 14px; white-space: nowrap" @click="choosePodcasts">
+                {{ s?.podcasts ? 'Change…' : 'Choose…' }}
+              </button>
+              <button v-if="s?.podcasts" class="link" style="font-size: 13px; white-space: nowrap" @click="stopPodcasts">
+                Stop syncing
+              </button>
+            </div>
           </div>
           <div class="sep" style="display: flex; flex-direction: column; gap: 8px; padding-top: 16px">
             <div style="font-weight: 600; font-size: 14px">

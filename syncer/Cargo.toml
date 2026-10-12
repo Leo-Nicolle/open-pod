@@ -7,6 +7,12 @@ edition = "2024"
 version = "0.1.0"
 license = "MIT"
 
+# Dependencies (flacenc, symphonia, rubato, hashing) are optimized even in
+# dev builds: unoptimized, a single FLAC re-encode takes minutes and a
+# `tauri dev` sync looks hung. Our own crates stay fast to rebuild.
+[profile.dev.package."*"]
+opt-level = 3
+
 [profile.release]
 lto = "thin"
 codegen-units = 1

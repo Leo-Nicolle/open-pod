@@ -3,12 +3,14 @@ import { computed, reactive } from 'vue';
 import {
   api,
   type CardInfo,
+  type CardPodcasts,
   type Cards,
   type LibraryView,
   type PlanSummary,
   type ReadProgress,
   type Settings,
   type SettingsUpdate,
+  type SourceEpisode,
   type SyncProgress,
   type SyncReport,
 } from './api';
@@ -35,13 +37,22 @@ export const store = reactive({
     progress: null as SyncProgress | null,
     report: null as SyncReport | null,
     error: null as string | null,
-    /** Tracks the sync set out to write, for "85 of 761". */
+    /** Files the sync set out to write (tracks, then episodes), for "85 of 761". */
     total: 0,
+    /** Podcast episodes among them: the counters then say "tracks & episodes". */
+    episodes: 0,
   },
   library: null as LibraryView | null,
+  podcasts: null as CardPodcasts | null,
+  /** Podcast episodes in the podcasts folder but not on the card, from the
+   * last check: kept when a keep setting changes, since they don't depend
+   * on it (the show page re-ranks them). */
+  podSource: null as SourceEpisode[] | null,
   report: null as SyncReport | null,
   /** "On the card": tab, select mode, and the albums ticked for removal. */
-  libraryTab: 'albums' as 'albums' | 'removed',
+  libraryTab: 'albums' as 'albums' | 'podcasts' | 'removed',
+  /** The open show (CardShow.key) on the Podcasts tab. */
+  podcastShow: null as string | null,
   librarySelect: false,
   selection: new Set<string>(),
   toast: null as string | null,
@@ -96,6 +107,17 @@ export async function removeLibrary(path: string) {
   await saveSettings({ libraries: store.settings.libraries.map((l) => l.path).filter((p) => p !== path) });
 }
 
+/** The podcasts folder: mirrored to the card, so episodes removed there
+ * are removed from the card too. */
+export async function choosePodcasts() {
+  const path = await api.pickFolder('Choose your podcasts folder', store.settings?.podcasts?.path, false, 'podcasts');
+  if (path) await saveSettings({ podcasts: path });
+}
+
+export async function stopPodcasts() {
+  await saveSettings({ podcasts: '' });
+}
+
 /** Excluded folders are stored relative to their music folder. */
 export async function addExclude() {
   const s = store.settings;
@@ -125,7 +147,9 @@ export async function chooseCardFolder() {
 export async function useCard(path: string) {
   await api.selectCard(path);
   store.plan.summary = null;
+  store.podSource = null;
   store.library = null;
+  store.podcasts = null;
   await refreshCards();
 }
 
@@ -145,6 +169,7 @@ export async function check() {
   const t0 = performance.now();
   try {
     store.plan.summary = await api.check();
+    store.podSource = store.plan.summary.podcasts?.episodes ?? null;
     store.plan.at = Date.now();
     store.plan.took = (performance.now() - t0) / 1000;
   } catch (e) {
@@ -161,7 +186,13 @@ export async function startSync() {
     progress: null,
     report: null,
     error: null,
-    total: store.plan.summary ? store.plan.summary.tracks + store.plan.summary.upgrades + store.plan.summary.fixes : 0,
+    total: store.plan.summary
+      ? store.plan.summary.tracks +
+        store.plan.summary.upgrades +
+        store.plan.summary.fixes +
+        (store.plan.summary.podcasts?.new ?? 0)
+      : 0,
+    episodes: store.plan.summary?.podcasts?.new ?? 0,
   };
   store.screen = 'syncing';
   try {
@@ -181,6 +212,37 @@ export async function stopSync() {
 export async function loadLibrary() {
   try {
     store.library = await api.library();
+  } catch (e) {
+    toast(message(e));
+  }
+}
+
+export async function loadPodcasts() {
+  try {
+    store.podcasts = await api.podcasts();
+  } catch (e) {
+    toast(message(e));
+  }
+}
+
+/** How many latest episodes a show keeps on the card (null: all). What's
+ * new has to be checked again. */
+export async function setPodcastKeep(show: string, keep: number | null) {
+  // Shown at once; the card is written behind it.
+  const sh = store.podcasts?.shows.find((s) => s.key === show);
+  if (sh) sh.keep = keep;
+  try {
+    store.podcasts = await api.setPodcastKeep(show, keep);
+    store.plan.summary = null;
+  } catch (e) {
+    toast(message(e));
+  }
+}
+
+/** Marks an episode played or not on the card, as the player does. */
+export async function setPodcastPlayed(path: string, played: boolean) {
+  try {
+    store.podcasts = await api.setPodcastPlayed(path, played);
   } catch (e) {
     toast(message(e));
   }
@@ -256,7 +318,9 @@ export function start() {
       store.sync.state = d.report?.interrupted ? 'stopped' : 'done';
     }
     store.plan.summary = null;
+    store.podSource = null;
     store.library = null;
+    store.podcasts = null;
     void refreshCards();
   });
   void loadSettings();

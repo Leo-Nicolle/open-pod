@@ -7,6 +7,7 @@ import type {
   Api,
   CardInfo,
   Cards,
+  CardPodcasts,
   LibraryView,
   PlanSummary,
   ReadProgress,
@@ -104,6 +105,47 @@ async function removeAt(root: Dir, rel: string) {
   }
 }
 
+/** Moves a card file (renamed or moved folder in the podcasts folder):
+ * `move()` where the browser has it, else copy then delete. */
+async function moveAt(root: Dir, from: string, to: string) {
+  const src = split(from);
+  const dst = split(to);
+  try {
+    const h = await (await dirAt(root, src.dirs)).getFileHandle(src.name);
+    const dest = await dirAt(root, dst.dirs, true);
+    if (typeof (h as any).move === 'function') await (h as any).move(dest, dst.name);
+    else {
+      await writeAt(root, to, await h.getFile());
+      await (await dirAt(root, src.dirs)).removeEntry(src.name);
+    }
+  } catch {
+    return; /* gone already */
+  }
+  // Clean up the folders the move emptied.
+  try {
+    await removeAt(root, from);
+  } catch {
+    /* nothing left to clean */
+  }
+}
+
+/** Copies the cover images of a source folder next to its files on the card
+ * (when missing or a different size). */
+async function copyCovers(where: { root: Dir; dirs: string[] } | null, root: Dir, destDir: string) {
+  if (!where) return;
+  try {
+    const src = await dirAt(where.root, where.dirs);
+    for await (const [name, h] of entries(src)) {
+      if (h.kind !== 'file' || !COVER.test(name)) continue;
+      const existing = await fileAt(root, `${destDir}/${name}`);
+      const file = await (h as FileH).getFile();
+      if (existing?.size !== file.size) await writeAt(root, `${destDir}/${name}`, file);
+    }
+  } catch {
+    /* no cover */
+  }
+}
+
 // ---- Remembered folders and settings -------------------------------------
 
 function idb<T>(op: (s: IDBObjectStore) => IDBRequest<T>, mode: IDBTransactionMode = 'readonly'): Promise<T> {
@@ -139,9 +181,12 @@ const savePrefs = (p: Prefs) => localStorage.setItem(PREFS_KEY, JSON.stringify(p
 /** Music folders by name (the name is their id in library paths). */
 let libs: { name: string; handle: Dir }[] = [];
 let card: Dir | null = null;
+/** The podcasts folder, mirrored to the card's Podcasts/. */
+let podcastsDir: Dir | null = null;
 const loaded = (async () => {
   libs = (await kvGet<{ name: string; handle: Dir }[]>('libs')) ?? [];
   card = (await kvGet<Dir>('card')) ?? null;
+  podcastsDir = (await kvGet<Dir>('podcasts')) ?? null;
 })();
 
 async function granted(h: Dir, write: boolean): Promise<boolean> {
@@ -218,6 +263,9 @@ async function mapAll<T, R>(items: T[], f: (t: T) => Promise<R>, tick?: (i: numb
 let session: InstanceType<Wasm['Session']> | null = null;
 /** Library files by path (`<folder name>/<rel>`) from the last check. */
 let libFiles = new Map<string, File>();
+/** The podcast mirror planned by the last check, and its files (`pod/<rel>`). */
+let podSession: InstanceType<Wasm['PodcastSession']> | null = null;
+let podFiles = new Map<string, File>();
 
 /** `library.json`'s (size, lastModified) when the session was loaded. */
 let sessionStamp = '';
@@ -248,7 +296,8 @@ async function saveManifest() {
 async function cardAudio(): Promise<Map<string, File>> {
   const out = new Map<string, File>();
   if (!card) return out;
-  const files = await walk(card, (rel) => rel === 'openpod' || rel === 'System Volume Information');
+  // Podcasts/ is the podcast mirror's, not music.
+  const files = await walk(card, (rel) => rel === 'openpod' || rel === 'Podcasts' || rel === 'System Volume Information');
   for (const [rel, h] of files) if (AUDIO.has(ext(rel))) out.set(rel, await h.getFile());
   return out;
 }
@@ -285,6 +334,7 @@ async function scanLibraries(): Promise<Map<string, File>> {
 /** A virtual path's File: `card/<card path>` or `<folder>/<rel>`. */
 async function fileOf(path: string): Promise<File | null> {
   if (path.startsWith('card/')) return card ? fileAt(card, path.slice(5)) : null;
+  if (path.startsWith('pod/')) return podFiles.get(path) ?? (podcastsDir ? fileAt(podcastsDir, path.slice(4)) : null);
   const known = libFiles.get(path);
   if (known) return known;
   const slash = path.indexOf('/');
@@ -296,6 +346,7 @@ async function fileOf(path: string): Promise<File | null> {
 function folderOf(path: string): { root: Dir; dirs: string[] } | null {
   const parts = path.split('/');
   if (parts[0] === 'card') return card ? { root: card, dirs: parts.slice(1, -1) } : null;
+  if (parts[0] === 'pod') return podcastsDir ? { root: podcastsDir, dirs: parts.slice(1, -1) } : null;
   const lib = libs.find((l) => l.name === parts[0]);
   return lib ? { root: lib.handle, dirs: parts.slice(1, -1) } : null;
 }
@@ -365,6 +416,56 @@ async function reindex() {
   for (const n of names) await writeAt(card!, `openpod/${n}`, s.index_file(n)! as BufferSource);
 }
 
+/** Plans the podcast mirror (the podcast part of "What's new"). */
+async function checkPodcasts(): Promise<PlanSummary['podcasts']> {
+  podSession?.free();
+  podSession = null;
+  if (!podcastsDir || !card) return undefined;
+  const w = await wasm();
+  const manifest = await fileAt(card, 'openpod/podcasts.json');
+  const ps = (podSession = new w.PodcastSession(manifest ? await manifest.text() : undefined));
+  podFiles = new Map();
+  for (const [rel, h] of await walk(podcastsDir, () => false)) if (AUDIO.has(ext(rel))) podFiles.set(`pod/${rel}`, await h.getFile());
+  const files = [...podFiles].map(([path, f]) => ({ path, rel: path.slice(4), size: f.size, modified: f.lastModified }));
+  const toHash: string[] = JSON.parse(ps.triage(JSON.stringify(files), prefs().machine));
+  const hashes = await mapAll(toHash, (p) => pool().run<string>({ op: 'hash', file: podFiles.get(p)! }).catch(() => null));
+  const toProbe: { path: string; rel: string }[] = JSON.parse(ps.match_hashes(JSON.stringify(hashes)));
+  const probes = await mapAll(toProbe, async (p) => {
+    const f = podFiles.get(p.path)!;
+    return JSON.parse(await pool().run<string>({ op: 'probeEpisode', file: f, name: f.name, rel: p.rel }));
+  });
+  return JSON.parse(ps.finish(JSON.stringify(probes)));
+}
+
+/** Rebuilds the podcast tables and remaps the listening state the player
+ * wrote, then saves podcasts.json (its generation changed). */
+async function reindexPodcasts(root: Dir, ps: InstanceType<Wasm['PodcastSession']>) {
+  const sources: [string, string | null][] = JSON.parse(ps.art_sources());
+  await mapAll(sources, async ([dir, first]) => {
+    let bytes: Uint8Array | null = null;
+    try {
+      for await (const [name, h] of entries(await dirAt(root, dir.split('/')))) {
+        if (h.kind === 'file' && COVER.test(name)) {
+          bytes = new Uint8Array(await (await (h as FileH).getFile()).arrayBuffer());
+          break;
+        }
+      }
+    } catch {
+      /* no folder */
+    }
+    if (!bytes && first) {
+      const f = await fileAt(root, first);
+      if (f) bytes = await pool().run<Uint8Array | null>({ op: 'art', file: f, name: f.name }).catch(() => null);
+    }
+    if (bytes) ps.add_art(dir, bytes);
+  });
+  const old = await fileAt(root, 'openpod/podcast_state.bin');
+  const names: string[] = JSON.parse(ps.build_index(old ? new Uint8Array(await old.arrayBuffer()) : undefined));
+  // In order: the state, then the meta file last (see podcasts::build_files).
+  for (const n of names) await writeAt(root, `openpod/${n}`, ps.index_file(n)! as BufferSource);
+  await writeAt(root, 'openpod/podcasts.json', ps.manifest());
+}
+
 // ---- The Api -------------------------------------------------------------------
 
 let syncing: SyncProgress | null = null;
@@ -380,6 +481,7 @@ export const webApi: Api = {
       machine: p.machine,
       hostname: 'browser',
       libraries: libs.map((l) => ({ path: l.name, exists: true, tracks: 0, albums: 0, formats: [] })),
+      podcasts: podcastsDir ? { path: podcastsDir.name, exists: true, episodes: 0, shows: 0 } : null,
       exclude: p.exclude,
       albumKey: p.albumKey,
       ffmpeg: null,
@@ -396,6 +498,10 @@ export const webApi: Api = {
     if (u.libraries) {
       libs = libs.filter((l) => u.libraries!.includes(l.name));
       await kvSet('libs', libs);
+    }
+    if (u.podcasts === '') {
+      podcastsDir = null;
+      await kvSet('podcasts', null);
     }
     return webApi.settings();
   },
@@ -463,23 +569,31 @@ export const webApi: Api = {
     const cardFiles: Record<string, [number, number]> = {};
     for (const [rel, f] of await cardAudio()) cardFiles[rel] = [f.size, f.lastModified];
     // The browser can't see free space on the card: 0 means unknown.
-    return JSON.parse(s.finish(JSON.stringify(probed), JSON.stringify(cardFiles), 0));
+    const summary: PlanSummary = JSON.parse(s.finish(JSON.stringify(probed), JSON.stringify(cardFiles), 0));
+    const pod = await checkPodcasts();
+    if (pod) {
+      summary.podcasts = pod;
+      summary.bytes += pod.bytes;
+      summary.estSeconds = Math.round(summary.bytes / Math.max(1, summary.writeSpeed));
+    }
+    return summary;
   },
 
   async syncStart() {
     // Re-plan right before writing, like the desktop app.
-    await webApi.check();
+    const planned = await webApi.check();
     const s = session!;
     const root = card!;
     const writes: { source: string; dest: string; copy: boolean; policy: unknown; estimatedSize: number }[] = JSON.parse(s.start());
     await saveManifest();
     stop = false;
-    const total = writes.reduce((n, w) => n + w.estimatedSize, 0);
+    // One bar and one time left for the whole sync: music, then podcasts.
+    const total = writes.reduce((n, w) => n + w.estimatedSize, 0) + (planned.podcasts?.bytes ?? 0);
     const p: SyncProgress = (syncing = {
       bytesDone: 0,
       bytesTotal: total,
       filesDone: 0,
-      filesTotal: writes.length,
+      filesTotal: writes.length + (planned.podcasts?.new ?? 0),
       speed: null,
       elapsed: 0,
       eta: null,
@@ -502,6 +616,51 @@ export const webApi: Api = {
       }
     };
     emit(true);
+
+    /** The podcast mirror: deletions and moves on the card, then the new
+     * episodes (one at a time, converted in the pool first), then the
+     * podcast tables. Continues the music's bar. */
+    const syncPodcasts = async (root: Dir, ps: InstanceType<Wasm['PodcastSession']>) => {
+      const ops: {
+        deletes: string[];
+        renames: [string, string][];
+        copies: { source: string; dest: string; copy: boolean; policy: unknown; estimatedSize: number }[];
+      } = JSON.parse(ps.start());
+      for (const d of ops.deletes) await removeAt(root, d);
+      for (const [from, to] of ops.renames) await moveAt(root, from, to);
+      await writeAt(root, 'openpod/podcasts.json', ps.manifest());
+      emit(true);
+      for (let i = 0; i < ops.copies.length && !stop; i++) {
+        const c = ops.copies[i];
+        try {
+          const f = await fileOf(c.source);
+          if (!f) throw new Error('the file is gone');
+          const data = c.copy
+            ? f
+            : new Blob([(await pool().run<Uint8Array>({ op: 'convert', file: f, name: f.name, policy: JSON.stringify(c.policy) })) as BlobPart]);
+          await writeAt(root, c.dest, data);
+          ps.copied(i, data.size);
+          const dir = c.dest.split('/').slice(0, -1).join('/');
+          await copyCovers(folderOf(c.source), root, dir);
+          const r = p.recent.find((x) => x.dir === dir);
+          if (r) r.tracks++;
+          else {
+            const parts = dir.split('/');
+            p.recent = [{ dir, title: parts[parts.length - 1], artist: parts.slice(1, -1).join(' / '), tracks: 1, cover: `card/${c.dest}` }, ...p.recent].slice(0, 6);
+          }
+        } catch (e) {
+          ps.failed(i, String(e instanceof Error ? e.message : e));
+        }
+        advanced += c.estimatedSize;
+        p.bytesDone = Math.min(total, advanced);
+        p.filesDone++;
+        emit();
+        if (i % 25 === 24) await writeAt(root, 'openpod/podcasts.json', ps.manifest());
+      }
+      if (ps.changed() || !(await fileAt(root, 'openpod/podcast_meta.bin'))) await reindexPodcasts(root, ps);
+      else await writeAt(root, 'openpod/podcasts.json', ps.manifest());
+      return JSON.parse(ps.report(stop)) as { report: NonNullable<SyncReport['podcasts']>; text: string };
+    };
 
     void (async () => {
       let writeSecs = 0;
@@ -554,21 +713,7 @@ export const webApi: Api = {
             const old = s.written(i, data.size);
             if (old) await removeAt(root, old);
             // The album's cover image goes along.
-            const where = folderOf(w.source);
-            if (where && !w.source.startsWith('card/')) {
-              try {
-                const src = await dirAt(where.root, where.dirs);
-                const destDir = w.dest.split('/').slice(0, -1).join('/');
-                for await (const [name, h] of entries(src)) {
-                  if (h.kind !== 'file' || !COVER.test(name)) continue;
-                  const existing = await fileAt(root, `${destDir}/${name}`);
-                  const file = await (h as FileH).getFile();
-                  if (existing?.size !== file.size) await writeAt(root, `${destDir}/${name}`, file);
-                }
-              } catch {
-                /* no cover */
-              }
-            }
+            if (!w.source.startsWith('card/')) await copyCovers(folderOf(w.source), root, w.dest.split('/').slice(0, -1).join('/'));
             const dir = w.dest.split('/').slice(0, -1).join('/');
             const r = p.recent.find((x) => x.dir === dir);
             if (r) {
@@ -598,8 +743,16 @@ export const webApi: Api = {
         await reindex();
         const done = JSON.parse(s.finish_sync(rate.elapsed, writeSecs, stop));
         report = done.report;
+        let text: string = done.text;
+        // Then the podcast mirror.
+        const ps = podSession;
+        if (ps && !stop && !error) {
+          const pod = await syncPodcasts(root, ps);
+          report!.podcasts = pod.report;
+          text += pod.text;
+        }
         await writeAt(root, 'openpod/last-sync.json', JSON.stringify(report, null, 2));
-        await writeAt(root, 'openpod/sync-report.txt', done.text);
+        await writeAt(root, 'openpod/sync-report.txt', text);
         await saveManifest();
       } catch (e) {
         error ??= String(e instanceof Error ? e.message : e);
@@ -647,16 +800,55 @@ export const webApi: Api = {
     return webApi.library();
   },
 
+  async podcasts(): Promise<CardPodcasts> {
+    const w = await wasm();
+    const m = card ? await fileAt(card, 'openpod/podcasts.json') : null;
+    const st = card ? await fileAt(card, 'openpod/podcast_state.bin') : null;
+    const v: CardPodcasts = JSON.parse(
+      w.card_podcasts(m ? await m.text() : undefined, st ? new Uint8Array(await st.arrayBuffer()) : undefined, prefs().machine),
+    );
+    // Sources are virtual `pod/<rel>` paths: show them under the folder's name.
+    const name = podcastsDir?.name ?? 'Podcasts';
+    for (const s of v.shows) {
+      s.cover = `card/${s.cover}`;
+      if (s.source.startsWith('pod')) s.source = name + s.source.slice(3);
+    }
+    return v;
+  },
+
+  async setPodcastKeep(show, keep) {
+    const w = await wasm();
+    const m = await fileAt(card!, 'openpod/podcasts.json');
+    await writeAt(card!, 'openpod/podcasts.json', w.podcast_set_keep(m ? await m.text() : undefined, show, keep ?? undefined));
+    return webApi.podcasts();
+  },
+
+  async setPodcastPlayed(path, played) {
+    const w = await wasm();
+    const m = await fileAt(card!, 'openpod/podcasts.json');
+    const st = await fileAt(card!, 'openpod/podcast_state.bin');
+    if (!m || !st) throw new Error('No podcasts on this card yet.');
+    const out = w.podcast_set_played(await m.text(), new Uint8Array(await st.arrayBuffer()), path, played);
+    await writeAt(card!, 'openpod/podcast_state.bin', out);
+    return webApi.podcasts();
+  },
+
   async installOnCard() {
     throw new Error('Only the desktop app can do that.');
   },
 
-  async pickFolder(_title, _start, write) {
+  async pickFolder(_title, _start, write, purpose) {
     let h: Dir;
     try {
-      h = await (window as any).showDirectoryPicker({ mode: write ? 'readwrite' : 'read', id: write ? 'openpod-card' : 'openpod-music' });
+      const id = write ? 'openpod-card' : purpose === 'podcasts' ? 'openpod-podcasts' : 'openpod-music';
+      h = await (window as any).showDirectoryPicker({ mode: write ? 'readwrite' : 'read', id });
     } catch {
       return null; // cancelled
+    }
+    if (purpose === 'podcasts') {
+      podcastsDir = h;
+      await kvSet('podcasts', h);
+      return h.name;
     }
     if (write) {
       card = h;
@@ -680,7 +872,13 @@ export const webApi: Api = {
   async access(): Promise<Access> {
     await loaded;
     return {
-      music: await Promise.all(libs.map(async (l) => ({ name: l.name, granted: await granted(l.handle, false), tracks: null }))),
+      music: await Promise.all(
+        [...libs, ...(podcastsDir ? [{ name: podcastsDir.name, handle: podcastsDir }] : [])].map(async (l) => ({
+          name: l.name,
+          granted: await granted(l.handle, false),
+          tracks: null,
+        })),
+      ),
       card: card ? { name: card.name, granted: await granted(card, true) } : null,
     };
   },
@@ -688,6 +886,7 @@ export const webApi: Api = {
   async grantAccess() {
     await loaded;
     for (const l of libs) if (!(await granted(l.handle, false))) await (l.handle as any).requestPermission({ mode: 'read' });
+    if (podcastsDir && !(await granted(podcastsDir, false))) await (podcastsDir as any).requestPermission({ mode: 'read' });
     if (card && !(await granted(card, true))) await (card as any).requestPermission({ mode: 'readwrite' });
     return webApi.access();
   },
@@ -704,9 +903,10 @@ const coverCache = new Map<string, Promise<string | null>>();
 export const webSupported = 'showDirectoryPicker' in window;
 
 /** Self-test hook (`?selftest`): use these folders instead of picked ones. */
-export function useFolders(music: { name: string; handle: Dir }[], cardDir: Dir) {
+export function useFolders(music: { name: string; handle: Dir }[], cardDir: Dir, podcasts: Dir | null = null) {
   libs = music;
   card = cardDir;
+  podcastsDir = podcasts;
   session?.free();
   session = null;
   sessionStamp = '';

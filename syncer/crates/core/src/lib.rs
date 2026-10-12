@@ -8,6 +8,7 @@ pub mod index;
 pub mod library;
 pub mod manifest;
 pub mod paths;
+pub mod podcasts;
 pub mod policy;
 pub mod sync;
 pub mod tags;

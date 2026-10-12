@@ -57,26 +57,43 @@ export async function selftest() {
   const say = (s: string) => {
     log.push(s);
     out.textContent = log.join('\n');
+    console.log(`[selftest] ${s}`);
   };
   try {
     const root = await navigator.storage.getDirectory();
-    for (const n of ['music', 'card']) await root.removeEntry(n, { recursive: true }).catch(() => {});
+    for (const n of ['music', 'card', 'podcasts']) await root.removeEntry(n, { recursive: true }).catch(() => {});
     const music = await root.getDirectoryHandle('music', { create: true });
     const card = await root.getDirectoryHandle('card', { create: true });
     await put(music, 'Band/First Album/01 Opening.wav', wav(440));
     await put(music, 'Band/First Album/02 Closing.wav', wav(550));
     await put(music, 'Other/Second Album/01 Hello.wav', wav(660));
-    useFolders([{ name: 'music', handle: music }], card);
+    const podcasts = await root.getDirectoryHandle('podcasts', { create: true });
+    await put(podcasts, 'Radio/Show/1-06.04.2018-a.wav', wav(330));
+    await put(podcasts, 'Radio/Show/1-07.04.2018-b.wav', wav(350));
+    useFolders([{ name: 'music', handle: music }], card, podcasts);
 
     const s1 = await webApi.check();
-    say(`check1: tracks=${s1.tracks} albums=${s1.albums} conversions=${s1.conversions}`);
+    say(`check1: tracks=${s1.tracks} albums=${s1.albums} conversions=${s1.conversions} podcasts=${s1.podcasts?.new}`);
     const done = new Promise<SyncDone>((r) => webApi.onSyncDone(r));
     await webApi.syncStart();
     const d = await done;
-    say(`sync: error=${d.error} written=${d.report?.written} converted=${d.report?.converted}`);
+    say(`sync: error=${d.error} written=${d.report?.written} converted=${d.report?.converted} podcasts=${JSON.stringify(d.report?.podcasts)}`);
     say('card:\n  ' + (await ls(card)).join('\n  '));
     const s2 = await webApi.check();
-    say(`check2 (expect 0): tracks=${s2.tracks} unchanged=${s2.unchanged}`);
+    say(`check2 (expect 0): tracks=${s2.tracks} unchanged=${s2.unchanged} podcasts=${JSON.stringify(s2.podcasts)}`);
+    // A show folder renamed in the podcasts folder: moved on the card, not copied.
+    const radio = await podcasts.getDirectoryHandle('Radio');
+    const show = await radio.getDirectoryHandle('Show');
+    for (const n of ['1-06.04.2018-a.wav', '1-07.04.2018-b.wav'])
+      await put(podcasts, `Radio/A Show/${n}`, await (await show.getFileHandle(n)).getFile());
+    await radio.removeEntry('Show', { recursive: true });
+    const sp = await webApi.check();
+    say(`check-pod (expect moved=2): ${JSON.stringify(sp.podcasts)}`);
+    const donePod = new Promise<SyncDone>((r) => webApi.onSyncDone(r));
+    await webApi.syncStart();
+    const dp = await donePod;
+    say(`sync-pod: error=${dp.error} podcasts=${JSON.stringify(dp.report?.podcasts)}`);
+    say('card podcasts:\n  ' + (await ls(card)).filter((l) => l.startsWith('Podcasts') || l.startsWith('openpod/podcast')).join('\n  '));
     const lib = await webApi.library();
     say(`library: ${lib.albums.map((a) => `${a.artist}/${a.title}:${a.tracks.length}`).join(', ')}`);
     const first = lib.albums.find((a) => a.title === 'First Album')!;

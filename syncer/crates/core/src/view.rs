@@ -8,6 +8,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::audio::{AudioInfo, Codec};
 use crate::manifest::{self, Entry, Manifest, RemovedAlbum};
+use crate::podcasts::{PodcastManifest, show_key};
 use crate::policy::Policy;
 use crate::sync::{Plan, WriteReason};
 use crate::tags::{TagQuality, Tags};
@@ -66,6 +67,244 @@ pub struct PlanSummary {
     pub album_list: Vec<PlanAlbum>,
     pub skipped: Vec<Skipped>,
     pub unreadable: Vec<Skipped>,
+    /// The podcast mirror, when a podcasts folder is set.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub podcasts: Option<PodcastPlanSummary>,
+}
+
+/// "What's new" for podcasts: the mirror's copies, moves and deletions.
+#[derive(Debug, Clone, Default, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PodcastPlanSummary {
+    pub new: usize,
+    pub moved: usize,
+    pub deleted: usize,
+    /// Deletions past a show's keep setting (the rest are gone from the folder).
+    pub leaving: usize,
+    pub bytes: u64,
+    /// Shows getting new episodes or losing some ("France Culture / Les chemins…").
+    pub shows: Vec<PodcastPlanShow>,
+    /// Source episodes not on the card: the new ones, and those past their
+    /// show's keep setting (`held`), for the show page.
+    pub episodes: Vec<PodcastSourceEpisode>,
+    pub skipped: Vec<Skipped>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PodcastPlanShow {
+    /// [`crate::podcasts::show_key`].
+    pub key: String,
+    pub folder: String,
+    pub episodes: usize,
+    pub leaving: usize,
+    pub bytes: u64,
+    /// A source file of the folder, for its cover.
+    pub cover: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PodcastSourceEpisode {
+    pub show: String,
+    pub title: String,
+    /// Days since 1970-01-01.
+    pub date: u32,
+    pub duration: f64,
+    pub bytes: u64,
+    /// Past the show's keep setting: stays on the computer.
+    pub held: bool,
+}
+
+impl PlanSummary {
+    /// Adds the podcast mirror: its section, and its bytes to the total
+    /// and the time estimate.
+    pub fn with_podcasts(mut self, m: &PodcastManifest, plan: &crate::podcasts::mirror::MirrorPlan) -> Self {
+        let p = podcast_plan_summary(m, plan);
+        self.bytes += p.bytes;
+        self.est_seconds = self.bytes / self.write_speed.max(1);
+        self.podcasts = Some(p);
+        self
+    }
+}
+
+/// The podcast part of "What's new".
+pub fn podcast_plan_summary(m: &PodcastManifest, plan: &crate::podcasts::mirror::MirrorPlan) -> PodcastPlanSummary {
+    let mut shows: Vec<PodcastPlanShow> = Vec::new();
+    let mut show = |folders: &[String], cover: &str| -> usize {
+        let key = show_key(folders);
+        shows.iter().position(|s| s.key == key).unwrap_or_else(|| {
+            shows.push(PodcastPlanShow { folder: folders.join(" / "), key, episodes: 0, leaving: 0, bytes: 0, cover: cover.to_owned() });
+            shows.len() - 1
+        })
+    };
+    let mut indexes = Vec::new();
+    for c in &plan.copies {
+        indexes.push((show(&c.folders, &c.source.abs.to_string_lossy()), c.estimated_size));
+    }
+    let mut left = Vec::new();
+    for p in &plan.leaving {
+        if let Some(e) = m.episodes.iter().find(|e| &e.path == p) {
+            left.push(show(&e.folders, &e.path));
+        }
+    }
+    for (i, bytes) in indexes {
+        shows[i].episodes += 1;
+        shows[i].bytes += bytes;
+    }
+    for i in left {
+        shows[i].leaving += 1;
+    }
+    shows.sort_by(|a, b| a.folder.to_lowercase().cmp(&b.folder.to_lowercase()));
+    let skipped = plan
+        .unsupported
+        .iter()
+        .chain(&plan.unreadable)
+        .map(|(p, r)| Skipped { path: p.to_string_lossy().into_owned(), reason: r.clone() })
+        .collect();
+    let episodes = plan
+        .copies
+        .iter()
+        .map(|c| PodcastSourceEpisode {
+            show: show_key(&c.folders),
+            title: c.title.clone(),
+            date: c.date,
+            duration: c.probed.info.duration,
+            bytes: c.estimated_size,
+            held: false,
+        })
+        .chain(plan.held.iter().map(|h| PodcastSourceEpisode {
+            show: show_key(&h.folders),
+            title: h.title.clone(),
+            date: h.date,
+            duration: h.duration,
+            bytes: h.estimated_size,
+            held: true,
+        }))
+        .collect();
+    PodcastPlanSummary {
+        new: plan.copies.len(),
+        moved: plan.moves(),
+        deleted: plan.deletes.len(),
+        leaving: plan.leaving.len(),
+        bytes: plan.bytes_needed(),
+        shows,
+        episodes,
+        skipped,
+    }
+}
+
+/// One episode on the card, in "On the card › Podcasts".
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CardEpisode {
+    pub title: String,
+    /// Days since 1970-01-01, 0 when unknown.
+    pub date: u32,
+    pub duration: f64,
+    pub bytes: u64,
+    /// Card path.
+    pub path: String,
+    /// Where the player stopped, in seconds (0: not started).
+    pub position: u32,
+    pub played: bool,
+}
+
+/// One show (a folder holding episodes) on the card.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CardShow {
+    /// [`show_key`]: what [`crate::podcasts::set_keep`] takes.
+    pub key: String,
+    /// The folder's name.
+    pub title: String,
+    /// The folders above it ("France Culture"), empty at the top.
+    pub publisher: String,
+    /// The latest episodes kept on the card; None: all of them.
+    pub keep: Option<u32>,
+    /// Its folder on this computer; empty when it was mirrored from another.
+    pub source: String,
+    /// Computers it was mirrored from.
+    pub machines: Vec<String>,
+    pub bytes: u64,
+    /// Card path of an episode, for the cover.
+    pub cover: String,
+    /// Newest first.
+    pub episodes: Vec<CardEpisode>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CardPodcasts {
+    pub shows: Vec<CardShow>,
+    pub episodes: usize,
+    pub bytes: u64,
+    /// Listening state the player wrote: episodes played, and started
+    /// but not finished.
+    pub played: usize,
+    pub started: usize,
+    /// Whether `podcast_state.bin` could be read.
+    pub state_read: bool,
+}
+
+/// The card's podcasts by show, with the listening state the player wrote
+/// (`state`: the card's `podcast_state.bin`). `machine`: this computer, for
+/// each show's source folder.
+pub fn card_podcasts(m: &PodcastManifest, state: Option<&[u8]>, machine: &str) -> CardPodcasts {
+    let parsed = state.and_then(crate::podcasts::state::parse);
+    let state_read = parsed.is_some();
+    let records: HashMap<u64, crate::podcasts::state::Record> =
+        parsed.map(|(_, r)| r.into_iter().map(|r| (r.key, r)).collect()).unwrap_or_default();
+    let mut shows: BTreeMap<String, CardShow> = BTreeMap::new();
+    for e in &m.episodes {
+        let key = show_key(&e.folders);
+        let s = shows.entry(key.clone()).or_insert_with(|| CardShow {
+            keep: m.keep.get(&key).copied(),
+            key,
+            title: e.folders.last().cloned().unwrap_or_else(|| "Podcasts".into()),
+            publisher: e.folders[..e.folders.len().saturating_sub(1)].join(" / "),
+            source: String::new(),
+            machines: Vec::new(),
+            bytes: 0,
+            cover: e.path.clone(),
+            episodes: Vec::new(),
+        });
+        for src in &e.sources {
+            if !s.machines.contains(&src.machine) {
+                s.machines.push(src.machine.clone());
+            }
+            if s.source.is_empty() && src.machine == machine {
+                if let Some(dir) = Path::new(&src.path).parent() {
+                    s.source = dir.to_string_lossy().into_owned();
+                }
+            }
+        }
+        let r = records.get(&e.key()).copied().unwrap_or_default();
+        s.bytes += e.size;
+        s.episodes.push(CardEpisode {
+            title: e.title.clone(),
+            date: e.date,
+            duration: e.duration,
+            bytes: e.size,
+            path: e.path.clone(),
+            position: r.position,
+            played: r.flags & crate::podcasts::state::PLAYED != 0,
+        });
+    }
+    let mut shows: Vec<CardShow> = shows.into_values().collect();
+    for s in &mut shows {
+        s.episodes.sort_by(|a, b| b.date.cmp(&a.date).then_with(|| b.path.cmp(&a.path)));
+    }
+    shows.sort_by(|a, b| a.title.to_lowercase().cmp(&b.title.to_lowercase()));
+    let all = || shows.iter().flat_map(|s| &s.episodes);
+    CardPodcasts {
+        episodes: all().count(),
+        bytes: all().map(|e| e.bytes).sum(),
+        played: all().filter(|e| e.played).count(),
+        started: all().filter(|e| !e.played && e.position > 0).count(),
+        state_read,
+        shows,
+    }
 }
 
 fn owner(t: &Tags) -> String {
@@ -135,6 +374,7 @@ pub fn plan_summary(plan: &Plan, m: &Manifest, free: u64) -> PlanSummary {
         album_list: albums,
         skipped: skipped(&plan.unsupported),
         unreadable: skipped(&plan.unreadable),
+        podcasts: None,
     }
 }
 
@@ -399,6 +639,9 @@ pub struct SyncReport {
     /// Card totals after the sync.
     pub card_tracks: usize,
     pub card_albums: usize,
+    /// The podcast mirror, when a podcasts folder is set.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub podcasts: Option<crate::podcasts::Report>,
 }
 
 pub const REPORT_FILE: &str = "last-sync.json";

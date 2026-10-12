@@ -81,13 +81,15 @@ pub fn short_path(p: &Path) -> String {
 }
 
 impl Reporter {
-    pub fn new(app: AppHandle, card: &Path) -> Self {
+    /// `files`/`bytes`: the whole sync (music, then podcasts), so the bar
+    /// and time left run once from start to end.
+    pub fn new(app: AppHandle, card: &Path, files: usize, bytes: u64) -> Self {
         Self {
             app,
             card: card.to_path_buf(),
             start: Instant::now(),
             state: Mutex::new(State {
-                p: SyncProgress::default(),
+                p: SyncProgress { files_total: files, bytes_total: bytes, ..Default::default() },
                 advanced: 0,
                 samples: VecDeque::new(),
                 last_emit: None,
@@ -129,10 +131,10 @@ impl Reporter {
 }
 
 impl sync::Progress for Reporter {
-    fn start(&self, files: usize, bytes: u64) {
+    /// Each pass (music, podcasts) starts here; the totals already cover
+    /// both, set in [`Reporter::new`].
+    fn start(&self, _files: usize, _bytes: u64) {
         let mut s = self.state.lock().unwrap();
-        s.p.files_total = files;
-        s.p.bytes_total = bytes;
         self.emit(&mut s, true);
     }
 

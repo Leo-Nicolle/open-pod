@@ -43,7 +43,7 @@ pub fn now_secs() -> u64 {
     std::time::SystemTime::now().duration_since(UNIX_EPOCH).map_or(0, |d| d.as_secs())
 }
 
-fn mtime_ns(meta: &fs::Metadata) -> i128 {
+pub(crate) fn mtime_ns(meta: &fs::Metadata) -> i128 {
     meta.modified()
         .ok()
         .and_then(|t| t.duration_since(UNIX_EPOCH).ok())
@@ -427,7 +427,7 @@ const COVER_FILES: [&str; 4] = ["cover", "folder", "album", "front"];
 const COVER_EXTS: [&str; 4] = ["jpg", "jpeg", "png", "webp"];
 
 /// Copies the album folder's cover images; returns how many were written.
-fn copy_cover_images(src_dir: &Path, card_dir: &Path) -> usize {
+pub(crate) fn copy_cover_images(src_dir: &Path, card_dir: &Path) -> usize {
     let mut n = 0;
     let Ok(entries) = fs::read_dir(src_dir) else { return 0 };
     for e in entries.flatten() {
@@ -466,7 +466,7 @@ pub fn refresh_covers(card: &Path, m: &Manifest, machine: &str) -> usize {
 /// until it is on the card: otherwise the OS buffers gigabytes in RAM, the
 /// progress shows memory speed instead of the card's, and pulling the card
 /// after an interrupted sync loses files the manifest says are there.
-fn write_to_card(src: &Path, card: &Path, rel: &str, on_bytes: &dyn Fn(u64, u64)) -> io::Result<u64> {
+pub(crate) fn write_to_card(src: &Path, card: &Path, rel: &str, on_bytes: &dyn Fn(u64, u64)) -> io::Result<u64> {
     let dst = card.join(rel);
     if let Some(dir) = dst.parent() {
         fs::create_dir_all(dir)?;

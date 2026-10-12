@@ -4,8 +4,9 @@
 //! machine = "laptop"          # name in the card's manifest (default: hostname)
 //! card = "/mnt/openpod"       # mounted SD card
 //! libraries = ["~/Music"]
-//! exclude = ["Podcasts", "Various Artists/Bootlegs"]  # library-relative
+//! exclude = ["Various Artists/Bootlegs"]  # library-relative
 //! album_key = "artist-album"  # or "name"
+//! podcasts = "~/Podcasts"     # mirrored to <card>/Podcasts (adds and deletes)
 //! ```
 //!
 //! For the CLI, flags win, then the OPENPOD_SD / OPENPOD_LIBRARY /
@@ -29,6 +30,9 @@ pub struct Config {
     #[serde(default)]
     pub exclude: Vec<String>,
     pub album_key: Option<AlbumKey>,
+    /// Podcasts folder, mirrored to the card's `Podcasts/`. Unset: the
+    /// card's podcasts are left alone.
+    pub podcasts: Option<PathBuf>,
 }
 
 /// `~/x` → `$HOME/x`.
@@ -94,6 +98,7 @@ impl Config {
                 AlbumKey::ArtistAlbum => "artist-album".into(),
             }),
         );
+        opt(&mut doc, "podcasts", self.podcasts.as_deref().map(contract));
         std::fs::create_dir_all(path.parent().unwrap())?;
         std::fs::write(path, doc.to_string())
     }
@@ -109,6 +114,10 @@ impl Config {
 
     pub fn card(&self) -> Option<PathBuf> {
         self.card.as_deref().map(expand)
+    }
+
+    pub fn podcasts(&self) -> Option<PathBuf> {
+        self.podcasts.as_deref().map(expand)
     }
 
     pub fn album_key(&self) -> AlbumKey {

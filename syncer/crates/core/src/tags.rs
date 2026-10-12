@@ -139,6 +139,21 @@ pub(crate) fn read_tags(file: &TaggedFile, id3v23: bool) -> Tags {
     }
 }
 
+/// A podcast episode's (title, date) tags. The date is the fullest one
+/// the tags hold: the recording or release date, then the subtitle (TIT3,
+/// where Radio France's old files say "Émission du 16.10.2017"), then the
+/// year. Podcasts sort by it.
+pub fn episode_tags_reader<R: Read + Seek>(r: &mut R, name: &Path) -> (Option<String>, Option<String>) {
+    let Ok(file) = open_reader(r, name, false) else { return (None, None) };
+    let tags = tag_list(&file);
+    let date = [ItemKey::RecordingDate, ItemKey::ReleaseDate, ItemKey::OriginalReleaseDate, ItemKey::TrackSubtitle]
+        .into_iter()
+        .filter_map(|k| first_string(&tags, k))
+        .find(|s| s.len() >= 8)
+        .or_else(|| first_string(&tags, ItemKey::Year));
+    (first_string(&tags, ItemKey::TrackTitle), date)
+}
+
 /// "07 Title", "07 - Title", "1-07 Title", "07. Title" -> (7, "Title")
 fn split_track_prefix(stem: &str) -> (u32, &str) {
     let digits_end = stem.find(|c: char| !c.is_ascii_digit()).unwrap_or(stem.len());

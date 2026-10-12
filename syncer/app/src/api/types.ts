@@ -40,10 +40,20 @@ export interface LibraryInfo {
 
 export type AlbumKey = 'artist-album' | 'name';
 
+/** The podcasts folder, mirrored to the card's Podcasts/ (adds, moves and deletes). */
+export interface PodcastsInfo {
+  path: string;
+  exists: boolean;
+  episodes: number;
+  /** Folders holding episodes. */
+  shows: number;
+}
+
 export interface Settings {
   machine: string;
   hostname: string;
   libraries: LibraryInfo[];
+  podcasts: PodcastsInfo | null;
   exclude: string[];
   albumKey: AlbumKey;
   ffmpeg: string | null;
@@ -55,6 +65,8 @@ export interface SettingsUpdate {
   libraries?: string[];
   exclude?: string[];
   albumKey?: AlbumKey;
+  /** '' stops mirroring podcasts. */
+  podcasts?: string;
 }
 
 export interface ReadProgress {
@@ -101,6 +113,86 @@ export interface PlanSummary {
   albumList: PlanAlbum[];
   skipped: Skipped[];
   unreadable: Skipped[];
+  /** The podcast mirror, when a podcasts folder is set. */
+  podcasts?: PodcastPlan;
+}
+
+export interface PodcastPlan {
+  new: number;
+  moved: number;
+  deleted: number;
+  /** Deletions past a show's keep setting (the rest are gone from the folder). */
+  leaving: number;
+  bytes: number;
+  /** Shows getting new episodes or losing some ("France Culture / Les chemins…"). */
+  shows: { key: string; folder: string; episodes: number; leaving: number; bytes: number; cover: string }[];
+  /** Source episodes not on the card: new, or past their show's keep setting (`held`). */
+  episodes: SourceEpisode[];
+  skipped: Skipped[];
+}
+
+export interface SourceEpisode {
+  /** CardShow.key */
+  show: string;
+  title: string;
+  /** Days since 1970-01-01. */
+  date: number;
+  duration: number;
+  bytes: number;
+  held: boolean;
+}
+
+export interface CardEpisode {
+  title: string;
+  /** Days since 1970-01-01, 0 when unknown. */
+  date: number;
+  duration: number;
+  bytes: number;
+  path: string;
+  /** Where the player stopped, in seconds. */
+  position: number;
+  played: boolean;
+}
+
+/** A show: the folder holding its episodes. */
+export interface CardShow {
+  /** Folder names from the podcasts folder, '/'-joined. */
+  key: string;
+  title: string;
+  /** The folders above it ("France Culture"). */
+  publisher: string;
+  /** Latest episodes kept on the card; null: all. */
+  keep: number | null;
+  /** Its folder on this computer; '' when mirrored from another one. */
+  source: string;
+  machines: string[];
+  bytes: number;
+  cover: string;
+  /** Newest first. */
+  episodes: CardEpisode[];
+}
+
+export interface CardPodcasts {
+  shows: CardShow[];
+  episodes: number;
+  bytes: number;
+  played: number;
+  started: number;
+  /** podcast_state.bin was read. */
+  stateRead: boolean;
+}
+
+export interface PodcastReport {
+  copied: number;
+  moved: number;
+  deleted: number;
+  bytesWritten: number;
+  skipped: Skipped[];
+  failed: Skipped[];
+  episodes: number;
+  shows: number;
+  /** Episodes started or played. */
+  listened: number;
 }
 
 export interface SyncProgress {
@@ -132,6 +224,7 @@ export interface SyncReport {
   warnings: string[];
   cardTracks: number;
   cardAlbums: number;
+  podcasts?: PodcastReport;
 }
 
 export interface SyncDone {
@@ -203,10 +296,16 @@ export interface Api {
   library(): Promise<LibraryView>;
   removeAlbums(ids: string[]): Promise<LibraryView>;
   bringBack(id: string): Promise<LibraryView>;
+  podcasts(): Promise<CardPodcasts>;
+  /** How many latest episodes a show keeps on the card (null: all); the next sync applies it. */
+  setPodcastKeep(show: string, keep: number | null): Promise<CardPodcasts>;
+  /** Marks an episode (card path) played or not, as the player does. */
+  setPodcastPlayed(path: string, played: boolean): Promise<CardPodcasts>;
   installOnCard(): Promise<string>;
   /** Folder picker; null when cancelled. `write`: the folder will be
-   * written to (the card). */
-  pickFolder(title: string, start?: string, write?: boolean): Promise<string | null>;
+   * written to (the card). `purpose` 'podcasts': the podcasts folder (the
+   * browser keeps its handle apart from the music folders). */
+  pickFolder(title: string, start?: string, write?: boolean, purpose?: 'podcasts'): Promise<string | null>;
   /** URL of an album cover thumbnail for one of its files: a URL right
    * away, or a promise of one (null: no cover). */
   coverUrl(path: string): string | Promise<string | null>;

@@ -252,6 +252,20 @@ a {
   color: var(--red);
   background: var(--redS);
 }
+.badge.leave {
+  color: var(--amb);
+  background: var(--ambS);
+}
+.badge.played {
+  color: var(--mu);
+  background: var(--sf2);
+}
+.badge.source {
+  height: 20px;
+  padding: 0 6px;
+  color: var(--mu);
+  border: 1px solid var(--ln2);
+}
 
 /* ---- Surfaces ---- */
 .panel {

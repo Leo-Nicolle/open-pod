@@ -33,12 +33,13 @@ With a config file, both are just `openpod status` and `openpod sync`:
 machine = "laptop"          # name in the card's manifest (default: hostname)
 card = "/mnt/openpod"
 libraries = ["~/Music"]
-exclude = ["Podcasts"]      # library-relative folders; hidden ones are always skipped
+exclude = ["Various Artists/Bootlegs"]  # library-relative; hidden ones are always skipped
 album_key = "artist-album"  # or "name"
+podcasts = "~/Podcasts"     # mirrored to <card>/Podcasts (see below)
 ```
 
-Flags win over the `OPENPOD_SD` / `OPENPOD_LIBRARY` / `OPENPOD_EXCLUDE`
-environment variables, which win over the file.
+Flags win over the `OPENPOD_SD` / `OPENPOD_LIBRARY` / `OPENPOD_EXCLUDE` /
+`OPENPOD_PODCASTS` environment variables, which win over the file.
 
 - **Additive.** `sync` only adds and upgrades: run it from any number of
   computers, each with its own library, and the card gets the union. A
@@ -68,6 +69,18 @@ environment variables, which win over the file.
   there instead of copying them again.
 - **Speed:** a no-op sync of ~1,600 tracks takes under a second. Copies run
   at the card's write speed (a USB 2 card reader caps it at ~20 MB/s).
+- **Podcasts** (`podcasts = …` or `--podcasts <dir>`): the folder is
+  **mirrored** to `<card>/Podcasts/`, laid out as it is (publisher / show /
+  [series] / episode, any depth). New episodes are copied (and converted
+  like music), episodes deleted from the folder are deleted from the card,
+  and episodes that only moved (same content hash) are renamed on the card
+  instead of copied again. Without the setting, a computer leaves the card's
+  podcasts alone. The card keeps them in `openpod/podcasts.json`, apart
+  from the music manifest, and every change rebuilds the player's podcast
+  tables (`openpod/podcast_*.bin`). The listening state the player writes
+  (`podcast_state.bin`: position, played) is keyed by the episode's content
+  hash, so it follows the episode across rebuilds, renames and moves. A
+  podcasts folder inside a music library is left out of the music.
 - `openpod install-tools [--from <release folder>]` copies the binaries to
   `<card>/openpod/tools/`, so the card carries the tool to other computers.
 

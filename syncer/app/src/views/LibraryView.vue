@@ -2,10 +2,12 @@
 import { computed, nextTick, onMounted, ref, watch } from 'vue';
 import AlbumCard from '../components/AlbumCard.vue';
 import Cover from '../components/Cover.vue';
+import PodcastShow from '../components/PodcastShow.vue';
+import PodcastShows from '../components/PodcastShows.vue';
 import ScreenHeader from '../components/ScreenHeader.vue';
 import type { CardAlbum } from '../api';
 import { albumTime, bytes, day, gb, num, plural, shortDay, trackTime } from '../format';
-import { bringBack, card, loadLibrary, removeSelected, store } from '../store';
+import { bringBack, canCheck, card, check, choosePodcasts, loadLibrary, loadPodcasts, removeSelected, store } from '../store';
 
 type Sort = 'artist' | 'album' | 'added';
 const sort = ref<Sort>('artist');
@@ -18,14 +20,22 @@ const cancelBtn = ref<HTMLButtonElement | null>(null);
 
 onMounted(() => {
   if (!store.library) void loadLibrary();
+  if (!store.podcasts) void loadPodcasts();
 });
 watch(
   () => card.value?.path,
   () => {
     store.library = null;
+    store.podcasts = null;
+    store.podcastShow = null;
     detail.value = null;
     void loadLibrary();
+    void loadPodcasts();
   },
+);
+const podTab = computed(() => store.libraryTab === 'podcasts' && !store.librarySelect);
+const show = computed(() =>
+  podTab.value && store.podcastShow ? (store.podcasts?.shows.find((s) => s.key === store.podcastShow) ?? null) : null,
 );
 
 const lib = computed(() => store.library);
@@ -53,6 +63,12 @@ const sub = computed(() => {
     return `${plural(selected.value.length, 'album')} selected · ${plural(selTracks.value, 'track')} · ${bytes(selBytes.value)}`;
   const l = lib.value;
   if (!l) return '';
+  if (podTab.value) {
+    const p = store.podcasts;
+    const music = `${num(l.tracks)} tracks · ${plural(albums.value.length, 'album')}`;
+    if (!p?.shows.length) return `${music} · no podcasts yet`;
+    return `${plural(p.shows.length, 'show')} · ${plural(p.episodes, 'episode')} · ${gb(p.bytes)}, plus ${num(l.tracks)} tracks in ${plural(albums.value.length, 'album')}`;
+  }
   const used = l.capacity ? `${gb(l.bytes)} of ${gb(l.capacity)} used` : gb(l.bytes);
   return `${num(l.tracks)} tracks · ${plural(albums.value.length, 'album')} · ${used}`;
 });
@@ -116,12 +132,18 @@ const trackNo = (t: CardAlbum['tracks'][number], a: CardAlbum) => {
     <button v-else-if="store.libraryTab === 'albums' && !detail && albums.length" class="btn" @click="startSelect()">
       Select
     </button>
+    <template v-else-if="podTab && store.podcasts?.shows.length && !show">
+      <button v-if="!store.settings?.podcasts" class="btn primary" @click="choosePodcasts">Choose podcasts folder…</button>
+      <button v-else class="btn primary" :disabled="!canCheck" @click="check">Check what's new</button>
+    </template>
   </ScreenHeader>
 
   <div class="body">
     <div v-if="!lib" class="mu" style="padding: 40px 0; text-align: center">
       {{ card?.state.kind === 'ready' ? 'Loading…' : 'No OpenPod card. Plug one in, or sync to set this one up.' }}
     </div>
+
+    <PodcastShow v-else-if="show" :show="show" />
 
     <template v-else-if="detail">
       <button class="link" style="margin-top: -6px; align-self: flex-start; font-size: 14px" @click="detail = null">
@@ -166,6 +188,9 @@ const trackNo = (t: CardAlbum['tracks'][number], a: CardAlbum) => {
       <div v-if="!store.librarySelect" class="tabs">
         <button :class="{ on: store.libraryTab === 'albums' }" @click="store.libraryTab = 'albums'">
           Albums <span class="mono mu">{{ num(albums.length) }}</span>
+        </button>
+        <button :class="{ on: store.libraryTab === 'podcasts' }" @click="store.libraryTab = 'podcasts'">
+          Podcasts <span class="mono mu">{{ store.podcasts ? num(store.podcasts.shows.length) : '' }}</span>
         </button>
         <button :class="{ on: store.libraryTab === 'removed' }" @click="store.libraryTab = 'removed'">
           Removed <span class="mono mu">{{ num(lib.removed.length) }}</span>
@@ -213,6 +238,8 @@ const trackNo = (t: CardAlbum['tracks'][number], a: CardAlbum) => {
           {{ albums.length ? 'No album matches.' : 'The card has no music yet.' }}
         </div>
       </template>
+
+      <PodcastShows v-else-if="podTab" />
 
       <template v-else>
         <p class="mu" style="margin: 0; font-size: 14px; line-height: 1.5; max-width: 640px; text-wrap: pretty">

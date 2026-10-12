@@ -20,6 +20,9 @@ export const tauriApi: Api = {
   library: () => invoke('library_albums'),
   removeAlbums: (ids) => invoke('remove_albums', { ids }),
   bringBack: (id) => invoke('bring_back', { id }),
+  podcasts: () => invoke('podcasts'),
+  setPodcastKeep: (show, keep) => invoke('set_podcast_keep', { show, keep }),
+  setPodcastPlayed: (path, played) => invoke('set_podcast_played', { path, played }),
   installOnCard: () => invoke('install_on_card'),
   async pickFolder(title, start) {
     const r = await open({ directory: true, multiple: false, title, defaultPath: start });

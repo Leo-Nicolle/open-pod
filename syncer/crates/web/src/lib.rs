@@ -17,6 +17,7 @@ use std::path::{Path, PathBuf};
 use openpod_core::index::{self, AlbumKey, crawl, model};
 use openpod_core::library::{self, PlanInfo};
 use openpod_core::manifest::{self, Manifest};
+use openpod_core::podcasts::{self, PodcastManifest, mirror};
 use openpod_core::policy::Policy;
 use openpod_core::sync::{self, Matched, Outcome, Plan, PlanOptions, SourceFile, Triage, Write};
 use openpod_core::tags::{self, Probed};
@@ -133,6 +134,14 @@ pub fn art(file: &File, name: &str) -> Result<Option<Vec<u8>>, JsError> {
     Ok(crawl::embedded_art(&mut open(file)?, Path::new(name)))
 }
 
+/// What the podcast mirror needs from a new episode (JSON `Probe`: tags,
+/// audio properties, title and date). `rel`: its path in the podcasts
+/// folder.
+#[wasm_bindgen]
+pub fn probe_episode(file: &File, name: &str, rel: &str) -> Result<String, JsError> {
+    to_json(&mirror::probe_reader(&mut open(file)?, Path::new(name), Path::new(rel)))
+}
+
 /// Which of a folder's file names is its cover image.
 #[wasm_bindgen]
 pub fn cover_file(names: Vec<String>) -> Option<String> {
@@ -143,6 +152,41 @@ pub fn cover_file(names: Vec<String>) -> Option<String> {
 #[wasm_bindgen]
 pub fn probe_cost(name: &str, size: f64) -> f64 {
     tags::probe_cost(Path::new(name), size as u64) as f64
+}
+
+/// The card's podcasts by show (JSON `CardPodcasts`). `manifest`: the
+/// card's `openpod/podcasts.json`; `state`: its `podcast_state.bin`.
+#[wasm_bindgen]
+pub fn card_podcasts(manifest: Option<String>, state: Option<Vec<u8>>, machine: &str) -> Result<String, JsError> {
+    let m: PodcastManifest = match manifest {
+        Some(j) => from_json(&j)?,
+        None => PodcastManifest::default(),
+    };
+    to_json(&view::card_podcasts(&m, state.as_deref(), machine))
+}
+
+/// `podcasts.json` with `show` keeping its latest `keep` episodes (none:
+/// all of them).
+#[wasm_bindgen]
+pub fn podcast_set_keep(manifest: Option<String>, show: &str, keep: Option<u32>) -> Result<String, JsError> {
+    let mut m: PodcastManifest = match manifest {
+        Some(j) => from_json(&j)?,
+        None => PodcastManifest::default(),
+    };
+    m.set_keep(show, keep);
+    to_json(&m)
+}
+
+/// `podcast_state.bin` with the episode at card path `path` marked played
+/// or not, as the player's "Mark as played/unplayed" does.
+#[wasm_bindgen]
+pub fn podcast_set_played(manifest: String, mut state: Vec<u8>, path: &str, played: bool) -> Result<Vec<u8>, JsError> {
+    let m: PodcastManifest = from_json(&manifest)?;
+    let e = m.episodes.iter().find(|e| e.path == path).ok_or_else(|| JsError::new(&format!("{path}: not a podcast on the card")))?;
+    if !openpod_core::podcasts::state::set_played(&mut state, e.key(), played) {
+        return Err(JsError::new("the player's listening state has no record of this episode"));
+    }
+    Ok(state)
 }
 
 // ---- Session -----------------------------------------------------------------
@@ -451,4 +495,221 @@ impl Session {
 
 fn album_key_of(s: &str) -> AlbumKey {
     if s == "name" { AlbumKey::Name } else { AlbumKey::ArtistAlbum }
+}
+
+// ---- Podcasts ------------------------------------------------------------------
+
+/// A file to copy for the podcast mirror, for JavaScript.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct PodcastCopyOut<'a> {
+    /// `pod/<rel>`.
+    source: String,
+    dest: &'a str,
+    copy: bool,
+    policy: &'a Policy,
+    estimated_size: u64,
+}
+
+/// The podcast mirror of a sync (see `openpod_core::podcasts`): plans
+/// against the card's `openpod/podcasts.json`, then JavaScript deletes,
+/// renames and copies, and the session rebuilds the podcast tables and
+/// remaps the listening state. Virtual paths are `pod/<rel>`.
+#[wasm_bindgen]
+pub struct PodcastSession {
+    m: PodcastManifest,
+    machine: String,
+    triage: Option<mirror::Triage>,
+    matched: Option<mirror::Matched>,
+    plan: Option<mirror::MirrorPlan>,
+    out: mirror::Outcome,
+    arts: HashMap<String, Vec<u8>>,
+    files: Vec<(String, Vec<u8>)>,
+    summary: Option<podcasts::Summary>,
+}
+
+#[wasm_bindgen]
+impl PodcastSession {
+    /// `manifest`: the card's `openpod/podcasts.json`, if any.
+    #[wasm_bindgen(constructor)]
+    pub fn new(manifest: Option<String>) -> Result<PodcastSession, JsError> {
+        Ok(PodcastSession {
+            m: match manifest {
+                Some(j) => from_json(&j)?,
+                None => PodcastManifest::default(),
+            },
+            machine: String::new(),
+            triage: None,
+            matched: None,
+            plan: None,
+            out: mirror::Outcome::default(),
+            arts: HashMap::new(),
+            files: Vec::new(),
+            summary: None,
+        })
+    }
+
+    /// `openpod/podcasts.json`.
+    pub fn manifest(&self) -> Result<String, JsError> {
+        to_json(&self.m)
+    }
+
+    /// Planning, step 1: `files` as for [`Session::triage`] (paths
+    /// `pod/<rel>`). Returns the paths to [`hash`].
+    pub fn triage(&mut self, files: &str, machine: &str) -> Result<String, JsError> {
+        let files: Vec<FileIn> = from_json(files)?;
+        let files = files
+            .into_iter()
+            .map(|f| SourceFile {
+                abs: PathBuf::from(f.path),
+                rel: PathBuf::from(f.rel),
+                size: f.size,
+                mtime: (f.modified * 1e6) as i128,
+            })
+            .collect();
+        self.machine = machine.to_owned();
+        let t = mirror::triage(&self.m, files, machine);
+        let out: Vec<String> = t.to_hash().iter().map(|f| f.abs.to_string_lossy().into_owned()).collect();
+        self.triage = Some(t);
+        to_json(&out)
+    }
+
+    /// Planning, step 2 (`hashes` as for [`Session::match_hashes`]). Returns
+    /// the new episodes to [`probe_episode`] (JSON `[{path, rel}]`).
+    pub fn match_hashes(&mut self, hashes: &str) -> Result<String, JsError> {
+        let hashes: Vec<Option<String>> = from_json(hashes)?;
+        let t = self.triage.take().ok_or_else(|| JsError::new("triage first"))?;
+        let hashes = hashes.into_iter().map(|h| h.ok_or_else(|| io::Error::other("the file can't be read"))).collect();
+        let mt = mirror::match_hashes(&self.m, t, hashes);
+        #[derive(Serialize)]
+        struct P {
+            path: String,
+            rel: String,
+        }
+        let out: Vec<P> = mt
+            .to_probe()
+            .iter()
+            .map(|f| P { path: f.abs.to_string_lossy().into_owned(), rel: f.rel.to_string_lossy().into_owned() })
+            .collect();
+        self.matched = Some(mt);
+        to_json(&out)
+    }
+
+    /// Planning, step 3. `probes`: JSON `Probe[]` following
+    /// [`PodcastSession::match_hashes`]. Returns the podcast part of
+    /// "What's new" (JSON `PodcastPlanSummary`).
+    pub fn finish(&mut self, probes: &str) -> Result<String, JsError> {
+        let probes: Vec<mirror::Probe> = from_json(probes)?;
+        let mt = self.matched.take().ok_or_else(|| JsError::new("match hashes first"))?;
+        // No ffmpeg in the browser: AAC/M4A episodes are skipped.
+        let opts = mirror::Options { machine: self.machine.clone(), have_ffmpeg: false };
+        let plan = mirror::finish(&self.m, mt, probes, &opts);
+        let summary = view::podcast_plan_summary(&self.m, &plan);
+        self.plan = Some(plan);
+        to_json(&summary)
+    }
+
+    /// Starts executing the plan: records the moves in the manifest and
+    /// returns what to do on the card, in order (JSON `{deletes: [path],
+    /// renames: [[from, to]], copies: [{source, dest, copy, policy,
+    /// estimatedSize}]}`). Report each copy with [`PodcastSession::copied`]
+    /// or [`PodcastSession::failed`].
+    pub fn start(&mut self) -> Result<String, JsError> {
+        let plan = self.plan.as_ref().ok_or_else(|| JsError::new("plan first"))?;
+        self.out = mirror::Outcome::default();
+        let renames = mirror::apply_links(&mut self.m, plan, &self.machine);
+        self.out.deleted = plan.deletes.len();
+        self.out.moved = renames.len();
+        #[derive(Serialize)]
+        struct Ops<'a> {
+            deletes: &'a [String],
+            renames: Vec<(String, String)>,
+            copies: Vec<PodcastCopyOut<'a>>,
+        }
+        let copies = plan
+            .copies
+            .iter()
+            .map(|c| PodcastCopyOut {
+                source: c.source.abs.to_string_lossy().into_owned(),
+                dest: &c.dest,
+                copy: c.policy == Policy::Copy,
+                policy: &c.policy,
+                estimated_size: c.estimated_size,
+            })
+            .collect();
+        to_json(&Ops { deletes: &plan.deletes, renames, copies })
+    }
+
+    /// Copy `i` of [`PodcastSession::start`] landed on the card.
+    pub fn copied(&mut self, i: usize, size: f64) {
+        if let Some(c) = self.plan.as_ref().and_then(|p| p.copies.get(i)) {
+            mirror::record_copy(&mut self.m, c, size as u64);
+            self.out.copied.push(c.dest.clone());
+            self.out.bytes += size as u64;
+        }
+    }
+
+    /// Copy `i` of [`PodcastSession::start`] failed.
+    pub fn failed(&mut self, i: usize, error: &str) {
+        if let Some(c) = self.plan.as_ref().and_then(|p| p.copies.get(i)) {
+            self.out.failed.push((c.source.abs.clone(), error.to_owned()));
+        }
+    }
+
+    /// Whether the card's podcasts changed (the tables need rebuilding).
+    pub fn changed(&self) -> bool {
+        self.out.changed()
+    }
+
+    /// Each folder's cover source: JSON `[[cardDir, firstEpisodePath |
+    /// null]]`. Give the bytes found (a cover file in the directory, else
+    /// the episode's embedded art) to [`PodcastSession::add_art`].
+    pub fn art_sources(&self) -> Result<String, JsError> {
+        to_json(&podcasts::art_sources(&self.m))
+    }
+
+    pub fn add_art(&mut self, dir: String, bytes: Vec<u8>) {
+        self.arts.insert(dir, bytes);
+    }
+
+    /// Builds the podcast tables and remaps the listening state
+    /// (`old_state`: the card's `openpod/podcast_state.bin`). Returns the
+    /// file names in write order (JSON array): write them in that order,
+    /// read them with [`PodcastSession::index_file`], then save
+    /// [`PodcastSession::manifest`] (its generation changed).
+    pub fn build_index(&mut self, old_state: Option<Vec<u8>>) -> Result<String, JsError> {
+        let arts = std::mem::take(&mut self.arts);
+        let (files, summary) =
+            podcasts::build_files(&mut self.m, old_state.as_deref(), Default::default(), |f, _| arts.get(&f.dir).cloned());
+        let names: Vec<&str> = files.iter().map(|(n, _)| n.as_str()).collect();
+        let json = to_json(&names)?;
+        self.files = files;
+        self.summary = Some(summary);
+        Ok(json)
+    }
+
+    pub fn index_file(&self, name: &str) -> Option<Vec<u8>> {
+        self.files.iter().find(|(n, _)| n == name).map(|(_, b)| b.clone())
+    }
+
+    /// What the mirror did: JSON `{report, text}` (`report` goes in
+    /// `last-sync.json`'s `podcasts`, `text` at the end of
+    /// `sync-report.txt`).
+    pub fn report(&self, interrupted: bool) -> Result<String, JsError> {
+        let plan = self.plan.as_ref().ok_or_else(|| JsError::new("plan first"))?;
+        let mut out = mirror::Outcome { interrupted, ..Default::default() };
+        out.copied = self.out.copied.clone();
+        out.moved = self.out.moved;
+        out.deleted = self.out.deleted;
+        out.bytes = self.out.bytes;
+        out.failed = self.out.failed.clone();
+        let report = podcasts::Report::new(plan, &out, &self.m, self.summary.as_ref());
+        #[derive(Serialize)]
+        struct Done {
+            report: podcasts::Report,
+            text: String,
+        }
+        let text = report.text();
+        to_json(&Done { report, text })
+    }
 }

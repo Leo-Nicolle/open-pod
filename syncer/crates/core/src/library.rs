@@ -27,7 +27,9 @@ pub fn adopt(card: &Path, progress: &(dyn Fn(AdoptProgress) + Sync)) -> io::Resu
         for e in fs::read_dir(&dir)?.flatten() {
             let name = e.file_name().to_string_lossy().into_owned();
             let path = e.path();
-            if name.starts_with('.') || (dir == card && (name == manifest::DIR || name == "System Volume Information")) {
+            // Podcasts/ is the podcast mirror's (podcasts.json), not music.
+            let skipped_root = [manifest::DIR, "System Volume Information", crate::podcasts::CARD_DIR];
+            if name.starts_with('.') || (dir == card && skipped_root.contains(&name.as_str())) {
                 continue;
             }
             if e.file_type()?.is_dir() {
@@ -410,6 +412,7 @@ pub fn report(
         warnings: index.map(|s| s.warnings.clone()).unwrap_or_default(),
         card_tracks: m.tracks.len(),
         card_albums: albums.len(),
+        podcasts: None,
     }
 }
 

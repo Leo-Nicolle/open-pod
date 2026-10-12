@@ -1,6 +1,7 @@
 //! Where the CLI's settings come from: command-line flags win, then the
-//! OPENPOD_SD / OPENPOD_LIBRARY / OPENPOD_EXCLUDE environment variables (as
-//! in the former sync/.env), then `~/.config/openpod/config.toml` (see
+//! OPENPOD_SD / OPENPOD_LIBRARY / OPENPOD_EXCLUDE / OPENPOD_PODCASTS
+//! environment variables (as in the former sync/.env), then
+//! `~/.config/openpod/config.toml` (see
 //! `openpod_core::config`).
 
 use std::path::PathBuf;
@@ -51,6 +52,11 @@ impl Config {
         }
         all.extend(flags);
         all
+    }
+
+    /// The podcasts folder to mirror, if any.
+    pub fn podcasts(&self, flag: Option<PathBuf>) -> Option<PathBuf> {
+        flag.or_else(|| env("OPENPOD_PODCASTS").map(PathBuf::from)).or_else(|| self.0.podcasts.clone()).map(|p| expand(&p))
     }
 
     pub fn machine(&self, flag: Option<String>) -> String {

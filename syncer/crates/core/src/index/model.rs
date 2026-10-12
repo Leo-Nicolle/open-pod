@@ -97,7 +97,7 @@ fn add(rel: &mut Relation, from: u32, to: u32) {
     rel.entry(from).or_default().insert(to);
 }
 
-fn collator() -> CollatorBorrowed<'static> {
+pub(crate) fn collator() -> CollatorBorrowed<'static> {
     let mut options = CollatorOptions::default();
     options.strength = Some(Strength::Primary);
     Collator::try_new(CollatorPreferences::default(), options).expect("baked collation data")
