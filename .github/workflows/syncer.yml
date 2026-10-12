@@ -1,0 +1,152 @@
+name: syncer
+
+on:
+  push:
+    branches: [master, develop]
+    paths: ["syncer/**", ".github/workflows/syncer.yml"]
+    tags: ["syncer-v*"]
+  pull_request:
+    paths: ["syncer/**", ".github/workflows/syncer.yml"]
+  workflow_dispatch:
+
+defaults:
+  run:
+    working-directory: syncer
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: syncer
+      # The app crate needs webkit; it is built in the `app` job.
+      - run: cargo test --locked -p openpod-core -p openpod-cli
+      # The browser build of the core (docs site: Tools → OpenPod Sync).
+      - run: rustup target add wasm32-unknown-unknown && cargo build --locked -p openpod-web --target wasm32-unknown-unknown
+
+  build:
+    needs: test
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-latest, target: x86_64-unknown-linux-gnu, name: openpod-linux-x86_64 }
+          - { os: ubuntu-24.04-arm, target: aarch64-unknown-linux-gnu, name: openpod-linux-aarch64 }
+          - { os: macos-latest, target: aarch64-apple-darwin, name: openpod-macos-aarch64 }
+          - { os: macos-latest, target: x86_64-apple-darwin, name: openpod-macos-x86_64 }
+          - { os: windows-latest, target: x86_64-pc-windows-msvc, name: openpod-windows-x86_64.exe }
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: syncer
+          key: ${{ matrix.target }}
+      - run: cargo build --release --locked -p openpod-cli --target ${{ matrix.target }}
+      - name: Stage binary
+        shell: bash
+        run: |
+          mkdir -p dist
+          ext=""; [[ "${{ matrix.target }}" == *windows* ]] && ext=".exe"
+          cp "target/${{ matrix.target }}/release/openpod$ext" "dist/${{ matrix.name }}"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.name }}
+          path: syncer/dist/${{ matrix.name }}
+
+  # The desktop app's installers (.deb/.AppImage, .dmg, .msi).
+  app:
+    needs: test
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-22.04, args: "" }
+          - { os: macos-latest, args: "--target universal-apple-darwin" }
+          - { os: windows-latest, args: "" }
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Linux packages
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ runner.os == 'macOS' && 'aarch64-apple-darwin,x86_64-apple-darwin,wasm32-unknown-unknown' || 'wasm32-unknown-unknown' }}
+      # The frontend also bundles the browser backend (npm run wasm).
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: wasm-bindgen@0.2.129
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: syncer
+          key: app
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: syncer/app/package-lock.json
+      - working-directory: syncer/app
+        run: npm ci && npx tauri build ${{ matrix.args }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: openpod-sync-${{ runner.os }}
+          path: |
+            syncer/target/**/release/bundle/deb/*.deb
+            syncer/target/**/release/bundle/appimage/*.AppImage
+            syncer/target/**/release/bundle/dmg/*.dmg
+            syncer/target/**/release/bundle/msi/*.msi
+
+  # One macOS binary for both CPU types.
+  macos-universal:
+    needs: build
+    runs-on: macos-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: openpod-macos-*
+          merge-multiple: true
+          path: dist
+      - working-directory: dist
+        run: |
+          lipo -create -output openpod-macos-universal openpod-macos-aarch64 openpod-macos-x86_64
+          chmod +x openpod-macos-universal
+      - uses: actions/upload-artifact@v4
+        with:
+          name: openpod-macos-universal
+          path: dist/openpod-macos-universal
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/syncer-v')
+    needs: [build, macos-universal, app]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: openpod-[lmw]*
+          merge-multiple: true
+          path: dist
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: openpod-sync-*
+          merge-multiple: true
+          path: app
+      - working-directory: dist
+        run: |
+          rm -f openpod-macos-aarch64 openpod-macos-x86_64 && chmod +x openpod-*
+          find ../app -type f \( -name '*.deb' -o -name '*.AppImage' -o -name '*.dmg' -o -name '*.msi' \) -exec mv {} . \;
+      - working-directory: .
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" dist/* --title "openpod sync tool ${GITHUB_REF_NAME#syncer-v}" --generate-notes
