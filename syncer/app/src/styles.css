@@ -1,87 +1,88 @@
-/* OpenPod Sync: tokens and components from the design handoff
-   (.agents/OpenPod-Sync-design). The theme follows the system unless
-   data-theme is set on <html>. */
+/* OpenPod Sync: components from the design handoff
+   (.agents/OpenPod-Sync-design), colours from the docs site (VitePress's
+   neutral greys, the logo's magenta and green: docs/.vitepress/theme).
+   The theme follows the system unless data-theme is set on <html>. */
 
 :root,
 :root[data-theme='dark'] {
-  --bg: #12100f;
-  --side: #171412;
-  --sf: #1c1917;
-  --sf2: #2a2623;
-  --ln: #2f2a27;
-  --ln2: #4b4744;
-  --tx: #f1eadb;
-  --mu: #a39a93;
+  --bg: #1b1b1f;
+  --side: #161618;
+  --sf: #202127;
+  --sf2: #32363f;
+  --ln: #2e2e32;
+  --ln2: #3c3f44;
+  --tx: #dfdfd6;
+  --mu: #98989f;
   --pri: #972d6f;
-  --priH: #b03a84;
-  --mag: #e27bb8;
+  --priH: #b03d83;
+  --mag: #cb5297;
   --magS: rgba(203, 82, 151, 0.16);
   --grn: #96dd42;
   --grnS: rgba(150, 221, 66, 0.11);
-  --amb: #fda326;
-  --ambS: rgba(253, 163, 38, 0.13);
+  --amb: #f0a83a;
+  --ambS: rgba(240, 168, 58, 0.13);
   --red: #e8857b;
   --redS: rgba(217, 102, 92, 0.14);
   --redBg: #b5473d;
   --grad: linear-gradient(90deg, #cb5297, #96dd42);
-  --link: #e27bb8;
+  --link: #cb5297;
   --shadow: 0 24px 70px rgba(0, 0, 0, 0.6);
-  --scrim: rgba(8, 6, 5, 0.66);
+  --scrim: rgba(0, 0, 0, 0.6);
   color-scheme: dark;
 }
 
 :root[data-theme='light'] {
-  --bg: #f7f3ea;
-  --side: #efe9dc;
-  --sf: #fffdf8;
-  --sf2: #ede6d7;
-  --ln: #e2d9c7;
-  --ln2: #c9bea8;
-  --tx: #1f1a17;
-  --mu: #6b625b;
+  --bg: #ffffff;
+  --side: #f6f6f7;
+  --sf: #f6f6f7;
+  --sf2: #ebebef;
+  --ln: #e2e2e3;
+  --ln2: #c2c2c4;
+  --tx: #3c3c43;
+  --mu: #67676c;
   --pri: #972d6f;
-  --priH: #6f1d55;
+  --priH: #b03d83;
   --mag: #972d6f;
-  --magS: rgba(151, 45, 111, 0.09);
+  --magS: rgba(151, 45, 111, 0.14);
   --grn: #3d7419;
   --grnS: rgba(96, 165, 52, 0.13);
-  --amb: #8a5300;
-  --ambS: rgba(235, 152, 10, 0.15);
+  --amb: #9a5b00;
+  --ambS: rgba(235, 152, 10, 0.14);
   --red: #a9392f;
   --redS: rgba(217, 102, 92, 0.12);
   --redBg: #b5473d;
   --grad: linear-gradient(90deg, #972d6f, #60a534);
   --link: #972d6f;
-  --shadow: 0 24px 70px rgba(60, 40, 20, 0.22);
-  --scrim: rgba(40, 30, 20, 0.38);
+  --shadow: 0 24px 70px rgba(0, 0, 0, 0.14);
+  --scrim: rgba(0, 0, 0, 0.32);
   color-scheme: light;
 }
 
 @media (prefers-color-scheme: light) {
   :root:not([data-theme='dark']) {
-    --bg: #f7f3ea;
-    --side: #efe9dc;
-    --sf: #fffdf8;
-    --sf2: #ede6d7;
-    --ln: #e2d9c7;
-    --ln2: #c9bea8;
-    --tx: #1f1a17;
-    --mu: #6b625b;
+    --bg: #ffffff;
+    --side: #f6f6f7;
+    --sf: #f6f6f7;
+    --sf2: #ebebef;
+    --ln: #e2e2e3;
+    --ln2: #c2c2c4;
+    --tx: #3c3c43;
+    --mu: #67676c;
     --pri: #972d6f;
-    --priH: #6f1d55;
+    --priH: #b03d83;
     --mag: #972d6f;
-    --magS: rgba(151, 45, 111, 0.09);
+    --magS: rgba(151, 45, 111, 0.14);
     --grn: #3d7419;
     --grnS: rgba(96, 165, 52, 0.13);
-    --amb: #8a5300;
-    --ambS: rgba(235, 152, 10, 0.15);
+    --amb: #9a5b00;
+    --ambS: rgba(235, 152, 10, 0.14);
     --red: #a9392f;
     --redS: rgba(217, 102, 92, 0.12);
     --redBg: #b5473d;
     --grad: linear-gradient(90deg, #972d6f, #60a534);
     --link: #972d6f;
-    --shadow: 0 24px 70px rgba(60, 40, 20, 0.22);
-    --scrim: rgba(40, 30, 20, 0.38);
+    --shadow: 0 24px 70px rgba(0, 0, 0, 0.14);
+    --scrim: rgba(0, 0, 0, 0.32);
     color-scheme: light;
   }
 }
@@ -480,4 +481,9 @@ a {
   display: flex;
   flex-direction: column;
   gap: 22px;
+}
+/* The body scrolls: its sections keep their height instead of shrinking
+   (overflow: hidden ones, like the summary strip, would collapse). */
+.body > * {
+  flex-shrink: 0;
 }

@@ -1,5 +1,7 @@
 # OpenPod library sync: Rust rewrite plan
 
+> **Status (2026-10-12):** phases 1–3 done and used on the real card; `sync/` is removed. Phase 4: the desktop app is in `syncer/app/` (design in `.agents/OpenPod-Sync-design/`), used on the real card. Phase 5: the same app runs in the browser (`syncer/crates/web` + `app/src/api/web.ts`), embedded in the docs at Tools → OpenPod Sync; tested end to end on OPFS in headless Chrome, not yet on a real card. Usage: [`syncer/README.md`](../syncer/README.md).
+
 ## Context
 
 Today `sync/sync.sh` mirrors **one** library (`~/Music`) into a host-side `sync/staging/` folder. On the way it converts FLACs the VS1053b can't play (>48 kHz, >24-bit, >2 ch, or LPC order >12 via `flac-max-lpc-order.py`). It then runs the TS indexer (`indexer/generate.ts`) over staging and does `rsync --delete` onto the card. This has some limits:
@@ -92,10 +94,14 @@ The index is rebuilt **from the manifest alone**, with no re-crawl or re-parse o
    - Folder picker, a "what's new vs. card" view, a progress bar, and an album grid for removal.
    - Start with that, not a full iTunes view. The grid comes almost for free from the manifest plus cached thumbnails.
 5. **Web (WASM):**
-   - Build `openpod-core` with `wasm-bindgen`. The `Source`/`Card` traits get implemented over File System Access API directory handles.
-   - Run it in a worker, with `wasm-bindgen-rayon` for threads (the site needs COOP/COEP headers).
-   - This is Chromium-only (Firefox and Safari can't write directories), so the page should feature-detect it and point other browsers to the CLI.
-   - The ffmpeg fallback isn't available in the browser, so those files get reported as skipped.
+   - Same Vue UI as the app (`syncer/app`), embedded in the docs site's Tools section; a third `Api` implementation next to the Tauri and sample-data ones.
+   - **I/O split (revised 2026-10-12).** Folder access in the browser is async JS (File System Access API), the core is sync Rust, so traits over directory handles don't fit. Instead:
+     - JS walks folders (`FileSystemDirectoryHandle`), writes to the card (`createWritable()`, which Chrome writes to a temp file and swaps in on close) and keeps `library.json` and the index files on the card.
+     - Rust runs in workers and reads library/card files itself through a `Read + Seek` adapter over `FileReaderSync` (sync reads of `File` slices are allowed in workers), so probing, hashing, LPC scans and covers read only the bytes they need, as natively.
+     - The core is split accordingly: per-file work takes a reader, planning and manifest updates are pure functions, the index is returned as bytes. Native code keeps calling the same functions with `std::fs::File`.
+   - **Threads (revised).** `wasm-bindgen-rayon` needs COOP/COEP headers, which GitHub Pages can't send. Instead a pool of N workers, each with its own WASM instance; JS hands out files. Inside WASM, rayon falls back to one thread.
+   - Chromium only (Firefox and Safari can't write to a picked folder): feature-detect, and point other browsers to the desktop app.
+   - No ffmpeg in the browser: AAC/Ogg/Opus/WMA/WavPack/APE are reported as skipped ("needs the desktop app").
 
 ## Critical files
 - New: `syncer/` (workspace), `.github/workflows/syncer.yml`
