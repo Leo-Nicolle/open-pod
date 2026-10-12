@@ -276,7 +276,7 @@ void OpenPodUIEngine::handleTrackListUpdated(const ListEvent *event)
 {
   LOG_CAT(UI, "Track list updated - %d tracks", (int)event->totalElements);
   elementList.setScroll(event->selectedIndex, event->topVisibleIndex);
-  elementList.setElements(event->elements, event->totalElements);
+  elementList.setElements(event->visibleElements, event->totalElements);
   updateScrollbar();
   // Re-render if we're showing the track list
   if (!booting && !state.getIsAnimating() && !onSearch() && !onMenu())

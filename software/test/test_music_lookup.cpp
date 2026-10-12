@@ -229,9 +229,8 @@ TEST_CASE("MusicLookup - relation counts") {
   CHECK(lookup.getTrackCountForAlbum(2) == 1);
   CHECK(lookup.getAlbumCountForArtist(999) == 0);
 
-  uint32_t ids[4];
-  REQUIRE(lookup.getTrackIdsByAlbum(2, ids, 4) == 1);
-  CHECK(ids[0] == 2);
+  CHECK(lookup.getTrackIndexInAlbum(2, 2) == 0);
+  CHECK(lookup.getTrackIndexInAlbum(2, 1) == -1);
 }
 
 TEST_CASE("MusicLookup - album artist from album_to_artist.bin") {
@@ -260,4 +259,43 @@ TEST_CASE("MusicLookup - album artist falls back to the first track's") {
 
   CHECK(lookup.getArtistIdForAlbum(2) == 2); // album 2 -> track 2 -> artist 2
   CHECK(lookup.getArtistIdForAlbum(999) == 0xFFFFFFFFu);
+}
+
+TEST_CASE("MusicLookup - long lists load in windows") {
+  openpod_test::resetAll();
+  openpod_test::registerLargeCatalog();
+  MusicLookup lookup;
+  REQUIRE(lookup.init());
+
+  CHECK(lookup.getArtistCount() == 300);
+  char buffer[4096];
+  const char *names[LOOKUP_WINDOW];
+  REQUIRE(lookup.getAllArtists(buffer, sizeof(buffer), names, LOOKUP_WINDOW, 250) == 50);
+  CHECK(strcmp(names[0], "Artist 251") == 0);
+  CHECK(strcmp(names[49], "Artist 300") == 0);
+
+  // An album's tracks past the old 50-id cap, after another album's.
+  CHECK(lookup.getTrackCountForAlbum(2) == 120);
+  REQUIRE(lookup.getTracksByAlbum(2, buffer, sizeof(buffer), names, LOOKUP_WINDOW, 100) == 20);
+  CHECK(strcmp(names[0], "Track 101") == 0);
+  CHECK(strcmp(names[19], "Track 120") == 0);
+  CHECK(lookup.getTrackIndexInAlbum(2, 101) == 100);
+  CHECK(lookup.getTrackIndexInAlbum(1, 202) == 1);
+}
+
+TEST_CASE("MusicLookup - a full buffer stops loading instead of overflowing") {
+  openpod_test::resetAll();
+  openpod_test::registerLargeCatalog();
+  MusicLookup lookup;
+  REQUIRE(lookup.init());
+
+  // Room for 3 names of 11 bytes ("Artist 001" + NUL), then a canary.
+  char buffer[40];
+  memset(buffer, 'X', sizeof(buffer));
+  const char *names[LOOKUP_WINDOW];
+  CHECK(lookup.getAllArtists(buffer, 33, names, LOOKUP_WINDOW, 0) == 3);
+  CHECK(strcmp(names[2], "Artist 003") == 0);
+  for (int i = 33; i < 40; i++) {
+    CHECK(buffer[i] == 'X');
+  }
 }

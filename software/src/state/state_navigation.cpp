@@ -5,48 +5,87 @@
 // resolving the selected entity) and the search screen. The rest of State is
 // in state.cpp.
 
+int State::routeListLength(MusicLookup &musicLookup) {
+  Route_t &route = router.getCurrentRoute();
+  // Scoped lists (an artist's albums, an album's tracks…): route.entityId
+  // (set when the route was pushed) is the artist/album/genre id, and
+  // route.scope says which kind of id it is.
+  bool scoped = router.getDepth() > 0;
+  switch (route.type) {
+  case Route_t::ARTISTS:
+    return musicLookup.getArtistCount();
+  case Route_t::ALBUMS:
+    if (scoped && route.scope == Route_t::ARTISTS)
+      return musicLookup.getAlbumCountForArtist(route.entityId);
+    if (scoped && route.scope == Route_t::GENRES)
+      return musicLookup.getAlbumCountForGenre(route.entityId);
+    return musicLookup.getAlbumCount();
+  case Route_t::GENRES:
+    return musicLookup.getGenreCount();
+  case Route_t::TRACKS:
+    if (scoped && route.scope == Route_t::ARTISTS)
+      return musicLookup.getTrackCountForArtist(route.entityId);
+    if (scoped && route.scope == Route_t::ALBUMS)
+      return musicLookup.getTrackCountForAlbum(route.entityId);
+    if (scoped && route.scope == Route_t::GENRES)
+      return musicLookup.getTrackCountForGenre(route.entityId);
+    // Reached directly from ROOT ("Tracks" root menu item): the full
+    // track catalog.
+    return musicLookup.getTrackCount();
+  default:
+    return 0;
+  }
+}
+
+int State::loadWindow(int start) {
+  MusicLookup &m = *windowLookup;
+  Route_t &route = router.getCurrentRoute();
+  bool scoped = router.getDepth() > 0;
+  char *buf = elementsBuffer;
+  const uint32_t size = ELEMENTS_BUFFER_SIZE;
+  const char **ptrs = stringPointers;
+  const uint32_t n = MAX_STRING_POINTERS;
+  const uint32_t id = route.entityId;
+  switch (route.type) {
+  case Route_t::ARTISTS:
+    return m.getAllArtists(buf, size, ptrs, n, start);
+  case Route_t::ALBUMS:
+    if (scoped && route.scope == Route_t::ARTISTS)
+      return m.getAlbumsByArtist(id, buf, size, ptrs, n, start);
+    if (scoped && route.scope == Route_t::GENRES)
+      return m.getAlbumsByGenre(id, buf, size, ptrs, n, start);
+    return m.getAllAlbums(buf, size, ptrs, n, start);
+  case Route_t::GENRES:
+    return m.getAllGenres(buf, size, ptrs, n, start);
+  case Route_t::TRACKS:
+    if (scoped && route.scope == Route_t::ARTISTS)
+      return m.getTracksByArtist(id, buf, size, ptrs, n, start);
+    if (scoped && route.scope == Route_t::ALBUMS)
+      return m.getTracksByAlbum(id, buf, size, ptrs, n, start);
+    if (scoped && route.scope == Route_t::GENRES)
+      return m.getTracksByGenre(id, buf, size, ptrs, n, start);
+    return m.getAllTracks(buf, size, ptrs, n, start);
+  default:
+    return 0;
+  }
+}
+
 void State::loadCurrentRouteData(MusicLookup &musicLookup) {
   Route_t &currentRoute = router.getCurrentRoute();
-  uint32_t count = 0;
 
   switch (currentRoute.type) {
   case Route_t::ARTISTS:
-    count = musicLookup.getAllArtists(
-        elementsBuffer, ELEMENTS_BUFFER_SIZE, stringPointers,
-        MAX_STRING_POINTERS, currentRoute.currentPage * MAX_STRING_POINTERS);
-    currentRoute.hasMore = (count == MAX_STRING_POINTERS);
-    break;
-
   case Route_t::ALBUMS:
-    // Check if we're loading albums by artist or genre. currentRoute.entityId
-    // (set when this ALBUMS route was pushed) is the artist/genre id;
-    // its scope tells us which kind of id it is.
-    if (router.getDepth() > 0) {
-      Route_t::RouteType scope = currentRoute.scope;
-      if (scope == Route_t::ARTISTS) {
-        count = musicLookup.getAlbumsByArtist(
-            currentRoute.entityId, elementsBuffer, ELEMENTS_BUFFER_SIZE,
-            stringPointers, MAX_STRING_POINTERS);
-        currentRoute.hasMore = false; // Relationship lookups return all results
-      } else if (scope == Route_t::GENRES) {
-        count = musicLookup.getAlbumsByGenre(
-            currentRoute.entityId, elementsBuffer, ELEMENTS_BUFFER_SIZE,
-            stringPointers, MAX_STRING_POINTERS);
-        currentRoute.hasMore = false;
-      } else {
-        count = musicLookup.getAllAlbums(
-            elementsBuffer, ELEMENTS_BUFFER_SIZE, stringPointers,
-            MAX_STRING_POINTERS,
-            currentRoute.currentPage * MAX_STRING_POINTERS);
-        currentRoute.hasMore = (count == MAX_STRING_POINTERS);
-      }
-    } else {
-      count = musicLookup.getAllAlbums(
-          elementsBuffer, ELEMENTS_BUFFER_SIZE, stringPointers,
-          MAX_STRING_POINTERS, currentRoute.currentPage * MAX_STRING_POINTERS);
-      currentRoute.hasMore = (count == MAX_STRING_POINTERS);
-    }
-    break;
+  case Route_t::GENRES:
+  case Route_t::TRACKS: {
+    // Callers position selectedIndex/topVisibleIndex first (0 when entering
+    // a route, the saved values on back()), so the list event carries them.
+    int count = routeListLength(musicLookup);
+    currentRoute.totalResults = count;
+    currentRoute.hasMore = false;
+    setWindowedElements(musicLookup, count);
+    return;
+  }
 
   case Route_t::SEARCH_RESULTS:
     // The search screen draws from its own model, which survives the trip
@@ -62,50 +101,9 @@ void State::loadCurrentRouteData(MusicLookup &musicLookup) {
     // Rows come from BtMenu (state/bt_menu.h), drawn by ui/menu_view.hpp.
     return;
 
-  case Route_t::GENRES:
-    count = musicLookup.getAllGenres(
-        elementsBuffer, ELEMENTS_BUFFER_SIZE, stringPointers,
-        MAX_STRING_POINTERS, currentRoute.currentPage * MAX_STRING_POINTERS);
-    currentRoute.hasMore = (count == MAX_STRING_POINTERS);
-    break;
-
-  case Route_t::TRACKS:
-    // Load tracks based on parent entity. currentRoute.entityId (set when
-    // this TRACKS route was pushed) is the artist/album/genre id; its
-    // scope tells us which kind of id it is.
-    if (router.getDepth() > 0) {
-      Route_t::RouteType scope = currentRoute.scope;
-      if (scope == Route_t::ARTISTS) {
-        count = musicLookup.getTracksByArtist(
-            currentRoute.entityId, elementsBuffer, ELEMENTS_BUFFER_SIZE,
-            stringPointers, MAX_STRING_POINTERS);
-        currentRoute.hasMore = false; // Relationship lookups return all results
-      } else if (scope == Route_t::ALBUMS) {
-        count = musicLookup.getTracksByAlbum(
-            currentRoute.entityId, elementsBuffer, ELEMENTS_BUFFER_SIZE,
-            stringPointers, MAX_STRING_POINTERS);
-        currentRoute.hasMore = false; // Relationship lookups return all results
-      } else if (scope == Route_t::GENRES) {
-        count = musicLookup.getTracksByGenre(
-            currentRoute.entityId, elementsBuffer, ELEMENTS_BUFFER_SIZE,
-            stringPointers, MAX_STRING_POINTERS);
-        currentRoute.hasMore = false; // Relationship lookups return all results
-      } else {
-        // Reached directly from ROOT ("Tracks" root menu item) - browse the
-        // full track catalog rather than a relationship-scoped subset.
-        count = musicLookup.getAllTracks(
-            elementsBuffer, ELEMENTS_BUFFER_SIZE, stringPointers,
-            MAX_STRING_POINTERS,
-            currentRoute.currentPage * MAX_STRING_POINTERS);
-        currentRoute.hasMore = (count == MAX_STRING_POINTERS);
-      }
-    }
-    break;
-
-  case Route_t::ROOT:
-    // Use the structured StaticMenu for root menu
-    count = rootMenu.getItemCount();
-    // Copy root menu elements to our elements array
+  case Route_t::ROOT: {
+    // The root menu is a static list.
+    uint32_t count = rootMenu.getItemCount();
     int offset = 0;
     for (uint32_t i = 0; i < count && i < MAX_STRING_POINTERS; i++) {
       const MenuItem &item = rootMenu.getItem(i);
@@ -114,18 +112,14 @@ void State::loadCurrentRouteData(MusicLookup &musicLookup) {
       offset += strlen(item.label) + 1; // +1 for null terminator
     }
     currentRoute.hasMore = false; // Static menus don't have pagination
-    break;
-    // case Route_t::SEARCH_RESULTS:
-    // Handle root or search results
-    // default:
-    // return;
+    currentRoute.totalResults = count;
+    setElements(stringPointers, count);
+    return;
   }
 
-  // Update route info and set elements
-  // Callers position selectedIndex/topVisibleIndex first (0 when entering a
-  // route, the saved values on back()), so the list event carries them.
-  currentRoute.totalResults = count;
-  setElements(stringPointers, count);
+  default:
+    return;
+  }
 }
 
 void State::goToSelected(MusicLookup &musicLookup) {
@@ -234,20 +228,11 @@ void State::goToSelected(MusicLookup &musicLookup) {
       uint32_t albumId = musicLookup.getAlbumIdForTrack(hit->id);
       if (albumId == UINT32_MAX)
         break;
-      uint32_t albumTracks[MAX_SEARCH_RESULTS];
-      uint32_t total = musicLookup.getTrackIdsByAlbum(albumId, albumTracks,
-                                                      MAX_SEARCH_RESULTS);
-      int index = -1;
-      for (uint32_t i = 0; i < total; i++) {
-        if (albumTracks[i] == hit->id) {
-          index = (int)i;
-          break;
-        }
-      }
+      int index = musicLookup.getTrackIndexInAlbum(albumId, hit->id);
       if (index < 0)
         break;
       playingListEntityId = albumId;
-      playingListTotalTracks = (int)total;
+      playingListTotalTracks = (int)musicLookup.getTrackCountForAlbum(albumId);
       playingListParentType = Route_t::ALBUMS;
       startPlayback(index, hit->id, musicLookup);
       newRouteType = Route_t::NOW_PLAYING;

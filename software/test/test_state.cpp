@@ -145,7 +145,7 @@ TEST_SUITE("State Construction and Basic Properties") {
 
     ListEvent *event = (ListEvent *)lastEvent.eventData;
     CHECK(event->totalElements == genericElementCount);
-    CHECK(event->elements == genericElements);
+    CHECK(event->visibleElements[0] == genericElements[0]);
   }
 
   TEST_CASE("State - Set Elements with Out of Bounds Selection") {
@@ -872,5 +872,53 @@ TEST_SUITE("State Navigation Tests") {
     CHECK(state.getCurrentRoute().type == Route_t::ALBUMS);
     CHECK(state.getTotalElements() == 1);
     CHECK(std::strcmp(state.getVisibleElements()[0], "Djangology") == 0);
+  }
+
+  // Lists used to stop at 200 entries (artists, albums, all tracks) and at
+  // 50 related ids (an album's tracks…): the state loads a window of names
+  // around the visible rows instead.
+  TEST_CASE("State - Long Lists Are Complete") {
+    openpod_test::resetAll();
+    openpod_test::registerLargeCatalog();
+    State state;
+    MusicLookup lookup;
+    REQUIRE(lookup.init());
+
+    state.loadCurrentRouteData(lookup);
+    state.scrollDown();         // "Artists"
+    state.goToSelected(lookup); // ROOT -> ARTISTS
+    REQUIRE(state.getTotalElements() == 300);
+    for (int i = 0; i < 60; i++) {
+      state.pageDown();
+    }
+    CHECK(state.getSelectedIndex() == 299);
+    CHECK(std::strcmp(state.getCurrentTrackName(), "Artist 300") == 0);
+    CHECK(std::strcmp(state.getVisibleElements()[ELEMENTS_PER_SCREEN - 1], "Artist 300") == 0);
+    // Back up into an earlier window, one row at a time.
+    for (int i = 0; i < 100; i++) {
+      state.scrollUp();
+    }
+    CHECK(std::strcmp(state.getCurrentTrackName(), "Artist 200") == 0);
+
+    // Artist 1's album is the long one: 120 tracks, all browsable.
+    for (int i = 0; i < 300; i++) {
+      state.scrollUp();
+    }
+    CHECK(std::strcmp(state.getCurrentTrackName(), "Artist 001") == 0);
+    state.goToSelected(lookup); // ARTISTS -> ALBUMS ("Long Album")
+    REQUIRE(state.getTotalElements() == 1);
+    state.goToSelected(lookup); // ALBUMS -> TRACKS
+    REQUIRE(state.getTotalElements() == 120);
+    for (int i = 0; i < 100; i++) {
+      state.scrollDown();
+    }
+    CHECK(std::strcmp(state.getCurrentTrackName(), "Track 101") == 0);
+
+    // Playing row 100 and carrying on past the old 50 cap.
+    state.goToSelected(lookup);
+    CHECK(state.getPlayingTrackIndex() == 100);
+    CHECK(std::strcmp(state.getPlayingTrackName(), "Track 101") == 0);
+    state.notifyTrackEnded(lookup);
+    CHECK(std::strcmp(state.getPlayingTrackName(), "Track 102") == 0);
   }
 }

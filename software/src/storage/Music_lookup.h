@@ -9,6 +9,9 @@
 
 // Maximum results to return from searches
 #define MAX_SEARCH_RESULTS 50
+// Most names a list lookup loads at once (State keeps a window of this many
+// around the visible rows; lists themselves can be any length).
+#define LOOKUP_WINDOW 64
 
 // Structure for index headers (string indexes)
 typedef struct {
@@ -192,7 +195,13 @@ private:
   uint32_t readLittleEndian32(FsFile &file);
   lookup_result_t getStringAtIndex(int32_t index, const index_header_t &header);
   uint32_t getRelatedIds(uint32_t source_id, const relation_header_t &header,
-                         uint32_t *results, uint32_t max_results);
+                         uint32_t *results, uint32_t max_results,
+                         uint32_t offset = 0);
+  bool copyString(const lookup_result_t &result, char *&buffer_pos,
+                  uint32_t &buffer_remaining, const char *&out);
+  uint32_t getIndexRange(const index_header_t &header, char *buffer,
+                         uint32_t buffer_size, const char **string_pointers,
+                         uint32_t max_results, uint32_t offset);
   // Number of targets related to source_id (0 if it isn't in the relation),
   // without reading the target ids.
   uint32_t getRelatedCount(uint32_t source_id, const relation_header_t &header);
@@ -204,7 +213,8 @@ private:
                             const relation_header_t &relation_header,
                             const index_header_t &target_index_header,
                             char *buffer, uint32_t buffer_size,
-                            const char **string_pointers, uint32_t max_results);
+                            const char **string_pointers, uint32_t max_results,
+                            uint32_t offset = 0);
 
 public:
   MusicLookup(uint32_t psram_base_addr = MUSIC_INDEX_BASE_ADDRESS);
@@ -247,11 +257,17 @@ public:
   uint32_t getAlbumCountForArtist(uint32_t artist_id);
   uint32_t getAlbumCountForGenre(uint32_t genre_id);
   uint32_t getTrackCountForAlbum(uint32_t album_id);
+  uint32_t getTrackCountForArtist(uint32_t artist_id);
+  uint32_t getTrackCountForGenre(uint32_t genre_id);
 
-  // An album's track ids in list order (capped at MAX_SEARCH_RESULTS, like
-  // getTracksByAlbum). Returns how many were written.
-  uint32_t getTrackIdsByAlbum(uint32_t album_id, uint32_t *ids,
-                              uint32_t max_ids);
+  // Entries in each index (the length of the full lists).
+  uint32_t getArtistCount() const;
+  uint32_t getAlbumCount() const;
+  uint32_t getGenreCount() const;
+  uint32_t getTrackCount() const;
+
+  // Position of a track in its album's list order, -1 if it isn't there.
+  int32_t getTrackIndexInAlbum(uint32_t album_id, uint32_t track_id);
 
   // Cover location for an album, O(1) direct index - returns false if
   // album_id is out of range or no cover was resolved for it (length == 0).
@@ -260,19 +276,24 @@ public:
   // Consolidated relationship lookups - new signature
   uint32_t getTracksByArtist(uint32_t artist_id, char *buffer,
                              uint32_t buffer_size, const char **string_pointers,
-                             uint32_t max_results);
+                             uint32_t max_results,
+                             uint32_t offset = 0);
   uint32_t getAlbumsByArtist(uint32_t artist_id, char *buffer,
                              uint32_t buffer_size, const char **string_pointers,
-                             uint32_t max_results);
+                             uint32_t max_results,
+                             uint32_t offset = 0);
   uint32_t getTracksByAlbum(uint32_t album_id, char *buffer,
                             uint32_t buffer_size, const char **string_pointers,
-                            uint32_t max_results);
+                            uint32_t max_results,
+                             uint32_t offset = 0);
   uint32_t getTracksByGenre(uint32_t genre_id, char *buffer,
                             uint32_t buffer_size, const char **string_pointers,
-                            uint32_t max_results);
+                            uint32_t max_results,
+                             uint32_t offset = 0);
   uint32_t getAlbumsByGenre(uint32_t genre_id, char *buffer,
                             uint32_t buffer_size, const char **string_pointers,
-                            uint32_t max_results);
+                            uint32_t max_results,
+                             uint32_t offset = 0);
 
   // Get all items from an index (for browsing)
   uint32_t getAllArtists(char *buffer, uint32_t buffer_size,

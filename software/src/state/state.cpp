@@ -4,7 +4,8 @@
 // state_navigation.cpp)
 
 State::State()
-    : EventTarget(), elements(nullptr), totalElements(0), playingTrackIndex(-1),
+    : EventTarget(), elements(nullptr), totalElements(0), windowLookup(nullptr),
+      windowStart(0), windowCount(0), playingTrackIndex(-1),
       playingTrackId(-1), isPlaying(false), playbackPosition(0),
       trackDuration(0), playingListParentType(Route_t::ROOT),
       playingListEntityId(0), playingListTotalTracks(0), volume(60),
@@ -148,9 +149,47 @@ void State::setRotation(bool rotated) { isRotatedMode = rotated; }
 
 const char *State::getCurrentTrackName() const {
   if (selectedIndex >= 0 && selectedIndex < totalElements) {
-    return elements[selectedIndex];
+    return elementAt(selectedIndex);
   }
   return nullptr;
+}
+
+const char *State::elementAt(int i) const {
+  if (i < 0 || i >= totalElements) {
+    return nullptr;
+  }
+  if (elements) {
+    return elements[i];
+  }
+  if (i >= windowStart && i < windowStart + windowCount) {
+    return stringPointers[i - windowStart];
+  }
+  return nullptr;
+}
+
+void State::ensureWindow(int first, int last) {
+  if (elements || !windowLookup || totalElements == 0) {
+    return;
+  }
+  last = min(last, totalElements - 1);
+  if (first >= windowStart && last < windowStart + windowCount) {
+    return;
+  }
+  // Centre the visible rows in the window, so scrolling either way has
+  // room before the next reload.
+  int span = last - first + 1;
+  int start = first - (MAX_STRING_POINTERS - span) / 2;
+  start = constrain(start, 0, max(0, totalElements - MAX_STRING_POINTERS));
+  windowStart = start;
+  windowCount = loadWindow(start);
+}
+
+void State::setWindowedElements(MusicLookup &musicLookup, int count) {
+  elements = nullptr;
+  windowLookup = &musicLookup;
+  windowStart = 0;
+  windowCount = 0;
+  setElements(nullptr, count);
 }
 
 const char *State::getPlayingTrackName() const {
@@ -223,17 +262,18 @@ void State::pageDown() {
 }
 
 void State::updateVisibleElements() {
+  ensureWindow(topVisibleIndex, topVisibleIndex + ELEMENTS_PER_SCREEN - 1);
   for (int i = 0; i < ELEMENTS_PER_SCREEN; i++) {
-    if (i + topVisibleIndex < totalElements) {
-      visibleElements[i] = elements[i + topVisibleIndex];
-    } else {
-      visibleElements[i] = nullptr;
-    }
+    const char *e = elementAt(i + topVisibleIndex);
+    visibleElements[i] = (i + topVisibleIndex < totalElements) ? (e ? e : "") : nullptr;
   }
 }
 
 void State::setElements(const char **elementList, int count) {
-  elements = elementList;
+  if (elementList) {
+    elements = elementList;
+    windowLookup = nullptr;
+  }
   totalElements = count;
 
   if (selectedIndex >= count) {
@@ -242,8 +282,7 @@ void State::setElements(const char **elementList, int count) {
   topVisibleIndex =
       constrain(topVisibleIndex, 0, max(0, count - ELEMENTS_PER_SCREEN));
   updateVisibleElements();
-  ListEvent event = {count, selectedIndex, topVisibleIndex, elementList,
-                     visibleElements};
+  ListEvent event = {count, selectedIndex, topVisibleIndex, visibleElements};
   emitEvent(EVENT_TRACK_LIST_UPDATED, &event);
 }
 

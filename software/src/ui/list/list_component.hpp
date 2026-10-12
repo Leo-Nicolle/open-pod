@@ -16,7 +16,9 @@ class ListComponent {
 public:
   ListCache cache; // Using the updated ElementsCache with pointer swapping
   ListRenderer renderer;
-  const char **elements;
+  // The rows on screen (State's visible elements: ELEMENTS_PER_SCREEN
+  // entries, kept current by State as the list scrolls).
+  const char *const *visible;
   int numElements;
   int selectedIndex;
   int topVisibleElement;
@@ -26,8 +28,8 @@ public:
 
 public:
   static const int BITS_PER_PIXEL = 2;
-  ListComponent(const char **elements, int count)
-      : elements(elements), numElements(count), selectedIndex(0),
+  ListComponent(const char *const *visible, int count)
+      : visible(visible), numElements(count), selectedIndex(0),
         topVisibleElement(0), overlayLabel(nullptr),
         cache(IBMPlexSans16Bold, BITS_PER_PIXEL), renderer(cache) {}
 
@@ -157,19 +159,19 @@ public:
   void rebuildCache() {
     const char *visibleElements[ELEMENTS_PER_SCREEN];
     for (int i = 0; i < ELEMENTS_PER_SCREEN; i++) {
-      int elementIdx = topVisibleElement + i;
-      visibleElements[i] = (elementIdx < numElements) ? elements[elementIdx] : "";
+      const char *e = visible ? visible[i] : nullptr;
+      visibleElements[i] = (topVisibleElement + i < numElements && e) ? e : "";
     }
     cache.build(visibleElements);
   }
 
   /**
-   * @brief Set new elements for the list and rebuild the cache
-   * @param newElements Array of new elements
-   * @param newCount Number of new elements
+   * @brief Set the list (its on-screen rows and length) and rebuild the cache
+   * @param visibleRows The rows on screen, kept current by State
+   * @param newCount Length of the whole list
    */
-  void setElements(const char **newElements, int newCount) {
-    elements = newElements;
+  void setElements(const char *const *visibleRows, int newCount) {
+    visible = visibleRows;
     numElements = newCount;
 
     // Ensure indices are still valid

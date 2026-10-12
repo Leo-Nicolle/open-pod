@@ -7,9 +7,11 @@
 #include "search.h"
 #include <Arduino.h>
 
-// Buffer sizes for string data
+// Lists from the music index are loaded as a window of LOOKUP_WINDOW names
+// around the visible rows (any length of list); static lists (menus) are
+// plain arrays. The window's names live in an 8 KB buffer.
 #define ELEMENTS_BUFFER_SIZE 8192
-#define MAX_STRING_POINTERS 200
+#define MAX_STRING_POINTERS LOOKUP_WINDOW
 
 // Event types for state changes
 enum StateEvent {
@@ -83,7 +85,8 @@ struct ListEvent {
   int totalElements;
   int selectedIndex;
   int topVisibleIndex;
-  const char **elements;
+  // The rows on screen (ELEMENTS_PER_SCREEN, nullptr past the end); valid
+  // until the list scrolls or changes.
   const char **visibleElements;
 };
 
@@ -132,10 +135,16 @@ private:
   char elementsBuffer[ELEMENTS_BUFFER_SIZE];
   const char* stringPointers[MAX_STRING_POINTERS];
   
-  // Track data (uses stringPointers as backing)
+  // The current list: a static array (menus, setElements()), or, when
+  // `elements` is null, a window over the music index: names
+  // [windowStart, windowStart + windowCount) in stringPointers, reloaded
+  // from windowLookup as the visible rows move (see ensureWindow()).
   const char **elements;
   int totalElements;
   const char* visibleElements[ELEMENTS_PER_SCREEN];
+  MusicLookup *windowLookup;
+  int windowStart;
+  int windowCount;
 
   // Current playback state
   int playingTrackIndex;
@@ -176,6 +185,17 @@ private:
   void emitSearchChanged(uint8_t dirty, int oldSelected, int oldFirst);
 
   void updateVisibleElements();
+  // Makes rows [first, last] available, reloading the window if needed.
+  void ensureWindow(int first, int last);
+  // Loads up to MAX_STRING_POINTERS names of the current route's list
+  // from `start`; returns how many.
+  int loadWindow(int start);
+  // Name of row i of the current list, nullptr if not loaded.
+  const char *elementAt(int i) const;
+  // Length of the current route's list in the music index.
+  int routeListLength(MusicLookup &musicLookup);
+  // Shows the current route's list (windowed) with `count` rows.
+  void setWindowedElements(MusicLookup &musicLookup, int count);
   void restoreSelectionState();
   // Resolves the global track ID for a row position in the TRACKS list,
   // given the current route is NOW_PLAYING (TRACKS is one level below it).
