@@ -1,0 +1,30 @@
+{
+  "name": "openpod-sync",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "predev": "npm run wasm",
+    "dev": "vite",
+    "prebuild": "npm run wasm",
+    "build": "vite build",
+    "build:web": "npm run wasm && vite build --base ./ --outDir ../../docs/public/sync-app --emptyOutDir",
+    "wasm": "cargo build -p openpod-web --target wasm32-unknown-unknown --release --manifest-path ../Cargo.toml && wasm-bindgen --target web --out-dir src/wasm ../target/wasm32-unknown-unknown/release/openpod_web.wasm",
+    "check": "vue-tsc --noEmit",
+    "tauri": "tauri"
+  },
+  "dependencies": {
+    "@fontsource/ibm-plex-mono": "^5.3.0",
+    "@fontsource/space-grotesk": "^5.3.0",
+    "@tauri-apps/api": "^2.12.3",
+    "@tauri-apps/plugin-dialog": "^2.8.2",
+    "vue": "^3.5.43"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.12.2",
+    "@vitejs/plugin-vue": "^6.0.10",
+    "typescript": "~5.9.3",
+    "vite": "^8.3.4",
+    "vue-tsc": "^3.3.13"
+  }
+}

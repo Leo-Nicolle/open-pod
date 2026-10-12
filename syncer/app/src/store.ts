@@ -1,0 +1,276 @@
+// App state shared by the screens, and the actions that change it.
+import { computed, reactive } from 'vue';
+import {
+  api,
+  type CardInfo,
+  type Cards,
+  type LibraryView,
+  type PlanSummary,
+  type ReadProgress,
+  type Settings,
+  type SettingsUpdate,
+  type SyncProgress,
+  type SyncReport,
+} from './api';
+
+export type Screen = 'setup' | 'whatsnew' | 'syncing' | 'library' | 'settings';
+
+export const store = reactive({
+  screen: 'setup' as Screen,
+  cards: null as Cards | null,
+  settings: null as Settings | null,
+  /** Reading an unread card once. */
+  read: { running: false, progress: null as ReadProgress | null, error: null as string | null },
+  plan: {
+    checking: false,
+    summary: null as PlanSummary | null,
+    /** When it was computed (ms) and how long it took (s). */
+    at: 0,
+    took: 0,
+    error: null as string | null,
+  },
+  sync: {
+    state: 'idle' as 'idle' | 'running' | 'stopped' | 'done' | 'error',
+    stopping: false,
+    progress: null as SyncProgress | null,
+    report: null as SyncReport | null,
+    error: null as string | null,
+    /** Tracks the sync set out to write, for "85 of 761". */
+    total: 0,
+  },
+  library: null as LibraryView | null,
+  report: null as SyncReport | null,
+  /** "On the card": tab, select mode, and the albums ticked for removal. */
+  libraryTab: 'albums' as 'albums' | 'removed',
+  librarySelect: false,
+  selection: new Set<string>(),
+  toast: null as string | null,
+});
+
+export const card = computed<CardInfo | null>(() => store.cards?.selected ?? null);
+
+export const canCheck = computed(() => {
+  const c = card.value;
+  return !!c && (c.state.kind === 'ready' || c.state.kind === 'empty') && !store.read.running && !!store.settings?.libraries.length;
+});
+
+let toastTimer: number | undefined;
+export function toast(msg: string) {
+  store.toast = msg;
+  clearTimeout(toastTimer);
+  toastTimer = window.setTimeout(() => (store.toast = null), 4000);
+}
+
+const message = (e: unknown) => (typeof e === 'string' ? e : e instanceof Error ? e.message : String(e));
+
+export async function refreshCards() {
+  try {
+    store.cards = await api.cards();
+  } catch (e) {
+    toast(message(e));
+  }
+}
+
+export async function loadSettings() {
+  store.settings = await api.settings();
+}
+
+export async function saveSettings(update: SettingsUpdate) {
+  try {
+    store.settings = await api.saveSettings(update);
+    store.plan.summary = null;
+  } catch (e) {
+    toast(message(e));
+  }
+}
+
+export async function addLibrary() {
+  const path = await api.pickFolder('Choose a music folder');
+  if (!path || !store.settings) return;
+  const libs = store.settings.libraries.map((l) => l.path);
+  if (!libs.includes(path)) await saveSettings({ libraries: [...libs, path] });
+}
+
+export async function removeLibrary(path: string) {
+  if (!store.settings) return;
+  await saveSettings({ libraries: store.settings.libraries.map((l) => l.path).filter((p) => p !== path) });
+}
+
+/** Excluded folders are stored relative to their music folder. */
+export async function addExclude() {
+  const s = store.settings;
+  if (!s) return;
+  const path = await api.pickFolder('Choose a folder to leave out', s.libraries[0]?.path);
+  if (!path) return;
+  const lib = s.libraries.find((l) => path.startsWith(l.path));
+  if (!lib) {
+    toast('Choose a folder inside one of your music folders.');
+    return;
+  }
+  const rel = path.slice(lib.path.length).replace(/^[\\/]+/, '');
+  if (rel && !s.exclude.includes(rel)) await saveSettings({ exclude: [...s.exclude, rel] });
+}
+
+export async function removeExclude(rel: string) {
+  if (store.settings) await saveSettings({ exclude: store.settings.exclude.filter((e) => e !== rel) });
+}
+
+export async function chooseCardFolder() {
+  const path = await api.pickFolder("Choose the SD card's folder", undefined, true);
+  if (!path) return;
+  await api.selectCard(path);
+  await refreshCards();
+}
+
+export async function useCard(path: string) {
+  await api.selectCard(path);
+  store.plan.summary = null;
+  store.library = null;
+  await refreshCards();
+}
+
+export async function readCard() {
+  store.read = { running: true, progress: null, error: null };
+  try {
+    await api.readCard();
+  } catch (e) {
+    store.read = { running: false, progress: null, error: message(e) };
+  }
+}
+
+export async function check() {
+  store.screen = 'whatsnew';
+  store.plan.checking = true;
+  store.plan.error = null;
+  const t0 = performance.now();
+  try {
+    store.plan.summary = await api.check();
+    store.plan.at = Date.now();
+    store.plan.took = (performance.now() - t0) / 1000;
+  } catch (e) {
+    store.plan.error = message(e);
+  } finally {
+    store.plan.checking = false;
+  }
+}
+
+export async function startSync() {
+  store.sync = {
+    state: 'running',
+    stopping: false,
+    progress: null,
+    report: null,
+    error: null,
+    total: store.plan.summary ? store.plan.summary.tracks + store.plan.summary.upgrades + store.plan.summary.fixes : 0,
+  };
+  store.screen = 'syncing';
+  try {
+    await api.syncStart();
+    void refreshCards();
+  } catch (e) {
+    store.sync.state = 'error';
+    store.sync.error = message(e);
+  }
+}
+
+export async function stopSync() {
+  store.sync.stopping = true;
+  await api.syncStop();
+}
+
+export async function loadLibrary() {
+  try {
+    store.library = await api.library();
+  } catch (e) {
+    toast(message(e));
+  }
+}
+
+export async function removeSelected() {
+  const ids = [...store.selection];
+  try {
+    store.library = await api.removeAlbums(ids);
+    store.selection = new Set();
+    store.plan.summary = null;
+    void refreshCards();
+  } catch (e) {
+    toast(message(e));
+  }
+}
+
+export async function bringBack(id: string) {
+  try {
+    store.library = await api.bringBack(id);
+    store.plan.summary = null;
+  } catch (e) {
+    toast(message(e));
+  }
+}
+
+export async function loadReport() {
+  try {
+    store.report = await api.report();
+  } catch {
+    store.report = null;
+  }
+}
+
+export async function eject() {
+  try {
+    await api.eject();
+    toast('The card was ejected. You can unplug it.');
+    await refreshCards();
+  } catch (e) {
+    toast(message(e));
+  }
+}
+
+export async function installOnCard() {
+  try {
+    const name = await api.installOnCard();
+    toast(`Copied ${name} to the card's openpod/tools folder.`);
+  } catch (e) {
+    toast(message(e));
+  }
+}
+
+/** Wires backend events and starts watching for cards. */
+export function start() {
+  api.onReadProgress((p) => (store.read.progress = p));
+  api.onReadDone((error) => {
+    store.read = { running: false, progress: null, error };
+    void refreshCards();
+  });
+  api.onSyncProgress((p) => {
+    if (store.sync.state === 'idle') store.sync.state = 'running';
+    store.sync.progress = p;
+  });
+  api.onSyncDone((d) => {
+    store.sync.stopping = false;
+    if (d.error) {
+      store.sync.state = 'error';
+      store.sync.error = d.error;
+    } else {
+      store.sync.report = d.report;
+      store.report = d.report;
+      store.sync.state = d.report?.interrupted ? 'stopped' : 'done';
+    }
+    store.plan.summary = null;
+    store.library = null;
+    void refreshCards();
+  });
+  void loadSettings();
+  void refreshCards().then(async () => {
+    // A window opened (or reloaded) during a sync shows it.
+    const p = await api.syncStatus();
+    if (p) {
+      store.sync.state = 'running';
+      store.sync.progress = p;
+      store.sync.total = p.filesTotal;
+      store.screen = 'syncing';
+    }
+  });
+  window.setInterval(() => {
+    if (!document.hidden && store.sync.state !== 'running' && !store.read.running) void refreshCards();
+  }, 3000);
+}
