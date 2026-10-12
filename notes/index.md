@@ -1,5 +1,9 @@
 ## Notes
 
+- [Podcasts and audiobooks](podcasts.md): sample-tag audit, Radio France RSS/Open API,
+  archive.org as the repo for old shows, why beets doesn't fit, and the plan for a
+  variable-depth podcast tree + binary read/resume state (tag normalizer, syncer
+  layout, index tables, firmware browser).
 - [USB speed](usb-speed.md): one USB-C port for mass storage, serial and DFU
   programming, and the tradeoff between staying on the F446 (Full Speed,
   ~1 MB/s, no pin changes), adding a ULPI PHY (not worth it) or moving to the

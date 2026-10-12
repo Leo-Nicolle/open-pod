@@ -13,6 +13,7 @@ Things that came to my mind on the improvement and steps. Not ordered, not prior
  - ~~Fast scroll: Display one or two letters on top of the list to represent the current first or firsts letters in the current rows.~~
  - ~~Boot: add an animtaion and sound~~
  - Bluetooth: on the header bar, when no one is connected, but BT is enabled it should show with dimmed color, for now it shows the same as when connected. 
+  - Scroll improvements: we did something already in the podcast seeking: make it go fast after a while and slower instead. I think we need for tuning for the other menus as well: it can sometimes be hard to select one entry (too sensitive it scrolls to the mext/previous one just as you lift your thumb, or sometimes you make two ticks at once while tring to reach for a track or a letter in the search). And with a large collection/list, the scrolling can feel long, we need progressive increase of speed like on the podcast timestamp seeking.
 ## Developement tools
  - ~~ Wrap all the Serial.println into a macro and use platformio flags to turn them on/off~~
   ~~(LOG_LEVEL=0,1,2, LOG_AUDIO_BUFFER, LOG_INDEX_USAGE, LOG_USER_INPUT ... ) with some docs somewhere about all thoose flags, probably within the macro definition.COLOR ~~
