@@ -1,3 +1,11 @@
+## Notes
+
+- [USB speed](usb-speed.md): one USB-C port for mass storage, serial and DFU
+  programming, and the tradeoff between staying on the F446 (Full Speed,
+  ~1 MB/s, no pin changes), adding a ULPI PHY (not worth it) or moving to the
+  U5A5 (High Speed, ~20-35 MB/s, firmware port). Also covers disk mode and
+  the battery/protection chips.
+
 ## Adafruit resources
 
 - [Music feather schema](https://cdn-learn.adafruit.com/assets/assets/000/037/995/original/feather_schem.png?1481755871)

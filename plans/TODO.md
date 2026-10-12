@@ -14,8 +14,8 @@ Things that came to my mind on the improvement and steps. Not ordered, not prior
  - ~~Boot: add an animtaion and sound~~
  - Bluetooth: on the header bar, when no one is connected, but BT is enabled it should show with dimmed color, for now it shows the same as when connected. 
 ## Developement tools
- - Wrap all the Serial.println into a macro and use platformio flags to turn them on/off
-  (LOG_LEVEL=0,1,2, LOG_AUDIO_BUFFER, LOG_INDEX_USAGE, LOG_USER_INPUT ... ) with some docs somewhere about all thoose flags, probably within the macro definition.COLOR
+ - ~~ Wrap all the Serial.println into a macro and use platformio flags to turn them on/off~~
+  ~~(LOG_LEVEL=0,1,2, LOG_AUDIO_BUFFER, LOG_INDEX_USAGE, LOG_USER_INPUT ... ) with some docs somewhere about all thoose flags, probably within the macro definition.COLOR ~~
 
 
  ## Playlists
@@ -37,7 +37,8 @@ Things that came to my mind on the improvement and steps. Not ordered, not prior
  - Battery, buttons and power management: we are runing out of pins (and 2 are dead on the current nucleo I am using), I ll have a lock button, which might need a pin (might not if I use it to short the buttons physically?). I ll need a couple of MOSFET, maybe 3: one for the screen backlights, one for the SD card and maybe one fo the bluetooth card module ? I might be short on pins !!!!
 
  ## Indexer
- - Plan: [sync-tool.md](sync-tool.md) (Rust core + CLI, additive multi-computer sync, Tauri and WASM later). Phase 1 (indexer port) is in `syncer/`.
+ - Plan: [sync-tool.md](sync-tool.md) (Rust core + CLI, additive multi-computer sync, Tauri and WASM later). Phases 1–3 are done in `syncer/` (see its README) and replace `sync/sync.sh`.
+ - ~~Firmware lists stop at 200 entries (and relationship lists, like an album's tracks, at 50)~~: State now loads a window of `LOOKUP_WINDOW` (64) names around the visible rows (`State::ensureWindow`, `MusicLookup` lookups take an offset), so lists have no length limit. Also fixed: the `getAll*` lookups never decremented `buffer_remaining` (overrun once names passed 8 KB), and a search hit in an album past its 50th track couldn't be played within the album.
  - I might want to make it a Rust app/CMD. Tauri? I would have it compiled for all platforms on github actions and copy it to the SD card to always have it. It would be nice to have a nice managment UI for adding/sharing/removing stuff to the lib. Let's see if we need a whole collection view(Itunes like) or just a nice folder selector + loading bar.
  - Could we have a emscripten version of the Rust backend and use it directly from the website? So you can add music just by visiting the website? 
 
