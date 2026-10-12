@@ -213,6 +213,8 @@ def convert_ibm_plex_sans():
         ('IBMPlexSans-Regular.ttf', 16, 'IBMPlexSans16', None),
         ('IBMPlexSans-Bold.ttf', 16, 'IBMPlexSans16Bold', None),
         ('IBMPlexSans-Regular.ttf', 20, 'IBMPlexSans20', None),
+        # Bluetooth rename screen: the name being typed.
+        ('IBMPlexSans-SemiBold.ttf', 24, 'IBMPlexSansSemiBold24', None),
         ('IBMPlexSans-SemiBold.ttf', 60, 'IBMPlexSansSemiBold60', LABEL),
         ('IBMPlexSans-SemiBold.ttf', 46, 'IBMPlexSansSemiBold46', LABEL),
         ('IBMPlexSans-SemiBold.ttf', 36, 'IBMPlexSansSemiBold36', LABEL),
