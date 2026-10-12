@@ -36,6 +36,13 @@ Your palette is saved in this browser, so it's still there next time you open th
   the `blitLogoImage` / `drawWordmarkGlyph` helpers. Goes to
   `software/src/ui/logo.h`; `ui/boot_screen.hpp` plays it.
 
+The Bluetooth section previews Settings › Bluetooth (device list, device screen,
+forget confirmation, rename) and the header toasts, drawn the way the firmware's
+`software/src/ui/menu_view.hpp` draws them. Its five colors (`COLOR_DISABLED`,
+`COLOR_BAR_OFF`, `COLOR_BAR_OFF_HI`, `COLOR_ERROR`, `COLOR_DESTRUCTIVE`) are part of
+the palette and of the `theme.h` export. The `bt` and `chevron_r` sprites are exported
+too, but the firmware draws the same rows itself (`ui/bt_widgets.hpp`).
+
 The three tinted glyphs (`play`, `pause`, `speaker`) ship both a mask and a
 pre-tinted pixel array, so you can either blit them through the mask with a runtime
 tint, or blit the pixels directly.

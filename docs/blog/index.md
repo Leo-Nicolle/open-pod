@@ -6,6 +6,7 @@ You'll find here some articles on how the project is adcancing, how I made it wo
 
 ### 2026
 
+- [11-10](11-10.md): Bluetooth module setup
 - [09-10](09-10.md): Smooth FLAC: buses, buffers and an audio interrupt
 - [20-09](20-09.md): Displayng covers
 
