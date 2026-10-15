@@ -522,13 +522,16 @@ async fn remove_albums(app: State<'_, App>, ids: Vec<String>) -> Res<LibraryView
 #[tauri::command]
 async fn bring_back(app: State<'_, App>, id: String) -> Res<LibraryView> {
     let card = app.card()?;
-    tauri::async_runtime::spawn_blocking(move || {
+    app.begin(Job::Syncing)?;
+    let r = tauri::async_runtime::spawn_blocking(move || {
         let mut m = manifest::load(&card).map_err(err)?;
         library::bring_back(&card, &mut m, &id).map_err(err)?;
         library_view(&card)
     })
     .await
-    .map_err(err)?
+    .map_err(err);
+    app.end();
+    r?
 }
 
 /// The card's podcasts by show, with the listening state the player wrote.

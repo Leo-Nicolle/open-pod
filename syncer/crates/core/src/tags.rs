@@ -264,19 +264,27 @@ fn flac_lpc_order<R: Read + Seek>(f: &mut R) -> std::io::Result<u8> {
 }
 
 /// Rough bytes [`probe`] reads from a file of this size, to weigh progress:
-/// FLACs get the LPC scan, other formats little more than their tags.
-pub fn probe_cost(path: &Path, size: u64) -> u64 {
+/// FLACs get the LPC scan (when `lpc`), other formats little more than their tags.
+pub fn probe_cost(path: &Path, size: u64, lpc: bool) -> u64 {
     let ext = path.extension().map(|e| e.to_string_lossy().to_lowercase()).unwrap_or_default();
-    let cost = if ext == "flac" { audio::LPC_SCAN_BYTES } else { 256 * 1024 };
+    let cost = if ext == "flac" && lpc { audio::LPC_SCAN_BYTES } else { 256 * 1024 };
     size.min(cost)
 }
 
 /// Reads tags and audio properties. `rel` (library-relative path) feeds the
 /// tag fallback. Files lofty can't parse (WMA) get an extension-based codec,
 /// path-inferred tags and zeroed properties.
-pub fn probe(path: &Path, rel: &Path) -> Probed {
+///
+/// `lpc` scans a FLAC's first [`audio::LPC_SCAN_BYTES`] of audio for its
+/// LPC order (`info.lpc_order`, which decides copy vs re-encode in
+/// [`crate::policy::decide`]). It is most of the cost of probing a FLAC
+/// (~2/3 of reading a card), so files already on the card, which are never
+/// converted again, skip it and get `lpc_order: 0`.
+pub fn probe(path: &Path, rel: &Path, lpc: bool) -> Probed {
     match fs::File::open(path) {
-        Ok(f) => probe_reader(&mut std::io::BufReader::new(f), path, rel),
+        // 64 KiB: lofty seeks block to block through a FLAC's metadata, and
+        // each seek past the buffer is a round trip to the card.
+        Ok(f) => probe_reader(&mut std::io::BufReader::with_capacity(64 * 1024, f), path, rel, lpc),
         Err(_) => probe_failed(path, rel),
     }
 }
@@ -300,7 +308,7 @@ fn probe_failed(name: &Path, rel: &Path) -> Probed {
 }
 
 /// [`probe`] on any reader; `name` gives the extension.
-pub fn probe_reader<R: Read + Seek>(r: &mut R, name: &Path, rel: &Path) -> Probed {
+pub fn probe_reader<R: Read + Seek>(r: &mut R, name: &Path, rel: &Path, lpc: bool) -> Probed {
     let mut info = blank_info(name);
     let mut tags = Tags::default();
     if let Ok(file) = open_reader(r, name, false) {
@@ -319,7 +327,7 @@ pub fn probe_reader<R: Read + Seek>(r: &mut R, name: &Path, rel: &Path) -> Probe
                 info.duration = d;
             }
         }
-        if info.codec == Codec::Flac {
+        if lpc && info.codec == Codec::Flac {
             info.lpc_order = flac_lpc_order(r).unwrap_or(0);
         }
         tags = read_tags(&file, id3v23);

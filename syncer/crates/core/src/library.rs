@@ -44,7 +44,7 @@ pub fn adopt(card: &Path, progress: &(dyn Fn(AdoptProgress) + Sync)) -> io::Resu
     files.sort();
     let now = sync::now_secs();
     let costs: Vec<u64> =
-        files.iter().map(|p| tags::probe_cost(p, fs::metadata(p).map_or(0, |m| m.len()))).collect();
+        files.iter().map(|p| tags::probe_cost(p, fs::metadata(p).map_or(0, |m| m.len()), false)).collect();
     let total = AdoptProgress { files: files.len(), cost: costs.iter().sum(), ..Default::default() };
     let (done, done_cost) = (AtomicUsize::new(0), AtomicU64::new(0));
     progress(total);
@@ -55,7 +55,8 @@ pub fn adopt(card: &Path, progress: &(dyn Fn(AdoptProgress) + Sync)) -> io::Resu
     let next = AtomicUsize::new(0);
     let read = |path: &PathBuf| {
         let rel = path.strip_prefix(card).unwrap_or(path);
-        let p = tags::probe(path, rel);
+        // No LPC scan: card files are already converted (see [`tags::probe`]).
+        let p = tags::probe(path, rel, false);
         let rel_str = rel.components().map(|c| c.as_os_str().to_string_lossy()).collect::<Vec<_>>().join("/");
         adopted_entry(rel_str, fs::metadata(path).map_or(0, |m| m.len()), p, now)
     };

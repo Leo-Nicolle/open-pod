@@ -156,7 +156,7 @@ const podLine = computed(() => {
             </div>
             <div class="bar sm"><div :style="{ width: (read?.fraction ?? 0) * 100 + '%' }"></div></div>
             <div class="mono mu sm" style="display: flex; justify-content: flex-end">
-              {{ read?.eta != null ? about(read.eta) + ' left' : 'Starting…' }}
+              {{ read && read.filesDone === read.files && read.files > 0 ? 'Saving…' : read?.eta != null ? about(read.eta) + ' left' : 'Starting…' }}
             </div>
           </div>
           <p class="mu sm sep">Nothing on the card is changed. You only wait for this the first time.</p>

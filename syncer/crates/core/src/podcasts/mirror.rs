@@ -135,13 +135,13 @@ pub struct Probe {
 pub fn probe(path: &Path, rel: &Path) -> Probe {
     match fs::File::open(path) {
         Ok(f) => probe_reader(&mut io::BufReader::new(f), path, rel),
-        Err(_) => Probe { probed: tags::probe(path, rel), title: None, date: None },
+        Err(_) => Probe { probed: tags::probe(path, rel, true), title: None, date: None },
     }
 }
 
 /// [`probe`] on any reader; `name` gives the extension.
 pub fn probe_reader<R: Read + Seek>(r: &mut R, name: &Path, rel: &Path) -> Probe {
-    let probed = tags::probe_reader(r, name, rel);
+    let probed = tags::probe_reader(r, name, rel, true);
     let (title, date) = tags::episode_tags_reader(r, name);
     Probe { probed, title, date: date.as_deref().and_then(parse_date) }
 }

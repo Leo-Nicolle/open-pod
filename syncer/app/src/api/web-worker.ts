@@ -4,7 +4,7 @@
 import init, { art, convert, hash, probe, probe_episode } from '../wasm/openpod_web.js';
 
 export type Request =
-  | { id: number; op: 'probe'; file: File; name: string; rel: string }
+  | { id: number; op: 'probe'; file: File; name: string; rel: string; lpc: boolean }
   | { id: number; op: 'probeEpisode'; file: File; name: string; rel: string }
   | { id: number; op: 'hash'; file: File }
   | { id: number; op: 'convert'; file: File; name: string; policy: string }
@@ -22,7 +22,7 @@ self.onmessage = async (e: MessageEvent<Request>) => {
     let transfer: Transferable[] = [];
     switch (r.op) {
       case 'probe':
-        value = probe(r.file, r.name, r.rel);
+        value = probe(r.file, r.name, r.rel, r.lpc);
         break;
       case 'probeEpisode':
         value = probe_episode(r.file, r.name, r.rel);

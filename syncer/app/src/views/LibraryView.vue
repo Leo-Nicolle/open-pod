@@ -7,7 +7,7 @@ import PodcastShows from '../components/PodcastShows.vue';
 import ScreenHeader from '../components/ScreenHeader.vue';
 import type { CardAlbum } from '../api';
 import { albumTime, bytes, day, gb, num, plural, shortDay, trackTime } from '../format';
-import { bringBack, canCheck, card, check, choosePodcasts, loadLibrary, loadPodcasts, removeSelected, store } from '../store';
+import { bringBack, canCheck, card, check, choosePodcasts, loadLibrary, loadPodcasts, removeSelected, store, unqueue } from '../store';
 
 type Sort = 'artist' | 'album' | 'added';
 const sort = ref<Sort>('artist');
@@ -112,6 +112,7 @@ async function confirmRemove() {
   confirming.value = false;
   store.librarySelect = false;
 }
+const syncing = computed(() => store.sync.state === 'running');
 const detailMeta = computed(() => {
   const a = detail.value;
   return a ? [plural(a.tracks.length, 'track'), albumTime(a.duration), bytes(a.bytes), a.format].join(' · ') : '';
@@ -171,7 +172,11 @@ const trackNo = (t: CardAlbum['tracks'][number], a: CardAlbum) => {
             ><span>{{ detail.conversions.length ? detail.conversions.join('; ') : 'No, copied as it is' }}</span>
             <span class="mu">Tags</span><span>{{ detail.tagsGuessed ? 'Guessed from folders' : 'Read from the files' }}</span>
           </div>
-          <div><button class="btn sm danger-text" @click="startSelect(detail!)">Remove from card…</button></div>
+          <div><button class="btn sm danger-text" v-if="!store.queued.remove.has(detail.id)" @click="startSelect(detail!)">Remove from card…</button>
+            <span v-else class="mu" style="font-size: 14px"
+              >Removed when the sync finishes ·
+              <button class="link" @click="unqueue(detail.id)">Keep it</button></span
+            ></div>
         </div>
       </div>
       <div style="display: flex; flex-direction: column; border-top: 1px solid var(--ln)">
@@ -230,6 +235,7 @@ const trackNo = (t: CardAlbum['tracks'][number], a: CardAlbum) => {
             :tags-guessed="a.tagsGuessed"
             :selectable="store.librarySelect"
             :selected="store.selection.has(a.id)"
+            :class="{ queued: store.queued.remove.has(a.id) }"
             @open="open(a)"
             @artist="selectArtist(a.artist)"
           />
@@ -254,7 +260,10 @@ const trackNo = (t: CardAlbum['tracks'][number], a: CardAlbum) => {
             </div>
             <span class="badge removed">removed</span>
             <span class="mono mu" style="font-size: 13px; min-width: 190px">{{ shortDay(r.removedAt) }} · from {{ r.machine }}</span>
-            <button class="btn xxs" @click="bringBack(r.id)">Bring back</button>
+            <span v-if="store.queued.back.has(r.id)" class="mu" style="font-size: 13px"
+              >Back after the sync · <button class="link" @click="unqueue(r.id)">Undo</button></span
+            >
+            <button v-else class="btn xxs" @click="bringBack(r.id)">Bring back</button>
           </div>
           <div v-if="!lib.removed.length" class="mu" style="padding: 14px 4px; font-size: 14px">Nothing removed.</div>
         </div>
@@ -278,7 +287,7 @@ const trackNo = (t: CardAlbum['tracks'][number], a: CardAlbum) => {
         the card. Syncs from this or other computers won't add them back.
       </div>
       <div class="mu" style="font-size: 13px; line-height: 1.5">
-        Your music library isn't touched. You can bring them back later from Removed.
+        <template v-if="syncing">A sync is running: they're removed when it finishes. </template>Your music library isn't touched. You can bring them back later from Removed.
       </div>
       <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 6px">
         <button ref="cancelBtn" class="btn cancel" :disabled="removing" @click="confirming = false">Cancel</button>
@@ -291,6 +300,9 @@ const trackNo = (t: CardAlbum['tracks'][number], a: CardAlbum) => {
 </template>
 
 <style scoped>
+.queued {
+  opacity: 0.4;
+}
 .toolbar {
   display: flex;
   gap: 10px;

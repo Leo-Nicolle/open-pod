@@ -702,7 +702,7 @@ fn cmd_index_folder(music: &Path, out: &Path, opts: index::Options) -> anyhow::R
 }
 
 fn convert_one(src: &Path, dst: &Path) -> anyhow::Result<()> {
-    let probed = tags::probe(src, src.file_name().map(Path::new).unwrap_or(src));
+    let probed = tags::probe(src, src.file_name().map(Path::new).unwrap_or(src), true);
     let p = policy::decide(&probed.info, convert::ffmpeg_available());
     println!("{:?}\n{:?}\n-> {}", probed.info, probed.tags, convert::describe(&p, &probed.info));
     let start = Instant::now();

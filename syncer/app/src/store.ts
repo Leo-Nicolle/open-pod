@@ -55,6 +55,8 @@ export const store = reactive({
   podcastShow: null as string | null,
   librarySelect: false,
   selection: new Set<string>(),
+  /** Removals and bring-backs asked for during a sync, applied when it ends. */
+  queued: { remove: new Set<string>(), back: new Set<string>() },
   toast: null as string | null,
 });
 
@@ -250,6 +252,12 @@ export async function setPodcastPlayed(path: string, played: boolean) {
 
 export async function removeSelected() {
   const ids = [...store.selection];
+  if (store.sync.state === 'running') {
+    store.queued.remove = new Set([...store.queued.remove, ...ids]);
+    store.selection = new Set();
+    toast(`${ids.length === 1 ? 'It' : 'They'}'ll be removed when the sync finishes.`);
+    return;
+  }
   try {
     store.library = await api.removeAlbums(ids);
     store.selection = new Set();
@@ -261,12 +269,40 @@ export async function removeSelected() {
 }
 
 export async function bringBack(id: string) {
+  if (store.sync.state === 'running') {
+    store.queued.back = new Set([...store.queued.back, id]);
+    return;
+  }
   try {
     store.library = await api.bringBack(id);
     store.plan.summary = null;
   } catch (e) {
     toast(message(e));
   }
+}
+
+/** Takes back a removal queued during the sync. */
+export function unqueue(id: string) {
+  const r = new Set(store.queued.remove);
+  const b = new Set(store.queued.back);
+  r.delete(id);
+  b.delete(id);
+  store.queued = { remove: r, back: b };
+}
+
+/** Applies what was queued during the sync, once it has ended. */
+async function applyQueued() {
+  const { remove, back } = store.queued;
+  if (!remove.size && !back.size) return;
+  store.queued = { remove: new Set(), back: new Set() };
+  try {
+    if (remove.size) store.library = await api.removeAlbums([...remove]);
+    for (const id of back) store.library = await api.bringBack(id);
+    store.plan.summary = null;
+  } catch (e) {
+    toast(message(e));
+  }
+  void refreshCards();
 }
 
 export async function loadReport() {
@@ -322,6 +358,7 @@ export function start() {
     store.library = null;
     store.podcasts = null;
     void refreshCards();
+    void applyQueued();
   });
   void loadSettings();
   void refreshCards().then(async () => {

@@ -104,10 +104,11 @@ fn open(file: &File) -> Result<BufReader<JsFile>, JsError> {
 // ---- Worker functions ------------------------------------------------------
 
 /// Tags and audio properties of a file (JSON `Probed`). `name` gives the
-/// extension, `rel` its path in the library (the tag fallback).
+/// extension, `rel` its path in the library (the tag fallback), `lpc` scans
+/// a FLAC's LPC order (off for card files: see `tags::probe`).
 #[wasm_bindgen]
-pub fn probe(file: &File, name: &str, rel: &str) -> Result<String, JsError> {
-    let p = tags::probe_reader(&mut open(file)?, Path::new(name), Path::new(rel));
+pub fn probe(file: &File, name: &str, rel: &str, lpc: bool) -> Result<String, JsError> {
+    let p = tags::probe_reader(&mut open(file)?, Path::new(name), Path::new(rel), lpc);
     to_json(&p)
 }
 
@@ -150,8 +151,8 @@ pub fn cover_file(names: Vec<String>) -> Option<String> {
 
 /// Weight of a file in progress bars (the bytes probing reads).
 #[wasm_bindgen]
-pub fn probe_cost(name: &str, size: f64) -> f64 {
-    tags::probe_cost(Path::new(name), size as u64) as f64
+pub fn probe_cost(name: &str, size: f64, lpc: bool) -> f64 {
+    tags::probe_cost(Path::new(name), size as u64, lpc) as f64
 }
 
 /// The card's podcasts by show (JSON `CardPodcasts`). `manifest`: the

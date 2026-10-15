@@ -31,7 +31,8 @@ export function clock(secs: number): string {
 
 /** "about 40 s", "about 11 min", "about 1 h 20 min". */
 export function about(secs: number): string {
-  if (secs < 60) return `about ${Math.max(5, Math.round(secs / 5) * 5)} s`;
+  if (secs < 10) return 'a few seconds';
+  if (secs < 60) return `about ${Math.round(secs / 5) * 5} s`;
   const min = Math.round(secs / 60);
   if (min < 60) return `about ${min} min`;
   return `about ${Math.floor(min / 60)} h ${min % 60} min`;

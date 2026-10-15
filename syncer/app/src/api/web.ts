@@ -521,13 +521,13 @@ export const webApi: Api = {
       try {
         const audio = [...(await cardAudio())];
         const w = await wasm();
-        const cost = audio.map(([rel, f]) => w.probe_cost(rel, f.size));
+        const cost = audio.map(([rel, f]) => w.probe_cost(rel, f.size, false));
         const total = cost.reduce((a, b) => a + b, 0);
         let done = 0;
         let files = 0;
         const probed = await mapAll(audio, async ([rel, f], ) => {
-          const p = JSON.parse(await pool().run<string>({ op: 'probe', file: f, name: f.name, rel }));
-          done += w.probe_cost(rel, f.size);
+          const p = JSON.parse(await pool().run<string>({ op: 'probe', file: f, name: f.name, rel, lpc: false }));
+          done += w.probe_cost(rel, f.size, false);
           files++;
           const r = rate.update(done, total);
           on.read.forEach((cb) => cb({ filesDone: files, files: audio.length, fraction: total ? done / total : 1, elapsed: rate.elapsed, eta: r.eta }));
@@ -564,7 +564,7 @@ export const webApi: Api = {
     const toProbe: { path: string; rel: string }[] = JSON.parse(s.match_hashes(JSON.stringify(hashes)));
     const probed = await mapAll(toProbe, async (p) => {
       const f = libFiles.get(p.path)!;
-      return JSON.parse(await pool().run<string>({ op: 'probe', file: f, name: f.name, rel: p.rel }));
+      return JSON.parse(await pool().run<string>({ op: 'probe', file: f, name: f.name, rel: p.rel, lpc: true }));
     });
     const cardFiles: Record<string, [number, number]> = {};
     for (const [rel, f] of await cardAudio()) cardFiles[rel] = [f.size, f.lastModified];
@@ -786,6 +786,7 @@ export const webApi: Api = {
   },
 
   async removeAlbums(ids) {
+    if (syncing) throw new Error('A sync is running');
     const s = session!;
     const paths: string[] = JSON.parse(s.forget(JSON.stringify(ids), prefs().machine));
     for (const p of paths) await removeAt(card!, p);
@@ -795,6 +796,7 @@ export const webApi: Api = {
   },
 
   async bringBack(id) {
+    if (syncing) throw new Error('A sync is running');
     session!.unforget(id);
     await saveManifest();
     return webApi.library();
@@ -829,7 +831,7 @@ export const webApi: Api = {
     const st = await fileAt(card!, 'openpod/podcast_state.bin');
     if (!m || !st) throw new Error('No podcasts on this card yet.');
     const out = w.podcast_set_played(await m.text(), new Uint8Array(await st.arrayBuffer()), path, played);
-    await writeAt(card!, 'openpod/podcast_state.bin', out);
+    await writeAt(card!, 'openpod/podcast_state.bin', out as BufferSource);
     return webApi.podcasts();
   },
 

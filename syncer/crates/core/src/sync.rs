@@ -185,7 +185,7 @@ pub fn plan(m: &Manifest, files: Vec<SourceFile>, opts: &PlanOptions) -> Plan {
     let t = triage(m, files, opts);
     let hashes: Vec<io::Result<String>> = t.to_hash().par_iter().map(|f| content_hash(&f.abs, f.size)).collect();
     let mt = match_hashes(m, t, hashes, opts);
-    let probed: Vec<Probed> = mt.to_probe().par_iter().map(|f| tags::probe(&f.abs, &f.rel)).collect();
+    let probed: Vec<Probed> = mt.to_probe().par_iter().map(|f| tags::probe(&f.abs, &f.rel, true)).collect();
     finish(m, mt, probed, opts, &|rel| {
         let meta = fs::metadata(opts.card.join(rel)).ok()?;
         Some((meta.len(), mtime_ns(&meta)))
