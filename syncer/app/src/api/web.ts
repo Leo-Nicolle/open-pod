@@ -564,12 +564,19 @@ export const webApi: Api = {
     const toProbe: { path: string; rel: string }[] = JSON.parse(s.match_hashes(JSON.stringify(hashes)));
     const probed = await mapAll(toProbe, async (p) => {
       const f = libFiles.get(p.path)!;
-      return JSON.parse(await pool().run<string>({ op: 'probe', file: f, name: f.name, rel: p.rel, lpc: true }));
+      return JSON.parse(await pool().run<string>({ op: 'probe', file: f, name: f.name, rel: p.rel, lpc: false }));
     });
+    const onCard = await cardAudio();
     const cardFiles: Record<string, [number, number]> = {};
-    for (const [rel, f] of await cardAudio()) cardFiles[rel] = [f.size, f.lastModified];
+    for (const [rel, f] of onCard) cardFiles[rel] = [f.size, f.lastModified];
+    // Only the FLACs whose LPC order the plan needs get it read.
+    const checks: { path: string; onCard: boolean }[] = JSON.parse(s.finish(JSON.stringify(probed), JSON.stringify(cardFiles)));
+    const orders = await mapAll(checks, async (c) => {
+      const f = c.onCard ? onCard.get(c.path) : libFiles.get(c.path);
+      return f ? pool().run<number | null>({ op: 'lpc', file: f }).catch(() => null) : null;
+    });
     // The browser can't see free space on the card: 0 means unknown.
-    const summary: PlanSummary = JSON.parse(s.finish(JSON.stringify(probed), JSON.stringify(cardFiles), 0));
+    const summary: PlanSummary = JSON.parse(s.apply_lpc(JSON.stringify(orders), 0));
     const pod = await checkPodcasts();
     if (pod) {
       summary.podcasts = pod;
@@ -598,6 +605,7 @@ export const webApi: Api = {
       elapsed: 0,
       eta: null,
       copying: null,
+      queued: [],
       converting: [],
       recent: [],
     });

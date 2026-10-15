@@ -204,6 +204,8 @@ export interface SyncProgress {
   elapsed: number;
   eta: number | null;
   copying: { path: string; done: number; total: number } | null;
+  /** The next files to write, ready (first few). */
+  queued: string[];
   converting: { worker: number; path: string; what: string }[];
   recent: { dir: string; title: string; artist: string; tracks: number; cover: string }[];
 }

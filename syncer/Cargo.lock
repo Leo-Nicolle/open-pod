@@ -2653,6 +2653,7 @@ dependencies = [
  "fs4",
  "indicatif",
  "openpod-core",
+ "xxhash-rust",
 ]
 
 [[package]]

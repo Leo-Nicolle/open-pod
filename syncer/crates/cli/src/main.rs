@@ -140,6 +140,27 @@ enum Command {
     /// Probe one file and convert it the way sync would (debugging aid).
     #[command(hide = true)]
     Convert { src: PathBuf, dst: PathBuf },
+    /// Write a synthetic library's index to a card for the firmware test bench
+    /// (software/bench): seeded fake tracks whose files don't exist, plus the
+    /// real audio files of SAMPLES as the album "Openpod Bench Samples".
+    #[command(hide = true)]
+    BenchDataset {
+        /// Mounted bench card.
+        card: PathBuf,
+        /// Folder of audio files to copy to the card and index.
+        #[arg(long)]
+        samples: Option<PathBuf>,
+        #[arg(long, default_value_t = 20_000)]
+        tracks: u32,
+        #[arg(long, default_value_t = 1)]
+        seed: u64,
+        /// Give every album a generated cover instead of the placeholder.
+        #[arg(long)]
+        covers: bool,
+        /// Overwrite the index of a card that holds a synced library.
+        #[arg(long)]
+        force: bool,
+    },
 }
 
 #[derive(Clone, Copy, ValueEnum)]
@@ -201,6 +222,9 @@ fn main() -> anyhow::Result<()> {
         }
         Command::InstallTools { card, from } => cmd_install_tools(&cfg.card(card.card)?, from.as_deref()),
         Command::Convert { src, dst } => convert_one(&src, &dst),
+        Command::BenchDataset { card, samples, tracks, seed, covers, force } => {
+            cmd_bench_dataset(&card, samples.as_deref(), tracks, seed, covers, force)
+        }
     }
 }
 
@@ -698,6 +722,75 @@ fn cmd_index_folder(music: &Path, out: &Path, opts: index::Options) -> anyhow::R
         s.genres,
         start.elapsed().as_secs_f64()
     );
+    Ok(())
+}
+
+/// Card folder the bench samples are copied to.
+const BENCH_SAMPLES_DIR: &str = "Openpod Bench/Samples";
+
+fn cmd_bench_dataset(card: &Path, samples: Option<&Path>, tracks: u32, seed: u64, covers: bool, force: bool) -> anyhow::Result<()> {
+    use openpod_core::index::synthetic;
+    check_card(card)?;
+    let out = card.join("openpod");
+    if out.join(manifest::FILE).exists() && !force {
+        bail!("{} holds a synced library: the bench would replace its index (use a spare card, or --force)", card.display());
+    }
+    std::fs::create_dir_all(&out)?;
+    let start = Instant::now();
+
+    let mut records = synthetic::records(synthetic::Shape::for_tracks(tracks), seed);
+    let fake_count = records.len();
+    let mut sample_count = 0;
+    if let Some(dir) = samples {
+        let dest = card.join(BENCH_SAMPLES_DIR);
+        std::fs::create_dir_all(&dest)?;
+        let mut names: Vec<PathBuf> = std::fs::read_dir(dir)
+            .with_context(|| format!("reading {}", dir.display()))?
+            .filter_map(|e| e.ok().map(|e| e.path()))
+            .filter(|p| p.is_file())
+            .collect();
+        names.sort();
+        let mut copied = Vec::new();
+        for src in &names {
+            let dst = dest.join(src.file_name().unwrap());
+            let same = std::fs::metadata(&dst).is_ok_and(|d| std::fs::metadata(src).is_ok_and(|s| s.len() == d.len()));
+            if !same {
+                std::fs::copy(src, &dst).with_context(|| format!("copying {}", src.display()))?;
+            }
+            copied.push(dst);
+        }
+        for (i, mut r) in index::crawl::read_records(card, &copied).into_iter().enumerate() {
+            let stem = Path::new(&r.file_name).file_stem().map(|s| s.to_string_lossy().into_owned()).unwrap_or_default();
+            r.title = Some(stem);
+            r.artist = Some("Openpod Bench".into());
+            r.album_artist = Some("Openpod Bench".into());
+            r.album = Some("Openpod Bench Samples".into());
+            r.genre = Some("Bench".into());
+            r.track_no = i as u32 + 1;
+            records.push(r);
+        }
+        sample_count = copied.len();
+    }
+
+    let opts = index::Options { album_key: AlbumKey::ArtistAlbum, thumbs: thumbs::Config::default() };
+    let s = index::write_index(&records, &out, opts, |i| {
+        // Album art is asked once per album, for one of its tracks: key the
+        // cover on the album's folder so it doesn't depend on which one.
+        (covers && i < fake_count).then(|| {
+            let dir = Path::new(&records[i].card_path).parent().map(|p| p.to_string_lossy().into_owned()).unwrap_or_default();
+            synthetic::cover_png(xxhash_rust::xxh3::xxh3_64(dir.as_bytes()))
+        })
+    })
+    .context("indexing failed")?;
+
+    // Read back by the firmware (#dataset, 255 bytes max) and the runner.
+    let info = format!(
+        "{{\"generator\":{},\"seed\":{seed},\"tracks\":{},\"albums\":{},\"artists\":{},\"genres\":{},\"samples\":{sample_count},\"covers\":{covers}}}",
+        synthetic::GENERATOR_VERSION, s.tracks, s.albums, s.artists, s.genres
+    );
+    std::fs::write(out.join("bench.json"), format!("{info}\n"))?;
+    println!("{info}");
+    println!("indexed in {:.1}s", start.elapsed().as_secs_f64());
     Ok(())
 }
 

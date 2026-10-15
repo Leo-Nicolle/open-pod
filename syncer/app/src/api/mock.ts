@@ -374,6 +374,7 @@ export const mockApi: Api = {
       elapsed: 0,
       eta: null,
       copying: null,
+      queued: [],
       converting: [],
       recent: [],
     };

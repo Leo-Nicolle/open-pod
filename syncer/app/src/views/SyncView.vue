@@ -118,7 +118,11 @@ const [doneVal, doneUnit] = [
             </div>
             <div class="mono path">{{ c.path }}</div>
           </div>
-          <div v-if="!p?.copying && !p?.converting.length" class="mu" style="font-size: 13px">Preparing…</div>
+          <div v-if="p?.queued.length" class="item">
+            <span class="mu" style="font-size: 13px; font-weight: 600">Up next</span>
+            <div v-for="q in p.queued" :key="q" class="mono path mu">{{ q }}</div>
+          </div>
+          <div v-if="!p?.copying && !p?.converting.length && !p?.queued.length" class="mu" style="font-size: 13px">Preparing…</div>
         </section>
         <section class="panel" style="gap: 6px; padding: 20px 22px">
           <div class="label" style="margin-bottom: 6px">Done so far</div>

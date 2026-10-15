@@ -221,9 +221,9 @@ fn codec_of(file: &TaggedFile, path: &Path) -> Codec {
     }
 }
 
-/// (ID3v2.3 tag, exact duration) of an MP3. Reads the head first: only
-/// files whose first frame has no Xing/VBRI header are read in full, which
-/// matters on slow SD cards.
+/// (ID3v2.3 tag, duration) of an MP3. Reads the head only: the duration
+/// comes from a Xing/VBRI header or, for CBR, the bitrate. Only VBR files
+/// without a header are read in full, which matters on slow SD cards.
 pub(crate) fn mp3_info(path: &Path) -> (bool, Option<f64>) {
     match fs::File::open(path) {
         Ok(f) => mp3_info_reader(&mut std::io::BufReader::new(f)),
@@ -247,9 +247,25 @@ pub(crate) fn mp3_info_reader<R: Read + Seek>(f: &mut R) -> (bool, Option<f64>) 
     if let Some(d) = mp3::header_duration(&frame) {
         return (v23, Some(d));
     }
+    // A CBR podcast episode is tens of MB: its bitrate gives the length.
+    if let Some(d) = f.seek(SeekFrom::End(0)).ok().and_then(|size| mp3::cbr_duration(&frame, size.saturating_sub(tag_len))) {
+        return (v23, Some(d));
+    }
     let mut all = Vec::new();
     let full = f.seek(SeekFrom::Start(0)).is_ok() && f.read_to_end(&mut all).is_ok();
     (v23, if full { mp3::duration(&all) } else { None })
+}
+
+/// A FLAC's LPC order alone (what [`probe`] skips without `lpc`); None
+/// when the file can't be read.
+pub fn lpc_order(path: &Path) -> Option<u8> {
+    let f = fs::File::open(path).ok()?;
+    lpc_order_reader(&mut std::io::BufReader::with_capacity(64 * 1024, f))
+}
+
+/// [`lpc_order`] on any reader.
+pub fn lpc_order_reader<R: Read + Seek>(r: &mut R) -> Option<u8> {
+    flac_lpc_order(r).ok()
 }
 
 /// Highest LPC order in the first [`audio::LPC_SCAN_BYTES`] of audio,
@@ -278,8 +294,9 @@ pub fn probe_cost(path: &Path, size: u64, lpc: bool) -> u64 {
 /// `lpc` scans a FLAC's first [`audio::LPC_SCAN_BYTES`] of audio for its
 /// LPC order (`info.lpc_order`, which decides copy vs re-encode in
 /// [`crate::policy::decide`]). It is most of the cost of probing a FLAC
-/// (~2/3 of reading a card), so files already on the card, which are never
-/// converted again, skip it and get `lpc_order: 0`.
+/// (~2/3 of reading a card), so reading the card and planning skip it: the
+/// FLAC gets [`audio::LPC_UNKNOWN`], and [`crate::sync::lpc_needed`] lists
+/// the few files whose order the plan needs, read with [`lpc_order`].
 pub fn probe(path: &Path, rel: &Path, lpc: bool) -> Probed {
     match fs::File::open(path) {
         // 64 KiB: lofty seeks block to block through a FLAC's metadata, and
@@ -327,8 +344,8 @@ pub fn probe_reader<R: Read + Seek>(r: &mut R, name: &Path, rel: &Path, lpc: boo
                 info.duration = d;
             }
         }
-        if lpc && info.codec == Codec::Flac {
-            info.lpc_order = flac_lpc_order(r).unwrap_or(0);
+        if info.codec == Codec::Flac {
+            info.lpc_order = if lpc { flac_lpc_order(r).unwrap_or(0) } else { audio::LPC_UNKNOWN };
         }
         tags = read_tags(&file, id3v23);
     }

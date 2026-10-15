@@ -1,6 +1,6 @@
-//! Exact MP3 duration by walking frame headers. CBR files without a
-//! Xing/Info/VBRI header only give an estimate from their bitrate (what
-//! lofty and ffprobe report), which can be a second off.
+//! MP3 duration: from a Xing/Info/VBRI header, else estimated from the
+//! bitrate for CBR files (what lofty and ffprobe report, within a second),
+//! else exact by walking every frame header.
 
 const BITRATES_V1: [[u32; 16]; 3] = [
     [0, 32, 64, 96, 128, 160, 192, 224, 256, 288, 320, 352, 384, 416, 448, 0], // Layer I
@@ -17,6 +17,7 @@ struct Frame {
     len: usize,
     samples: u32,
     rate: u32,
+    kbps: u32,
 }
 
 fn parse_header(h: &[u8]) -> Option<Frame> {
@@ -45,7 +46,7 @@ fn parse_header(h: &[u8]) -> Option<Frame> {
         _ if version == 3 => (144 * br / rate as usize + pad, 1152),
         _ => (72 * br / rate as usize + pad, 576),
     };
-    (len >= 4).then_some(Frame { len, samples, rate })
+    (len >= 4).then_some(Frame { len, samples, rate, kbps })
 }
 
 /// Size of a leading ID3v2 tag (0 when there is none); needs the first 10 bytes.
@@ -86,6 +87,27 @@ pub fn header_duration(data: &[u8]) -> Option<f64> {
         pos += 1;
     }
     None
+}
+
+/// Frames walked by [`cbr_duration`] before trusting a constant bitrate.
+const CBR_FRAMES: usize = 8;
+
+/// Duration of a CBR stream of `audio_len` bytes from its bitrate, when the
+/// first frames of `data` (starting right after the ID3v2 tag) all share
+/// one bitrate. Off by at most a trailing tag's worth (an ID3v1 tag is 8 ms
+/// at 128 kbps), fine for mm:ss. None when they differ: a VBR stream
+/// without a header, which needs [`duration`].
+pub fn cbr_duration(data: &[u8], audio_len: u64) -> Option<f64> {
+    let mut pos = (0..data.len()).find(|&i| parse_header(&data[i..]).is_some())?;
+    let first = parse_header(&data[pos..])?;
+    for _ in 0..CBR_FRAMES {
+        let f = parse_header(data.get(pos..)?)?;
+        if f.kbps != first.kbps || f.rate != first.rate {
+            return None;
+        }
+        pos += f.len;
+    }
+    Some(audio_len as f64 * 8.0 / (first.kbps as f64 * 1000.0))
 }
 
 /// Duration in seconds, or None when no frames are found.
@@ -136,6 +158,16 @@ mod tests {
     fn counts_frames() {
         let secs = duration(&cbr(1000)).unwrap();
         assert!((secs - 1000.0 * 1152.0 / 44100.0).abs() < 1e-9);
+    }
+
+    #[test]
+    fn estimates_cbr() {
+        let d = cbr(1000);
+        let secs = cbr_duration(&d[15..], 1000 * 417).unwrap();
+        assert!((secs - 1000.0 * 1152.0 / 44100.0).abs() < 0.1);
+        let mut vbr = d[15..].to_vec();
+        vbr[417 * 3 + 2] = 0xa0; // 4th frame at 160 kbps
+        assert_eq!(cbr_duration(&vbr, 1000 * 417), None);
     }
 
     #[test]

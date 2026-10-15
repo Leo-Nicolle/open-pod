@@ -1,6 +1,6 @@
 //! What to do with each source file so the VS1053b can play it.
 
-use crate::audio::{AudioInfo, Codec, MAX_BITS, MAX_CHANNELS, MAX_LPC_ORDER, MAX_RATE};
+use crate::audio::{self, AudioInfo, Codec, MAX_BITS, MAX_CHANNELS, MAX_LPC_ORDER, MAX_RATE};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct Target {
@@ -13,9 +13,11 @@ pub struct Target {
 pub enum Policy {
     /// Plays as is.
     Copy,
-    /// Decode + (downmix/resample/requantise) + FLAC encode, in Rust.
+    /// Decode + (downmix/resample/requantise) + FLAC encode, in Rust: the
+    /// fallback without ffmpeg (and the browser build).
     Flac(Target),
-    /// Lossless formats symphonia can't decode (WavPack, APE): ffmpeg to FLAC.
+    /// The same with ffmpeg, ~6x faster than the Rust encoder; the only way
+    /// for lossless formats symphonia can't decode (WavPack, APE).
     FfmpegFlac(Target),
     /// Lossy formats other than MP3: ffmpeg to MP3 V0.
     FfmpegMp3,
@@ -56,6 +58,13 @@ fn same(i: &AudioInfo) -> Target {
     Target { rate: i.sample_rate, bits: i.bits.max(8), channels: i.channels }
 }
 
+/// Whether [`decide`] on this FLAC hangs on its unknown LPC order (copy if
+/// it is <= [`MAX_LPC_ORDER`], else re-encode); out of limits it is
+/// re-encoded anyway.
+pub fn needs_lpc(i: &AudioInfo) -> bool {
+    i.codec == Codec::Flac && i.lpc_order == audio::LPC_UNKNOWN && within_limits(i)
+}
+
 pub fn decide(i: &AudioInfo, have_ffmpeg: bool) -> Policy {
     if i.codec != Codec::OtherLossy && i.codec != Codec::Mp3 && i.sample_rate == 0 {
         return Policy::Unsupported("unreadable audio properties".into());
@@ -63,13 +72,13 @@ pub fn decide(i: &AudioInfo, have_ffmpeg: bool) -> Policy {
     match i.codec {
         Codec::Mp3 => Policy::Copy,
         Codec::Flac if within_limits(i) && i.lpc_order <= MAX_LPC_ORDER => Policy::Copy,
-        // In limits but past the FLAC subset: lossless re-encode.
-        Codec::Flac if within_limits(i) => Policy::Flac(same(i)),
+        // Past the FLAC subset or the limits, or not FLAC: encoded to FLAC,
+        // by ffmpeg when there.
+        Codec::Flac | Codec::Wav | Codec::Aiff | Codec::Alac | Codec::OtherLossless if have_ffmpeg => {
+            Policy::FfmpegFlac(if within_limits(i) { same(i) } else { playable_target(i) })
+        }
         Codec::Flac | Codec::Wav | Codec::Aiff | Codec::Alac => {
             Policy::Flac(if within_limits(i) { same(i) } else { playable_target(i) })
-        }
-        Codec::OtherLossless if have_ffmpeg => {
-            Policy::FfmpegFlac(if within_limits(i) { same(i) } else { playable_target(i) })
         }
         Codec::OtherLossy if have_ffmpeg => Policy::FfmpegMp3,
         Codec::OtherLossless | Codec::OtherLossy => Policy::Unsupported("needs ffmpeg (not found on PATH)".into()),
@@ -122,5 +131,10 @@ mod tests {
         assert_eq!(decide(&info(OtherLossy, 44100, 0, 2, 0), true), Policy::FfmpegMp3);
         assert!(matches!(decide(&info(OtherLossy, 44100, 0, 2, 0), false), Policy::Unsupported(_)));
         assert_eq!(decide(&info(OtherLossless, 44100, 16, 2, 0), true), Policy::FfmpegFlac(t(44100, 16, 2)));
+        // ffmpeg, when there, encodes every FLAC.
+        assert_eq!(decide(&info(Flac, 44100, 16, 2, 8), true), Policy::Copy);
+        assert_eq!(decide(&info(Flac, 44100, 16, 2, 32), true), Policy::FfmpegFlac(t(44100, 16, 2)));
+        assert_eq!(decide(&info(Flac, 96000, 24, 2, 8), true), Policy::FfmpegFlac(t(48000, 16, 2)));
+        assert_eq!(decide(&info(Wav, 44100, 16, 2, 0), true), Policy::FfmpegFlac(t(44100, 16, 2)));
     }
 }

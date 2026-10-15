@@ -14,6 +14,8 @@ const EVERY: Duration = Duration::from_millis(200);
 /// start.
 const WINDOW: Duration = Duration::from_secs(10);
 const RECENT: usize = 6;
+/// Files shown in "Up next".
+const QUEUED: usize = 4;
 
 #[derive(Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -54,6 +56,8 @@ pub struct SyncProgress {
     pub elapsed: f64,
     pub eta: Option<f64>,
     pub copying: Option<Copying>,
+    /// The next files to write, ready (short paths, first few).
+    pub queued: Vec<String>,
     pub converting: Vec<Converting>,
     pub recent: Vec<RecentAlbum>,
 }
@@ -63,6 +67,8 @@ struct State {
     /// Estimated bytes of the files already written (the bar's position
     /// without the file in progress).
     advanced: u64,
+    /// Bytes of the file in `p.copying` so far.
+    copy_done: u64,
     samples: VecDeque<(Instant, u64)>,
     last_emit: Option<Instant>,
 }
@@ -91,6 +97,7 @@ impl Reporter {
             state: Mutex::new(State {
                 p: SyncProgress { files_total: files, bytes_total: bytes, ..Default::default() },
                 advanced: 0,
+                copy_done: 0,
                 samples: VecDeque::new(),
                 last_emit: None,
             }),
@@ -141,9 +148,13 @@ impl sync::Progress for Reporter {
     fn advance(&self, bytes: u64, label: &str) {
         let mut s = self.state.lock().unwrap();
         s.advanced += bytes;
-        s.p.bytes_done = s.advanced.min(s.p.bytes_total);
         s.p.files_done += 1;
-        s.p.copying = None;
+        // The next file may already be copying while this one is synced.
+        if s.p.copying.as_ref().is_some_and(|c| c.path == short_path(Path::new(label))) {
+            s.p.copying = None;
+            s.copy_done = 0;
+        }
+        s.p.bytes_done = (s.advanced + s.copy_done).min(s.p.bytes_total);
         if let Some((dir, _)) = label.rsplit_once('/') {
             match s.p.recent.iter().position(|r| r.dir == dir) {
                 Some(i) => {
@@ -177,8 +188,15 @@ impl sync::Progress for Reporter {
     fn copying(&self, dest: &str, done: u64, total: u64) {
         let mut s = self.state.lock().unwrap();
         // The bar moves within the file too, scaled to its estimated share.
+        s.copy_done = done;
         s.p.bytes_done = (s.advanced + done).min(s.p.bytes_total);
         s.p.copying = Some(Copying { path: short_path(Path::new(dest)), done, total });
+        self.emit(&mut s, false);
+    }
+
+    fn queued(&self, dests: &[&str]) {
+        let mut s = self.state.lock().unwrap();
+        s.p.queued = dests.iter().take(QUEUED).map(|d| short_path(Path::new(d))).collect();
         self.emit(&mut s, false);
     }
 

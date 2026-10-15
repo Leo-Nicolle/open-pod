@@ -13,6 +13,14 @@ license = "MIT"
 [profile.dev.package."*"]
 opt-level = 3
 
+# The sync's hot paths (probing, the Rust FLAC encoder): `tauri dev`
+# converts ~2x slower without it.
+[profile.dev.package.openpod-core]
+opt-level = 3
+# Incremental + optimized workspace crate: stale objects end in "undefined
+# hidden symbol" link errors after edits. It rebuilds whole (~30 s).
+incremental = false
+
 [profile.release]
 lto = "thin"
 codegen-units = 1

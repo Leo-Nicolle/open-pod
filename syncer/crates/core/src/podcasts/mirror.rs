@@ -424,7 +424,7 @@ impl Outcome {
 }
 
 /// Runs the plan on a mounted card: deletes, renames, then copies
-/// (`jobs` conversions at a time, written one by one). The manifest is
+/// (through [`sync::pipeline`], `jobs` conversions at a time). The manifest is
 /// saved as it goes, so an interrupted run (`stop`) loses nothing.
 pub fn execute(
     card: &Path,
@@ -472,65 +472,40 @@ pub fn execute(
         let tmp = std::env::temp_dir().join(format!("openpod-podcasts-{}", std::process::id()));
         fs::create_dir_all(&tmp)?;
         progress.start(plan.copies.len(), plan.bytes_needed());
-        for (chunk_no, chunk) in plan.copies.chunks(jobs.max(1)).enumerate() {
-            if stop.load(Ordering::Relaxed) {
-                break;
-            }
-            let ready: Vec<Result<(PathBuf, bool), String>> = chunk
-                .par_iter()
-                .enumerate()
-                .map(|(i, c)| {
-                    if c.policy == Policy::Copy {
-                        return Ok((c.source.abs.clone(), false));
-                    }
-                    let dst = tmp.join(format!("{chunk_no}-{i}.{}", c.policy.output_ext("flac")));
-                    progress.converting(i, &c.source.abs, Some(&convert::describe(&c.policy, &c.probed.info)));
-                    let r = convert::run(&c.policy, &c.source.abs, &dst).map(|()| (dst.clone(), true)).map_err(|e| {
-                        let _ = fs::remove_file(&dst);
-                        e.to_string()
-                    });
-                    progress.converting(i, &c.source.abs, None);
-                    r
-                })
-                .collect();
-            for (c, r) in chunk.iter().zip(ready) {
-                let (file, temp) = match r {
-                    Ok(x) => x,
-                    Err(e) => {
-                        progress.warn(&format!("{}: {e}", c.source.abs.display()));
-                        out.failed.push((c.source.abs.clone(), e));
-                        progress.advance(c.estimated_size, "");
-                        continue;
-                    }
-                };
-                let t0 = Instant::now();
-                let written = sync::write_to_card(&file, card, &c.dest, &|done, total| progress.copying(&c.dest, done, total));
-                out.write_secs += t0.elapsed().as_secs_f64();
-                if temp {
-                    let _ = fs::remove_file(&file);
-                }
-                match written {
-                    Ok(size) => {
-                        record_copy(m, c, size);
-                        out.copied.push(c.dest.clone());
-                        out.bytes += size;
-                        if let (Some(src), Some(dst)) = (c.source.abs.parent(), card.join(&c.dest).parent()) {
-                            cover_dirs.insert((src.to_path_buf(), dst.to_path_buf()));
-                        }
-                    }
-                    Err(e) => {
-                        progress.warn(&format!("writing {}: {e}", c.dest));
-                        out.failed.push((c.source.abs.clone(), e.to_string()));
-                        if e.kind() == io::ErrorKind::StorageFull {
-                            stop.store(true, Ordering::Relaxed);
-                        }
+        let items: Vec<sync::Job> = plan
+            .copies
+            .iter()
+            .map(|c| sync::Job { src: &c.source.abs, policy: &c.policy, info: &c.probed.info, dest: &c.dest })
+            .collect();
+        let mut since_save = 0;
+        let mut last_save = Instant::now();
+        let result = sync::pipeline(card, &items, jobs, &tmp, stop, progress, &mut |i, r| {
+            let c = &plan.copies[i];
+            match r {
+                Ok(size) => {
+                    record_copy(m, c, size);
+                    out.copied.push(c.dest.clone());
+                    out.bytes += size;
+                    if let (Some(src), Some(dst)) = (c.source.abs.parent(), card.join(&c.dest).parent()) {
+                        cover_dirs.insert((src.to_path_buf(), dst.to_path_buf()));
                     }
                 }
-                progress.advance(c.estimated_size, &c.dest);
+                Err(f) => {
+                    let e = f.report(progress, &c.source.abs, &c.dest);
+                    out.failed.push((c.source.abs.clone(), e));
+                }
             }
-            super::save(card, m)?;
-        }
+            progress.advance(c.estimated_size, &c.dest);
+            since_save += 1;
+            if since_save >= sync::CHECKPOINT_EVERY || last_save.elapsed().as_secs() >= sync::CHECKPOINT_SECS {
+                super::save(card, m)?;
+                since_save = 0;
+                last_save = Instant::now();
+            }
+            Ok(())
+        });
         let _ = fs::remove_dir_all(&tmp);
+        out.write_secs = result?;
     }
     for (src, dst) in cover_dirs {
         if dst.is_dir() {

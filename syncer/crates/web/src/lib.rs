@@ -149,6 +149,12 @@ pub fn cover_file(names: Vec<String>) -> Option<String> {
     crawl::cover_file(&names).cloned()
 }
 
+/// A FLAC's LPC order (see `Session::finish`); undefined when unreadable.
+#[wasm_bindgen]
+pub fn lpc_order(file: &File) -> Result<Option<u8>, JsError> {
+    Ok(tags::lpc_order_reader(&mut open(file)?))
+}
+
 /// Weight of a file in progress bars (the bytes probing reads).
 #[wasm_bindgen]
 pub fn probe_cost(name: &str, size: f64, lpc: bool) -> f64 {
@@ -241,6 +247,8 @@ pub struct Session {
     triage: Option<Triage>,
     matched: Option<Matched>,
     plan: Option<Plan>,
+    lpc: Vec<sync::LpcCheck>,
+    card_files: HashMap<String, (u64, f64)>,
     info: PlanInfo,
     writes: Vec<Write>,
     dests: Vec<String>,
@@ -266,6 +274,8 @@ impl Session {
             triage: None,
             matched: None,
             plan: None,
+            lpc: Vec::new(),
+            card_files: HashMap::new(),
             info: PlanInfo::default(),
             writes: Vec::new(),
             dests: Vec::new(),
@@ -346,19 +356,42 @@ impl Session {
 
     /// Planning, step 3. `probed`: JSON `Probed[]` following
     /// [`Session::match_hashes`]; `card_files`: JSON `{cardPath: [size,
-    /// modifiedMs]}` of the card's audio files; `free`: free bytes on the card.
-    /// Returns "What's new" (JSON `PlanSummary`).
-    pub fn finish(&mut self, probed: &str, card_files: &str, free: f64) -> Result<String, JsError> {
+    /// modifiedMs]}` of the card's audio files. Returns the FLACs whose LPC
+    /// order the plan needs (JSON `[{path, onCard}]`: a library path, or a
+    /// card path), to read with `lpc_order` and pass to
+    /// [`Session::apply_lpc`].
+    pub fn finish(&mut self, probed: &str, card_files: &str) -> Result<String, JsError> {
         let probed: Vec<Probed> = from_json(probed)?;
-        let card_files: HashMap<String, (u64, f64)> = from_json(card_files)?;
+        self.card_files = from_json(card_files)?;
         let mt = self.matched.take().ok_or_else(|| JsError::new("match hashes first"))?;
         let opts = self.opts.as_ref().unwrap();
+        let card_files = &self.card_files;
         let plan = sync::finish(&self.m, mt, probed, opts, &|rel| {
             card_files.get(rel).map(|&(size, ms)| (size, (ms * 1e6) as i128))
         });
-        let summary = view::plan_summary(&plan, &self.m, free as u64);
+        self.lpc = sync::lpc_needed(&self.m, &plan, opts);
         self.plan = Some(plan);
-        to_json(&summary)
+        #[derive(Serialize)]
+        #[serde(rename_all = "camelCase")]
+        struct C<'a> {
+            path: std::borrow::Cow<'a, str>,
+            on_card: bool,
+        }
+        to_json(&self.lpc.iter().map(|c| C { path: c.path.to_string_lossy(), on_card: c.on_card }).collect::<Vec<_>>())
+    }
+
+    /// Planning, step 4. `orders`: JSON `(number | null)[]` following
+    /// [`Session::finish`]'s list; `free`: free bytes on the card. Returns
+    /// "What's new" (JSON `PlanSummary`).
+    pub fn apply_lpc(&mut self, orders: &str, free: f64) -> Result<String, JsError> {
+        let orders: Vec<Option<u8>> = from_json(orders)?;
+        let plan = self.plan.as_mut().ok_or_else(|| JsError::new("finish first"))?;
+        let opts = self.opts.as_ref().unwrap();
+        let card_files = &self.card_files;
+        sync::apply_lpc(&self.m, plan, &self.lpc, &orders, opts, &|rel| {
+            card_files.get(rel).map(|&(size, ms)| (size, (ms * 1e6) as i128))
+        });
+        to_json(&view::plan_summary(plan, &self.m, free as u64))
     }
 
     /// Starts executing the plan: links the files already on the card and

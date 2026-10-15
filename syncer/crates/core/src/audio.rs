@@ -77,6 +77,9 @@ pub const MAX_RATE: u32 = 48_000;
 pub const MAX_BITS: u8 = 24;
 pub const MAX_CHANNELS: u8 = 2;
 pub const MAX_LPC_ORDER: u8 = 12;
+/// `AudioInfo::lpc_order` of a FLAC probed without the LPC scan (see
+/// `tags::probe`): resolved by `sync::lpc_needed` when a plan needs it.
+pub const LPC_UNKNOWN: u8 = u8::MAX;
 
 /// Highest predictor order in the first `max_frames` FLAC frames, from frame
 /// and subframe headers only (port of the former `sync/flac-max-lpc-order.py`). A frame

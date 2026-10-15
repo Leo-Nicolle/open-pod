@@ -363,6 +363,9 @@ pub fn run(policy: &Policy, src: &Path, dst: &Path) -> Result<(), Error> {
                 "flac".into(),
                 "-compression_level".into(),
                 "8".into(),
+                // TPDF dither when the bit depth drops, like the Rust path.
+                "-af".into(),
+                "aresample=dither_method=triangular".into(),
                 "-ar".into(),
                 t.rate.to_string(),
                 "-ac".into(),

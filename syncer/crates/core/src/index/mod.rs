@@ -5,6 +5,7 @@ pub mod binary;
 pub mod crawl;
 pub mod model;
 pub mod mp3;
+pub mod synthetic;
 pub mod text;
 pub mod thumbs;
 pub mod trie;
