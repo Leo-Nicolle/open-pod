@@ -32,3 +32,21 @@ export function duration(s: number) {
   s = Math.round(s);
   return s < 60 ? `${s} s` : `${Math.floor(s / 60)} m ${String(s % 60).padStart(2, "0")} s`;
 }
+
+export type Change = { kind: "worse" | "better" | "same" | "changed"; text: string };
+
+/**
+ * B against A. Below `threshold` (relative) it's noise, except a count (underruns)
+ * rising from zero. `better` null: no right direction, only "changed".
+ */
+export function changeOf(a: number | undefined, b: number | undefined, better: "lower" | "higher" | null, count = false, threshold = 0.1): Change | null {
+  if (a === undefined || b === undefined) return null;
+  const delta = b - a;
+  const rel = a === 0 ? (delta ? Infinity : 0) : delta / Math.abs(a);
+  const text = a === 0 ? (delta ? `${delta > 0 ? "+" : ""}${Math.round(delta * 100) / 100}` : "same") : `${rel > 0 ? "+" : "−"}${Math.abs(Math.round(rel * 100))}%`;
+  const significant = Math.abs(rel) > threshold || (count && a === 0 && b > 0);
+  if (!significant) return { kind: "same", text: "same" };
+  if (!better) return { kind: "changed", text };
+  const worse = better === "lower" ? delta > 0 : delta < 0;
+  return worse ? { kind: "worse", text: `▲ ${text} worse` } : { kind: "better", text: `▼ ${text} better` };
+}

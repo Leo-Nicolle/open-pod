@@ -6,6 +6,7 @@ import UIBuilder from "./components/ui-builder/UIBuilder.vue";
 import PinoutViewer from "./components/pinmap/PinoutViewer.vue";
 import BenchReport from "./components/BenchReport.vue";
 import BenchLive from "./components/bench/BenchLive.vue";
+import BenchCompare from "./components/bench/BenchCompare.vue";
 import PinoutLayout from "./layouts/PinoutLayout.vue";
 import SyncLayout from "./layouts/SyncLayout.vue";
 import { setup } from "@css-render/vue3-ssr";
@@ -65,6 +66,7 @@ export default {
     app.component("PinoutViewer", PinoutViewer);
     app.component("BenchReport", BenchReport);
     app.component("BenchLive", BenchLive);
+    app.component("BenchCompare", BenchCompare);
     app.component("PinoutLayout", PinoutLayout);
     app.component("SyncLayout", SyncLayout);
 

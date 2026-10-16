@@ -537,7 +537,7 @@ import LiveChart, { type LegendItem, type Point } from "./LiveChart.vue";
 import LoopBar from "./LoopBar.vue";
 import EventTimeline from "./EventTimeline.vue";
 import Seg from "./Seg.vue";
-import { FRAME_MS, clock, duration, fmtN, fmtParts } from "./format.ts";
+import { FRAME_MS, changeOf, clock, duration, fmtN, fmtParts } from "./format.ts";
 import { connectWebSerial, webSerialSupported } from "./web-serial.ts";
 import { demoDevice } from "./demo-device.ts";
 
@@ -1399,16 +1399,7 @@ const reportKB = computed(() => Math.max(1, Math.round(new Blob([reportJson.valu
 const publishCmd = computed(() => `npm run bench -- import ~/Downloads/${fileName.value}`);
 
 function change(m: Metric) {
-  const a = reference.value?.summary[m.key];
-  const b = summary.value[m.key];
-  if (a === undefined || b === undefined) return null;
-  const delta = b - a;
-  const rel = a === 0 ? (delta ? Infinity : 0) : delta / Math.abs(a);
-  const worse = m.better === "lower" ? delta > 0 : delta < 0;
-  const text = a === 0 ? (delta ? `${delta > 0 ? "+" : ""}${delta}` : "same") : `${rel > 0 ? "+" : "−"}${Math.abs(Math.round(rel * 100))}%`;
-  const significant = Math.abs(rel) > 0.1 || (m.unit === "count" && a === 0 && b > 0);
-  if (!significant) return { kind: "same", text: "same" };
-  return worse ? { kind: "worse", text: `▲ ${text} worse` } : { kind: "better", text: `▼ ${text} better` };
+  return changeOf(reference.value?.summary[m.key], summary.value[m.key], m.better, m.unit === "count");
 }
 const counts = computed(() => {
   const c = { worse: 0, better: 0, same: 0 };

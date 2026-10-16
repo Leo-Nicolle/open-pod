@@ -35,6 +35,7 @@ export default defineConfig({
           { text: "UI builder", link: "/tools/ui-builder" },
           { text: "Benchmarks", link: "/tools/bench" },
           { text: "Live bench", link: "/tools/bench-live" },
+          { text: "Compare bench reports", link: "/tools/bench-compare" },
         ],
       },
       { text: "Blog", link: "/blog/", activeMatch: "^/blog/" },
@@ -58,6 +59,7 @@ export default defineConfig({
             { text: "UI builder", link: "/tools/ui-builder" },
             { text: "Benchmarks", link: "/tools/bench" },
             { text: "Live bench", link: "/tools/bench-live" },
+            { text: "Compare bench reports", link: "/tools/bench-compare" },
           ],
         },
         {
