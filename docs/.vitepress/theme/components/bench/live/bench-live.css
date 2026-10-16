@@ -1,0 +1,325 @@
+/* Shared by BenchLive and its live/ sections. Imported first, before the sections' scoped
+   styles; each selector carries one more class than it needs, standing in for the scope
+   attribute these rules had in BenchLive.vue, so section rules override them as before. */
+/* Light first; dark below. Tokens from the OpenPod Sync identity. */
+.bl.bl {
+  --bl-bg: var(--vp-c-bg);
+  --bl-chrome: #f6f6f7;
+  --bl-surface: var(--vp-c-bg-soft);
+  --bl-surface2: #ebebef;
+  --bl-line: var(--vp-c-divider);
+  --bl-line2: #c2c2c4;
+  --bl-text: var(--vp-c-text-1);
+  --bl-muted: var(--vp-c-text-2);
+  --bl-brand: #972d6f;
+  --bl-brandbtn: #972d6f;
+  --bl-brandhover: #b03d83;
+  --bl-brand2: #d98fbb;
+  --bl-brandsoft: rgba(151, 45, 111, 0.11);
+  --bl-grad: linear-gradient(90deg, #972d6f, #60a534);
+  --bl-green: #3d7419;
+  --bl-greensoft: rgba(96, 165, 52, 0.14);
+  --bl-sgreen: #60a534;
+  --bl-amber: #9a5b00;
+  --bl-ambersoft: rgba(154, 91, 0, 0.11);
+  --bl-red: #a9392f;
+  --bl-redsoft: rgba(169, 57, 47, 0.11);
+  --bl-band: rgba(169, 57, 47, 0.12);
+  --bl-mono: "IBM Plex Mono", var(--vp-font-family-mono);
+
+  /* Full width, out of the doc column. */
+  margin: 24px calc(50% - 50vw) 0;
+  font-family: "Space Grotesk", var(--vp-font-family-base);
+  font-size: 14px;
+  line-height: 1.45;
+  font-variant-numeric: tabular-nums;
+  color: var(--bl-text);
+  background: var(--bl-bg);
+  container-type: inline-size;
+}
+:root.dark .bl.bl {
+  --bl-chrome: #161618;
+  --bl-surface2: #32363f;
+  --bl-line2: #3c3f44;
+  --bl-brand: #cb5297;
+  --bl-brand2: #80406a;
+  --bl-brandsoft: rgba(203, 82, 151, 0.16);
+  --bl-grad: linear-gradient(90deg, #cb5297, #96dd42);
+  --bl-green: #96dd42;
+  --bl-greensoft: rgba(150, 221, 66, 0.13);
+  --bl-sgreen: #96dd42;
+  --bl-amber: #f0a83a;
+  --bl-ambersoft: rgba(240, 168, 58, 0.13);
+  --bl-red: #e8857b;
+  --bl-redsoft: rgba(232, 133, 123, 0.14);
+  --bl-band: rgba(232, 133, 123, 0.18);
+}
+.bl.bl button,
+.bl.bl input {
+  font-family: inherit;
+}
+.bl.bl h2 {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  font-size: 24px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+}
+.bl.bl p {
+  margin: 0;
+}
+.bl.bl a {
+  color: var(--bl-brand);
+}
+.bl.bl code {
+  padding: 0;
+  background: none;
+  font-family: var(--bl-mono);
+  font-size: 12px;
+  color: var(--bl-text);
+}
+
+/* --- Bits ---------------------------------------------------------------- */
+.bl .bl-mono {
+  font-family: var(--bl-mono);
+}
+.bl .bl-muted {
+  color: var(--bl-muted);
+}
+.bl .bl-text {
+  color: var(--bl-text);
+}
+.bl .bl-small {
+  font-size: 12px;
+}
+.bl .bl-xs {
+  font-size: 11px;
+}
+.bl .bl-spacer {
+  flex: 1;
+}
+.bl .bl-label {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--bl-muted);
+}
+.bl .bl-cmd {
+  font-family: var(--bl-mono);
+  font-size: 12px;
+  color: var(--bl-text);
+}
+.bl .bl-panel {
+  background: var(--bl-surface);
+  border: 1px solid var(--bl-line);
+  border-radius: 12px;
+}
+.bl .bl-badge {
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  padding: 0 7px;
+  border-radius: 4px;
+  font-family: var(--bl-mono);
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: none;
+  letter-spacing: 0;
+  white-space: nowrap;
+}
+.bl .bl-badge.brand {
+  background: var(--bl-brandsoft);
+  color: var(--bl-brand);
+}
+.bl .bl-badge.amber {
+  background: var(--bl-ambersoft);
+  color: var(--bl-amber);
+}
+.bl .bl-badge.red {
+  background: var(--bl-redsoft);
+  color: var(--bl-red);
+}
+.bl .bl-badge.green {
+  background: var(--bl-greensoft);
+  color: var(--bl-green);
+}
+.bl .bl-badge.muted {
+  background: var(--bl-surface2);
+  color: var(--bl-muted);
+}
+.bl .bl-note {
+  padding: 12px 14px;
+  border-radius: 10px;
+  font-size: 13px;
+  text-wrap: pretty;
+}
+.bl .bl-note.amber {
+  background: var(--bl-ambersoft);
+}
+.bl .bl-note.amber b {
+  font-weight: 600;
+  color: var(--bl-amber);
+}
+.bl .bl-note.red {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px 16px;
+  background: var(--bl-redsoft);
+}
+.bl .bl-note.red b,
+.bl .bl-note-title {
+  font-weight: 600;
+  color: var(--bl-red);
+}
+
+/* Buttons */
+.bl .bl-ghost,
+.bl .bl-primary,
+.bl .bl-text-btn {
+  height: 34px;
+  padding: 0 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.bl .bl-ghost {
+  border: 1px solid var(--bl-line2);
+  background: transparent;
+  color: var(--bl-text);
+}
+.bl .bl-ghost:hover:not(:disabled) {
+  background: var(--bl-surface2);
+}
+.bl .bl-ghost.sm {
+  height: 32px;
+  padding: 0 12px;
+}
+.bl .bl-ghost.md,
+.bl .bl-text-btn.md {
+  height: 36px;
+  padding: 0 12px;
+}
+.bl .bl-ghost.xs {
+  height: 26px;
+  padding: 0 10px;
+  font-size: 12px;
+}
+.bl .bl-ghost.mono {
+  height: 38px;
+  padding: 0;
+  font-family: var(--bl-mono);
+}
+.bl .bl-text-btn {
+  padding: 0 10px;
+  border: 0;
+  background: transparent;
+  color: var(--bl-muted);
+}
+.bl .bl-text-btn:hover {
+  color: var(--bl-text);
+}
+.bl .bl-primary {
+  height: 38px;
+  padding: 0 18px;
+  border: 0;
+  background: var(--bl-brandbtn);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+}
+.bl .bl-primary:hover:not(:disabled) {
+  background: var(--bl-brandhover);
+}
+.bl .bl-primary:disabled,
+.bl .bl-primary.quiet {
+  background: var(--bl-surface2);
+  color: var(--bl-muted);
+  cursor: default;
+}
+.bl .bl-primary.quiet:not(:disabled) {
+  color: var(--bl-text);
+  cursor: pointer;
+}
+.bl .bl-primary.wide {
+  width: 100%;
+}
+.bl .bl-ghost:disabled,
+.bl .bl-text-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.bl .bl-check {
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  flex: none;
+  box-sizing: border-box;
+  border: 1.5px solid var(--bl-line2);
+  border-radius: 5px;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+}
+.bl .bl-check.on {
+  border-color: var(--bl-brandbtn);
+  background: var(--bl-brandbtn);
+}
+.bl .bl-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--bl-text);
+  font-size: 13px;
+  cursor: pointer;
+}
+.bl .bl-checkbox:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.bl.bl input:not([type="checkbox"]) {
+  height: 36px;
+  padding: 0 10px;
+  box-sizing: border-box;
+  border: 1px solid var(--bl-line2);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--bl-text);
+  font-size: 13px;
+  outline: none;
+}
+.bl.bl input:focus {
+  border-color: var(--bl-text);
+}
+
+/* Runner */
+.bl .bl-runner {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+.bl .bl-section-head {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.bl .bl-section-head p {
+  text-wrap: pretty;
+}
+.bl .bl-run-foot {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+}

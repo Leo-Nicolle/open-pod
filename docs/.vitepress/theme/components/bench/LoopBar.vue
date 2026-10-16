@@ -8,6 +8,33 @@
       <slot name="units" />
     </header>
     <template v-if="parts">
+      <div class="lb-stats">
+        <div class="lb-stat" title="Average time of one main-loop pass, everything included">
+          <span>Loop total</span>
+          <b>{{ fmtUs(avgUs) }}</b>
+          <small>{{ ((avgUs / (FRAME_MS * 1000)) * 100).toFixed(1) }}% of frame</small>
+        </div>
+        <div class="lb-stat" title="Longest single main-loop pass in the window">
+          <span>Worst pass</span>
+          <b :class="{ bad: worstMs > FRAME_MS }">{{ fmtUs(worstMs * 1000) }}</b>
+          <small>{{ ((worstMs / FRAME_MS) * 100).toFixed(0) }}% of frame</small>
+        </div>
+        <div class="lb-stat" title="Main-loop passes per second">
+          <span>Loop rate</span>
+          <b>{{ Math.round(loopsPerS).toLocaleString("en-US") }}/s</b>
+        </div>
+        <div
+          class="lb-stat lb-fps"
+          :class="fpsLevel"
+          :title="`The UI draws at most one frame per loop pass, capped at ${MAX_FPS} FPS (AnimationManager::FRAME_TIME_US). This is the frame rate the loop allows while animating.`"
+        >
+          <span>FPS</span>
+          <b>{{ fps.toFixed(fps < 10 ? 1 : 0) }}</b>
+          <div class="lb-meter" role="meter" :aria-valuenow="fps" aria-valuemin="0" :aria-valuemax="MAX_FPS" aria-label="Frames per second">
+            <i :style="{ width: `${(100 * fps) / MAX_FPS}%` }" />
+          </div>
+        </div>
+      </div>
       <div class="lb-bar" role="img" :aria-label="ariaLabel" @mouseleave="hot = null">
         <span
           v-for="p in parts.filter((p) => p.pct > 0)"
@@ -76,6 +103,19 @@ const loopsPerS = computed(() => {
   return ms ? (1000 * props.samples.reduce((a, s) => a + s.loops, 0)) / ms : 0;
 });
 
+/** Average duration of one main-loop pass, in µs (time between loop() calls included). */
+const avgUs = computed(() => (loopsPerS.value ? 1e6 / loopsPerS.value : 0));
+const worstMs = computed(() => Math.max(0, ...props.samples.map((s) => s.maxLoopMs)));
+
+/** Frames a second the loop allows: one frame per pass at most, capped by the animation frame time. */
+const MAX_FPS = Math.round(1000 / FRAME_MS);
+const fps = computed(() => Math.min(loopsPerS.value, 1000 / FRAME_MS));
+const fpsLevel = computed(() => (fps.value >= MAX_FPS - 5 ? "good" : fps.value >= 30 ? "warn" : "bad"));
+
+function fmtUs(us: number) {
+  return us >= 1000 ? `${(us / 1000).toFixed(us >= 10000 ? 1 : 2)} ms` : `${Math.round(us)} µs`;
+}
+
 const parts = computed(() => {
   const n = props.samples.length;
   if (!n || props.samples.every((s) => s.busyMs.loop === undefined)) return null;
@@ -136,6 +176,70 @@ const ariaLabel = computed(
   margin-top: 2px;
   font-size: 12px;
   color: var(--bl-muted);
+}
+.lb-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 28px;
+}
+.lb-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 90px;
+}
+.lb-stat span {
+  font-size: 11px;
+  color: var(--bl-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.lb-stat b {
+  font-family: var(--bl-mono);
+  font-size: 18px;
+  font-weight: 500;
+}
+.lb-stat b.bad {
+  color: var(--bl-red);
+}
+.lb-stat small {
+  font-size: 11px;
+  color: var(--bl-muted);
+}
+.lb-fps {
+  min-width: 120px;
+}
+.lb-fps.good b {
+  color: var(--bl-green);
+}
+.lb-fps.warn b {
+  color: var(--bl-amber);
+}
+.lb-fps.bad b {
+  color: var(--bl-red);
+}
+.lb-meter {
+  height: 6px;
+  margin-top: 4px;
+  border-radius: 3px;
+  background: var(--bl-surface2);
+  overflow: hidden;
+}
+.lb-meter i {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+  background: currentColor;
+  transition: width 0.3s;
+}
+.lb-fps.good .lb-meter i {
+  background: var(--bl-sgreen);
+}
+.lb-fps.warn .lb-meter i {
+  background: var(--bl-amber);
+}
+.lb-fps.bad .lb-meter i {
+  background: var(--bl-red);
 }
 .lb-bar {
   display: flex;
