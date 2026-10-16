@@ -130,6 +130,7 @@ void State::loadCurrentRouteData(MusicLookup &musicLookup) {
 }
 
 void State::goToSelected(MusicLookup &musicLookup) {
+  endTransition();
   Route_t &currentRoute = router.getCurrentRoute();
   Route_t::RouteType oldRouteType = currentRoute.type;
   router.saveCurrentSelection(selectedIndex, topVisibleIndex);
@@ -307,6 +308,7 @@ void State::goToSelected(MusicLookup &musicLookup) {
 }
 
 bool State::back(MusicLookup &musicLookup) {
+  endTransition();
   if (!router.canGoBack()) {
     return false;
   }
@@ -341,6 +343,7 @@ bool State::back(MusicLookup &musicLookup) {
 }
 
 bool State::backTo(Route_t::RouteType type, MusicLookup &musicLookup) {
+  endTransition();
   // Drop the routes in between, then back() into `type` with one transition.
   while (router.stackDepth > 1 &&
          router.routeStack[router.stackDepth - 1].type != type) {
@@ -351,6 +354,7 @@ bool State::backTo(Route_t::RouteType type, MusicLookup &musicLookup) {
 
 void State::pushMenuRoute(Route_t::RouteType type, uint32_t entityId,
                           const char *title, int selected) {
+  endTransition();
   Route_t::RouteType oldRouteType = router.getCurrentRoute().type;
   // The current menu route already holds its own selection (BtMenu::sync).
   router.pushRoute(type, entityId, title);
@@ -366,6 +370,7 @@ void State::pushMenuRoute(Route_t::RouteType type, uint32_t entityId,
 }
 
 void State::backToMain(MusicLookup &musicLookup) {
+  endTransition();
   // Clear the route stack and go back to root
   Route_t::RouteType oldRouteType = router.getCurrentRoute().type;
 
@@ -399,6 +404,7 @@ void State::goToNowPlaying(MusicLookup &musicLookup) {
   if (oldRouteType == Route_t::NOW_PLAYING) {
     return; // Already there - no-op, same guard style as goToSelected.
   }
+  endTransition();
   router.saveCurrentSelection(selectedIndex, topVisibleIndex);
   router.pushRoute(Route_t::NOW_PLAYING);
   RouteChangedEvent event = {oldRouteType, Route_t::NOW_PLAYING, 0, 0, 0,

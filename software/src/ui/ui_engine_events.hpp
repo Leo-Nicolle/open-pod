@@ -276,6 +276,15 @@ void OpenPodUIEngine::handleAnimationFinished(const AnimationEvent *event)
 {
   LOG_CAT(UI, "Animation finished - ID: %d", (int)event->animationId);
 
+  // Still sliding: a navigation cut the transition short (State::
+  // endTransition). Drop the remaining frames and put the scroll back at
+  // rest; the render below draws the screen it was heading to in one go.
+  if (animManager.isAnimationActive(transitionAnimId))
+  {
+    animManager.cancel(transitionAnimId);
+    display->setScrollOffset(0);
+  }
+
   // Ensure final render after animation
   renderCurrentState();
 }

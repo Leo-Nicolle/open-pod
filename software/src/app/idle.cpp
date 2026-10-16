@@ -17,6 +17,11 @@ static const unsigned long PROGRESS_UPDATE_INTERVAL = 1000; // 1 second
 // Playing (goToNowPlaying no-ops there) the jump fires once per idle period.
 void checkIdle()
 {
+#if OPENPOD_BENCH
+  // The bench drives the UI blind: no screen-off (whose waking press does
+  // nothing) and no jump to Now Playing in the middle of a scenario.
+  return;
+#endif
   unsigned long idle = millis() - lastUserInput;
   if (!screenOff && idle >= IDLE_SCREEN_OFF_DELAY)
   {

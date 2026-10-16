@@ -141,6 +141,9 @@ public:
   }
 
   // Update all animations - returns true if frame was rendered
+  // True while an animation runs (update() still has frames to draw).
+  bool busy() const { return isAnimating; }
+
   bool update() {
     uint32_t currentTime = micros();
 

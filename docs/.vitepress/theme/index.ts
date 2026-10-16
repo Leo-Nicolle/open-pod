@@ -4,6 +4,8 @@ import Video from "./components/video.vue";
 import IndexCalculator from "./components/index-calculator.vue";
 import UIBuilder from "./components/ui-builder/UIBuilder.vue";
 import PinoutViewer from "./components/pinmap/PinoutViewer.vue";
+import BenchReport from "./components/BenchReport.vue";
+import BenchLive from "./components/bench/BenchLive.vue";
 import PinoutLayout from "./layouts/PinoutLayout.vue";
 import SyncLayout from "./layouts/SyncLayout.vue";
 import { setup } from "@css-render/vue3-ssr";
@@ -61,6 +63,8 @@ export default {
     app.component("IndexCalculator", IndexCalculator);
     app.component("UIBuilder", UIBuilder);
     app.component("PinoutViewer", PinoutViewer);
+    app.component("BenchReport", BenchReport);
+    app.component("BenchLive", BenchLive);
     app.component("PinoutLayout", PinoutLayout);
     app.component("SyncLayout", SyncLayout);
 

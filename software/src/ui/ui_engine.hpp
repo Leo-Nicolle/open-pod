@@ -43,6 +43,7 @@ private:
 
   int lastDrawnOffset;
   bool animatingLeftToRight; // Track direction of last transition
+  uint32_t transitionAnimId = 0; // the running route slide, if any
 
   // Volume overlay auto-hide: 0 means no overlay currently shown.
   unsigned long volumeOverlayHideAt = 0;
@@ -115,6 +116,8 @@ public:
 
   // Utility
   float getFPS() const { return animManager.getFPS(); }
+  // An animation (slide, scroll) still has frames to draw.
+  bool isBusy() const { return animManager.busy(); }
   void measurePerformance();
 
 private:

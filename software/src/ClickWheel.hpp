@@ -116,6 +116,13 @@ private:
   float scrollAccumulator = 0.0; // degrees not yet turned into clicks
   float degreesPerClick = DEFAULT_DEGREES_PER_CLICK;
   
+  // Virtual finger (test bench, see app/bench.cpp): while active, it stands
+  // in for the sensors - the wheel angle and the button pins - and the rest
+  // of update() runs unchanged, debounce, lift-off and long press included.
+  bool virtualActive = false;
+  int16_t virtualAngle = -1;  // -1 = finger up
+  uint8_t virtualButtons = 0; // bit i = Button(i) held
+
   // Calibration state
   enum CalibState { CALIB_IDLE, CALIB_RUNNING, CALIB_COMPLETE };
   CalibState calibrationState = CALIB_IDLE;
@@ -154,6 +161,7 @@ public:
   }
 
   int16_t getWheelAngle() {
+    if (virtualActive) return virtualAngle;
     if (!baselineTaken) return -1;
 
     // Calculate compensated deltas
@@ -263,14 +271,15 @@ public:
     // short-circuits the capacitive reads.
     updateButtons();
 
-    if (irqPin >= 0 && lastTouchedMask == 0 && lastWheelAngle == -1 &&
+    if (!virtualActive && irqPin >= 0 && lastTouchedMask == 0 &&
+        lastWheelAngle == -1 &&
         millis() - lastWheelTouchAt >= IRQ_RESUME_MS &&
         digitalRead(irqPin) == HIGH) {
       return;
     }
 
     // Reading the touch status also releases ~IRQ.
-    lastTouchedMask = mpr121->touched();
+    lastTouchedMask = virtualActive ? 0 : mpr121->touched();
 
     // Touch start/end follow the same software reading as the scroll, not
     // the hardware touch bits (see setIrqPin()), so a scroll is never cut by
@@ -328,6 +337,28 @@ public:
     queueCount--;
     return true;
   }
+
+  // Queues an event as if the wheel had produced it (the test bench drives
+  // the UI this way, see app/bench.cpp).
+  void inject(const Event &e) { pushEvent(e); }
+  uint8_t pendingEvents() const { return queueCount; }
+
+  // Virtual finger: angle in degrees (0 = right, counter-clockwise, so a
+  // positive turn scrolls up), -1 = lifted; buttons as a pressedMask().
+  // Takes over from the sensors until clearVirtual().
+  void setVirtual(int16_t angle, uint8_t buttonMask) {
+    virtualActive = true;
+    virtualAngle = angle;
+    virtualButtons = buttonMask;
+  }
+  void clearVirtual() {
+    virtualActive = false;
+    virtualAngle = -1;
+    virtualButtons = 0;
+  }
+  bool isVirtual() const { return virtualActive; }
+  // Last angle update() saw, -1 when no finger.
+  int16_t currentAngle() const { return lastWheelAngle; }
 
   // Calibration methods
   void setSensitivities(float top, float right, float bottom, float left) {
@@ -446,10 +477,11 @@ private:
     unsigned long now = millis();
     for (uint8_t i = 0; i < BUTTON_COUNT; i++) {
       ButtonState &b = buttons[i];
-      if (b.pin < 0) continue;
+      if (b.pin < 0 && !virtualActive) continue;
       Button id = (Button)i;
 
-      bool raw = digitalRead(b.pin) == LOW; // active low
+      bool raw = virtualActive ? (virtualButtons >> i) & 1
+                               : digitalRead(b.pin) == LOW; // active low
       if (raw != b.rawPressed) {
         b.rawPressed = raw;
         b.lastRawChange = now;

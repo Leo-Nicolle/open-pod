@@ -16,7 +16,8 @@
 //   - then sends the commands BtModel queues (scan, connect, ...), one at a
 //     time, each waiting for its OK/ERROR,
 //   - hands every line the module sends to BtModel,
-//   - forwards lines typed on the debug serial that start with "AT" to it.
+//   - forwards lines typed on the debug serial that start with "AT" to it
+//     (forwardConsoleLine(), fed by app/console.cpp).
 // Everything is non-blocking: call loop() every main-loop iteration.
 class Bluetooth {
 public:
@@ -34,7 +35,6 @@ public:
 
   void loop() {
     readModule();
-    readConsole();
 
     uint32_t now = millis();
     switch (phase) {
@@ -76,6 +76,14 @@ public:
 
   bool ready() const { return phase == Phase::Ready; }
 
+  // A line typed on the debug serial that starts with "AT" goes to the module
+  // as is (its answers are logged by onLine()).
+  void forwardConsoleLine(const char *line) {
+    LOG_INFO("Bluetooth < %s", line);
+    uart.print(line);
+    uart.print("\r\n");
+  }
+
 private:
   enum class Phase : uint8_t { Off, Booting, Configuring, Ready, Failed };
 
@@ -109,8 +117,6 @@ private:
 
   char rxLine[96];
   uint8_t rxLen = 0;
-  char consoleLine[64];
-  uint8_t consoleLen = 0;
 
   void send(const char *cmd) {
     LOG_CAT(BLUETOOTH, "< %s", cmd);
@@ -214,29 +220,6 @@ private:
         }
       } else if (rxLen < sizeof(rxLine) - 1) {
         rxLine[rxLen++] = c;
-      }
-    }
-  }
-
-  // Lines typed on the debug serial starting with "AT" go to the module as
-  // is (with its answers logged by onLine()); anything else is dropped.
-  void readConsole() {
-    while (Serial.available()) {
-      char c = Serial.read();
-      if (c == '\r' || c == '\n') {
-        consoleLine[consoleLen] = 0;
-        if (consoleLen >= 2 && (consoleLine[0] == 'A' || consoleLine[0] == 'a') &&
-            (consoleLine[1] == 'T' || consoleLine[1] == 't')) {
-          LOG_INFO("Bluetooth < %s", consoleLine);
-          uart.print(consoleLine);
-          uart.print("\r\n");
-        }
-        consoleLen = 0;
-      } else if (c == '\b' || c == 0x7F) {
-        if (consoleLen)
-          consoleLen--;
-      } else if (consoleLen < sizeof(consoleLine) - 1) {
-        consoleLine[consoleLen++] = c;
       }
     }
   }

@@ -217,3 +217,15 @@
   height: auto;
   margin: 0 0 16px;
 }
+
+/* The live bench page uses the full width for its charts. */
+.bench-live-page .VPDoc.has-aside .content-container,
+.bench-live-page .VPDoc .content-container,
+.bench-live-page .VPDoc .container,
+.bench-live-page .VPDoc .content {
+  max-width: 1360px !important;
+}
+/* BenchLive breaks out to the full window width (100vw counts the scrollbar). */
+.bench-live-page {
+  overflow-x: clip;
+}

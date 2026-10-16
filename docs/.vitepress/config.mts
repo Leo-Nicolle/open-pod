@@ -1,3 +1,4 @@
+import { fileURLToPath } from "node:url";
 import { defineConfig } from "vitepress";
 
 const fileAndStyles: Record<string, string> = {};
@@ -32,6 +33,8 @@ export default defineConfig({
           { text: "Click wheel designer", link: "/tools/clickwheel" },
           { text: "Pinout", link: "/tools/pinout" },
           { text: "UI builder", link: "/tools/ui-builder" },
+          { text: "Benchmarks", link: "/tools/bench" },
+          { text: "Live bench", link: "/tools/bench-live" },
         ],
       },
       { text: "Blog", link: "/blog/", activeMatch: "^/blog/" },
@@ -53,6 +56,8 @@ export default defineConfig({
             { text: "OpenPod Sync", link: "/tools/sync" },
             { text: "Click wheel designer", link: "/tools/clickwheel" },
             { text: "UI builder", link: "/tools/ui-builder" },
+            { text: "Benchmarks", link: "/tools/bench" },
+            { text: "Live bench", link: "/tools/bench-live" },
           ],
         },
         {
@@ -96,6 +101,11 @@ export default defineConfig({
     ],
   },
   vite: {
+    // The bench pages share the runner's code with software/bench/.
+    resolve: {
+      alias: { "@bench": fileURLToPath(new URL("../../software/bench", import.meta.url)) },
+    },
+    server: { fs: { allow: [fileURLToPath(new URL("../..", import.meta.url))] } },
     ssr: {
       noExternal: ["naive-ui", "date-fns", "vueuc"],
     },

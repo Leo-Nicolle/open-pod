@@ -1,0 +1,109 @@
+// Loads a test bench card's index (openpod bench-dataset, see
+// docs/tools/bench.md) into the firmware's lookup and search code, to check
+// that the synthetic library fits PSRAM and is searchable before burning a
+// card. Skipped unless OPENPOD_BENCH_CARD names the card (or a folder with
+// its openpod/ directory):
+//   OPENPOD_BENCH_CARD=/media/sd pio test -e test_native -f "*" \
+//     -a '--test-case=*bench*'
+#include <doctest.h>
+#include <cstdlib>
+#include <cstring>
+#include <dirent.h>
+#include <fstream>
+#include <iterator>
+#include <string>
+#include <vector>
+
+#include "../src/state/search.h"
+#include "../src/storage/Music_index.h"
+#include "../src/storage/Music_lookup.h"
+#include "../src/storage/PSRAM_controller.hpp"
+#include "test_helpers.h"
+
+namespace {
+
+int loadCardIndex(const std::string &card) {
+  std::string dir = card + "/openpod";
+  DIR *d = opendir(dir.c_str());
+  if (!d)
+    return 0;
+  int n = 0;
+  while (dirent *e = readdir(d)) {
+    std::string name = e->d_name;
+    if (name.size() < 4 || name.compare(name.size() - 4, 4, ".bin") != 0)
+      continue;
+    std::ifstream f(dir + "/" + name, std::ios::binary);
+    std::vector<uint8_t> bytes((std::istreambuf_iterator<char>(f)),
+                               std::istreambuf_iterator<char>());
+    openpod_test::FakeFs::get().addFile("/openpod/" + name, bytes);
+    n++;
+  }
+  closedir(d);
+  return n;
+}
+
+void typeQuery(SearchModel &search, MusicLookup &lookup, const char *text) {
+  for (const char *p = text; *p; p++) {
+    if (*p == ' ') {
+      search.space(lookup);
+      continue;
+    }
+    char c = (*p >= 'a' && *p <= 'z') ? *p - 'a' + 'A' : *p;
+    int target = (int)(strchr(SearchModel::RIBBON, c) - SearchModel::RIBBON);
+    search.moveCursor(target - search.getCursor());
+    search.append(lookup);
+  }
+}
+
+} // namespace
+
+TEST_CASE("Bench dataset - loads and searches") {
+  const char *card = getenv("OPENPOD_BENCH_CARD");
+  if (!card) {
+    MESSAGE("OPENPOD_BENCH_CARD not set, skipped");
+    return;
+  }
+  openpod_test::resetAll();
+  REQUIRE(loadCardIndex(card) > 10);
+
+  MusicLookup lookup;
+  REQUIRE(lookup.init());
+  MESSAGE("tracks=" << lookup.getTrackCount()
+                    << " albums=" << lookup.getAlbumCount()
+                    << " artists=" << lookup.getArtistCount()
+                    << " psram_end=" << lookup.getLastPSRAMAddress());
+  CHECK(lookup.getTrackCount() > 0);
+
+  // The bench reads the highlighted row's name this way (app/bench.cpp).
+  char name[64] = "";
+  uint32_t trackId = lookup.getTrackIdAtIndex(0);
+  CHECK(lookup.getTrackName(trackId, name, sizeof(name)));
+  MESSAGE("track 0: id=" << trackId << " name='" << name << "'");
+  uint32_t albumId = lookup.getAlbumIdAtIndex(0);
+  name[0] = 0;
+  CHECK(lookup.getAlbumName(albumId, name, sizeof(name)));
+  MESSAGE("album 0: id=" << albumId << " name='" << name << "'");
+  uint32_t artistId = lookup.getArtistIdAtIndex(0);
+  name[0] = 0;
+  CHECK(lookup.getArtistName(artistId, name, sizeof(name)));
+  MESSAGE("artist 0: id=" << artistId << " name='" << name << "'");
+
+  // Neither MusicLookup nor MusicIndex checks the end of the chip: past it,
+  // the real PSRAM wraps around onto the audio buffer (and the fake one
+  // reads zeros, which makes the search below spin).
+  uint32_t trieEnd = lookup.getLastPSRAMAddress() +
+                     (uint32_t)openpod_test::FakeFs::get()
+                         .files["/openpod/music_index.bin"]
+                         ->size();
+  MESSAGE("index ends at " << trieEnd << " of " << PSRAM_SIZE << " bytes");
+  REQUIRE_MESSAGE(trieEnd <= PSRAM_SIZE,
+                  "the library index doesn't fit PSRAM: use fewer tracks");
+
+  MusicIndex index;
+  REQUIRE(index.init(lookup.getLastPSRAMAddress()));
+  SearchModel search;
+  search.setIndex(&index);
+  // The runner finds the samples this way (bench/scenarios.ts).
+  typeQuery(search, lookup, "openpod bench");
+  CHECK(search.getHitCount() > 0);
+}

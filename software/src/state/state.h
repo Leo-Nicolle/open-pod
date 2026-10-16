@@ -173,6 +173,7 @@ private:
 
   int volume;          // 0-100 logical volume
   bool seekModeActive; // Now Playing seek-mode (center press to enter)
+  bool repeatTrack = false; // see setRepeatTrack()
   bool fastScrollActive; // list letter overlay (wheel spinning fast)
 
   // Navigation state - RENAMED for generalization
@@ -297,6 +298,12 @@ public:
   int getVolume() const { return volume; }
 
   // Seek mode (Now Playing center press)
+  // Repeat the playing track instead of moving on at its end (music only;
+  // podcasts keep their series chaining). The test bench loops its
+  // background track this way.
+  void setRepeatTrack(bool on) { repeatTrack = on; }
+  bool getRepeatTrack() const { return repeatTrack; }
+
   void enterSeekMode();
   void exitSeekMode();
   bool getSeekModeActive() const { return seekModeActive; }
@@ -309,6 +316,10 @@ public:
 
   // UI state management
   void setAnimating(bool animating, uint32_t animId = 0);
+  // Navigating while a route transition still plays cuts it short: the
+  // EVENT_ANIMATION_FINISHED lets the UI snap to the screen it was heading to
+  // before this route changes again, so the new transition starts from rest.
+  void endTransition() { setAnimating(false); }
   void setRotation(bool rotated);
   
   // Data loading (internal use)

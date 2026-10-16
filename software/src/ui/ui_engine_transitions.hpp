@@ -27,7 +27,7 @@ void OpenPodUIEngine::transitionToNowPlaying()
   display->fillRect(SCROLLBAR_X, BODY_Y, SCREEN_WIDTH - SCROLLBAR_X,
                     BODY_HEIGHT, COLOR_BG);
 
-  uint32_t animId = animManager.animate(
+  transitionAnimId = animManager.animate(
       ANIM_CUSTOM, 0, SCREEN_WIDTH, 800,
       [this](float offset)
       {
@@ -79,7 +79,7 @@ void OpenPodUIEngine::transitionToTrackList(bool leftToRight)
   display->fillRect(SCROLLBAR_X, BODY_Y, SCREEN_WIDTH - SCROLLBAR_X,
                     BODY_HEIGHT, COLOR_BG);
 
-  uint32_t animId = animManager.animate(
+  transitionAnimId = animManager.animate(
       ANIM_CUSTOM, 0, SCREEN_WIDTH, 800,
       [this](float offset)
       {

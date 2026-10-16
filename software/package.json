@@ -16,8 +16,21 @@
     "upload": "../scripts/pio.sh run -e nucleo_f446re -t upload",
     "monitor": "../scripts/pio.sh device monitor",
     "test": "../scripts/pio.sh test -e test_native -v ",
-    "test:report": "../scripts/pio.sh test -e test_native -v | ../scripts/reporter.js"
+    "test:report": "../scripts/pio.sh test -e test_native -v | ../scripts/reporter.js",
+    "bench": "tsx bench/cli.ts",
+    "bench:upload": "../scripts/pio.sh run -e bench -t upload",
+    "bench:typecheck": "tsc --noEmit -p bench"
   },
   "author": "Leo Nicolle",
-  "license": "MIT"
+  "license": "MIT",
+  "type": "module",
+  "dependencies": {
+    "@serialport/parser-readline": "^13.0.0",
+    "serialport": "^13.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.5",
+    "tsx": "4.19",
+    "typescript": "5.8"
+  }
 }

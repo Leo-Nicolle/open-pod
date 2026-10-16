@@ -514,6 +514,33 @@ TEST_SUITE("State Playback Tests") {
     CHECK(state.getIsPlaying() == false);
   }
 
+  TEST_CASE("State - Repeat track loops the playing track") {
+    setupCatalog();
+    MusicLookup lookup;
+    REQUIRE(lookup.init());
+
+    State state;
+    navigateToTracks(state, lookup);
+    state.goToSelected(lookup); // Start playback of track 0 ("First Song")
+    state.setRepeatTrack(true);
+    int firstId = state.getPlayingTrackId();
+
+    // The prefetch target is the same track, so the loop can be seamless.
+    uint32_t nextId = 0;
+    REQUIRE(state.getNextTrackId(lookup, nextId));
+    CHECK(nextId == (uint32_t)firstId);
+
+    state.notifyTrackEnded(lookup);
+    CHECK(state.getPlayingTrackIndex() == 0);
+    CHECK(state.getPlayingTrackId() == firstId);
+    CHECK(state.getIsPlaying() == true);
+
+    // Off again: the end of the track moves on to the next one.
+    state.setRepeatTrack(false);
+    state.notifyTrackEnded(lookup);
+    CHECK(state.getPlayingTrackIndex() == 1);
+  }
+
   TEST_CASE("State - Get Next Track Id") {
     setupCatalog();
     MusicLookup lookup;
@@ -597,6 +624,37 @@ TEST_SUITE("State UI and Animation Tests") {
     RouteChangedEvent *event = (RouteChangedEvent *)lastEvent.eventData;
     CHECK(event->oldRouteType == Route_t::ROOT);
     CHECK(event->newRouteType == Route_t::NOW_PLAYING);
+  }
+
+  TEST_CASE("State - Navigating During A Transition Ends It First") {
+    setupCatalog();
+    MusicLookup lookup;
+    REQUIRE(lookup.init());
+    State state;
+    state.loadCurrentRouteData(lookup);
+    state.scrollDown();
+    state.scrollDown();         // "Albums"
+    state.goToSelected(lookup); // ROOT -> ALBUMS, slide still running
+    CHECK(state.getIsAnimating() == true);
+
+    static int seq[16];
+    static int n;
+    n = 0;
+    state.addEventListener([](int type, void *, EventTarget *) {
+      if (type == EVENT_ANIMATION_STARTED || type == EVENT_ANIMATION_FINISHED ||
+          type == EVENT_ROUTE_CHANGED) {
+        if (n < 16) seq[n++] = type;
+      }
+    });
+
+    state.goToSelected(lookup); // ALBUMS -> TRACKS mid-slide
+
+    CHECK(state.getCurrentRoute().type == Route_t::TRACKS);
+    CHECK(state.getIsAnimating() == true);
+    REQUIRE(n == 3);
+    CHECK(seq[0] == EVENT_ANIMATION_FINISHED); // old slide ends, old route
+    CHECK(seq[1] == EVENT_ANIMATION_STARTED);
+    CHECK(seq[2] == EVENT_ROUTE_CHANGED);
   }
 
   TEST_CASE("State - Fast Scroll Emits Only On Change") {

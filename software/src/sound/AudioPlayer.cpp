@@ -488,6 +488,7 @@ void AudioPlayer::loop() {
 
   if (loopEnterMs - _monitorLastReport >= AUDIO_MONITOR_INTERVAL_MS) {
     if (_monitorEnabled) {
+      uint32_t logStart = audioprof::now();
       // One line a second; see docs/blog/09-10.md, "Reading the
       // diagnostics".
       LOG_CAT(AUDIO_BUFFER,
@@ -505,6 +506,7 @@ void AudioPlayer::loop() {
               (unsigned long)(_monitorLoadUs / 1000),
               (unsigned long)_buffer.getChunkCostUs(),
               _refilling ? " refilling" : "");
+      audioprof::moveTo(audioprof::BENCH_IO, logStart);
     }
     resetMonitorWindow(loopEnterMs);
   }

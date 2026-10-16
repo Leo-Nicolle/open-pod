@@ -76,6 +76,7 @@ void handleWheelInput()
   ClickWheel::Event e;
   while (wheel.pollEvent(e))
   {
+    benchOnWheelEvent(e);
     if (screenOff)
     {
       // Only a button wakes the screen, and that press does nothing else,
@@ -127,13 +128,8 @@ void handleWheelInput()
 // Clicks fire on release (and not at all once a long press fired), so a
 // center hold never also triggers a select.
 //
-// A route change (goToSelected/back) kicks off an 800ms slide animation
-// that owns shared state (OpenPodUIEngine::lastDrawnOffset) for its whole
-// duration. Starting a second one before the first finishes runs two
-// animations against that same shared state at once and corrupts the
-// display buffer / can hang the MCU - so drop navigation input while a
-// transition is still playing (tracked via EVENT_ANIMATION_STARTED/
-// FINISHED, see onNavigationStateEvent), rather than queuing/stacking it.
+// Navigation works during a route slide too: State ends the running
+// transition first (State::endTransition), so only one slide ever runs.
 static void onButtonClick(ClickWheel::Button button)
 {
   LOG_CAT(USER_INPUT, "🔘 Click: %s", ClickWheel::buttonName(button));
@@ -176,7 +172,7 @@ static void onButtonClick(ClickWheel::Button button)
         seekPending = false; // start each seek session from the real position
       }
     }
-    else if (!navigationBusy)
+    else
     {
       state.goToSelected(musicLookup);
     }
@@ -189,7 +185,7 @@ static void onButtonClick(ClickWheel::Button button)
       commitPendingSeek(); // don't lose an in-flight scrub on exit
       state.exitSeekMode();
     }
-    else if (!navigationBusy)
+    else
     {
       state.back(musicLookup);
     }
@@ -245,13 +241,13 @@ static void onSearchButtonClick(ClickWheel::Button button)
   case ClickWheel::Button::Center:
     if (typing)
       state.searchAppend(musicLookup);
-    else if (!navigationBusy)
+    else
       state.goToSelected(musicLookup);
     break;
   case ClickWheel::Button::Top:
     if (!typing)
       state.searchExitResults();
-    else if (!navigationBusy)
+    else
       state.back(musicLookup);
     break;
   case ClickWheel::Button::Left:
@@ -303,12 +299,11 @@ static void onMenuButtonClick(ClickWheel::Button button)
   case ClickWheel::Button::Center:
     if (renaming)
       btMenu.renameAppend();
-    else if (!navigationBusy)
+    else
       applyMenuNav(btMenu.click(route, millis()));
     break;
   case ClickWheel::Button::Top:
-    if (!navigationBusy)
-      state.back(musicLookup);
+    state.back(musicLookup);
     break;
   case ClickWheel::Button::Left:
     if (renaming)
@@ -319,7 +314,7 @@ static void onMenuButtonClick(ClickWheel::Button button)
       btMenu.renameSpace();
     break;
   case ClickWheel::Button::Bottom:
-    if (renaming && !navigationBusy)
+    if (renaming)
       applyMenuNav(btMenu.renameSave());
     break;
   default:
@@ -353,12 +348,10 @@ static void onPodcastButtonClick(ClickWheel::Button button)
   switch (button)
   {
   case ClickWheel::Button::Center:
-    if (!navigationBusy)
-      applyPodcastNav(podcastMenu.click(route));
+    applyPodcastNav(podcastMenu.click(route));
     break;
   case ClickWheel::Button::Top:
-    if (!navigationBusy)
-      state.back(musicLookup);
+    state.back(musicLookup);
     break;
   default:
     break;
@@ -368,7 +361,7 @@ static void onPodcastButtonClick(ClickWheel::Button button)
 static void onButtonLongPress(ClickWheel::Button button)
 {
   // On a podcast episode, holding Center opens its actions.
-  if (button == ClickWheel::Button::Center && !navigationBusy &&
+  if (button == ClickWheel::Button::Center &&
       PodcastMenu::isPodcastRoute(state.getCurrentRoute().type))
   {
     PodcastMenu::Nav nav = podcastMenu.hold(state.getCurrentRoute());
@@ -378,7 +371,7 @@ static void onButtonLongPress(ClickWheel::Button button)
       return;
     }
   }
-  if (button == ClickWheel::Button::Center && !navigationBusy)
+  if (button == ClickWheel::Button::Center)
   {
     LOG_CAT(USER_INPUT, "⏭️ Jumping to Now Playing");
     state.goToNowPlaying(musicLookup);

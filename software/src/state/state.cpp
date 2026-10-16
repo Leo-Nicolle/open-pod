@@ -167,7 +167,9 @@ void State::notifyTrackEnded(MusicLookup &musicLookup) {
     PlaybackEvent event = {playingTrackIndex, playingTrackId,
                            getPlayingTrackName(), false};
     emitEvent(EVENT_TRACK_ENDED, &event);
-    if (playingTrackIndex < playingListTotalTracks - 1) {
+    if (repeatTrack) {
+      startPlayback(playingTrackIndex, playingTrackId, musicLookup);
+    } else if (playingTrackIndex < playingListTotalTracks - 1) {
       int nextIndex = playingTrackIndex + 1;
       uint32_t nextTrackId = resolveTrackId(musicLookup, nextIndex);
       if (nextTrackId != UINT32_MAX) {
@@ -262,6 +264,11 @@ bool State::getNextTrackId(MusicLookup &musicLookup, uint32_t &nextTrackId) {
     if (next < 0)
       return false;
     nextTrackId = podcastTrackId((uint32_t)next);
+    return true;
+  }
+  if (repeatTrack && playingTrackIndex >= 0) {
+    // Prefetch the start of the same track, so the loop is seamless too.
+    nextTrackId = (uint32_t)playingTrackId;
     return true;
   }
   if (playingTrackIndex >= 0 &&

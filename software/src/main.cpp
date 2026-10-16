@@ -41,6 +41,11 @@ BtConfig btConfig;
 BtMenu btMenu(btModel);
 PodcastState podcastState;
 PodcastMenu podcastMenu(musicLookup, podcastState);
+// Boot step timings, reported to the test bench (app/bench.cpp).
+static uint32_t lookupInitMs = 0;
+static uint32_t searchIndexInitMs = 0;
+
+void onConsoleAtLine(const char *line) { bluetooth.forwardConsoleLine(line); }
 
 void setup()
 {
@@ -103,7 +108,9 @@ void setup()
   });
 
   boot.runStep([] {
+    uint32_t t0 = millis();
     musicLookup.init();
+    lookupInitMs = millis() - t0;
     albumArt.init(musicLookup.getSD());
     // The listening state sits in PSRAM right after the lookup tables (the
     // search index goes after it, see below).
@@ -163,8 +170,11 @@ void setup()
 
   boot.runStep([] {
     // --- MusicIndex initialization and artist/track search ---
-    if (!musicIndex.init(musicLookup.getLastPSRAMAddress() +
-                         podcastState.bytesUsed()))
+    uint32_t t0 = millis();
+    bool indexOk = musicIndex.init(musicLookup.getLastPSRAMAddress() +
+                                   podcastState.bytesUsed());
+    searchIndexInitMs = millis() - t0;
+    if (!indexOk)
     {
       LOG_ERROR("Failed to initialize MusicIndex!");
     }
@@ -203,6 +213,7 @@ void setup()
            "- Screen off: any button wakes it (scroll ignored)\n"
            "=====================================");
   lastUserInput = millis();
+  benchBootDone(lookupInitMs, searchIndexInitMs);
 }
 
 void loop()
@@ -214,23 +225,29 @@ void loop()
     wheel.updateCalibration();
     return;
   }
+  uint32_t loopStart = audioprof::now();
 
   // Update wheel state
   {
+    audioprof::Span span(audioprof::WHEEL_UPDATE);
     // The wheel's I2C traffic (MPR121) holds the SPI1 lock so the VS1053
     // feeder never sends during it: on the breadboard, I2C SCL (PA8) sits
     // next to the VS1053's XDCS (PA9), and overlapping traffic corrupted the
     // audio stream (glitches while touching the wheel). The feeder catches
     // up as soon as the lock is released.
     spi1bus::Lock busLock;
+    benchInputTick();
     wheel.update();
   }
 
   // Handle input
-  handleWheelInput();
-  checkSeekModeTimeout();
-  checkFastScrollTimeout();
-  checkIdle();
+  {
+    audioprof::Span span(audioprof::INPUT_HANDLING);
+    handleWheelInput();
+    checkSeekModeTimeout();
+    checkFastScrollTimeout();
+    checkIdle();
+  }
 
   audioprof::markLoop();
   if (isNavigationBusy())
@@ -239,35 +256,57 @@ void loop()
   }
 
   // Update UI (handles animations and event processing)
-  uint32_t uiStart = audioprof::now();
-  ui.update();
-  audioprof::add(audioprof::UI_UPDATE, uiStart);
+  {
+    audioprof::Span span(audioprof::UI_UPDATE);
+    ui.update();
+  }
+  {
+    audioprof::Span span(audioprof::BENCH_IO);
+    benchTick(ui.isBusy());
+  }
 
   // Feed audio data to the VS1053 (this is what actually makes sound)
-  uint32_t audioStart = audioprof::now();
-  player.loop();
-  audioprof::add(audioprof::AUDIO_LOOP, audioStart);
+  {
+    audioprof::Span span(audioprof::AUDIO_LOOP);
+    player.loop();
+  }
+
+  {
+    audioprof::Span span(audioprof::MISC_WORK);
+    // Update audio progress periodically
+    updateAudioProgress();
+  }
+
+  {
+    audioprof::Span span(audioprof::BENCH_IO);
+    pollConsole();
+  }
+  {
+    audioprof::Span span(audioprof::BT_LOOP);
+    bluetooth.loop();
+    btConfig.saveIfDirty(btModel);
+  }
+
+  {
+    audioprof::Span span(audioprof::MISC_WORK);
+    // Optional trace visualization
+    if (DEBUG_WHEEL_TRACE)
+    {
+      drawTraceVisualization();
+    }
+
+    // Optional telemetry
+    if (LOG_ENABLED(TELEMETRY) && shouldUpdateTelemetry())
+    {
+      sendTelemetry();
+    }
+  }
+
+  audioprof::add(audioprof::MAIN_LOOP, loopStart);
+  // Last, outside every span: it counts its own time in the next window.
   if (LOG_ENABLED(AUDIO_BUFFER))
   {
     audioprof::report();
-  }
-
-  // Update audio progress periodically
-  updateAudioProgress();
-
-  bluetooth.loop();
-  btConfig.saveIfDirty(btModel);
-
-  // Optional trace visualization
-  if (DEBUG_WHEEL_TRACE)
-  {
-    drawTraceVisualization();
-  }
-
-  // Optional telemetry
-  if (LOG_ENABLED(TELEMETRY) && shouldUpdateTelemetry())
-  {
-    sendTelemetry();
   }
 
   // No fixed delay: audioPlayer.loop() bounds its own feed work, and the

@@ -43,3 +43,18 @@ void printResetCause();
 void drawTraceVisualization();
 bool shouldUpdateTelemetry();
 void sendTelemetry();
+
+// console.cpp: reads the debug serial; "AT..." lines go to
+// onConsoleAtLine() (main.cpp, the Bluetooth module), "#..." to the bench.
+void pollConsole();
+void onConsoleAtLine(const char *line);
+
+// bench.cpp: test bench commands (only with -DOPENPOD_BENCH=1, see
+// docs/tools/bench.md). benchTick() runs every loop, after the UI update.
+void benchCommand(const char *line);
+void benchTick(bool uiBusy);
+void benchBootDone(uint32_t lookupMs, uint32_t searchIndexMs);
+// Plays the virtual finger's gesture; runs every loop, before wheel.update().
+void benchInputTick();
+// Echoes a wheel event the UI is about to handle ("#ev ..." lines).
+void benchOnWheelEvent(const ClickWheel::Event &e);
