@@ -7,6 +7,7 @@ import PinoutViewer from "./components/pinmap/PinoutViewer.vue";
 import BenchReport from "./components/BenchReport.vue";
 import BenchLive from "./components/bench/BenchLive.vue";
 import BenchCompare from "./components/bench/BenchCompare.vue";
+import ScrollConfig from "./components/bench/ScrollConfig.vue";
 import MemoryLayout from "./components/memory/MemoryLayout.vue";
 import PinoutLayout from "./layouts/PinoutLayout.vue";
 import SyncLayout from "./layouts/SyncLayout.vue";
@@ -68,6 +69,7 @@ export default {
     app.component("BenchReport", BenchReport);
     app.component("BenchLive", BenchLive);
     app.component("BenchCompare", BenchCompare);
+    app.component("ScrollConfig", ScrollConfig);
     app.component("MemoryLayout", MemoryLayout);
     app.component("PinoutLayout", PinoutLayout);
     app.component("SyncLayout", SyncLayout);

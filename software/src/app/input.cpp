@@ -50,7 +50,8 @@ static int seekScrubDir = 0;
 // screens, the wheel's speed picks how far a click jumps - a row, or to the
 // next 3-, 2- or 1-letter prefix - and the letter overlay shows while it
 // jumps by letters, until FAST_SCROLL_HIDE_DELAY ms after it went back to
-// rows. Speed thresholds: scrollTuning (live over the bench's #scrollcfg).
+// rows. Gears and thresholds: ScrollSpeed and scrollTuning (live over the
+// bench's #scrollcfg).
 static const int FAST_SCROLL_MIN_PAGES = 3;
 static const unsigned long FAST_SCROLL_HIDE_DELAY = 600;
 static ScrollSpeed scrollSpeed;
@@ -59,12 +60,12 @@ static unsigned long lastFastScrollTime = 0;
 static void onButtonClick(ClickWheel::Button button);
 static void onButtonLongPress(ClickWheel::Button button);
 static void onButtonVeryLongPress(ClickWheel::Button button);
-static void onScroll(int scrollClicks);
+static void onScroll(int scrollClicks, uint32_t at);
 static int seekStepSeconds(int scrollClicks, int duration);
 static void onSearchButtonClick(ClickWheel::Button button);
 static void onMenuButtonClick(ClickWheel::Button button);
 static void onPodcastButtonClick(ClickWheel::Button button);
-static int fastScrollLetters(int scrollClicks);
+static int fastScrollLetters(int scrollClicks, uint32_t at);
 static void commitPendingSeek();
 
 void handleWheelInput()
@@ -107,13 +108,16 @@ void handleWheelInput()
       break;
     case ClickWheel::EventType::Scroll:
       haptics.scrollTick(e.value);
-      onScroll(e.value);
+      onScroll(e.value, e.at);
       break;
     case ClickWheel::EventType::TouchStart:
       LOG_CAT(USER_INPUT, "👆 Wheel touch start");
       break;
     case ClickWheel::EventType::TouchEnd:
       LOG_CAT(USER_INPUT, "👋 Wheel touch end");
+      if (scrollSpeed.letters() > 0)
+        benchOnScrollSpeed(0, 0);
+      scrollSpeed.touchEnd();
       break;
     default:
       break;
@@ -384,7 +388,7 @@ static void onButtonVeryLongPress(ClickWheel::Button button)
 }
 
 // Scroll wheel: seek (seek-mode) / volume (Now Playing) / list navigation
-static void onScroll(int scrollClicks)
+static void onScroll(int scrollClicks, uint32_t at)
 {
   LOG_CAT(USER_INPUT, "🔄 Scroll: %d", scrollClicks);
 
@@ -441,7 +445,7 @@ static void onScroll(int scrollClicks)
   }
   else
   {
-    int letters = fastScrollLetters(scrollClicks);
+    int letters = fastScrollLetters(scrollClicks, at);
     if (letters > 0)
     {
       // Before moving, so the jump already renders the overlay.
@@ -481,14 +485,15 @@ static int seekStepSeconds(int scrollClicks, int duration)
 }
 
 // List scrolling: the letters this event jumps by (0: rows), from the
-// wheel's speed. Short lists always scroll by rows.
-static int fastScrollLetters(int scrollClicks)
+// wheel's speed at `at`, when its clicks were read. Short lists always
+// scroll by rows.
+static int fastScrollLetters(int scrollClicks, uint32_t at)
 {
   int total = state.getTotalElements();
   int maxLetters = total > FAST_SCROLL_MIN_PAGES * ELEMENTS_PER_SCREEN
                        ? fastScrollLetterCount(total)
                        : 0;
-  int letters = scrollSpeed.update(scrollClicks, millis(), maxLetters);
+  int letters = scrollSpeed.update(scrollClicks, at, maxLetters);
   benchOnScrollSpeed(letters, scrollSpeed.clicksPerSecond());
   if (letters > 0)
     lastFastScrollTime = millis();
@@ -497,6 +502,17 @@ static int fastScrollLetters(int scrollClicks)
 
 void checkFastScrollTimeout()
 {
+  if (scrollSpeed.tick(millis()))
+  {
+    // Held still: one gear down, and the overlay shows the finer prefix.
+    int letters = scrollSpeed.letters();
+    benchOnScrollSpeed(letters, 0);
+    if (letters > 0)
+      state.setFastScroll(letters);
+  }
+  // In a letter gear the overlay stays, however slow the wheel.
+  if (scrollSpeed.letters() > 0)
+    lastFastScrollTime = millis();
   if (state.getFastScrollActive() &&
       millis() - lastFastScrollTime >= FAST_SCROLL_HIDE_DELAY)
   {

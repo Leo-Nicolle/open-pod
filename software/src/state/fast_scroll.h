@@ -32,40 +32,67 @@ typedef bool (*FastScrollKeyAt)(void *ctx, int index, int letters, char *out);
 int fastScrollJump(int from, int dir, int letters, int total,
                    FastScrollKeyAt keyAt, void *ctx);
 
-// Speed thresholds, in wheel clicks per second (24 clicks per turn).
+// Shift thresholds, in wheel clicks per second (24 clicks per turn).
 // Tunable live over the bench console (#scrollcfg).
 struct ScrollTuning {
-  uint16_t letters3; // from here, 3-letter jumps
-  uint16_t letters2; // 2-letter jumps
-  uint16_t letters1; // first-letter jumps
-  uint16_t windowMs; // speed = clicks in the last windowMs
-  uint16_t gapMs;    // a pause this long starts over at row speed
-  uint8_t dropPct;   // drop a tier only below this % of its threshold
+  uint16_t shift1;       // rows -> the finest letter jumps (3 on long lists)
+  uint16_t shift2;       // -> one letter coarser (2)
+  uint16_t shift3;       // -> one more (1, first letters)
+  uint16_t windowClicks; // speed = average over the last this many clicks
+  uint16_t dwellMs;      // finger still this long: one gear down
 };
 extern ScrollTuning scrollTuning;
 
-// The wheel's speed and the jump tier it picks. Pure: the caller passes
-// the time, so it runs in native tests.
+// The jump size, as gears picked from the wheel's speed. Pure: the caller
+// passes the time, so it runs in native tests.
+//
+// Speed shifts up, one gear at a time: the average over the last
+// windowClicks clicks (12: half a turn) of travel has to reach the next
+// gear's threshold, and each shift starts that window over, so every gear
+// takes its own half turn and a flick can't skip ahead. Once in a gear,
+// every click is one jump whatever the speed, so slowing down steps through
+// the letters at the finger's pace, both ways (turning back keeps the gear).
+// Holding still for dwellMs shifts one gear down (zooming back in), and
+// lifting the finger goes back to rows.
+//
+// Gears are counted from the finest letter jumps the list allows: on a list
+// that allows only first letters, the first shift is already 1 letter.
 class ScrollSpeed {
 public:
   ScrollSpeed() { reset(); }
   void reset();
 
-  // A scroll event of `clicks` (signed) at `nowMs`. Returns the letters to
-  // jump by for it (0: rows), at most `maxLetters` (0: rows only).
-  int update(int clicks, uint32_t nowMs, int maxLetters);
+  // A scroll event of `clicks` (signed), read at `atMs` (the wheel sample's
+  // time, see ClickWheel::Event::at). Returns the letters to jump by for it
+  // (0: rows), at most `maxLetters` (0: rows only).
+  int update(int clicks, uint32_t atMs, int maxLetters);
+
+  // Call often: shifts a gear down once the wheel has been still for
+  // dwellMs since the last click or shift. True when it did.
+  bool tick(uint32_t nowMs);
+
+  // The finger left the wheel: back to rows.
+  void touchEnd() { reset(); }
+
+  // Letters each click jumps by now (0: rows).
+  int letters() const { return gear ? maxLetters - gear + 1 : 0; }
 
   // Clicks per second at the last update.
   uint16_t clicksPerSecond() const { return speed; }
 
 private:
-  static const int HISTORY = 16;
+  void restartWindow();
+
+  // Enough events for the longest window (a click each, plus the one it
+  // starts from): windowClicks is capped at HISTORY - 1, one turn.
+  static const int HISTORY = 25;
   uint32_t times[HISTORY];
-  int16_t counts[HISTORY];
+  uint8_t counts[HISTORY];
   uint8_t head; // next slot
   uint8_t used;
   int8_t dir;
-  uint8_t tier; // 0 rows, 1: 3 letters, 2: 2 letters, 3: 1 letter
+  uint8_t gear; // 0 rows, else shifts so far (at most maxLetters)
+  uint8_t maxLetters;
   uint16_t speed;
-  uint32_t last;
+  uint32_t last; // last click or shift
 };

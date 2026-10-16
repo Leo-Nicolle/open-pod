@@ -3,7 +3,7 @@
 
 // Starting values, tuned on the bench with the virtual finger (a slow
 // browse is ~8 clicks/s, a 400 ms flick of a full turn ~60).
-ScrollTuning scrollTuning = {12, 25, 40, 250, 300, 70};
+ScrollTuning scrollTuning = {16, 28, 40, 12, 520};
 
 int fastScrollLetterCount(int total) {
   if (total > 1500)
@@ -124,64 +124,78 @@ int fastScrollJump(int from, int dir, int letters, int total,
 void ScrollSpeed::reset() {
   head = used = 0;
   dir = 0;
-  tier = 0;
+  gear = 0;
+  maxLetters = 0;
   speed = 0;
   last = 0;
 }
 
-int ScrollSpeed::update(int clicks, uint32_t nowMs, int maxLetters) {
+void ScrollSpeed::restartWindow() { head = used = 0; }
+
+int ScrollSpeed::update(int clicks, uint32_t atMs, int maxL) {
   const ScrollTuning &t = scrollTuning;
+  maxLetters = (uint8_t)(maxL > 0 ? maxL : 0);
+  if (gear > maxLetters)
+    gear = maxLetters;
   int d = clicks < 0 ? -1 : 1;
-  if (used == 0 || d != dir || nowMs - last >= t.gapMs) {
-    // A new turn (or the other way): start over, precise.
-    head = used = 0;
-    tier = 0;
-  }
+  // A new turn, the other way or after a pause: the speed starts over (the
+  // gear doesn't, see tick()). A click read before the last shift (held
+  // back by the wheel's lift-off delay) doesn't move `last` back.
+  int32_t since = (int32_t)(atMs - last);
+  if (used == 0 || d != dir || since >= (int32_t)t.dwellMs)
+    restartWindow();
   dir = (int8_t)d;
-  last = nowMs;
-  times[head] = nowMs;
-  counts[head] = (int16_t)(clicks < 0 ? -clicks : clicks);
+  if (since > 0)
+    last = atMs;
+  int n = clicks < 0 ? -clicks : clicks;
+  times[head] = atMs;
+  counts[head] = (uint8_t)(n > 255 ? 255 : n);
   head = (uint8_t)((head + 1) % HISTORY);
   if (used < HISTORY)
     used++;
 
-  // Clicks over the time they took: from the oldest event in the window to
-  // this one (its own clicks came before it, so they don't count). Counting
-  // clicks per window instead jitters at its edge: 8 clicks/s reads 8 or 12.
-  // Alone in the window, an event's clicks count over the whole window.
-  uint32_t sum = 0, span = 0, oldest = 0;
+  // The time the last `win` clicks took: an event's clicks were turned
+  // between the sample before it and its own, so they span from the event
+  // before them to this one.
+  uint16_t win = t.windowClicks;
+  if (win < 1)
+    win = 1;
+  if (win > HISTORY - 1)
+    win = HISTORY - 1;
+  uint32_t sum = 0, v = 0;
+  bool full = false;
   for (int i = 0; i < used; i++) {
     int slot = (head - 1 - i + HISTORY) % HISTORY;
-    if (nowMs - times[slot] >= t.windowMs)
-      break;
-    sum += (uint32_t)counts[slot];
-    span = nowMs - times[slot];
-    oldest = (uint32_t)counts[slot];
+    if (i > 0) {
+      uint32_t span = atMs - times[slot];
+      v = sum * 1000 / (span > 0 ? span : 1);
+      if (sum >= win) {
+        full = true;
+        break;
+      }
+    }
+    sum += counts[slot];
   }
-  uint32_t v;
-  if (span > 0)
-    v = (sum - oldest) * 1000 / span;
-  else
-    v = t.windowMs ? sum * 1000 / t.windowMs : 0;
   speed = (uint16_t)(v > 0xFFFF ? 0xFFFF : v);
 
-  // Up at once, down only clearly below the current tier's threshold.
-  const uint16_t th[4] = {0, t.letters3, t.letters2, t.letters1};
-  uint8_t want = 0;
-  for (uint8_t k = 3; k >= 1; k--) {
-    if (speed >= th[k]) {
-      want = k;
-      break;
-    }
+  // One gear up, and the next one needs a window of its own, from here.
+  const uint16_t th[3] = {t.shift1, t.shift2, t.shift3};
+  if (full && gear < maxLetters && speed >= th[gear]) {
+    gear++;
+    restartWindow();
+    times[head] = atMs;
+    counts[head] = 0;
+    head = 1;
+    used = 1;
   }
-  if (want > tier) {
-    tier = want;
-  } else {
-    while (tier > want && (uint32_t)speed * 100 < (uint32_t)th[tier] * t.dropPct)
-      tier--;
-  }
-  if (tier == 0 || maxLetters <= 0)
-    return 0;
-  int letters = 4 - tier;
-  return letters < maxLetters ? letters : maxLetters;
+  return letters();
+}
+
+bool ScrollSpeed::tick(uint32_t nowMs) {
+  if (gear == 0 || nowMs - last < scrollTuning.dwellMs)
+    return false;
+  gear--;
+  last = nowMs;
+  restartWindow();
+  return true;
 }

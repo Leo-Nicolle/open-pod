@@ -38,8 +38,56 @@ export function demoDevice(): Device {
     events++;
     emit(`#ev ${text} t=${Date.now() - start}`);
   };
-  const onScroll = (v: number) => {
+  // Fast-scroll gears, as ScrollSpeed (software/src/state/fast_scroll.cpp), on a list
+  // long enough for 3-letter jumps.
+  const tuning: Record<string, number> = { s1: 16, s2: 28, s3: 40, win: 12, dwell: 520 };
+  const MAX_LETTERS = 3;
+  const speed = { hist: [] as { t: number; n: number }[], dir: 0, gear: 0, last: 0 };
+  const gearLetters = () => (speed.gear ? MAX_LETTERS - speed.gear + 1 : 0);
+  const scrollSpeed = (clicks: number, at: number) => {
+    const d = clicks < 0 ? -1 : 1;
+    const since = at - speed.last;
+    if (!speed.hist.length || d !== speed.dir || since >= tuning.dwell) speed.hist = [];
+    speed.dir = d;
+    if (since > 0) speed.last = at;
+    speed.hist = [...speed.hist, { t: at, n: Math.min(255, Math.abs(clicks)) }].slice(-25);
+    // Average over the last `win` clicks.
+    const win = Math.max(1, Math.min(24, tuning.win));
+    let sum = 0, v = 0, full = false;
+    for (let i = speed.hist.length - 1; i >= 0; i--) {
+      if (i < speed.hist.length - 1) {
+        v = Math.floor((sum * 1000) / Math.max(1, at - speed.hist[i].t));
+        if (sum >= win) {
+          full = true;
+          break;
+        }
+      }
+      sum += speed.hist[i].n;
+    }
+    v = Math.min(0xffff, v);
+    const th = [tuning.s1, tuning.s2, tuning.s3];
+    if (full && speed.gear < MAX_LETTERS && v >= th[speed.gear]) {
+      speed.gear++;
+      speed.hist = [{ t: at, n: 0 }];
+    }
+    emit(`#ev fast l=${gearLetters()} v=${v} t=${at - start}`);
+  };
+  // Held still: one gear down. Lifted: rows.
+  const gearTick = (now: number) => {
+    if (!speed.gear || now - speed.last < tuning.dwell) return;
+    speed.gear--;
+    speed.last = now;
+    speed.hist = [];
+    emit(`#ev fast l=${gearLetters()} v=0 t=${now - start}`);
+  };
+  const gearLift = () => {
+    if (speed.gear) emit(`#ev fast l=0 v=0 t=${Date.now() - start}`);
+    speed.hist = [];
+    speed.gear = 0;
+  };
+  const onScroll = (v: number, at = Date.now()) => {
     ev(`scroll v=${v}`);
+    scrollSpeed(v, at);
     const now = Date.now();
     if (now - fastWindow.start > 300) fastWindow = { start: now, clicks: 0 };
     fastWindow.clicks += Math.abs(v);
@@ -78,6 +126,7 @@ export function demoDevice(): Device {
     } else if (a === null && wheel.last !== null) {
       wheel.held = [];
       ev("untouch");
+      gearLift();
     }
     if (a !== null && wheel.last !== null) {
       let d = a - wheel.last;
@@ -95,8 +144,9 @@ export function demoDevice(): Device {
     if (due.length) {
       wheel.held = wheel.held.slice(due.length);
       const v = due.reduce((s, h) => s + h.clicks, 0);
-      if (v) onScroll(v);
+      if (v) onScroll(v, due[due.length - 1].at);
     }
+    gearTick(now);
     // Buttons: debounce, click on release, long and very long while held.
     BUTTONS.forEach((name, i) => {
       const down = !!(finger.buttons & (1 << i));
@@ -259,6 +309,14 @@ export function demoDevice(): Device {
               return { at: +at, angle: angle === "up" ? null : +angle, buttons: buttons.length ? mask(buttons.join("+")) : 0 };
             }),
           );
+        case "scrollcfg": {
+          for (const [k, v] of arg.split(" ").filter(Boolean).map((kv) => kv.split("="))) {
+            if (!(k in tuning)) return later(2, `#err scrollcfg unknown ${k}`);
+            tuning[k] = +v;
+          }
+          const t = tuning;
+          return later(2, `#ok scrollcfg s1=${t.s1} s2=${t.s2} s3=${t.s3} win=${t.win} dwell=${t.dwell}`);
+        }
         case "stats":
           return later(5, `#ok stats uptime_ms=${Date.now() - start} free_ram=18000`);
         default:

@@ -519,18 +519,16 @@ void benchOnWheelEvent(const ClickWheel::Event &e)
     Serial.printf("#ev %s t=%lu\n", TYPES[type], t);
 }
 
+// Every scroll's speed and gear, and each shift down (v=0: on a pause or
+// lift-off): the scroll tuning page plots them.
 void benchOnScrollSpeed(int letters, uint16_t clicksPerSecond)
 {
-  static int last = 0;
-  if (letters == last)
-    return;
-  last = letters;
   Serial.printf("#ev fast l=%d v=%u t=%lu\n", letters,
                 (unsigned)clicksPerSecond, millis());
 }
 
-// "#scrollcfg [t3=<c/s>] [t2=] [t1=] [win=<ms>] [gap=<ms>] [drop=<%>]": sets
-// the fast-scroll tiers (state/fast_scroll.h) and prints them.
+// "#scrollcfg [s1=<c/s>] [s2=] [s3=] [win=<clicks>] [dwell=<ms>]": sets the
+// fast-scroll gears (state/fast_scroll.h) and prints them.
 static void scrollConfig(const char *arg)
 {
   ScrollTuning &t = scrollTuning;
@@ -540,27 +538,24 @@ static void scrollConfig(const char *arg)
   while (sscanf(arg, " %7[a-z0-9]=%u%n", key, &value, &n) == 2)
   {
     arg += n;
-    if (!strcmp(key, "t3"))
-      t.letters3 = (uint16_t)value;
-    else if (!strcmp(key, "t2"))
-      t.letters2 = (uint16_t)value;
-    else if (!strcmp(key, "t1"))
-      t.letters1 = (uint16_t)value;
-    else if (!strcmp(key, "win") && value > 0)
-      t.windowMs = (uint16_t)value;
-    else if (!strcmp(key, "gap"))
-      t.gapMs = (uint16_t)value;
-    else if (!strcmp(key, "drop") && value <= 100)
-      t.dropPct = (uint8_t)value;
+    if (!strcmp(key, "s1"))
+      t.shift1 = (uint16_t)value;
+    else if (!strcmp(key, "s2"))
+      t.shift2 = (uint16_t)value;
+    else if (!strcmp(key, "s3"))
+      t.shift3 = (uint16_t)value;
+    else if (!strcmp(key, "win") && value > 0 && value < 25)
+      t.windowClicks = (uint16_t)value;
+    else if (!strcmp(key, "dwell") && value > 0)
+      t.dwellMs = (uint16_t)value;
     else
     {
       Serial.printf("#err scrollcfg unknown %s\n", key);
       return;
     }
   }
-  Serial.printf("#ok scrollcfg t3=%u t2=%u t1=%u win=%u gap=%u drop=%u\n",
-                t.letters3, t.letters2, t.letters1, t.windowMs, t.gapMs,
-                t.dropPct);
+  Serial.printf("#ok scrollcfg s1=%u s2=%u s3=%u win=%u dwell=%u\n",
+                t.shift1, t.shift2, t.shift3, t.windowClicks, t.dwellMs);
 }
 
 void benchCommand(const char *line)

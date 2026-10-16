@@ -96,7 +96,7 @@ The `bench` build (`-DOPENPOD_BENCH=1`) adds these commands to the debug serial.
 | `#seek <seconds>` | Seeks the playing track, `us=` |
 | `#repeat <0\|1>` | Loops the playing track at its end, instead of moving on |
 | `#state` | Route, selection, highlighted row label, playing track, position, volume, search query and hits, and `fast=` (fast-scroll overlay), `letters=` (letters it shows), `key=` (the highlighted row's 3-letter fast-scroll key), `seek=` (seek mode), `screen=` (display on), `anim=` (a transition playing), `miss=` (index pages read from the card so far) |
-| `#scrollcfg [t3=] [t2=] [t1=] [win=] [gap=] [drop=]` | Fast-scroll tiers (`src/state/fast_scroll.h`): clicks per second from which a click jumps by 3, 2 or 1 letters, the speed window and the pause that starts over (ms), and how far below a tier's threshold it drops back (%). Sets the given ones, answers all of them |
+| `#scrollcfg [s1=] [s2=] [s3=] [win=] [dwell=]` | Fast-scroll gears (`src/state/fast_scroll.h`): clicks per second to shift up to the 1st (3 letters), 2nd (2) and 3rd (first letters) gear, the speed window (clicks of travel each shift averages over), and how long holding still shifts a gear down (ms). Lifting the finger goes back to rows. Sets the given ones, answers all of them |
 | `#cache [reset]` | Index page cache (`src/storage/PageStore.h`): `slots=`, `page=` bytes, `hits=`, `misses=`, `miss_us=` (time spent reading pages from the card) |
 | `#dataset` | The card's `bench.json` and the counts the firmware loaded |
 | `#stats`, `#version`, `#ping` | Uptime and free RAM, the git revision it was built from |

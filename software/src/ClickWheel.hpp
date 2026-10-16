@@ -31,6 +31,10 @@ public:
     EventType type;
     Button button; // valid for button events only
     int16_t value; // scroll clicks for Scroll, 0 otherwise
+    // millis() of the wheel sample a Scroll's clicks were read in (not when
+    // it's emitted, SCROLL_LIFTOFF_MS and a loop pass later): the speed is
+    // measured on it, so a slow loop doesn't skew it. 0: when queued.
+    uint32_t at;
   };
 
   static const unsigned long DEBOUNCE_MS = 20;
@@ -322,10 +326,11 @@ public:
     if (n == 0) return;
     int16_t clicks = 0;
     for (uint8_t i = 0; i < n; i++) clicks += heldScroll[i].clicks;
+    uint32_t at = heldScroll[n - 1].at;
     for (uint8_t i = n; i < heldScrollCount; i++) heldScroll[i - n] = heldScroll[i];
     heldScrollCount -= n;
     if (clicks != 0) {
-      pushEvent({EventType::Scroll, Button::Count, clicks});
+      pushEvent({EventType::Scroll, Button::Count, clicks, at});
     }
   }
 
@@ -469,7 +474,9 @@ private:
 
   void pushEvent(const Event &e) {
     if (queueCount >= EVENT_QUEUE_SIZE) return; // full: drop newest
-    eventQueue[(queueHead + queueCount) % EVENT_QUEUE_SIZE] = e;
+    Event &slot = eventQueue[(queueHead + queueCount) % EVENT_QUEUE_SIZE];
+    slot = e;
+    if (slot.at == 0) slot.at = millis();
     queueCount++;
   }
 
