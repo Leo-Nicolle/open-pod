@@ -145,8 +145,10 @@ public:
 class SdFat {
 public:
   bool begin(const SdSpiConfig &) {
-    return openpod_test::FakeFs::get().sdBeginResult;
+    mounted = openpod_test::FakeFs::get().sdBeginResult;
+    return mounted;
   }
+  uint8_t fatType() const { return mounted ? 32 : 0; }
   // Opens on this volume, as the real SdFs::open does.
   FsFile open(const char *path, int flags = O_RDONLY) {
     FsFile f;
@@ -155,6 +157,9 @@ public:
   }
   uint32_t sectorsPerCluster() { return 1; }
   uint32_t clusterCount() { return 1024; }
+
+private:
+  bool mounted = false;
 };
 
 // Real SdFat aliases File to whichever concrete file class the library is

@@ -1,4 +1,5 @@
 #pragma once
+#include "PSRAM_controller.hpp"
 #include <SdFat.h>
 #include <stdint.h>
 
@@ -34,8 +35,13 @@ class PageStore {
 public:
   static const uint32_t PAGE_SIZE = 1u << PAGE_STORE_PAGE_LOG2;
   static const uint8_t MAX_PACKS = 2;
-  static const uint16_t MAX_SLOTS = 512;
+  // The device's cache region, whole pages: 480 of 4 KB.
+  static const uint16_t MAX_SLOTS = INDEX_CACHE_SIZE / PAGE_SIZE;
   static const uint8_t WAYS = 4;
+  // Pages per pack: a page number takes 15 bits of a slot key, and the
+  // last one would make pack 1's key EMPTY. 128 MB at 4 KB pages (a
+  // 100k-track index.pack is ~24 MB).
+  static const uint16_t MAX_PAGES = 0x7FFF;
 
   struct Stats {
     uint32_t hits;
@@ -55,8 +61,8 @@ public:
     scratchSize = size & ~511u;
   }
 
-  // Opens a pack file; its index (0..MAX_PACKS-1), or -1 if it's missing or
-  // not a pack of this version. Reopening a pack slot drops its cached pages.
+  // Opens a pack file; its index (0..MAX_PACKS-1), or -1 if it's missing,
+  // not a pack of this version or bigger than MAX_PAGES. Reopening a pack slot drops its cached pages.
   int open(SdFat &sd, const char *path, uint8_t pack);
   void close(uint8_t pack);
   bool isOpen(uint8_t pack) const { return pack < MAX_PACKS && files[pack].isOpen(); }
@@ -80,7 +86,9 @@ public:
 
 private:
   static const uint16_t NONE = 0xFFFF;
-  static const uint32_t EMPTY = 0xFFFFFFFFu;
+  static const uint16_t EMPTY = 0xFFFF;
+  static const uint8_t KEY_PAGE_BITS = 15;
+  static const uint16_t KEY_PAGE_MASK = (1u << KEY_PAGE_BITS) - 1;
 
   FsFile files[MAX_PACKS];
   uint8_t *scratch = nullptr;
@@ -90,23 +98,26 @@ private:
   uint16_t slots = 0;
   uint16_t sets = 0;
   uint8_t ways = 0;
-  // Per slot: the page it holds (pack << 24 | page number, or EMPTY) and its
+  // Per slot: the page it holds (pack << 15 | page number, or EMPTY) and its
   // reference bit; per set, its CLOCK hand. Set s owns slots
   // [s * ways, s * ways + ways).
-  uint32_t slotKey[MAX_SLOTS];
-  uint8_t refBits[MAX_SLOTS / 8];
-  uint8_t hands[MAX_SLOTS / WAYS];
+  uint16_t slotKey[MAX_SLOTS];
+  uint8_t refBits[(MAX_SLOTS + 7) / 8];
+  uint8_t hands[(MAX_SLOTS + WAYS - 1) / WAYS];
   // The last page hit: binary searches and string reads come back to it.
-  uint32_t lastKey = EMPTY;
+  uint16_t lastKey = EMPTY;
   uint16_t lastSlot = NONE;
   Stats st = {0, 0, 0, 0};
 
-  uint16_t setOf(uint32_t key) const {
-    return (uint16_t)((key + (key >> 24) * 97u) % sets);
+  static uint16_t keyOf(uint8_t pack, uint32_t page) {
+    return (uint16_t)(((uint32_t)pack << KEY_PAGE_BITS) | page);
+  }
+  uint16_t setOf(uint16_t key) const {
+    return (uint16_t)((key + (key >> KEY_PAGE_BITS) * 97u) % sets);
   }
   void clear();
-  uint16_t lookup(uint32_t key);
-  uint16_t load(uint32_t key);
+  uint16_t lookup(uint16_t key);
+  uint16_t load(uint16_t key);
   void setRef(uint16_t slot) { refBits[slot >> 3] |= (uint8_t)(1 << (slot & 7)); }
   bool takeRef(uint16_t slot);
 };

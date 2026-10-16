@@ -104,9 +104,12 @@ static const char *selectedLabel()
   SearchModel &search = state.getSearch();
   if (state.getCurrentRoute().type == Route_t::SEARCH_RESULTS)
   {
-    return search.hasSelection()
-               ? search.getRowTitle(search.getSelected() - search.getFirst())
-               : "";
+    static char title[SearchModel::TITLE_LEN];
+    static char sub[SearchModel::SUB_LEN];
+    title[0] = '\0';
+    if (search.hasSelection())
+      search.describeRow(search.getSelected() - search.getFirst(), title, sub);
+    return title;
   }
   const char *const *visible = state.getVisibleElements();
   int row = state.getRelativeSelectedIndex();
@@ -614,8 +617,10 @@ void benchCommand(const char *line)
   }
   else if (!strcmp(cmd, "stats"))
   {
-    Serial.printf("#ok stats uptime_ms=%lu free_ram=%lu\n",
-                  (unsigned long)millis(), (unsigned long)freeRam());
+    Serial.printf("#ok stats uptime_ms=%lu free_ram=%lu stack_free_min=%lu "
+                  "stack_used_max=%lu\n",
+                  (unsigned long)millis(), (unsigned long)freeRam(),
+                  (unsigned long)stackFreeMin(), (unsigned long)stackUsedMax());
   }
   else if (!strcmp(cmd, "click") || !strcmp(cmd, "long"))
   {

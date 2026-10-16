@@ -12,6 +12,9 @@ using openpod_test::checkSequentialRun;
 using openpod_test::FakeFs;
 using openpod_test::fakePsram;
 
+// The card the buffers read from (the library's SdFat on the device).
+static SdFat testSd;
+
 namespace {
 
 void resetAll() {
@@ -53,7 +56,7 @@ TEST_CASE("Audio_buffer - streams a single file's exact bytes in order") {
   const uint32_t size = 10000; // spans more than one AUDIO_PRELOAD_CHUNK_SIZE
   FakeFs::get().addFile("/music/a.raw", buildFakeAudioFile(1, size));
 
-  Audio_buffer buf(4);
+  Audio_buffer buf(4, testSd);
   REQUIRE(buf.begin());
 
   buf.setFileName("/music/a.raw");
@@ -76,7 +79,7 @@ TEST_CASE("Audio_buffer - isFileExhausted is false while data is buffered and "
   const uint32_t size = 4000;
   FakeFs::get().addFile("/music/a.raw", buildFakeAudioFile(1, size));
 
-  Audio_buffer buf(4);
+  Audio_buffer buf(4, testSd);
   REQUIRE(buf.begin());
   buf.setFileName("/music/a.raw");
   loadUntil(buf, size);
@@ -96,7 +99,7 @@ TEST_CASE("Audio_buffer - a single load() call is bounded, refilling spreads "
   const uint32_t size = 200000; // far more than one load() call will pull
   FakeFs::get().addFile("/music/a.raw", buildFakeAudioFile(1, size));
 
-  Audio_buffer buf(4);
+  Audio_buffer buf(4, testSd);
   REQUIRE(buf.begin());
   buf.setFileName("/music/a.raw");
 
@@ -127,7 +130,7 @@ TEST_CASE("Audio_buffer - ring buffer wraparound preserves byte order across "
   const uint32_t size = 4000;
   FakeFs::get().addFile("/music/wrap.raw", buildFakeAudioFile(3, size));
 
-  Audio_buffer buf(4);
+  Audio_buffer buf(4, testSd);
   REQUIRE(buf.begin());
 
   // Position the (empty) ring buffer 100 bytes from its physical end, so
@@ -153,7 +156,7 @@ TEST_CASE("Audio_buffer - prefetching the next track never touches the "
   FakeFs::get().addFile("/music/a.raw", buildFakeAudioFile(1, curSize));
   FakeFs::get().addFile("/music/b.raw", buildFakeAudioFile(2, 50000));
 
-  Audio_buffer buf(4);
+  Audio_buffer buf(4, testSd);
   REQUIRE(buf.begin());
 
   buf.setFileName("/music/a.raw");
@@ -189,7 +192,7 @@ TEST_CASE("Audio_buffer - consumeNextTrackIfMatches adopts prefetched bytes "
   FakeFs::get().addFile("/music/a.raw", buildFakeAudioFile(1, curSize));
   FakeFs::get().addFile("/music/b.raw", buildFakeAudioFile(2, nextSize));
 
-  Audio_buffer buf(4);
+  Audio_buffer buf(4, testSd);
   REQUIRE(buf.begin());
 
   // File a is "currently playing" and fully buffered.
@@ -233,7 +236,7 @@ TEST_CASE("Audio_buffer - consumeNextTrackIfMatches declines a mismatched or "
   FakeFs::get().addFile("/music/a.raw", buildFakeAudioFile(1, size));
   FakeFs::get().addFile("/music/b.raw", buildFakeAudioFile(2, size));
 
-  Audio_buffer buf(4);
+  Audio_buffer buf(4, testSd);
   REQUIRE(buf.begin());
 
   // Nothing was ever prepared.
@@ -295,7 +298,7 @@ TEST_CASE("Audio_buffer - FLAC metadata other than STREAMINFO is skipped") {
   FakeFs::get().addFile("/music/a.flac",
                         buildFakeFlac(streamInfo, {300000, 100}, audio));
 
-  Audio_buffer buf(4);
+  Audio_buffer buf(4, testSd);
   REQUIRE(buf.begin());
   buf.setFileName("/music/a.flac");
   const size_t expected = 42 + audio.size();
@@ -321,7 +324,7 @@ TEST_CASE("Audio_buffer - non-FLAC files are streamed unchanged") {
   data[3] = 'X';
   FakeFs::get().addFile("/music/a.mp3", data);
 
-  Audio_buffer buf(4);
+  Audio_buffer buf(4, testSd);
   REQUIRE(buf.begin());
   buf.setFileName("/music/a.mp3");
   loadUntil(buf, data.size());
@@ -338,7 +341,7 @@ TEST_CASE("Audio_buffer - with a front fifo, the stream comes out in order "
 
   static AudioFifo fifo;
   fifo.reset();
-  Audio_buffer buf(4);
+  Audio_buffer buf(4, testSd);
   REQUIRE(buf.begin());
   buf.setFrontFifo(&fifo);
   buf.setFileName("/music/a.raw");
@@ -374,7 +377,7 @@ TEST_CASE("Audio_buffer - isFileExhausted waits for the front fifo") {
   FakeFs::get().addFile("/music/a.raw", buildFakeAudioFile(6, 4000));
   static AudioFifo fifo;
   fifo.reset();
-  Audio_buffer buf(4);
+  Audio_buffer buf(4, testSd);
   REQUIRE(buf.begin());
   buf.setFrontFifo(&fifo);
   buf.setFileName("/music/a.raw");
@@ -393,7 +396,7 @@ TEST_CASE("Audio_buffer - adopting a large prefetch takes only its start and "
   const uint32_t nextSize = 200000;
   FakeFs::get().addFile("/music/b.raw", buildFakeAudioFile(2, nextSize));
 
-  Audio_buffer buf(4);
+  Audio_buffer buf(4, testSd);
   REQUIRE(buf.begin());
   buf.prepareNextTrack("/music/b.raw");
   for (int i = 0; i < 20; i++) { // 80 KB, more than the adopt cap
@@ -412,7 +415,7 @@ TEST_CASE("Audio_buffer - adopting a large prefetch takes only its start and "
 TEST_CASE("Audio_buffer - a load() budget of 1 us reads exactly one chunk") {
   resetAll();
   FakeFs::get().addFile("/music/a.raw", buildFakeAudioFile(1, 100000));
-  Audio_buffer buf(4);
+  Audio_buffer buf(4, testSd);
   REQUIRE(buf.begin());
   buf.setFileName("/music/a.raw");
   buf.load(AUDIO_TARGET_BUFFERED_BYTES, nullptr, 1);
@@ -423,7 +426,7 @@ TEST_CASE("Audio_buffer - a load() budget of 1 us reads exactly one chunk") {
 TEST_CASE("Audio_buffer - estimated rate comes from size and duration") {
   resetAll();
   FakeFs::get().addFile("/music/a.raw", buildFakeAudioFile(1, 90000));
-  Audio_buffer buf(4);
+  Audio_buffer buf(4, testSd);
   REQUIRE(buf.begin());
   buf.setFileName("/music/a.raw", 0);
   buf.load(4096);

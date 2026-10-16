@@ -287,6 +287,7 @@ void OpenPodUIEngine::updateBluetooth()
     toastSerial = btModel.toastSerial();
     hs.toast = &btModel.lastToast();
     hs.toastActive = true;
+    hs.toastSerial++;
     toastHideAt = now + TOAST_MS;
     headerDirty = true;
   }
@@ -295,6 +296,7 @@ void OpenPodUIEngine::updateBluetooth()
     appToastSerial = appToast.serial();
     hs.toast = &appToast.last();
     hs.toastActive = true;
+    hs.toastSerial++;
     toastHideAt = now + TOAST_MS;
     headerDirty = true;
   }

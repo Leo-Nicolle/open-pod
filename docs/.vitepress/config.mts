@@ -36,6 +36,7 @@ export default defineConfig({
           { text: "Benchmarks", link: "/tools/bench" },
           { text: "Live bench", link: "/tools/bench-live" },
           { text: "Compare bench reports", link: "/tools/bench-compare" },
+          { text: "Memory layout", link: "/tools/memory-layout" },
         ],
       },
       { text: "Blog", link: "/blog/", activeMatch: "^/blog/" },
@@ -60,6 +61,7 @@ export default defineConfig({
             { text: "Benchmarks", link: "/tools/bench" },
             { text: "Live bench", link: "/tools/bench-live" },
             { text: "Compare bench reports", link: "/tools/bench-compare" },
+            { text: "Memory layout", link: "/tools/memory-layout" },
           ],
         },
         {

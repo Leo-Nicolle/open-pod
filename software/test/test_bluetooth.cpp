@@ -54,7 +54,9 @@ TEST_SUITE("Bluetooth model") {
     CHECK(bt.device(sony).paired);
     CHECK(name(bt, sony) == "Sony WH-1000XM4");
     CHECK(name(bt, jbl) == "JBL Charge 4");
-    CHECK(std::string(bt.device(jbl).macText) == "A0:BC:30:07:54:21");
+    char mac[18];
+    BtModel::macText(bt.device(jbl), mac);
+    CHECK(std::string(mac) == "A0:BC:30:07:54:21");
 
     // Read again without Sony: it's no longer paired, and dropped.
     bt.onLine("+PLIST=1,A0BC30075421,JBL Charge 4", 0);
@@ -576,12 +578,23 @@ TEST_SUITE("Bluetooth menu") {
     state.goToSelected(lookup);
     CHECK(state.getCurrentRoute().type == Route_t::SETTINGS);
     CHECK(std::string(state.getHeaderTitle()) == "Settings");
+    // As main.cpp does with BtMenu::routeName().
+    state.setMenuRouteNames([](const Route_t &route, char *buf, uint32_t size) {
+      snprintf(buf, size, "%s", route.type == Route_t::BT_LIST     ? "Bluetooth"
+                                : route.type == Route_t::BT_DEVICE ? "Sony"
+                                                                   : "");
+    });
 
     state.pushMenuRoute(Route_t::BT_LIST, 0, "Bluetooth", 1);
     state.pushMenuRoute(Route_t::BT_DEVICE, 3, "Sony", 0);
     state.pushMenuRoute(Route_t::BT_FORGET, 3, "Forget device?", 0);
     CHECK(state.getCurrentRoute().entityId == 3);
+    CHECK(std::string(state.getHeaderTitle()) == "Forget device?");
+    REQUIRE(state.back(lookup)); // the device screen gets its name back
+    CHECK(std::string(state.getHeaderTitle()) == "Sony");
+    state.pushMenuRoute(Route_t::BT_FORGET, 3, "Forget device?", 0);
     REQUIRE(state.backTo(Route_t::BT_LIST, lookup));
+    CHECK(std::string(state.getHeaderTitle()) == "Bluetooth");
     CHECK(state.getCurrentRoute().type == Route_t::BT_LIST);
     CHECK(state.getCurrentRoute().selectedIndex == 1);
     REQUIRE(state.back(lookup));

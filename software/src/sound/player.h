@@ -13,7 +13,6 @@ class PodPlayer {
     void handlePlaybackPaused(const PlaybackEvent* event);
     void handlePlaybackResumed(const PlaybackEvent* event);
     void handleVolumeChanged(const VolumeEvent* event);
-    char currentPath[256]; // Current track path for playback
     // Set when a started track can't be played. Handled from loop() rather
     // than inside the EVENT_PLAYBACK_STARTED dispatch, so the other
     // listeners (UI) see STARTED before the matching STOPPED.
@@ -50,7 +49,9 @@ public:
     bool isResuming() const { return resumeAt > 0; }
     AudioPlayer audioPlayer;
 
-    PodPlayer() : audioPlayer(MP3_RESET, MP3CS, MP3XDCS, MP3DREQ, CARDCS) {
+    PodPlayer()
+        : audioPlayer(MP3_RESET, MP3CS, MP3XDCS, MP3DREQ, CARDCS,
+                      musicLookup.getSD()) {
         instance = this;
     }
 

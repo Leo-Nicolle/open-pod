@@ -97,6 +97,9 @@ public:
 
   Screen screen() const { return scr; }
   const char *title() const;
+  // The header name of a Settings/Bluetooth route, as push() gave it (for
+  // State::setMenuRouteNames()).
+  void routeName(const Route_t &route, char *buf, uint32_t size) const;
   int rowCount() const { return count; }
   // Row i, built from the model's current state.
   MenuRow row(int i) const;

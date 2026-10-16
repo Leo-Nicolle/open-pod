@@ -1,0 +1,626 @@
+{
+  "generated": "2026-10-16",
+  "target": "STM32F446RE (env nucleo_f446re) + APS6404L PSRAM over SPI2",
+  "method": "Static RAM: arm-none-eabi-nm -S on firmware.elf, broken down with gdb 'ptype /o' on a -g build of the same source (same 92,828 B). Heap: the new[]/new/reserve calls reached from the firmware, sizes from sizeof() in gdb. PSRAM: the region map in PSRAM_controller.hpp. Sizes are in bytes. 'children' break an object down; any leftover is listed as 'other fields'.",
+  "ram": {
+    "total": 131072,
+    "sections": {
+      ".data": 304,
+      ".bss": 92524,
+      "static_total": 92828,
+      "left_for_heap_and_stack": 38244,
+      "heap_estimated": 17536,
+      "left_for_stack_estimated": 20708,
+      "linker_minimums": {
+        "_Min_Heap_Size": 512,
+        "_Min_Stack_Size": 1024
+      }
+    },
+    "notes": [
+      "Static RAM is 70.8% of the 128 KB (was 83.2% before the quick wins of notes/performance-and-memory.md: 109,088 B -> 92,828 B, -16,260 B). The heap (~17.5 KB, mostly the list row cache) and the stack share the ~37 KB left, so the stack has ~20 KB (was ~4.4 KB).",
+      "Stack depth is now measured on the device: app/stack_probe.cpp paints the free RAM at boot, and the [prof] line ('stackFree'/'stackMax') and the bench 'stats' answer (stack_free_min / stack_used_max) report the high-water mark. Not yet run on hardware for this file.",
+      "One SdFat for the whole card (MusicLookup::sd, 1,180 B with its 512 B sector cache): Audio_buffer takes a reference to it.",
+      "The debug serial keeps 256 B RX + 1,024 B TX (SERIAL_RX/TX_BUFFER_SIZE in platformio.ini); the Bluetooth UART has its own driver (bluetooth/BtUart.h) with 256 B RX + 64 B TX."
+    ],
+    "static": [
+      {
+        "nickname": "Framebuffers",
+        "variable": "g_buffers",
+        "file": "software/src/ui/ui_types.cpp:4",
+        "size": 38408,
+        "usage": "static .bss, always (every redraw)",
+        "description": "BufferManager: two 320×30 RGB565 strip buffers, one drawn while the other is pushed to the display.",
+        "children": [
+          {
+            "nickname": "Strip A",
+            "variable": "g_buffers.bufferA",
+            "file": "software/src/ui/ui_types.h:54",
+            "size": 19200,
+            "usage": "render / DMA push, alternating with B",
+            "description": "320 × 30 px × 2 B (SCREEN_WIDTH * CHUNK_HEIGHT)."
+          },
+          {
+            "nickname": "Strip B",
+            "variable": "g_buffers.bufferB",
+            "file": "software/src/ui/ui_types.h:55",
+            "size": 19200,
+            "usage": "render / DMA push, alternating with A",
+            "description": "320 × 30 px × 2 B."
+          },
+          {
+            "nickname": "BufferManager other fields",
+            "variable": "g_buffers",
+            "file": "software/src/ui/ui_types.h",
+            "size": 8,
+            "usage": "always",
+            "description": "Which buffer is current."
+          }
+        ]
+      },
+      {
+        "nickname": "Player",
+        "variable": "player",
+        "file": "software/src/main.cpp:28",
+        "size": 37632,
+        "usage": "static .bss, always",
+        "description": "PodPlayer: the playback engine (AudioPlayer, VS1053 driver, SD audio reader and the FIFO feeding the decoder).",
+        "children": [
+          {
+            "nickname": "Audio FIFO",
+            "variable": "player.audioPlayer.fifo.data",
+            "file": "software/src/sound/AudioFifo.h:96",
+            "size": 32768,
+            "usage": "written from the PSRAM ring in the main loop, read by the TIM7 feeder interrupt",
+            "description": "32 KB RAM FIFO in front of the VS1053 (AudioFifo::CAPACITY). The biggest single buffer in RAM."
+          },
+          {
+            "nickname": "Audio scratch",
+            "variable": "player.audioPlayer.buffer()._scratchBuffer",
+            "file": "software/src/sound/Audio_buffer.h:193",
+            "size": 4096,
+            "usage": "shared: SD→PSRAM audio chunks, and PageStore's page read buffer (main.cpp:114)",
+            "description": "4 KB chunk buffer (AUDIO_PRELOAD_CHUNK_SIZE) for SD card reads."
+          },
+          {
+            "nickname": "Current file name",
+            "variable": "player.audioPlayer.buffer()._currentFileName",
+            "file": "software/src/sound/Audio_buffer.h:188",
+            "size": 256,
+            "usage": "while playing (reopened on seek and when adopting a prefetch)",
+            "description": "Path of the track being buffered: the only path buffer left (PodPlayer resolves paths into a stack buffer)."
+          },
+          {
+            "nickname": "Audio_buffer other fields",
+            "variable": "player.audioPlayer.buffer()",
+            "file": "software/src/sound/Audio_buffer.h",
+            "size": 284,
+            "usage": "always",
+            "description": "Two File handles (80 B each), a 32 B data buffer, the SdFat reference, ring/prefetch bookkeeping (the next track is kept as an open file + a path hash)."
+          },
+          {
+            "nickname": "VS1053 driver",
+            "variable": "player.audioPlayer.vs1053",
+            "file": "software/src/sound/VS1053_driver.h",
+            "size": 40,
+            "usage": "always",
+            "description": "VS1053 decoder driver state."
+          },
+          {
+            "nickname": "Player other fields",
+            "variable": "player / player.audioPlayer",
+            "file": "software/src/sound/player.h, software/src/sound/AudioPlayer.h",
+            "size": 188,
+            "usage": "always",
+            "description": "AudioPlayer (148 B) and PodPlayer (40 B) state: flags, timers, counters, padding."
+          }
+        ]
+      },
+      {
+        "nickname": "App state",
+        "variable": "state",
+        "file": "software/src/state/state.cpp:588",
+        "size": 5740,
+        "usage": "static .bss, always",
+        "description": "State: the current screen's list contents, router and search model.",
+        "children": [
+          {
+            "nickname": "List strings",
+            "variable": "state.elementsBuffer",
+            "file": "software/src/state/state.h:143",
+            "size": 4096,
+            "usage": "refilled on every list screen / scroll window",
+            "description": "Text of the visible window of list rows (ELEMENTS_BUFFER_SIZE, 4 KB): 64 names of ~30 chars take ~2 KB; with long names the window holds fewer names (ensureWindow() keeps the visible rows covered)."
+          },
+          {
+            "nickname": "List string pointers",
+            "variable": "state.stringPointers",
+            "file": "software/src/state/state.h:144",
+            "size": 256,
+            "usage": "with elementsBuffer",
+            "description": "64 pointers into elementsBuffer (MAX_STRING_POINTERS)."
+          },
+          {
+            "nickname": "Playing track name",
+            "variable": "state.playingTrackName",
+            "file": "software/src/state/state.h:163",
+            "size": 128,
+            "usage": "while playing",
+            "description": "Owned copy of the playing track's title."
+          },
+          {
+            "nickname": "Route stack",
+            "variable": "state.router.routeStack",
+            "file": "software/src/state/router.h:45",
+            "size": 160,
+            "usage": "always (navigation history)",
+            "description": "8 routes (MAX_ROUTE_DEPTH) x 20 B: type, entity id, scope, selection."
+          },
+          {
+            "nickname": "Route name",
+            "variable": "state.router.name",
+            "file": "software/src/state/router.h:50",
+            "size": 64,
+            "usage": "header title of the current route",
+            "description": "Only the top route keeps its name; State::refreshRouteName() looks it up again when back() uncovers a route."
+          },
+          {
+            "nickname": "Search hits",
+            "variable": "state.search.hits",
+            "file": "software/src/state/search.h:103",
+            "size": 800,
+            "usage": "search screen",
+            "description": "100 ranked hits × 8 B (MAX_HITS)."
+          },
+          {
+            "nickname": "SearchModel other fields",
+            "variable": "state.search",
+            "file": "software/src/state/search.h",
+            "size": 80,
+            "usage": "search screen",
+            "description": "Text entry (56 B, 33-char query), counters and the lookup used to describe rows when drawn."
+          },
+          {
+            "nickname": "State other fields",
+            "variable": "state",
+            "file": "software/src/state/state.h",
+            "size": 156,
+            "usage": "always",
+            "description": "EventTarget base, visibleElements pointers (28 B), router depth, flags, podcast and menu-name hooks."
+          }
+        ]
+      },
+      {
+        "nickname": "Library lookup",
+        "variable": "musicLookup",
+        "file": "software/src/main.cpp:24",
+        "size": 1600,
+        "usage": "static .bss, always",
+        "description": "MusicLookup: the card's SdFat plus the headers of every index/podcast section.",
+        "children": [
+          {
+            "nickname": "Library SD",
+            "variable": "musicLookup.sd",
+            "file": "software/src/storage/Music_lookup.h:70",
+            "size": 1180,
+            "usage": "always: the card's only SdFat (Audio_buffer, AlbumArt, PodcastState, BtConfig)",
+            "description": "SdFat instance for the whole card (includes a 512 B sector cache)."
+          },
+          {
+            "nickname": "Section headers",
+            "variable": "musicLookup.*_h",
+            "file": "software/src/storage/Music_lookup.h",
+            "size": 420,
+            "usage": "always",
+            "description": "~30 table/relation headers (12–16 B each) for music and podcast sections, plus vtable."
+          }
+        ]
+      },
+      {
+        "nickname": "Debug serial",
+        "variable": "Serial2",
+        "file": "~/.platformio/packages/framework-arduinoststm32/cores/arduino/Serial.cpp:43",
+        "size": 1432,
+        "usage": "static .bss, logs and bench commands",
+        "description": "USART2 (ST-Link virtual COM port): 1,024 B TX + 256 B RX buffers + 124 B HAL handle."
+      },
+      {
+        "nickname": "Index page cache table",
+        "variable": "pageStore",
+        "file": "software/src/storage/PageStore.cpp:8",
+        "size": 1348,
+        "usage": "static .bss, every index read",
+        "description": "PageStore: RAM bookkeeping for the PSRAM page cache (the pages themselves are in PSRAM, see 'Index page cache').",
+        "children": [
+          {
+            "nickname": "Page slot keys",
+            "variable": "pageStore.slotKey",
+            "file": "software/src/storage/PageStore.h:104",
+            "size": 960,
+            "usage": "every index read",
+            "description": "Which page is in each slot: 480 x u16 (MAX_SLOTS = INDEX_CACHE_SIZE / 4 KB), key = pack << 15 | page (packs up to 128 MB)."
+          },
+          {
+            "nickname": "Pack files",
+            "variable": "pageStore.files",
+            "file": "software/src/storage/PageStore.h:93",
+            "size": 160,
+            "usage": "always open",
+            "description": "File handles for index.pack and podcasts.pack (MAX_PACKS = 2)."
+          },
+          {
+            "nickname": "CLOCK hands",
+            "variable": "pageStore.hands",
+            "file": "software/src/storage/PageStore.h:106",
+            "size": 120,
+            "usage": "on a miss (eviction)",
+            "description": "One CLOCK hand per 4-way set."
+          },
+          {
+            "nickname": "Reference bits",
+            "variable": "pageStore.refBits",
+            "file": "software/src/storage/PageStore.h:105",
+            "size": 60,
+            "usage": "every index read",
+            "description": "CLOCK reference bit per slot."
+          },
+          {
+            "nickname": "PageStore other fields",
+            "variable": "pageStore",
+            "file": "software/src/storage/PageStore.h",
+            "size": 48,
+            "usage": "always",
+            "description": "Base address, set/way counts, last-hit shortcut, stats, scratch pointer."
+          }
+        ]
+      },
+      {
+        "nickname": "Bluetooth model",
+        "variable": "btModel",
+        "file": "software/src/main.cpp:39",
+        "size": 852,
+        "usage": "static .bss, always",
+        "description": "BtModel: known/scanned devices, command queue.",
+        "children": [
+          {
+            "nickname": "BT devices",
+            "variable": "btModel.devices",
+            "file": "software/src/bluetooth/BtModel.h:164",
+            "size": 744,
+            "usage": "Bluetooth screens, pairing",
+            "description": "12 devices x 62 B (MAX_DEVICES): MAC as 6 bytes, flags as bits."
+          },
+          {
+            "nickname": "BtModel other fields",
+            "variable": "btModel",
+            "file": "software/src/bluetooth/BtModel.h",
+            "size": 108,
+            "usage": "always",
+            "description": "Command queue (8 x 2 B), MAC display buffer (18 B), state flags."
+          }
+        ]
+      },
+      {
+        "nickname": "Bluetooth UART",
+        "variable": "bluetooth",
+        "file": "software/src/main.cpp:40",
+        "size": 608,
+        "usage": "static .bss, always",
+        "description": "Bluetooth: FSC-BT1035 driver with its own UART driver (BtUart).",
+        "children": [
+          {
+            "nickname": "BT RX buffer",
+            "variable": "bluetooth.uart.rxBuffer",
+            "file": "software/src/bluetooth/BtUart.h:78",
+            "size": 256,
+            "usage": "module events",
+            "description": "UART receive ring, sized for the ~200 B burst on reconnect."
+          },
+          {
+            "nickname": "BT RX line",
+            "variable": "bluetooth.rxLine",
+            "file": "software/src/bluetooth/Bluetooth.hpp:119",
+            "size": 96,
+            "usage": "parsing",
+            "description": "Line being assembled from the module."
+          },
+          {
+            "nickname": "BT TX buffer",
+            "variable": "bluetooth.uart.txBuffer",
+            "file": "software/src/bluetooth/BtUart.h:79",
+            "size": 64,
+            "usage": "sending AT commands",
+            "description": "UART transmit ring (commands are at most 32 B); was the framework 1,024 B."
+          },
+          {
+            "nickname": "BT in-flight command",
+            "variable": "bluetooth.inFlight",
+            "file": "software/src/bluetooth/Bluetooth.hpp:117",
+            "size": 32,
+            "usage": "while a command waits for its reply",
+            "description": "Copy of the last command sent (BtModel::CMD_LEN)."
+          },
+          {
+            "nickname": "Bluetooth other fields",
+            "variable": "bluetooth",
+            "file": "software/src/bluetooth/Bluetooth.hpp, software/src/bluetooth/BtUart.h",
+            "size": 160,
+            "usage": "always",
+            "description": "serial_t HAL handle (124 B), Print base, parser state."
+          }
+        ]
+      },
+      {
+        "nickname": "UI engine",
+        "variable": "ui",
+        "file": "software/src/main.cpp:29",
+        "size": 488,
+        "usage": "static .bss, always",
+        "description": "OpenPodUIEngine: animation manager, scrollbar, list component (holds 7 pointers to the heap row cache), now-playing (artist/album names 2 × 64 B), menu and podcast views."
+      },
+      {
+        "nickname": "Podcast menu",
+        "variable": "podcastMenu",
+        "file": "software/src/main.cpp:44",
+        "size": 444,
+        "usage": "static .bss, podcast screens",
+        "description": "PodcastMenu: 16 cached folder roll-ups (256 B, software/src/state/podcast_menu.h:134), heading and nav title (64 B each)."
+      },
+      {
+        "nickname": "Search trie",
+        "variable": "musicIndex",
+        "file": "software/src/main.cpp:22",
+        "size": 436,
+        "usage": "static .bss, search only",
+        "description": "MusicIndex: search trie reader. No RAM cache: reads go through PageStore (PSRAM page cache).",
+        "children": [
+          {
+            "nickname": "Trie node batch",
+            "variable": "musicIndex.node_batch",
+            "file": "software/src/storage/Music_index.h:47",
+            "size": 392,
+            "usage": "search",
+            "description": "The last 16 sibling nodes read (NODE_BATCH_SIZE)."
+          },
+          {
+            "nickname": "MusicIndex other fields",
+            "variable": "musicIndex",
+            "file": "software/src/storage/Music_index.h",
+            "size": 44,
+            "usage": "always",
+            "description": "Trie header (16 B), section offsets."
+          }
+        ]
+      },
+      {
+        "nickname": "Static menus",
+        "variable": "rootMenu, optionsMenu, settingsMenu",
+        "file": "software/src/state/static_menu.cpp:125",
+        "size": 384,
+        "usage": "static .bss, menu screens",
+        "description": "Three StaticMenu objects, 128 B each (lines 125–127)."
+      },
+      {
+        "nickname": "Click wheel",
+        "variable": "wheel",
+        "file": "software/src/main.cpp:35",
+        "size": 372,
+        "usage": "static .bss, always",
+        "description": "ClickWheel: 5 button states (140 B), 16-event queue (64 B), held-scroll tracking (64 B), 12 electrode baselines."
+      },
+      {
+        "nickname": "GPIO IRQ table",
+        "variable": "gpio_irq_conf",
+        "file": "~/.platformio/packages/framework-arduinoststm32/libraries/SrcWrapper/src/stm32/interrupt.cpp:71",
+        "size": 320,
+        "usage": "static .bss, always",
+        "description": "Framework: one callback per EXTI line (16 × 20 B)."
+      },
+      {
+        "nickname": "stdio streams",
+        "variable": "__sf",
+        "file": "newlib",
+        "size": 312,
+        "usage": "static .bss",
+        "description": "newlib stdin/stdout/stderr FILE structs."
+      },
+      {
+        "nickname": "Font color cache",
+        "variable": "fontRenderer",
+        "file": "software/src/ui/ui_types.cpp:5",
+        "size": 296,
+        "usage": "static .bss, text drawing",
+        "description": "FontRenderer: anti-aliased glyph blend colors for the last 4 fg/bg pairs (ColorCache, software/src/rendering/font_renderer.h:28, 4 x 70 B: 32 levels, BLEND_LEVELS)."
+      },
+      {
+        "nickname": "I2C (Wire)",
+        "variable": "Wire",
+        "file": "~/.platformio/packages/framework-arduinoststm32/libraries/Wire/src/Wire.cpp:555",
+        "size": 228,
+        "usage": "static .bss",
+        "description": "Framework default I2C1 instance with its RX/TX buffers."
+      },
+      {
+        "nickname": "I2C3 (wheel/haptics)",
+        "variable": "Wire3",
+        "file": "software/src/main.cpp:33",
+        "size": 228,
+        "usage": "static .bss, always",
+        "description": "TwoWire on PB4/PA8 for the MPR121 and DRV2605L."
+      },
+      {
+        "nickname": "Album art",
+        "variable": "albumArt",
+        "file": "software/src/main.cpp:25",
+        "size": 164,
+        "usage": "static .bss, now-playing",
+        "description": "AlbumArt: open handles to thumbs.bin and podcast_thumbs.bin (80 B each); pixels go straight into the strip buffers."
+      },
+      {
+        "nickname": "Debug UART handle",
+        "variable": "serial_debug",
+        "file": "~/.platformio/packages/framework-arduinoststm32/libraries/SrcWrapper/src/stm32/uart.c:96",
+        "size": 124,
+        "usage": "static .data",
+        "description": "Framework serial_t for core_debug output."
+      },
+      {
+        "nickname": "SPI1",
+        "variable": "SPI",
+        "file": "~/.platformio/packages/framework-arduinoststm32/libraries/SPI/src/SPI.cpp:14",
+        "size": 120,
+        "usage": "static .bss, always",
+        "description": "Framework SPIClass for SPI1 (SD card + VS1053)."
+      },
+      {
+        "nickname": "Bluetooth menu",
+        "variable": "btMenu",
+        "file": "software/src/main.cpp:42",
+        "size": 112,
+        "usage": "static .bss, Bluetooth screens",
+        "description": "BtMenu: Settings/Bluetooth screen model."
+      },
+      {
+        "nickname": "Scroll speed",
+        "variable": "scrollSpeed",
+        "file": "software/src/app/input.cpp:56",
+        "size": 108,
+        "usage": "static .bss, list scrolling",
+        "description": "ScrollSpeed: wheel speed history for fast scroll."
+      },
+      {
+        "nickname": "Console line",
+        "variable": "line",
+        "file": "software/src/app/console.cpp:7",
+        "size": 96,
+        "usage": "static .bss, typed serial commands",
+        "description": "Line buffer for the serial console."
+      },
+      {
+        "nickname": "newlib reent",
+        "variable": "_impure_data",
+        "file": "newlib",
+        "size": 76,
+        "usage": "static .data",
+        "description": "newlib reentrancy struct (errno, stdio pointers)."
+      },
+      {
+        "nickname": "Toast",
+        "variable": "BtModel::toast",
+        "file": "software/src/bluetooth/BtModel.cpp:62",
+        "size": 68,
+        "usage": "static .bss, toasts",
+        "description": "The one toast message (64-char text), written by BtModel and AppToast (BtModel::sharedToast())."
+      },
+      {
+        "nickname": "Small globals",
+        "variable": "55 symbols under 64 B (display, haptics, cap, podcastState, btConfig, appToast, boot, timers, flags...)",
+        "file": "various",
+        "size": 531,
+        "usage": "static .bss/.data",
+        "description": "Everything smaller than 64 B, summed."
+      },
+      {
+        "nickname": "Alignment padding",
+        "variable": "-",
+        "file": "linker",
+        "size": 301,
+        "usage": "-",
+        "description": "Gaps between symbols in .data/.bss (static_total minus the sum of symbol sizes)."
+      }
+    ],
+    "heap": [
+      {
+        "nickname": "List row cache",
+        "variable": "ui.elementList.cache.binaryCache[0..6]",
+        "file": "software/src/ui/list/list_cache.hpp:56",
+        "size": 16380,
+        "usage": "new[] at boot (UI engine constructor), never freed",
+        "description": "7 pre-rendered list rows (ELEMENTS_PER_SCREEN), each 312 × 30 px at 2 bpp = 2,340 B. Plus ~8 B malloc overhead per block."
+      },
+      {
+        "nickname": "Animation slots",
+        "variable": "ui.animManager.animations",
+        "file": "software/src/rendering/animation_manager.h:74",
+        "size": 800,
+        "usage": "vector reserve() at boot",
+        "description": "10 Animation × 80 B (MAX_ANIMATIONS). std::function captures larger than its inline storage may allocate more."
+      },
+      {
+        "nickname": "Feeder timer",
+        "variable": "player.audioPlayer._feederTimer",
+        "file": "software/src/sound/AudioPlayer.cpp:50",
+        "size": 180,
+        "usage": "new at audio init, never freed",
+        "description": "HardwareTimer(TIM7) driving the VS1053 feeder interrupt."
+      },
+      {
+        "nickname": "PSRAM SPI",
+        "variable": "psram.spi",
+        "file": "software/src/storage/PSRAM_controller.hpp:91",
+        "size": 120,
+        "usage": "new at PSRAM init, never freed",
+        "description": "SPIClass on SPI2 (PB13/14/15) for the PSRAM."
+      },
+      {
+        "nickname": "malloc overhead",
+        "variable": "-",
+        "file": "newlib malloc",
+        "size": 56,
+        "usage": "-",
+        "description": "~8 B chunk header per allocation for the 7 list rows (rough)."
+      }
+    ]
+  },
+  "psram": {
+    "total": 8388608,
+    "chip": "APS6404L-3SQR-SN, 64 Mbit = 8 MB",
+    "map_file": "software/src/storage/PSRAM_controller.hpp:14",
+    "regions": [
+      {
+        "nickname": "Audio ring",
+        "variable": "AUDIO_BUFFER_BASE_ADDRESS / AUDIO_BUFFER_SIZE",
+        "file": "software/src/storage/PSRAM_controller.hpp:20",
+        "address": "0x000000",
+        "size": 4194304,
+        "usage": "Audio_buffer ring (software/src/sound/Audio_buffer.cpp:40): filled from the SD card, drained into the RAM FIFO",
+        "description": "Current track's read-ahead buffer, 4 MB."
+      },
+      {
+        "nickname": "Cover scratch",
+        "variable": "COVER_BUFFER_BASE_ADDRESS / COVER_BUFFER_SIZE",
+        "file": "software/src/storage/PSRAM_controller.hpp:25",
+        "address": "0x400000",
+        "size": 1048576,
+        "usage": "PSRAM self-test at init (SPI_PSRAM::SCRATCH_ADDRESS), LinkBench and the onboard cover benchmark only",
+        "description": "1 MB not used by the production firmware: AlbumArt reads covers straight from the SD card. Free to reclaim."
+      },
+      {
+        "nickname": "Next-track prefetch",
+        "variable": "NEXT_TRACK_BUFFER_BASE_ADDRESS / NEXT_TRACK_BUFFER_SIZE",
+        "file": "software/src/storage/PSRAM_controller.hpp:30",
+        "address": "0x500000",
+        "size": 1048576,
+        "usage": "Audio_buffer::appendToDestination / consumeNextTrackIfMatches (software/src/sound/Audio_buffer.cpp:182, :316)",
+        "description": "Linear buffer holding the start of the next track so a track change needs no fresh SD reads."
+      },
+      {
+        "nickname": "Podcast listening state",
+        "variable": "PODCAST_STATE_BASE_ADDRESS / PODCAST_STATE_SIZE",
+        "file": "software/src/storage/PSRAM_controller.hpp:38",
+        "address": "0x600000",
+        "size": 131072,
+        "usage": "PodcastState::load at boot (software/src/main.cpp:129), updated while listening",
+        "description": "20 B per episode (position, last played, flags): room for 6,553 episodes."
+      },
+      {
+        "nickname": "Index page cache",
+        "variable": "INDEX_CACHE_BASE_ADDRESS / INDEX_CACHE_SIZE",
+        "file": "software/src/storage/PSRAM_controller.hpp:40",
+        "address": "0x620000",
+        "size": 1966080,
+        "usage": "PageStore::begin (software/src/storage/Music_lookup_load.cpp:27): every index/podcast pack read",
+        "description": "480 × 4 KB pages (PAGE_STORE_PAGE_LOG2 = 12) of index.pack / podcasts.pack, 4-way set-associative with CLOCK eviction. Fully used: 1,966,080 / 4,096 = 480 slots."
+      }
+    ]
+  }
+}

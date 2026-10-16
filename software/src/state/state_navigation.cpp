@@ -106,8 +106,6 @@ void State::loadCurrentRouteData(MusicLookup &musicLookup) {
     // Callers position selectedIndex/topVisibleIndex first (0 when entering
     // a route, the saved values on back()), so the list event carries them.
     int count = routeListLength(musicLookup);
-    currentRoute.totalResults = count;
-    currentRoute.hasMore = false;
     setWindowedElements(musicLookup, count);
     return;
   }
@@ -115,7 +113,6 @@ void State::loadCurrentRouteData(MusicLookup &musicLookup) {
   case Route_t::SEARCH_RESULTS:
     // The search screen draws from its own model, which survives the trip
     // into a result and back. setElements() would make the UI paint a list.
-    currentRoute.totalResults = search.getHitCount();
     return;
 
   case Route_t::SETTINGS:
@@ -143,8 +140,6 @@ void State::loadCurrentRouteData(MusicLookup &musicLookup) {
       strcpy(elementsBuffer + offset, item.label);
       offset += strlen(item.label) + 1; // +1 for null terminator
     }
-    currentRoute.hasMore = false; // Static menus don't have pagination
-    currentRoute.totalResults = count;
     setElements(stringPointers, count);
     return;
   }
@@ -340,6 +335,7 @@ bool State::back(MusicLookup &musicLookup) {
 
   Route_t::RouteType oldRouteType = router.getCurrentRoute().type;
   router.popRoute();
+  refreshRouteName(musicLookup);
   setAnimating(true);
   if(oldRouteType != Route_t::NOW_PLAYING) {
     // Restore the saved scroll position *before* loading: setElements()
@@ -358,7 +354,7 @@ bool State::back(MusicLookup &musicLookup) {
                              currentRoute.entityId,
                              currentRoute.topVisibleIndex,
                              currentRoute.selectedIndex,
-                             currentRoute.entityName,
+                             router.getName(),
                              false,
                              router.canGoBack()};
   fastScrollLetters = 0;
@@ -394,6 +390,40 @@ void State::pushMenuRoute(Route_t::RouteType type, uint32_t entityId,
   emitEvent(EVENT_ROUTE_CHANGED, &event);
 }
 
+void State::refreshRouteName(MusicLookup &musicLookup) {
+  const Route_t &route = router.getCurrentRoute();
+  const uint32_t id = route.entityId;
+  char name[64];
+  name[0] = '\0';
+  if (router.getDepth() > 0) {
+    switch (route.type) {
+    case Route_t::ALBUMS:
+    case Route_t::TRACKS:
+      // Named after the artist/album/genre they're scoped to (goToSelected).
+      if (route.scope == Route_t::ARTISTS)
+        musicLookup.getArtistName(id, name, sizeof(name));
+      else if (route.scope == Route_t::ALBUMS)
+        musicLookup.getAlbumName(id, name, sizeof(name));
+      else if (route.scope == Route_t::GENRES)
+        musicLookup.getGenreName(id, name, sizeof(name));
+      break;
+    case Route_t::PODCAST_FOLDER:
+      if (podcastSource)
+        podcastSource->podcastFolderName(id, name, sizeof(name));
+      break;
+    case Route_t::PODCAST_ACTIONS:
+      if (podcastSource)
+        podcastSource->podcastEpisodeTitle(id, name, sizeof(name));
+      break;
+    default:
+      if (menuRouteName)
+        menuRouteName(route, name, sizeof(name));
+      break;
+    }
+  }
+  router.setName(name);
+}
+
 void State::backToMain(MusicLookup &musicLookup) {
   endTransition();
   // Clear the route stack and go back to root
@@ -417,7 +447,7 @@ void State::backToMain(MusicLookup &musicLookup) {
                              0,
                              0,
                              currentRoute.entityId,
-                             currentRoute.entityName,
+                             router.getName(),
                              false,
                              router.canGoBack()};
   fastScrollLetters = 0;
@@ -523,8 +553,8 @@ uint32_t State::resolveTrackId(MusicLookup &musicLookup, int index) {
 
 const char *State::getHeaderTitle() {
   Route_t &route = router.getCurrentRoute();
-  if (route.entityName[0] != '\0') {
-    return route.entityName;
+  if (router.getName()[0] != '\0') {
+    return router.getName();
   }
   switch (route.type) {
   case Route_t::ROOT:

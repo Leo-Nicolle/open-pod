@@ -200,10 +200,13 @@ private:
       outline(buf, 10, 9, 22, 14, selected ? COLOR_TEXT : COLOR_LINE);
       blitRows(buf, kindLabel(s.getHit(hitIndex).type), 5, 16, 13, secondary);
 
+      char title[SearchModel::TITLE_LEN];
+      char sub[SearchModel::SUB_LEN];
+      s.describeRow(row, title, sub);
       char line[64];
-      ellipsize(s.getRowTitle(row), line, sizeof(line), IBMPlexSans16, 150);
+      ellipsize(title, line, sizeof(line), IBMPlexSans16, 150);
       fontRenderer.renderText(line, 40, 9, IBMPlexSans16, COLOR_TEXT, bg);
-      ellipsize(s.getRowSub(row), line, sizeof(line), IBMPlexSans12, 108);
+      ellipsize(sub, line, sizeof(line), IBMPlexSans12, 108);
       int w = fontRenderer.measureText(line, IBMPlexSans12);
       fontRenderer.renderText(line, 304 - w, 11, IBMPlexSans12, secondary, bg);
     } else if (s.getHitCount() == 0) {

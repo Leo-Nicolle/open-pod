@@ -9,6 +9,7 @@ Small web tools made while building Openpod. They all run in the browser, with n
   <a class="op-card" href="./ui-builder"><strong>UI builder</strong><span>Preview every firmware screen, tweak the colour palette and export the sprites and theme headers.</span></a>
   <a class="op-card" href="./bench"><strong>Benchmarks</strong><span>Performance reports for each firmware version: scrolling, search, boot and audio playback measured on real hardware with a 20k-track library.</span></a>
   <a class="op-card" href="./bench-live"><strong>Live bench</strong><span>Connect to the bench board over USB: live buffer, CPU and latency charts, a remote control, and the bench scenarios run from the browser.</span></a>
+  <a class="op-card" href="./memory-layout"><strong>Memory layout</strong><span>Every RAM and PSRAM allocation of the firmware, as an interactive map: sizes, owners, file and variable, drill down into the big buffers.</span></a>
   <a class="op-card" href="https://leo-nicolle.github.io/open-pod/userscripts/radiofrance-podcasts.user.js"><strong>Radio France podcast downloader</strong><span>A Tampermonkey userscript: on any Radio France podcast page, tick the episodes and download them into <code>~/Podcasts</code>, ready to sync.</span></a>
 </div>
 

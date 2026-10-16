@@ -13,11 +13,8 @@ const int SearchModel::SUB_LEN;
 const char SearchModel::RIBBON[RIBBON_LEN + 1] =
     "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
 
-// Raw trie hits before dedup. Static rather than on the stack: 2 KB.
-static search_result_t rawHits[SearchModel::MAX_HITS];
-
 SearchModel::SearchModel()
-    : index(nullptr), entry(RIBBON, MAX_QUERY, false) {
+    : index(nullptr), entry(RIBBON, MAX_QUERY, false), lookup(nullptr) {
   reset();
 }
 
@@ -27,12 +24,6 @@ void SearchModel::reset() {
   hitCount = 0;
   selected = 0;
   first = 0;
-  rowsFirst = 0;
-  rowsCount = 0;
-  for (int i = 0; i < MAX_ROWS; i++) {
-    rowTitle[i][0] = '\0';
-    rowSub[i][0] = '\0';
-  }
 }
 
 bool SearchModel::moveCursor(int clicks) { return entry.moveCursor(clicks); }
@@ -87,7 +78,7 @@ bool SearchModel::scroll(int clicks, MusicLookup &lookup) {
     first = selected;
   else if (selected >= first + cap)
     first = selected - cap + 1;
-  fillRows(lookup);
+  this->lookup = &lookup;
   return true;
 }
 
@@ -116,32 +107,26 @@ void SearchModel::normalizeQuery(const char *in, char *out, size_t outSize) {
   }
 }
 
-int SearchModel::rankHits(const search_result_t *raw, int rawCount, Hit *out,
-                          int maxOut) {
-  int count = 0;
-  for (int i = 0; i < rawCount; i++) {
-    uint8_t relevance = (uint8_t)min(raw[i].relevance, (uint32_t)255);
-    int dup = -1;
-    for (int j = 0; j < count; j++) {
-      if (out[j].id == raw[i].id && out[j].type == raw[i].type) {
-        dup = j;
-        break;
-      }
+void SearchModel::addHit(const search_result_t &raw, Hit *out, int &count,
+                         int maxOut) {
+  uint8_t relevance = (uint8_t)min(raw.relevance, (uint32_t)255);
+  for (int j = 0; j < count; j++) {
+    if (out[j].id == raw.id && out[j].type == raw.type) {
+      if (relevance > out[j].relevance)
+        out[j].relevance = relevance;
+      return;
     }
-    if (dup >= 0) {
-      if (relevance > out[dup].relevance)
-        out[dup].relevance = relevance;
-      continue;
-    }
-    if (count >= maxOut)
-      continue;
-    out[count].id = raw[i].id;
-    out[count].type = (uint8_t)raw[i].type;
-    out[count].relevance = relevance;
-    out[count].nameLen = (uint8_t)min(raw[i].name_length, (uint32_t)255);
-    count++;
   }
+  if (count >= maxOut)
+    return;
+  out[count].id = raw.id;
+  out[count].type = (uint8_t)raw.type;
+  out[count].relevance = relevance;
+  out[count].nameLen = (uint8_t)min(raw.name_length, (uint32_t)255);
+  count++;
+}
 
+void SearchModel::sortHits(Hit *out, int count) {
   // Insertion sort: stable, and count is at most MAX_HITS.
   for (int i = 1; i < count; i++) {
     Hit h = out[i];
@@ -154,56 +139,48 @@ int SearchModel::rankHits(const search_result_t *raw, int rawCount, Hit *out,
     }
     out[j + 1] = h;
   }
+}
+
+int SearchModel::rankHits(const search_result_t *raw, int rawCount, Hit *out,
+                          int maxOut) {
+  int count = 0;
+  for (int i = 0; i < rawCount; i++)
+    addHit(raw[i], out, count, maxOut);
+  sortHits(out, count);
   return count;
+}
+
+void SearchModel::collectHit(const search_result_t &raw, void *self) {
+  SearchModel *s = (SearchModel *)self;
+  addHit(raw, s->hits, s->hitCount, MAX_HITS);
 }
 
 void SearchModel::runQuery(MusicLookup &lookup) {
   hitCount = 0;
   selected = 0;
   first = 0;
-  rowsCount = 0;
+  this->lookup = &lookup;
 
   char normalized[MAX_QUERY + 1];
   normalizeQuery(entry.text(), normalized, sizeof(normalized));
   if (normalized[0] != '\0' && index && index->isInitialized()) {
-    uint32_t n = index->searchByPrefix(normalized, rawHits, MAX_HITS);
-    hitCount = rankHits(rawHits, (int)n, hits, MAX_HITS);
+    // Deduped as the trie is walked; the walk still stops after MAX_HITS
+    // raw hits, duplicates included.
+    index->searchByPrefix(normalized, collectHit, this, MAX_HITS);
+    sortHits(hits, hitCount);
   }
   if (hitCount == 0)
     mode = TYPING; // nothing to browse
-  fillRows(lookup);
 }
 
-void SearchModel::fillRows(MusicLookup &lookup) {
-  // Keep the strings of rows still on screen, look up only the new ones
-  // (one wheel click scrolls a single row in).
-  char oldTitle[MAX_ROWS][TITLE_LEN];
-  char oldSub[MAX_ROWS][SUB_LEN];
-  memcpy(oldTitle, rowTitle, sizeof(rowTitle));
-  memcpy(oldSub, rowSub, sizeof(rowSub));
-  int oldFirst = rowsFirst;
-  int oldCount = rowsCount;
-
-  rowsFirst = first;
-  rowsCount = min(MAX_ROWS, hitCount - first);
-  int lookups = 0;
-  for (int row = 0; row < MAX_ROWS; row++) {
-    int hitIndex = first + row;
-    if (row >= rowsCount) {
-      rowTitle[row][0] = '\0';
-      rowSub[row][0] = '\0';
-      continue;
-    }
-    int oldRow = hitIndex - oldFirst;
-    if (oldRow >= 0 && oldRow < oldCount) {
-      memcpy(rowTitle[row], oldTitle[oldRow], TITLE_LEN);
-      memcpy(rowSub[row], oldSub[oldRow], SUB_LEN);
-      continue;
-    }
-    describeHit(hits[hitIndex], lookup, rowTitle[row], rowSub[row]);
-    if ((++lookups & 1) == 0)
-      audioYield(); // two string lookups per row: keep the audio fifo topped up
-  }
+void SearchModel::describeRow(int row, char *title, char *sub) const {
+  title[0] = '\0';
+  sub[0] = '\0';
+  int hitIndex = first + row;
+  if (row < 0 || row >= MAX_ROWS || hitIndex >= hitCount || !lookup)
+    return;
+  describeHit(hits[hitIndex], *lookup, title, sub);
+  audioYield(); // two string lookups: keep the audio fifo topped up
 }
 
 void SearchModel::describeHit(const Hit &hit, MusicLookup &lookup,

@@ -1,8 +1,10 @@
 #include "app.h"
-#include "../WheelTrace.hpp"
 #include "../logging.h"
+#if DEBUG_WHEEL_TRACE
+#include "../WheelTrace.hpp"
 
 static WheelTrace trace;
+#endif
 
 // Teleplot rate.
 static unsigned long lastTelemetryUpdate = 0;
@@ -25,6 +27,7 @@ void printResetCause()
   RCC->CSR |= RCC_CSR_RMVF;
 }
 
+#if DEBUG_WHEEL_TRACE
 void drawTraceVisualization()
 {
   int angle = wheel.getWheelAngle();
@@ -37,6 +40,7 @@ void drawTraceVisualization()
   trace.draw(display, 70, 120, 55);
   trace.drawDebugHUD(display, wheel, 140, 15);
 }
+#endif
 
 bool shouldUpdateTelemetry()
 {

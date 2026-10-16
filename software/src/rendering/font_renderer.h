@@ -4,13 +4,23 @@
 #include <Arduino.h>
 #include <algorithm>
 #include "colors.h"
+// Coverage levels of a blend table. RGB565 has 32 levels of red and blue
+// (64 of green), so finer steps than 32 can't show: 64 B per table instead
+// of 512 for 256 levels.
+static const int BLEND_LEVELS = 32;
+
+// An 8-bit glyph coverage as a blend table index (0..BLEND_LEVELS - 1).
+inline uint8_t blendLevel(uint8_t alpha) {
+  return (uint8_t)((alpha * (BLEND_LEVELS - 1) + 127) / 255);
+}
+
 // Color cache for fast blending
 class ColorCache {
 private:
   struct CacheEntry {
     uint16_t bgColor;
     uint16_t fgColor;
-    uint16_t blendTable[256]; // Pre-computed blend values
+    uint16_t blendTable[BLEND_LEVELS]; // Pre-computed blend values
     bool valid;
   };
 
@@ -35,7 +45,7 @@ public:
     entry.fgColor = fgColor;
     entry.valid = true;
 
-    // Pre-compute all 256 blend levels
+    // Pre-compute every blend level
     computeBlendTable(bgColor, fgColor, entry.blendTable);
 
     nextSlot = (nextSlot + 1) % CACHE_SIZE;
@@ -57,14 +67,14 @@ private:
     // crushes partial-coverage pixels toward bgColor - fine for thick glyphs
     // that are mostly alpha 0/255, but it greys out thin/small fonts whose
     // anti-aliased pixels are almost all partial coverage.
-    for (int alpha = 0; alpha < 256; alpha++) {
-      float normalizedAlpha = alpha / 255.0f;
+    for (int level = 0; level < BLEND_LEVELS; level++) {
+      float normalizedAlpha = level / (float)(BLEND_LEVELS - 1);
 
       uint8_t r = bg_r + ((fg_r - bg_r) * normalizedAlpha);
       uint8_t g = bg_g + ((fg_g - bg_g) * normalizedAlpha);
       uint8_t b = bg_b + ((fg_b - bg_b) * normalizedAlpha);
 
-      table[alpha] = (r << 11) | (g << 5) | b;
+      table[level] = (r << 11) | (g << 5) | b;
     }
   }
 };
@@ -141,11 +151,7 @@ public:
               alpha = 255 - std::min(255, (inv * inv) / 255);
             }
 
-            if (alpha == 255) {
-              renderBuffer[bufferOffset + dx] = blendTable[255];
-            } else {
-              renderBuffer[bufferOffset + dx] = blendTable[alpha];
-            }
+            renderBuffer[bufferOffset + dx] = blendTable[blendLevel(alpha)];
           }
         }
       }

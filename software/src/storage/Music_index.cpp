@@ -2,12 +2,11 @@
 #include "../sound/AudioYield.h"
 #include "../logging.h"
 
-MusicIndex::MusicIndex()
-    : initialized(false), node_cache_count(0), access_counter(0) {
+MusicIndex::MusicIndex() : initialized(false) {
   memset(&header, 0, sizeof(header));
   memset(&trie, 0, sizeof(trie));
   memset(&node_batch, 0, sizeof(node_batch));
-  initCache();
+  node_batch.start_index = UINT32_MAX;
 }
 
 MusicIndex::~MusicIndex() {}
@@ -42,7 +41,8 @@ bool MusicIndex::init(const PackRef &trieSection) {
   }
 
   initialized = true;
-  clearCache();
+  node_batch.start_index = UINT32_MAX;
+  node_batch.count = 0;
   return true;
 }
 
@@ -75,6 +75,29 @@ trie_node_t *MusicIndex::getNodeFromBatch(uint32_t node_index) {
   return nullptr;
 }
 
+trie_node_t MusicIndex::readNode(uint32_t node_index) {
+  trie_node_t *node = getNodeFromBatch(node_index);
+  if (node) {
+    return *node;
+  }
+  // Its next siblings come with it.
+  uint32_t count = NODE_BATCH_SIZE;
+  if (node_index < header.node_count &&
+      node_index + count > header.node_count) {
+    count = header.node_count - node_index;
+  }
+  loadNodeBatch(node_index, count);
+  node = getNodeFromBatch(node_index);
+  if (node) {
+    return *node;
+  }
+  trie_node_t single;
+  memset(&single, 0, sizeof(single));
+  pageStore.read(trie, nodes_offset + node_index * sizeof(trie_node_t), &single,
+                 sizeof(single));
+  return single;
+}
+
 void MusicIndex::loadResultBatch(uint32_t start_index, search_result_t *results,
                                  uint32_t count) {
   // Read all results in one PSRAM operation
@@ -92,7 +115,7 @@ uint32_t MusicIndex::findNode(const char *query, uint32_t query_len) {
   const char *remaining_query = query;
 
   while (remaining_query_len > 0) {
-    trie_node_t node = readNodeCached(current_node);
+    trie_node_t node = readNode(current_node);
     bool found_child = false;
 
     // Load all children in a batch if there are many
@@ -107,11 +130,11 @@ uint32_t MusicIndex::findNode(const char *query, uint32_t query_len) {
         audioYield(); // the root has a child per first letter/word: many reads
       }
       uint32_t child_index = node.first_child_offset + i;
-      trie_node_t child = readNodeCached(child_index);
+      trie_node_t child = readNode(child_index);
 
       // Read child's key
       char child_key[64];
-      readStringCached(child.key_offset, child.key_length, child_key,
+      readString(child.key_offset, child.key_length, child_key,
                        sizeof(child_key));
 
       uint32_t common_len =
@@ -141,8 +164,26 @@ uint32_t MusicIndex::findNode(const char *query, uint32_t query_len) {
   return current_node;
 }
 
-void MusicIndex::collectResults(uint32_t node_index, search_result_t *results,
-                                uint32_t *result_count, uint32_t max_results) {
+// Reads results in small batches: a stack buffer of RESULT_BATCH_SIZE, in a
+// frame of its own so collectResults()'s recursion doesn't carry it.
+__attribute__((noinline)) void
+MusicIndex::visitResults(uint32_t start_index, uint32_t count,
+                         SearchVisitor visit, void *ctx) {
+  search_result_t batch[RESULT_BATCH_SIZE];
+  while (count > 0) {
+    uint32_t n = min(count, (uint32_t)RESULT_BATCH_SIZE);
+    loadResultBatch(start_index, batch, n);
+    for (uint32_t i = 0; i < n; i++) {
+      visit(batch[i], ctx);
+    }
+    start_index += n;
+    count -= n;
+  }
+}
+
+void MusicIndex::collectResults(uint32_t node_index, SearchVisitor visit,
+                                void *ctx, uint32_t *result_count,
+                                uint32_t max_results) {
   if (*result_count >= max_results || node_index == UINT32_MAX) {
     return;
   }
@@ -150,14 +191,12 @@ void MusicIndex::collectResults(uint32_t node_index, search_result_t *results,
   // A short prefix's subtree spans hundreds of nodes: keep the audio fifo
   // topped up while walking it.
   audioYield();
-  trie_node_t node = readNodeCached(node_index);
+  trie_node_t node = readNode(node_index);
 
-  // Batch load results if there are many
   if (node.result_count > 0) {
     uint32_t results_to_load =
         min(node.result_count, max_results - *result_count);
-    loadResultBatch(node.first_result_offset, &results[*result_count],
-                    results_to_load);
+    visitResults(node.first_result_offset, results_to_load, visit, ctx);
     *result_count += results_to_load;
   }
 
@@ -169,16 +208,15 @@ void MusicIndex::collectResults(uint32_t node_index, search_result_t *results,
     // Recursively collect from children
     for (uint32_t i = 0; i < node.child_count && *result_count < max_results;
          i++) {
-      collectResults(node.first_child_offset + i, results, result_count,
+      collectResults(node.first_child_offset + i, visit, ctx, result_count,
                      max_results);
     }
   }
 }
 
-uint32_t MusicIndex::searchByPrefix(const char *prefix,
-                                    search_result_t *results,
-                                    uint32_t max_results) {
-  if (!initialized || !prefix || !results) {
+uint32_t MusicIndex::searchByPrefix(const char *prefix, SearchVisitor visit,
+                                    void *ctx, uint32_t max_results) {
+  if (!initialized || !prefix || !visit) {
     return 0;
   }
 
@@ -193,11 +231,32 @@ uint32_t MusicIndex::searchByPrefix(const char *prefix,
     return 0;
   }
 
-  // Collect all results from this node and its children
+  // Visit all results from this node and its children
   uint32_t result_count = 0;
-  collectResults(node_index, results, &result_count, max_results);
+  collectResults(node_index, visit, ctx, &result_count, max_results);
 
   return result_count;
+}
+
+namespace {
+struct ArraySink {
+  search_result_t *results;
+  uint32_t count;
+};
+void storeResult(const search_result_t &result, void *ctx) {
+  ArraySink *sink = (ArraySink *)ctx;
+  sink->results[sink->count++] = result;
+}
+} // namespace
+
+uint32_t MusicIndex::searchByPrefix(const char *prefix,
+                                    search_result_t *results,
+                                    uint32_t max_results) {
+  if (!results) {
+    return 0;
+  }
+  ArraySink sink = {results, 0};
+  return searchByPrefix(prefix, storeResult, &sink, max_results);
 }
 
 uint32_t MusicIndex::searchArtists(const char *prefix, search_result_t *results,

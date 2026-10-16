@@ -146,8 +146,6 @@ void PodcastMenu::layout(const Route_t &route) {
     snprintf(heading, sizeof(heading), "Podcasts");
     contEpisode = st.continueEpisode();
     contRows = contEpisode >= 0 ? 1 : 0;
-  } else if (route.entityName[0]) {
-    snprintf(heading, sizeof(heading), "%s", route.entityName);
   } else {
     src.podcastFolderName(entity, heading, sizeof(heading));
   }

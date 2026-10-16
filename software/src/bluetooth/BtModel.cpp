@@ -59,6 +59,8 @@ void copyText(char *out, size_t size, const char *in, size_t len) {
 
 } // namespace
 
+BtModel::Toast BtModel::toast;
+
 BtModel::BtModel()
     : pinned(-1), radio(true), linkState(LINK_IDLE), activeSlot(-1),
       userConnecting(false), userDisconnecting(false),
@@ -71,7 +73,6 @@ BtModel::BtModel()
       rev(0) {
   memset(devices, 0, sizeof(devices));
   memset(queue, 0, sizeof(queue));
-  memset(&toast, 0, sizeof(toast));
 }
 
 // --- Command queue -----------------------------------------------------------
@@ -256,7 +257,6 @@ void BtModel::onLine(const char *line, uint32_t now) {
       Device &d = devices[slot];
       d.rssi = constrain(atoi(p + 1), -127, 0);
       d.rssiValid = true;
-      d.rssiAtMs = now;
       changed();
     }
   }
@@ -284,7 +284,6 @@ void BtModel::parseScan(const char *value, uint32_t now) {
     copyText(d.name, sizeof(d.name), value + consumed, nameLen);
   d.rssi = constrain(rssi, -127, 0);
   d.rssiValid = true;
-  d.rssiAtMs = now;
   d.seen = true;
   changed();
 }
@@ -630,21 +629,52 @@ void BtModel::tick(uint32_t now) {
 
 // --- Device table ------------------------------------------------------------
 
+static const char HEX_DIGITS[] = "0123456789ABCDEF";
+
+static int hexValue(char c) {
+  if (c >= '0' && c <= '9')
+    return c - '0';
+  if (c >= 'A' && c <= 'F')
+    return c - 'A' + 10;
+  if (c >= 'a' && c <= 'f')
+    return c - 'a' + 10;
+  return -1;
+}
+
+// 12 hex digits to 6 bytes. False if it isn't one.
+static bool parseMac(const char *text, uint8_t out[6]) {
+  for (int i = 0; i < 6; i++) {
+    int hi = hexValue(text[2 * i]);
+    int lo = hi < 0 ? -1 : hexValue(text[2 * i + 1]);
+    if (lo < 0)
+      return false;
+    out[i] = (uint8_t)(hi << 4 | lo);
+  }
+  return text[12] == '\0';
+}
+
 void BtModel::macOf(const Device &d, char out[13]) {
   for (int i = 0; i < 6; i++) {
-    out[2 * i] = d.macText[3 * i];
-    out[2 * i + 1] = d.macText[3 * i + 1];
+    out[2 * i] = HEX_DIGITS[d.mac[i] >> 4];
+    out[2 * i + 1] = HEX_DIGITS[d.mac[i] & 0xF];
   }
   out[12] = '\0';
 }
 
+void BtModel::macText(const Device &d, char out[18]) {
+  for (int i = 0; i < 6; i++) {
+    out[3 * i] = HEX_DIGITS[d.mac[i] >> 4];
+    out[3 * i + 1] = HEX_DIGITS[d.mac[i] & 0xF];
+    out[3 * i + 2] = i < 5 ? ':' : '\0';
+  }
+}
+
 int BtModel::findSlot(const char *mac) const {
-  char m[13];
+  uint8_t m[6];
+  if (!parseMac(mac, m))
+    return -1;
   for (int i = 0; i < MAX_DEVICES; i++) {
-    if (!devices[i].used)
-      continue;
-    macOf(devices[i], m);
-    if (!strcmp(m, mac))
+    if (devices[i].used && !memcmp(devices[i].mac, m, sizeof(m)))
       return i;
   }
   return -1;
@@ -655,6 +685,9 @@ bool BtModel::hasConfig(const Device &d) const {
 }
 
 int BtModel::upsert(const char *mac) {
+  uint8_t bytes[6];
+  if (!parseMac(mac, bytes))
+    return -1;
   int slot = findSlot(mac);
   if (slot >= 0)
     return slot;
@@ -678,8 +711,7 @@ int BtModel::upsert(const char *mac) {
   Device &d = devices[slot];
   memset(&d, 0, sizeof(d));
   d.used = true;
-  snprintf(d.macText, sizeof(d.macText), "%.2s:%.2s:%.2s:%.2s:%.2s:%.2s", mac,
-           mac + 2, mac + 4, mac + 6, mac + 8, mac + 10);
+  memcpy(d.mac, bytes, sizeof(d.mac));
   d.codecPref = CODEC_AUTO;
   return slot;
 }
@@ -706,7 +738,8 @@ const char *BtModel::displayName(int slot) const {
     return d.alias;
   if (d.name[0])
     return d.name;
-  return d.macText;
+  macText(d, macName);
+  return macName;
 }
 
 int BtModel::orderedSlots(int *out, int max) const {

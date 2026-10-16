@@ -17,9 +17,11 @@
 class AudioPlayer {
 public:
   // Constructors
-  AudioPlayer(uint8_t rst, uint8_t cs, uint8_t dcs, uint8_t dreq, uint8_t sdCS);
+  // sd: the card's SdFat, shared with the library (see Audio_buffer).
+  AudioPlayer(uint8_t rst, uint8_t cs, uint8_t dcs, uint8_t dreq, uint8_t sdCS,
+              SdFat &sd);
   AudioPlayer(uint8_t mosi, uint8_t miso, uint8_t sclk, uint8_t rst, uint8_t cs,
-              uint8_t dcs, uint8_t dreq, uint8_t sdCS);
+              uint8_t dcs, uint8_t dreq, uint8_t sdCS, SdFat &sd);
   ~AudioPlayer();
 
   // Core initialization and control

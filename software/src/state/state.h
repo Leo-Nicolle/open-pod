@@ -11,8 +11,9 @@
 
 // Lists from the music index are loaded as a window of LOOKUP_WINDOW names
 // around the visible rows (any length of list); static lists (menus) are
-// plain arrays. The window's names live in an 8 KB buffer.
-#define ELEMENTS_BUFFER_SIZE 8192
+// plain arrays. The window's names live in a 4 KB buffer: 64 names of ~30
+// chars take ~2 KB; with long names the window just holds fewer of them.
+#define ELEMENTS_BUFFER_SIZE 4096
 #define MAX_STRING_POINTERS LOOKUP_WINDOW
 
 // Event types for state changes
@@ -133,6 +134,9 @@ struct SearchEvent {
   int oldFirst;
 };
 
+// Writes the header name of a Settings/Bluetooth route into buf.
+typedef void (*MenuRouteNameFn)(const Route_t &route, char *buf, uint32_t size);
+
 class State : public EventTarget {
 private:
   // String buffer and pointers for current data
@@ -170,6 +174,7 @@ private:
   // Podcasts: the tables and the listening state (null without them).
   PodcastSource *podcastSource;
   PodcastState *podcastState;
+  MenuRouteNameFn menuRouteName = nullptr;
   int lastPodcastSave; // playback position last saved, seconds
 
   int volume;          // 0-100 logical volume
@@ -196,6 +201,9 @@ private:
 
   void updateVisibleElements();
   // Makes rows [first, last] available, reloading the window if needed.
+  // The current route's header name, looked up again from its entity once a
+  // back() uncovers it (the router keeps the top route's name only).
+  void refreshRouteName(MusicLookup &musicLookup);
   void ensureWindow(int first, int last);
   // Loads up to MAX_STRING_POINTERS names of the current route's list
   // from `start`; returns how many.
@@ -239,6 +247,9 @@ public:
   // the cursor on row `selected`.
   void pushMenuRoute(Route_t::RouteType type, uint32_t entityId,
                      const char *title, int selected);
+  // Names the Settings/Bluetooth routes a back() uncovers (State can't see
+  // the Bluetooth model): BtMenu::routeName(), registered by main.cpp.
+  void setMenuRouteNames(MenuRouteNameFn fn) { menuRouteName = fn; }
   
   // Scroll navigation (still needed for UI)
   void scrollUp();

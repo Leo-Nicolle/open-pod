@@ -67,7 +67,9 @@ public:
   // and audioYield() (the only thing a page load calls out to) doesn't.
   uint8_t *scratch() { return _scratchBuffer; }
   static const uint32_t SCRATCH_SIZE = AUDIO_PRELOAD_CHUNK_SIZE;
-  explicit Audio_buffer(uint8_t sdCS);
+  // sd: the library's SdFat (MusicLookup::getSD()), one instance for the
+  // whole card; begin() mounts it.
+  Audio_buffer(uint8_t sdCS, SdFat &sd);
   ~Audio_buffer();
 
   // Initialization
@@ -100,7 +102,6 @@ public:
     return (uint32_t)((fileSize - _dataStart) / _durationSeconds);
   }
   size_t readData(uint8_t *buffer, size_t maxLen);
-  SdFat &getSD() { return _sd; }
   void resetRingBuffer();
   // Track length in seconds as supplied via setFileName()/prepareNextTrack()
   // (from the indexer's precomputed duration index); 0 if not known.
@@ -181,10 +182,10 @@ protected:
   uint32_t _chunkCostUs = 9000;
   // SD card
   uint8_t _sdCS;
-  SdFat _sd;
+  SdFat &_sd;
   File file;
   size_t fileSize;
-  char _currentFileName[256]; // same size as PodPlayer::currentPath
+  char _currentFileName[256]; // reopened on seek and when adopting a prefetch
   uint8_t _dataBuffer[AUDIO_DATABUFFERLEN];
   // Shared scratch buffer for SD<->PSRAM chunks (SDtoPSRAM) and PSRAM<->PSRAM
   // chunked copies (consumeNextTrackIfMatches). Never used concurrently -
@@ -208,8 +209,12 @@ protected:
 
   // --- Next-track prefetch state (linear, not a ring - filled once from
   // byte 0, consumed once at adoption time) ---
+  // Opened by prepareNextTrack() and kept open until consumed or dropped,
+  // so only a hash of its path is kept, to recognise it at the track change.
   File _nextFile;
-  char _nextFileName[256] = {0};
+  uint32_t _nextNameHash = 0;
+  bool _nextValid = false;   // _nextFile is open and worth prefetching
+  bool _nextStarted = false; // its ID3/metadata is skipped
   size_t _nextFileSize = 0;
   int _nextFilePos = 0;
   uint32_t _nextDataStart = 0;
@@ -218,9 +223,10 @@ protected:
 
   // Internals
   bool initializePSRAM();
-  // Opens the current (nextFile=false) or prefetch (nextFile=true) file
-  // handle and records its size into the matching fileSize/_nextFileSize.
-  bool openFile(bool nextFile = false);
+  // Opens the current track's file handle and records its size (fileSize).
+  bool openFile();
+  // FNV-1a of a path: tells the prefetched track from another one.
+  static uint32_t pathHash(const char *path);
   bool closeFile();
   // Reads one chunk from SD into the current track's ring buffer
   // (nextFile=false) or the next-track prefetch region (nextFile=true).

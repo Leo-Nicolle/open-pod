@@ -67,9 +67,12 @@ void PodPlayer::handleTrackPlaybackStarted(const PlaybackEvent *event) {
 void PodPlayer::startPendingTrack() {
   int trackId = pendingTrackId;
   pendingTrackId = -1;
-  if (musicLookup.getTrackPath(trackId, currentPath, sizeof(currentPath))) {
+  // The current track's path, then the next one's: Audio_buffer keeps its
+  // own copy (or, for the next track, the open file).
+  char path[256];
+  if (musicLookup.getTrackPath(trackId, path, sizeof(path))) {
     uint32_t indexedDuration = musicLookup.getTrackDurationSeconds(trackId);
-    if (audioPlayer.startPlaying(currentPath, indexedDuration)) {
+    if (audioPlayer.startPlaying(path, indexedDuration)) {
       // Podcast resume: the decoder may not accept a jump yet, so loop()
       // retries for a moment.
       resumeAt = pendingStartAt;
@@ -94,11 +97,10 @@ void PodPlayer::startPendingTrack() {
   // activity. If there's no next track (end of list), drop any stale guess
   // left over from a previous playlist/track.
   uint32_t nextTrackId;
-  char nextPath[256];
   if (state.getNextTrackId(musicLookup, nextTrackId) &&
-      musicLookup.getTrackPath(nextTrackId, nextPath, sizeof(nextPath))) {
+      musicLookup.getTrackPath(nextTrackId, path, sizeof(path))) {
     uint32_t nextDuration = musicLookup.getTrackDurationSeconds(nextTrackId);
-    audioPlayer.prepareNextTrack(nextPath, nextDuration);
+    audioPlayer.prepareNextTrack(path, nextDuration);
   } else {
     audioPlayer.invalidateNextTrack();
   }

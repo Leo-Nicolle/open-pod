@@ -935,6 +935,73 @@ TEST_SUITE("State Navigation Tests") {
   // Lists used to stop at 200 entries (artists, albums, all tracks) and at
   // 50 related ids (an album's tracks…): the state loads a window of names
   // around the visible rows instead.
+  TEST_CASE("State - Back Restores The Header Name") {
+    openpod_test::resetAll();
+    openpod_test::registerLargeCatalog();
+    State state;
+    MusicLookup lookup;
+    REQUIRE(lookup.init());
+
+    state.loadCurrentRouteData(lookup);
+    state.scrollDown();         // "Artists"
+    state.goToSelected(lookup); // ROOT -> ARTISTS
+    CHECK(std::string(state.getHeaderTitle()) == "Artists");
+    state.goToSelected(lookup); // "Artist 001" -> its albums
+    CHECK(std::string(state.getHeaderTitle()) == "Artist 001");
+    state.goToSelected(lookup); // "Long Album" -> its tracks
+    CHECK(std::string(state.getHeaderTitle()) == "Long Album");
+    state.goToSelected(lookup); // play: Now Playing
+    REQUIRE(state.getCurrentRoute().type == Route_t::NOW_PLAYING);
+
+    REQUIRE(state.back(lookup));
+    CHECK(std::string(state.getHeaderTitle()) == "Long Album");
+    REQUIRE(state.back(lookup));
+    CHECK(std::string(state.getHeaderTitle()) == "Artist 001");
+    REQUIRE(state.back(lookup));
+    CHECK(std::string(state.getHeaderTitle()) == "Artists");
+    state.backToMain(lookup);
+    CHECK(std::string(state.getHeaderTitle()) == "Menu");
+  }
+
+  TEST_CASE("State - Long Names Still Fill The Visible Rows") {
+    openpod_test::resetAll();
+    openpod_test::registerLargeCatalog();
+    // 200-char artist names: only ~20 fit the window's buffer, not 64.
+    std::vector<std::pair<uint32_t, std::string>> artists;
+    for (uint32_t id = 0; id < 300; id++) {
+      char head[16];
+      snprintf(head, sizeof(head), "Artist %03u ", (unsigned)(id + 1));
+      artists.push_back(std::make_pair(id, std::string(head) + std::string(189, 'x')));
+    }
+    openpod_test::FakeFs::get().addFile("/openpod/artist_index.bin",
+                                        openpod_test::buildStringIndex(artists));
+    State state;
+    MusicLookup lookup;
+    REQUIRE(lookup.init());
+
+    state.loadCurrentRouteData(lookup);
+    state.scrollDown();         // "Artists"
+    state.goToSelected(lookup); // ROOT -> ARTISTS
+    REQUIRE(state.getTotalElements() == 300);
+    auto visibleOk = [&]() {
+      for (int i = 0; i < ELEMENTS_PER_SCREEN; i++) {
+        const char *name = state.getVisibleElements()[i];
+        if (!name || std::strncmp(name, "Artist ", 7) != 0) return false;
+      }
+      return true;
+    };
+    for (int i = 0; i < 299; i++) {
+      state.scrollDown();
+      REQUIRE(visibleOk());
+    }
+    CHECK(std::strncmp(state.getCurrentTrackName(), "Artist 300 ", 11) == 0);
+    for (int i = 0; i < 50; i++) {
+      state.pageUp();
+      REQUIRE(visibleOk());
+    }
+    CHECK(std::strncmp(state.getCurrentTrackName(), "Artist 001 ", 11) == 0);
+  }
+
   TEST_CASE("State - Long Lists Are Complete") {
     openpod_test::resetAll();
     openpod_test::registerLargeCatalog();

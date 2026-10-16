@@ -2,7 +2,7 @@
 #include "../logging.h"
 #include "../storage/SharedSpiDriver.h"
 
-Audio_buffer::Audio_buffer(uint8_t sdCS) : _sdCS(sdCS) {
+Audio_buffer::Audio_buffer(uint8_t sdCS, SdFat &sd) : _sdCS(sdCS), _sd(sd) {
   // psram = nullptr;
   _psramBaseAddress = 0;
   resetRingBuffer();
@@ -77,17 +77,21 @@ void Audio_buffer::setFileName(const char *filename,
   filePos = 0; // Reset file position
   _durationSeconds = knownDurationSeconds;
 }
-bool Audio_buffer::openFile(bool nextFile) {
-  File &f = nextFile ? _nextFile : file;
-  const char *fname = nextFile ? _nextFileName : _currentFileName;
-  size_t &fsize = nextFile ? _nextFileSize : fileSize;
-
-  if (!f.open(fname, O_RDONLY)) {
-    LOG_ERROR("Can't open: %s", fname);
+bool Audio_buffer::openFile() {
+  if (!file.open(_currentFileName, O_RDONLY)) {
+    LOG_ERROR("Can't open: %s", _currentFileName);
     return false;
   }
-  fsize = f.size();
+  fileSize = file.size();
   return true;
+}
+
+uint32_t Audio_buffer::pathHash(const char *path) {
+  uint32_t h = 2166136261u;
+  while (*path) {
+    h = (h ^ (uint8_t)*path++) * 16777619u;
+  }
+  return h;
 }
 
 bool Audio_buffer::closeFile() {
@@ -99,9 +103,8 @@ bool Audio_buffer::closeFile() {
 }
 
 bool Audio_buffer::SDtoPSRAM(bool nextFile) {
-  // Prefetching with nothing queued: refuse before even trying to open an
-  // empty filename (openFile() would just fail anyway, but noisily).
-  if (nextFile && _nextFileName[0] == '\0') {
+  // Prefetching with nothing queued (or a next track that didn't open).
+  if (nextFile && (!_nextValid || !_nextFile.isOpen())) {
     return false;
   }
   if (!nextFile && _openFailed) {
@@ -113,15 +116,20 @@ bool Audio_buffer::SDtoPSRAM(bool nextFile) {
   int &fpos = nextFile ? _nextFilePos : filePos;
   uint32_t &dataStart = nextFile ? _nextDataStart : _dataStart;
 
-  if (!f.isOpen()) {
-    if (!openFile(nextFile)) {
-      if (nextFile) {
-        _nextFileName[0] = '\0'; // give up on this guess
-      } else {
-        _openFailed = true;
-      }
+  // A file's first chunk: the current track's file is opened here, the next
+  // track's was by prepareNextTrack().
+  bool fresh;
+  if (nextFile) {
+    fresh = !_nextStarted;
+    _nextStarted = true;
+  } else {
+    fresh = !f.isOpen();
+    if (fresh && !openFile()) {
+      _openFailed = true;
       return false;
     }
+  }
+  if (fresh) {
     // fpos is 0 here for a fresh file (both setFileName() and
     // prepareNextTrack() reset it), so this always skips the ID3 header on
     // first read; a resumed fpos (e.g. after consumeNextTrackIfMatches())
@@ -281,13 +289,21 @@ void Audio_buffer::prepareNextTrack(const char *filename,
                                     uint32_t knownDurationSeconds) {
   // Drop any previous (now-irrelevant) guess and its partial progress.
   _nextFile.close();
-  strncpy(_nextFileName, filename, sizeof(_nextFileName) - 1);
-  _nextFileName[sizeof(_nextFileName) - 1] = '\0';
+  _nextNameHash = pathHash(filename);
+  _nextStarted = false;
   _nextFilePos = 0;
   _nextFileSize = 0;
   _nextDataStart = 0;
   _nextDurationSeconds = knownDurationSeconds;
   _nextPrefetchedBytes = 0;
+  // Opened now, so the path needn't be kept: prefetchNextTrack() reads it
+  // chunk by chunk until the track change.
+  _nextValid = _nextFile.open(filename, O_RDONLY);
+  if (_nextValid) {
+    _nextFileSize = _nextFile.size();
+  } else {
+    LOG_ERROR("Can't open: %s", filename);
+  }
 }
 
 bool Audio_buffer::prefetchNextTrack() {
@@ -299,8 +315,7 @@ bool Audio_buffer::prefetchNextTrack() {
 
 bool Audio_buffer::consumeNextTrackIfMatches(const char *filename,
                                              uint32_t knownDurationSeconds) {
-  bool matches =
-      _nextFileName[0] != '\0' && strcmp(_nextFileName, filename) == 0;
+  bool matches = _nextValid && _nextNameHash == pathHash(filename);
   bool hasPrefetchedData = matches && _nextPrefetchedBytes > 0;
   bool adopted = false;
 
@@ -318,6 +333,7 @@ bool Audio_buffer::consumeNextTrackIfMatches(const char *filename,
     uint32_t adoptDataStart = _nextDataStart;
     uint32_t adoptDuration =
         knownDurationSeconds ? knownDurationSeconds : _nextDurationSeconds;
+    size_t prefetchedFileSize = _nextFileSize;
 
     _nextFile.close();
     closeFile();
@@ -327,10 +343,12 @@ bool Audio_buffer::consumeNextTrackIfMatches(const char *filename,
     // Don't rely on File copy-assignment to "move" the open next-track
     // handle over - SdFat handle semantics vary by version/backend. Closing
     // and reopening at the resumed position is just a directory lookup +
-    // seek (not a data re-read), and is safe regardless. openFile(false)
+    // seek (not a data re-read), and is safe regardless. openFile()
     // reopens _currentFileName (set above) and refreshes fileSize from it -
     // the same helper SDtoPSRAM() uses for a fresh current-track open.
-    if (openFile(false) && file.seekSet(adoptFilePos)) {
+    // Same size as the prefetched file: a guard against a path hash clash.
+    if (openFile() && fileSize == prefetchedFileSize &&
+        file.seekSet(adoptFilePos)) {
       filePos = (int)adoptFilePos;
       _dataStart = adoptDataStart;
       _durationSeconds = adoptDuration;
@@ -361,7 +379,8 @@ bool Audio_buffer::consumeNextTrackIfMatches(const char *filename,
   // this transition. Free it so the caller can prepareNextTrack() again for
   // whatever follows the track that's about to start.
   _nextFile.close();
-  _nextFileName[0] = '\0';
+  _nextValid = false;
+  _nextStarted = false;
   _nextPrefetchedBytes = 0;
   _nextFilePos = 0;
   _nextFileSize = 0;
@@ -373,7 +392,8 @@ bool Audio_buffer::consumeNextTrackIfMatches(const char *filename,
 
 void Audio_buffer::invalidateNextTrack() {
   _nextFile.close();
-  _nextFileName[0] = '\0';
+  _nextValid = false;
+  _nextStarted = false;
   _nextFilePos = 0;
   _nextFileSize = 0;
   _nextDataStart = 0;

@@ -129,6 +129,18 @@ void setupSearchCatalog() {
 }
 
 // Types `text` (lowercase letters, digits and spaces) through the ribbon.
+std::string rowTitle(const SearchModel &search, int row) {
+  char title[SearchModel::TITLE_LEN], sub[SearchModel::SUB_LEN];
+  search.describeRow(row, title, sub);
+  return title;
+}
+
+std::string rowSub(const SearchModel &search, int row) {
+  char title[SearchModel::TITLE_LEN], sub[SearchModel::SUB_LEN];
+  search.describeRow(row, title, sub);
+  return sub;
+}
+
 void type(SearchModel &search, MusicLookup &lookup, const char *text) {
   for (const char *p = text; *p; p++) {
     if (*p == ' ') {
@@ -193,6 +205,31 @@ TEST_SUITE("Search model") {
     CHECK(search.moveCursor(1) == false);
   }
 
+  TEST_CASE("Search - hits deduped during the walk match rankHits") {
+    setupSearchCatalog();
+    MusicLookup lookup;
+    REQUIRE(lookup.init());
+    MusicIndex index;
+    REQUIRE(index.init(lookup.getSearchTrie()));
+    const char *queries[] = {"s", "so", "son", "d", "i", "x"};
+    for (const char *q : queries) {
+      SearchModel search;
+      search.setIndex(&index);
+      type(search, lookup, q);
+
+      search_result_t raw[SearchModel::MAX_HITS];
+      uint32_t n = index.searchByPrefix(q, raw, SearchModel::MAX_HITS);
+      SearchModel::Hit ranked[SearchModel::MAX_HITS];
+      int count = SearchModel::rankHits(raw, (int)n, ranked, SearchModel::MAX_HITS);
+      REQUIRE(search.getHitCount() == count);
+      for (int i = 0; i < count; i++) {
+        CHECK(search.getHit(i).id == ranked[i].id);
+        CHECK(search.getHit(i).type == ranked[i].type);
+        CHECK(search.getHit(i).relevance == ranked[i].relevance);
+      }
+    }
+  }
+
   TEST_CASE("Search - typing finds tracks, deduped, with artist subtitles") {
     setupSearchCatalog();
     MusicLookup lookup;
@@ -208,10 +245,10 @@ TEST_SUITE("Search model") {
     REQUIRE(search.getHitCount() == 2);
     // equal relevance: the shorter name first
     CHECK(search.getHit(0).id == 0);
-    CHECK(std::string(search.getRowTitle(0)) == "First Song");
-    CHECK(std::string(search.getRowSub(0)) == "Solo Artist");
-    CHECK(std::string(search.getRowTitle(1)) == "Second Song");
-    CHECK(search.getRowTitle(2)[0] == '\0');
+    CHECK(rowTitle(search, 0) == "First Song");
+    CHECK(rowSub(search, 0) == "Solo Artist");
+    CHECK(rowTitle(search, 1) == "Second Song");
+    CHECK(rowTitle(search, 2).empty());
   }
 
   TEST_CASE("Search - album, artist and genre rows") {
@@ -226,21 +263,21 @@ TEST_SUITE("Search model") {
     type(search, lookup, "dou");
     REQUIRE(search.getHitCount() == 1);
     CHECK(search.getHit(0).type == SEARCH_ALBUM);
-    CHECK(std::string(search.getRowTitle(0)) == "Double Album");
+    CHECK(rowTitle(search, 0) == "Double Album");
     // no album_to_artist.bin: the first track's artist
-    CHECK(std::string(search.getRowSub(0)) == "Solo Artist");
+    CHECK(rowSub(search, 0) == "Solo Artist");
 
     search.reset();
     type(search, lookup, "sol");
     REQUIRE(search.getHitCount() == 1);
-    CHECK(std::string(search.getRowTitle(0)) == "Solo Artist");
-    CHECK(std::string(search.getRowSub(0)) == "1 album");
+    CHECK(rowTitle(search, 0) == "Solo Artist");
+    CHECK(rowSub(search, 0) == "1 album");
 
     search.reset();
     type(search, lookup, "ind");
     REQUIRE(search.getHitCount() == 1);
-    CHECK(std::string(search.getRowTitle(0)) == "Indie");
-    CHECK(std::string(search.getRowSub(0)) == "1 album");
+    CHECK(rowTitle(search, 0) == "Indie");
+    CHECK(rowSub(search, 0) == "1 album");
   }
 
   TEST_CASE("Search - space and backspace at the edges") {

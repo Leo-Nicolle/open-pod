@@ -23,6 +23,8 @@ struct HeaderStatus {
   const char *codec = nullptr;   // Now Playing tag, nullptr when hidden
   bool toastActive = false;
   const BtModel::Toast *toast = nullptr; // BtModel's, while toastActive
+  // Bumped with each new toast: the message's address is always the same.
+  uint8_t toastSerial = 0;
 };
 extern HeaderStatus headerStatus;
 

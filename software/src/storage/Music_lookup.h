@@ -60,73 +60,13 @@ typedef struct {
   uint32_t length; // without the NUL
 } lookup_result_t;
 
-// Route management for navigation
-struct Route {
-  enum RouteType { ROOT, SEARCH_RESULTS, GENRES, ARTISTS, ALBUMS, TRACKS };
-  RouteType type;
-  uint32_t entityId;     // ID of current entity (genre_id, artist_id, etc.)
-  char entityName[64];   // Display name for breadcrumb
-  uint32_t currentPage;  // For pagination
-  uint32_t totalResults; // Total items available
-  bool hasMore;          // Whether more pages exist
-};
-
-#define MAX_ROUTE_DEPTH 8
-
-class RouteManager {
-private:
-  Route routeStack[MAX_ROUTE_DEPTH];
-  int stackDepth;
-
-public:
-  RouteManager() : stackDepth(0) {}
-
-  void pushRoute(Route::RouteType type, uint32_t entityId = 0,
-                 const char *entityName = nullptr) {
-    if (stackDepth < MAX_ROUTE_DEPTH) {
-      routeStack[stackDepth].type = type;
-      routeStack[stackDepth].entityId = entityId;
-      routeStack[stackDepth].currentPage = 0;
-      routeStack[stackDepth].totalResults = 0;
-      routeStack[stackDepth].hasMore = false;
-
-      if (entityName) {
-        strncpy(routeStack[stackDepth].entityName, entityName, 63);
-        routeStack[stackDepth].entityName[63] = '\0';
-      } else {
-        routeStack[stackDepth].entityName[0] = '\0';
-      }
-
-      stackDepth++;
-    }
-  }
-
-  bool popRoute() {
-    if (stackDepth > 0) {
-      stackDepth--;
-      return true;
-    }
-    return false;
-  }
-
-  Route &getCurrentRoute() {
-    static Route defaultRoute = {Route::ROOT, 0, "", 0, 0, false};
-    if (stackDepth > 0) {
-      return routeStack[stackDepth - 1];
-    }
-    return defaultRoute;
-  }
-
-  bool canGoBack() { return stackDepth > 1; }
-  int getDepth() { return stackDepth; }
-};
-
 class MusicLookup : public PodcastSource {
 private:
   bool initialized;
   bool index_missing = false;
 
-  // SD card (its own SdFat: see notes/performance-and-memory.md step 2)
+  // The card's only SdFat: the audio buffer (it mounts it first), album
+  // art, podcast state and Bluetooth settings all use it (getSD()).
   SdFat sd;
 
   // Headers for all indexes and relationships

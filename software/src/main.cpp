@@ -2,6 +2,7 @@
 #include "bluetooth/Bluetooth.hpp"
 #include "bluetooth/BtConfig.h"
 #include "app/app.h"
+#include "app/stack_probe.h"
 #include "logging.h"
 #include "pinout.h"
 #include "sound/startup_sound.h"
@@ -49,6 +50,8 @@ void onConsoleAtLine(const char *line) { bluetooth.forwardConsoleLine(line); }
 
 void setup()
 {
+  // Before anything else, so the stack high-water mark covers all of setup.
+  stackPaint();
   // Hold the VS1053 out of reset from the first instruction: left floating
   // until player.setup() (a few hundred ms in), XRESET can dip and reset the
   // chip, which thumps in the headphones (see VS1053_driver::begin()).
@@ -72,6 +75,9 @@ void setup()
   };
 
   state.addEventListener(onNavigationStateEvent); // see app/input.cpp
+  state.setMenuRouteNames([](const Route_t &route, char *buf, uint32_t size) {
+    btMenu.routeName(route, buf, size);
+  });
 
   // Screen first: the title screen plays while the rest of the init runs in
   // its idle gaps (see ui/boot_screen.hpp).
@@ -294,10 +300,9 @@ void loop()
   {
     audioprof::Span span(audioprof::MISC_WORK);
     // Optional trace visualization
-    if (DEBUG_WHEEL_TRACE)
-    {
-      drawTraceVisualization();
-    }
+#if DEBUG_WHEEL_TRACE
+    drawTraceVisualization();
+#endif
 
     // Optional telemetry
     if (LOG_ENABLED(TELEMETRY) && shouldUpdateTelemetry())

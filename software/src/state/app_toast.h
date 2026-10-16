@@ -4,12 +4,12 @@
 #include <string.h>
 
 // Toasts raised by the app itself (podcast playback), shown in the header
-// like BtModel's: the UI shows whichever of the two changed last. They
-// have no icon: neutral for what the user did, success for what happened
-// on its own.
+// like BtModel's: the UI shows whichever of the two changed last. Both write
+// the same message (BtModel::sharedToast()). They have no icon: neutral for
+// what the user did, success for what happened on its own.
 class AppToast {
 public:
-  AppToast() : count(0) { memset(&toast, 0, sizeof(toast)); }
+  AppToast() : toast(BtModel::sharedToast()), count(0) {}
 
   // `bold` is drawn in the bold face between `before` and `after`.
   void show(uint8_t tone, const char *before, const char *bold = "",
@@ -32,7 +32,7 @@ public:
   const BtModel::Toast &last() const { return toast; }
 
 private:
-  BtModel::Toast toast;
+  BtModel::Toast &toast;
   uint8_t count;
 };
 

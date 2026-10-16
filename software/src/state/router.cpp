@@ -1,6 +1,7 @@
 #include "router.h"
 
 Router::Router() : stackDepth(0) {
+  name[0] = '\0';
   // routeStack[stackDepth] (index 0 while nothing has been pushed yet) is
   // read by getCurrentRoute() from the very start, so it must already be a
   // valid ROOT route rather than indeterminate memory. This happened to work
@@ -10,10 +11,6 @@ Router::Router() : stackDepth(0) {
   routeStack[0].type = Route_t::ROOT;
   routeStack[0].entityId = 0;
   routeStack[0].scope = Route_t::ROOT;
-  routeStack[0].entityName[0] = '\0';
-  routeStack[0].currentPage = 0;
-  routeStack[0].totalResults = 0;
-  routeStack[0].hasMore = false;
   routeStack[0].selectedIndex = 0;
   routeStack[0].topVisibleIndex = 0;
 }
@@ -31,28 +28,30 @@ void Router::pushRoute(Route_t::RouteType type, uint32_t entityId,
   routeStack[stackDepth].type = type;
   routeStack[stackDepth].entityId = entityId;
   routeStack[stackDepth].scope = scope;
-  routeStack[stackDepth].currentPage = 0;
-  routeStack[stackDepth].totalResults = 0;
-  routeStack[stackDepth].hasMore = false;
 
   // Initialize selection state for new route
   routeStack[stackDepth].selectedIndex = 0;
   routeStack[stackDepth].topVisibleIndex = 0;
 
-  if (entityName) {
-    strncpy(routeStack[stackDepth].entityName, entityName, 63);
-    routeStack[stackDepth].entityName[63] = '\0';
-  } else {
-    routeStack[stackDepth].entityName[0] = '\0';
-  }
+  setName(entityName);
 }
 
 bool Router::popRoute() {
   if (stackDepth > 0) {
     stackDepth--;
+    name[0] = '\0';
     return true;
   }
   return false;
+}
+
+void Router::setName(const char *n) {
+  if (n) {
+    strncpy(name, n, sizeof(name) - 1);
+    name[sizeof(name) - 1] = '\0';
+  } else {
+    name[0] = '\0';
+  }
 }
 
 Route_t &Router::getCurrentRoute() { return routeStack[stackDepth]; }

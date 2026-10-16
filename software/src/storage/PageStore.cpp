@@ -55,6 +55,13 @@ int PageStore::open(SdFat &sd, const char *path, uint8_t pack) {
     files[pack].close();
     return -1;
   }
+  if (files[pack].size() > ((uint64_t)MAX_PAGES << PAGE_STORE_PAGE_LOG2)) {
+    LOG_ERROR("%s is too big: %lu KB, the page cache addresses %lu KB", path,
+              (unsigned long)(files[pack].size() / 1024),
+              (unsigned long)(((uint32_t)MAX_PAGES * PAGE_SIZE) / 1024));
+    files[pack].close();
+    return -1;
+  }
   fileSize[pack] = (uint32_t)files[pack].size();
   // A contiguous file (the usual case: the syncer writes it in one go) is
   // flagged so, and SdFat then seeks in it without walking the FAT: a
@@ -75,7 +82,7 @@ void PageStore::close(uint8_t pack) {
   fileSize[pack] = 0;
   // Drop the pack's pages: the file may be a different one next time.
   for (uint16_t i = 0; i < slots; i++) {
-    if (slotKey[i] != EMPTY && (slotKey[i] >> 24) == pack) {
+    if (slotKey[i] != EMPTY && (slotKey[i] >> KEY_PAGE_BITS) == pack) {
       slotKey[i] = EMPTY;
     }
   }
@@ -122,7 +129,8 @@ bool PageStore::read(const PackRef &s, uint32_t off, void *dst, uint32_t len) {
     if (n > len) {
       n = len;
     }
-    uint32_t key = ((uint32_t)s.pack() << 24) | page;
+    // page < MAX_PAGES: the read is inside the pack (open() checked its size).
+    uint16_t key = keyOf(s.pack(), page);
     uint16_t slot = lookup(key);
     if (slot == NONE) {
       slot = load(key);
@@ -139,7 +147,7 @@ bool PageStore::read(const PackRef &s, uint32_t off, void *dst, uint32_t len) {
   return true;
 }
 
-uint16_t PageStore::lookup(uint32_t key) {
+uint16_t PageStore::lookup(uint16_t key) {
   if (key == lastKey) {
     st.hits++;
     setRef(lastSlot);
@@ -165,7 +173,7 @@ bool PageStore::takeRef(uint16_t slot) {
   return was;
 }
 
-uint16_t PageStore::load(uint32_t key) {
+uint16_t PageStore::load(uint16_t key) {
   uint32_t t0 = micros();
   // CLOCK within the page's set: the first slot that is empty or wasn't used
   // since the hand last passed it.
@@ -185,8 +193,8 @@ uint16_t PageStore::load(uint32_t key) {
     lastSlot = NONE;
   }
 
-  FsFile &f = files[key >> 24];
-  uint32_t filePos = (key & 0xFFFFFFu) << PAGE_STORE_PAGE_LOG2;
+  FsFile &f = files[key >> KEY_PAGE_BITS];
+  uint32_t filePos = (uint32_t)(key & KEY_PAGE_MASK) << PAGE_STORE_PAGE_LOG2;
   uint32_t ts = micros();
   if (!f.seekSet(filePos)) {
     return NONE;

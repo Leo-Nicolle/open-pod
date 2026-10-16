@@ -2,6 +2,7 @@
 #include "../logging.h"
 #include "../pinout.h"
 #include "BtModel.h"
+#include "BtUart.h"
 #include <Arduino.h>
 
 // FSC-BT1035 Bluetooth module as an A2DP source: the VS1053's I2S output
@@ -101,7 +102,7 @@ private:
   static const uint32_t COMMAND_TIMEOUT_MS = 1000;
 
   BtModel &model;
-  Uart uart{BT_UART_RX, BT_UART_TX};
+  BtUart uart{BT_UART_RX, BT_UART_TX};
   Phase phase = Phase::Off;
   uint32_t phaseStartMs = 0;
   uint32_t lastSendMs = 0;

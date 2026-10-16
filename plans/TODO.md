@@ -18,8 +18,34 @@ Things that came to my mind on the improvement and steps. Not ordered, not prior
 - UI and PSRAM memory allocation: we have a note about the overflowing of the index from the PSRAM, we need to handle that: measure perfs when storing the search trie and the paths/ into the SD, and also handle dynamic indexes load from the SD, by pages, cause even the reference indexes could overflow the PSRAM.
   Compute what is the best trade off between drainage, memory allocation, speed etc.
 
-## Developement tools
+## Hardware
 
+- Measure the current drain of each part (mpr121, SD, vs1053, bluetooth, screen and MCU) and see how much battery we would need.
+- See if we would benefit from a high res DAC (Cirrus Logic CS43131), how much pain/gain it would give: space, drain, output capabilities (headphones, hifi  etc), would I even hear the diff?
+
+### Clickwheel
+
+- See if we can live without the central button being capacitive (simpler), I noticed that the thumb switching form the wheel to the central button could trigger a scroll which is anoying, I thought that disabling the scroll if any touch is detected on the center button would fix it. But maybe can be done from the button shape(higher) and software.
+- Check the size and design of the current one in KiCAD, not sure it fits the ipod classic case perfectly. (print a quick 3d shim and test)
+- Design the articulation between the center and the outer ring, and check that it does not escape from its slot in the case
+
+### Settings
+
+- Have settings for quick actions on the buttons (long press or double/triple press): back-to-now-playing, light/dark theme switch, mark as read(podcast), switch off
+- Have settings for the next/prev track behaviour: gapless or with gap. Need to experiment proper track seeking and switching: we were hearing glitches when doing it but I realise it might be because we were feeding the buffer with annother chunk of data without properlly terminating the current one? Does MP3/FLAC have some minimum block resolution for decoding?
+
+### Testing/Reporting tools
+
+- Would be good to have a page on the website to see the perfs: with visualisation of the screen framerate, audio buffers filling status, memory heap etc.
+- Would be good to implement a test bench:
+  - tranfert to the card an openpod/ folder with a biiiig dataset, no need for the audio files
+  - transfert one sample file of each audio quality: from small mp3 to large flac.
+  - make it boot, and send commands via serial: scroll, menu change, audio playback, seek, next, prev, search in the lib.
+  - monitor the perfs, reccord a report for each version.
+  - publish it on the docs.
+  - Benchmark: add some fast scrolling there, I dont think I have seen it yet
+  - Benchmark: In the search: check that we dont input letters too fast: if we are typing faster than the trie is searching, it defeats the purpose because the longer the input the faster the search ? (at least the loading of the results I guess)
+  - Benchmark: The tracks do not have album arts, they should
 - ~~ Wrap all the Serial.println into a macro and use platformio flags to turn them on/off~~
   ~~(LOG_LEVEL=0,1,2, LOG_AUDIO_BUFFER, LOG_INDEX_USAGE, LOG_USER_INPUT ... ) with some docs somewhere about all thoose flags, probably within the macro definition.COLOR ~~
 
@@ -36,7 +62,16 @@ Things that came to my mind on the improvement and steps. Not ordered, not prior
 - Make it pull the software/hardware revisions from github and display it somewhere
 - Include the magic Platformio button to flash OpenPod directly from the website. Would be good to be able to teak the flags (debug etc), because later we might have different flags depending on the version of the audio chip for instance (vs1063 has 5 rows equilizer, would be nice to have a settings menu for that in openpod)
 - Rename the blog entries to make them clearer, maybe have some summary sentence for each ?
-- Include the indexer tool directly there? So you can scan and import just by visiting the website?  
+- ~~Include the indexer tool directly there? So you can scan and import just by visiting the website? ~~
+
+## Naming
+
+- Is it bad to be called OpenPod, and to be a music player board, that fits exaclty into an official (aliexpress) Apple Ipod Case ? Can I get in trouble ? How can I rename this ?
+
+## Timeline
+
+- I would looove to have a timeline pagee on the docs, showing the evolution of the project since the begining, referencing the key points, and maybe the blog posts. A chart with the amount of commits, or the SLOC, over time would be great. An also maybe a chart with multiple stacked lines/areas for features, hardware, etc in percentage (magic hat stats).
+- I would also like to have some projection timeline, with deadlines, would help finish this project, instead of putting it back in 2 weeks for a year again in the drawer.
 
 ## Hardware
 
@@ -44,19 +79,29 @@ Things that came to my mind on the improvement and steps. Not ordered, not prior
 
 ## Indexer
 
-- Plan: [sync-tool.md](sync-tool.md) (Rust core + CLI, additive multi-computer sync, Tauri and WASM later). Phases 1–3 are done in `syncer/` (see its README) and replace `sync/sync.sh`.
+-~~ Plan: [sync-tool.md](sync-tool.md) (Rust core + CLI, additive multi-computer sync, Tauri and WASM later). Phases 1–3 are done in `syncer/` (see its README) and replace `sync/sync.sh`.~~
+
 - ~~Firmware lists stop at 200 entries (and relationship lists, like an album's tracks, at 50)~~: State now loads a window of `LOOKUP_WINDOW` (64) names around the visible rows (`State::ensureWindow`, `MusicLookup` lookups take an offset), so lists have no length limit. Also fixed: the `getAll*` lookups never decremented `buffer_remaining` (overrun once names passed 8 KB), and a search hit in an album past its 50th track couldn't be played within the album.
-- I might want to make it a Rust app/CMD. Tauri? I would have it compiled for all platforms on github actions and copy it to the SD card to always have it. It would be nice to have a nice managment UI for adding/sharing/removing stuff to the lib. Let's see if we need a whole collection view(Itunes like) or just a nice folder selector + loading bar.
-- Could we have a emscripten version of the Rust backend and use it directly from the website? So you can add music just by visiting the website?
+- ~~I might want to make it a Rust app/CMD. Tauri? I would have it compiled for all platforms on github actions and copy it to the SD card to always have it. It would be nice to have a nice managment UI for adding/sharing/removing stuff to the lib. Let's see if we need a whole collection view(Itunes like) or just a nice folder selector + loading bar.~~
+- ~~Could we have a emscripten version of the Rust backend and use it directly from the website? So you can add music just by visiting the website?~~
+- Add a `useFFMPEG` option, see if it makes the converting faster.
+- Check why my transfert is only 54Mb/s max, is it my card, usb-c adapter or software? (delays between each file etc)
+- Make it not convert .m4a files: the vs1053 handles them well
+- Add tests for all audio/video input files: wav, mp4, flac etc.
+- During transfert the `on the card` number in the left panel does not update, it should
+- Test the `Remove from the card` feature: does it remmember to ignore them from transfert next time? It should show that it is blaclisted in the `what s new` panel
+- Trying to remove things fom the Card while a sync is running breaks it.
+- For podcasts: propose to auto remove the read ones.
+- The `read the card` feature is sloooow. Does it read one file at the time ? Does it read all the files ? It should read only the header or each, and multithread: fill up a buffer with all the metadata and have a pool of threads that read from it
 
 ## Podcasts and audiobooks
 
  I listen quite a lot of that we would need to:
 
 - Have a script to normalize their ID3 tags ( just like I use Beet for the music ones), is there one for podcasts ?
-- We would need the indexer to crawl through them and index them
-- Would be nice to have subMenus for them. The difference with the music is that the tree might not have
-  the same depth everywhere.
+- ~~We would need the indexer to crawl through them and index them~~
+- ~~ Would be nice to have subMenus for them. The difference with the music is that the tree might not have
+  the same depth everywhere. ~~
 
 ```
       - France-Culture | - Les Pieds sur Terre
@@ -73,4 +118,4 @@ Things that came to my mind on the improvement and steps. Not ordered, not prior
 
 ```
 
-- We should save the listenned episodes and the current timestamp within unfinished episodes. There should be some shortcut to mark an episode as read/unread from the player.
+- ~~ We should save the listenned episodes and the current timestamp within unfinished episodes. ~~ There should be some shortcut to mark an episode as read/unread from the player.

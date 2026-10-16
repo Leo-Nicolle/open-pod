@@ -156,3 +156,34 @@ TEST_CASE("PageStore - reopening a pack drops its cached pages") {
   store.read(s, 100, &after, 1);
   CHECK(after == 0xAB);
 }
+
+TEST_CASE("PageStore - packs up to MAX_PAGES pages, keys stay clear of EMPTY") {
+  // A small pack padded to exactly MAX_PAGES pages, in pack slot 1: its last
+  // page has the highest key (0xFFFE), next to the EMPTY sentinel.
+  openpod_test::resetAll();
+  std::vector<std::pair<uint32_t, std::vector<uint8_t>>> sections;
+  sections.push_back(std::make_pair(1u, std::vector<uint8_t>{1, 2, 3}));
+  std::vector<uint8_t> file = openpod_test::buildPack(sections);
+  const uint32_t maxSize = (uint32_t)PageStore::MAX_PAGES * PAGE;
+  file.resize(maxSize, 0);
+  file[maxSize - 1] = 0x5A;
+  auto shared = std::make_shared<std::vector<uint8_t>>(std::move(file));
+  openpod_test::FakeFs::get().files["/openpod/big.pack"] = shared;
+
+  PageStore store;
+  SdFat sd;
+  store.begin(INDEX_CACHE_BASE_ADDRESS, 4 * PAGE);
+  REQUIRE(store.open(sd, "/openpod/big.pack", 1) == 1);
+  PackRef whole = {(1u << 31), maxSize};
+  uint8_t b = 0;
+  CHECK(store.read(whole, maxSize - 1, &b, 1));
+  CHECK(b == 0x5A);
+  CHECK(store.read(whole, maxSize - 1, &b, 1)); // a hit on that slot
+  CHECK(b == 0x5A);
+  CHECK(store.stats().hits >= 1);
+
+  // One byte more and the page numbers would overflow the key: refused.
+  shared->push_back(0);
+  CHECK(store.open(sd, "/openpod/big.pack", 1) == -1);
+  CHECK_FALSE(store.isOpen(1));
+}

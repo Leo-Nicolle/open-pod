@@ -40,7 +40,9 @@ void updateAudioProgress();
 
 // diagnostics.cpp
 void printResetCause();
+#if DEBUG_WHEEL_TRACE
 void drawTraceVisualization();
+#endif
 bool shouldUpdateTelemetry();
 void sendTelemetry();
 

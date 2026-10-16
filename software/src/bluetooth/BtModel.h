@@ -43,21 +43,22 @@ public:
   };
   enum ToastTone : uint8_t { TOAST_SUCCESS, TOAST_NEUTRAL, TOAST_ERROR };
 
+  // 62 bytes: flags as bits, the MAC as bytes (macOf() / macText() format
+  // it).
   struct Device {
-    bool used;
-    char macText[18]; // 00:1A:7D:DA:71:13 (macOf() for the module's form)
+    bool used : 1;
+    bool paired : 1;
+    bool connected : 1;
+    bool seen : 1; // found by the current or last scan
+    bool rssiValid : 1;
+    bool listed : 1; // in the paired list being read (AT+PLIST)
+    uint8_t mac[6];
     char name[NAME_LEN];
     char alias[ALIAS_LEN];
-    bool paired;
-    bool connected;
-    bool seen; // found by the current or last scan
-    bool rssiValid;
     int8_t rssi;
-    uint32_t rssiAtMs;
     uint8_t codecPref;         // Codec
     uint8_t codecsUnsupported; // bit per Codec: asked for, got another one
     uint8_t codecInUse;        // Codec; CODEC_AUTO = not connected/unknown
-    bool listed;               // in the paired list being read (AT+PLIST)
     uint8_t cmdRefs;           // queued commands naming it: not dropped
   };
 
@@ -123,6 +124,8 @@ public:
   int findSlot(const char *mac) const; // 12 hex digits
   // The device's MAC as the module writes it (12 hex digits).
   static void macOf(const Device &d, char out[13]);
+  // The device's MAC for people: 00:1A:7D:DA:71:13.
+  static void macText(const Device &d, char out[18]);
   // Next codec after `codec` for this device, skipping the ones it was
   // seen not to support.
   uint8_t nextCodec(int slot, uint8_t codec) const;
@@ -136,6 +139,9 @@ public:
   // The latest feedback message; toastSerial() changes with each new one.
   uint8_t toastSerial() const { return toastCount; }
   const Toast &lastToast() const { return toast; }
+  // The only toast text in RAM, shared with the app's toasts (AppToast,
+  // state/app_toast.h): the header shows whichever was raised last.
+  static Toast &sharedToast() { return toast; }
   // Tests: copies a toast raised since the last call.
   bool takeToast(Toast &out);
 
@@ -207,7 +213,9 @@ private:
   uint8_t qHead, qCount;
   uint8_t inFlight; // Cmd
 
-  Toast toast;
+  // displayName() of a device with no name: its MAC, formatted.
+  mutable char macName[18];
+  static Toast toast; // see sharedToast()
   uint8_t toastCount, toastTaken;
 
   bool cfgDirty;

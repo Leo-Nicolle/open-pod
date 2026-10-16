@@ -11,9 +11,9 @@ class BtConfig {
 public:
   // Loads the file into `bt`. Returns whether the card is usable.
   bool begin(SdFat &card, BtModel &bt) {
-    // Through `card` itself: FsFile::open(path) would use whichever SdFat
-    // instance began last (MusicIndex, Audio_buffer and MusicLookup each
-    // have one on the same card).
+    // Through `card` itself rather than FsFile::open(path), which uses
+    // whichever SdFat instance began last (there is only one now, but the
+    // tests make their own).
     FsFile root = card.open("/");
     if (!root) {
       LOG_WARN("Bluetooth settings: no SD card, aliases and codecs not saved");

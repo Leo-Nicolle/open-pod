@@ -11,15 +11,16 @@
 AudioPlayer *AudioPlayer::_instance = nullptr;
 
 AudioPlayer::AudioPlayer(uint8_t rst, uint8_t cs, uint8_t dcs, uint8_t dreq,
-                         uint8_t sdCS)
-    : _driver(rst, cs, dcs, dreq), _buffer(sdCS), _playing(false),
+                         uint8_t sdCS, SdFat &sd)
+    : _driver(rst, cs, dcs, dreq), _buffer(sdCS, sd), _playing(false),
       _paused(false), _looping(false) {
   _instance = this;
 }
 
 AudioPlayer::AudioPlayer(uint8_t mosi, uint8_t miso, uint8_t sclk, uint8_t rst,
-                         uint8_t cs, uint8_t dcs, uint8_t dreq, uint8_t sdCS)
-    : _driver(mosi, miso, sclk, rst, cs, dcs, dreq), _buffer(sdCS),
+                         uint8_t cs, uint8_t dcs, uint8_t dreq, uint8_t sdCS,
+                         SdFat &sd)
+    : _driver(mosi, miso, sclk, rst, cs, dcs, dreq), _buffer(sdCS, sd),
       _playing(false), _paused(false), _looping(false) {
   _instance = this;
 }

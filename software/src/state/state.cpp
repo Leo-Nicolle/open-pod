@@ -366,6 +366,12 @@ void State::ensureWindow(int first, int last) {
   start = constrain(start, 0, max(0, totalElements - MAX_STRING_POINTERS));
   windowStart = start;
   windowCount = loadWindow(start);
+  if (last >= windowStart + windowCount && start < first - 1) {
+    // Long names filled the buffer before the visible rows: start the
+    // window just above them instead.
+    windowStart = max(0, first - 1);
+    windowCount = loadWindow(windowStart);
+  }
 }
 
 void State::setWindowedElements(MusicLookup &musicLookup, int count) {

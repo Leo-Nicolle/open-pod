@@ -74,7 +74,7 @@ private:
     uint32_t h = m.chunkHash(chunk);
     if (chunk == 0) {
       if (uikit::headerStatus.toastActive)
-        h ^= 0x9E3779B9u ^ (uint32_t)(uintptr_t)uikit::headerStatus.toast;
+        h ^= 0x9E3779B9u ^ uikit::headerStatus.toastSerial;
       if (playing)
         h ^= 0x7F4A7C15u;
     }

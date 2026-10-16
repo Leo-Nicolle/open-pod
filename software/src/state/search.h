@@ -74,9 +74,10 @@ public:
     return hasSelection() ? &hits[selected] : nullptr;
   }
 
-  // Display strings for the hit at index first + row (row < MAX_ROWS).
-  const char *getRowTitle(int row) const { return rowTitle[row]; }
-  const char *getRowSub(int row) const { return rowSub[row]; }
+  // Display strings for the hit at index first + row, looked up when the row
+  // is drawn: title holds TITLE_LEN chars, sub SUB_LEN. Both "" past the
+  // hits. Index pages are cached (PageStore), so a redraw costs PSRAM reads.
+  void describeRow(int row, char *title, char *sub) const;
 
   // Lowercases, and drops a leading article ("the ", "le ", ...) once
   // something follows it, matching the indexer's normalizeString(). An
@@ -88,6 +89,11 @@ public:
   // Returns the number of hits written to out.
   static int rankHits(const search_result_t *raw, int rawCount, Hit *out,
                       int maxOut);
+  // rankHits() in two steps, so hits can be added as the trie walk finds
+  // them: addHit() dedups one raw hit into out[0..count), sortHits() ranks.
+  static void addHit(const search_result_t &raw, Hit *out, int &count,
+                     int maxOut);
+  static void sortHits(Hit *out, int count);
 
 private:
   MusicIndex *index;
@@ -99,14 +105,11 @@ private:
   int selected;
   int first;
 
-  // Row strings for hits [rowsFirst, rowsFirst + MAX_ROWS).
-  char rowTitle[MAX_ROWS][TITLE_LEN];
-  char rowSub[MAX_ROWS][SUB_LEN];
-  int rowsFirst;
-  int rowsCount;
+  // Where describeRow() looks names up: the library of the last query.
+  MusicLookup *lookup;
 
   void runQuery(MusicLookup &lookup);
-  void fillRows(MusicLookup &lookup);
-  void describeHit(const Hit &hit, MusicLookup &lookup, char *title,
-                   char *sub);
+  static void collectHit(const search_result_t &raw, void *self);
+  static void describeHit(const Hit &hit, MusicLookup &lookup, char *title,
+                          char *sub);
 };

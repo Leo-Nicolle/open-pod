@@ -463,6 +463,27 @@ BtMenu::Nav BtMenu::renameSave() {
 
 // --- View helpers ------------------------------------------------------------
 
+void BtMenu::routeName(const Route_t &route, char *buf, uint32_t size) const {
+  const char *name = "";
+  switch (route.type) {
+  case Route_t::BT_LIST:
+    name = "Bluetooth";
+    break;
+  case Route_t::BT_DEVICE:
+    name = bt.displayName((int)route.entityId);
+    break;
+  case Route_t::BT_RENAME:
+    name = "Rename";
+    break;
+  case Route_t::BT_FORGET:
+    name = "Forget device?";
+    break;
+  default:
+    break;
+  }
+  snprintf(buf, size, "%s", name ? name : "");
+}
+
 const char *BtMenu::title() const {
   switch (scr) {
   case SETTINGS:
@@ -486,7 +507,11 @@ const char *BtMenu::broadcastName() const {
   if (slot < 0)
     return "";
   const BtModel::Device &d = bt.device(slot);
-  return d.name[0] ? d.name : d.macText;
+  if (d.name[0])
+    return d.name;
+  static char mac[18];
+  BtModel::macText(d, mac);
+  return mac;
 }
 
 BtMenu::Hint BtMenu::hint() const {

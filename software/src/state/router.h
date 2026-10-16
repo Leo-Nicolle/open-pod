@@ -30,11 +30,7 @@ struct Route_t {
   // the route this one was opened from, but search opens albums/artists
   // directly, so it can't be inferred from the stack.
   RouteType scope;
-  char entityName[64];   // Display name for breadcrumb
-  uint32_t currentPage;  // For pagination
-  uint32_t totalResults; // Total items available
-  bool hasMore;          // Whether more pages exist
-  
+
   // Selection state for this route
   int selectedIndex;     // Currently selected item
   int topVisibleIndex;   // Top visible item for scrolling
@@ -48,6 +44,10 @@ class Router {
 private:
   Route_t routeStack[MAX_ROUTE_DEPTH];
   int stackDepth;
+  // Display name of the current route (the header title), "" for none. Only
+  // the top route's is kept: a route uncovered by a pop gets its name back
+  // from State::refreshRouteName().
+  char name[64];
 
 public:
   Router();
@@ -59,6 +59,8 @@ public:
                  const char *entityName, Route_t::RouteType scope);
   bool popRoute();
   Route_t &getCurrentRoute();
+  const char *getName() const { return name; }
+  void setName(const char *n);
   bool canGoBack();
   int getDepth();
   void saveCurrentSelection(int selectedIndex, int topVisibleIndex);

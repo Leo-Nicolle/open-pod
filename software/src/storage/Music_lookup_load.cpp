@@ -17,8 +17,9 @@ bool MusicLookup::init() {
   podcasts_loaded = false;
   index_missing = false;
 
-  // Initialize SD card with default SPI configuration
-  if (!sd.begin(OPENPOD_SD_CONFIG(CARDCS))) {
+  // Audio_buffer::begin() usually mounted the card already (same SdFat): a
+  // second begin() would reset it under the files the player has open.
+  if (sd.fatType() == 0 && !sd.begin(OPENPOD_SD_CONFIG(CARDCS))) {
     LOG_ERROR("SD card initialization failed");
     return false;
   }

@@ -27,10 +27,8 @@ Main music index implementation with RAM caching for improved performance.
 - Loads binary trie data from SD card to PSRAM
 - Provides search functions for artists, albums, tracks, and genres
 - Implements prefix-based search with relevance scoring
-- **NEW: LRU caching system for frequently accessed nodes and strings**
-  - 32-slot node cache for trie nodes
-  - 16-slot string cache for key strings
-  - Significantly reduces PSRAM access during searches
+- Reads the trie through PageStore (the PSRAM page cache of index.pack); a
+  batch of 16 sibling nodes is the only copy kept in RAM
 
 ### 3. Music_index_example.cpp
 
@@ -182,7 +180,6 @@ typedef struct {
 - `void getResultName(const search_result_t& result, char* buffer, uint32_t buffer_size)` - Get result name
 - `void printSearchResult(const search_result_t& result)` - Print formatted result
 - `void printStats()` - Print index statistics
-- `void printCacheStats()` - Print cache usage statistics
 - `bool isInitialized()` - Check if index is loaded
 
 ## Performance
@@ -192,25 +189,18 @@ typedef struct {
 - **Prefix search**: O(log n) average case
 - **Result collection**: O(k) where k is number of results
 - **Memory access**: Optimized for PSRAM burst reads
-- **Cache performance**: Significantly faster for repeated searches and common prefixes
 
-### Caching System
+### Caching
 
-The new caching system provides major performance improvements:
-
-- **Node cache**: 32 LRU slots for frequently accessed trie nodes
-- **String cache**: 16 LRU slots for recently used key strings (up to 64 bytes each)
-- **Cache benefits**:
-  - Reduces PSRAM access by ~70-90% for repeated searches
-  - Faster response time for common search prefixes
-  - Better user experience during music navigation
-- **Memory overhead**: ~2KB additional RAM for cache storage
+The trie has no RAM cache of its own: every read goes through `pageStore`,
+whose 4 KB pages are cached in PSRAM (see `PageStore.h`). The node and string
+LRU caches that predate PageStore were removed (they cached a cache, for
+~2.8 KB of RAM). `node_batch` keeps the last 16 sibling nodes read.
 
 ### Memory Usage
 
 - **PSRAM**: ~60KB for typical music library (1000+ tracks)
-- **RAM**: ~4KB for search operations (including cache)
-- **Flash**: ~16KB for code (including cache logic)
+- **RAM**: ~450 B (`MusicIndex`: header, offsets, node batch)
 
 ## Limitations
 
@@ -247,19 +237,4 @@ printMemoryUsage();
 
 // Print index statistics
 musicIndex.printStats();
-
-// Print cache performance statistics
-musicIndex.printCacheStats();
 ```
-
-### Cache Configuration
-
-The caching system can be tuned by modifying these constants in `Music_index.h`:
-
-```cpp
-#define NODE_CACHE_SIZE 32      // Number of nodes to cache in RAM
-#define STRING_CACHE_SIZE 16    // Number of strings to cache in RAM
-#define MAX_CACHED_STRING_LEN 64 // Maximum length of cached strings
-```
-
-Increase cache sizes for better performance on systems with more available RAM, or decrease for memory-constrained environments.

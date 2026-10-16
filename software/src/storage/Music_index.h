@@ -12,12 +12,8 @@
 // Maximum results to return from searches
 #define MAX_SEARCH_RESULTS 50
 
-// Cache configuration - optimized for STM32
-#define NODE_CACHE_SIZE 32      // Power of 2 for fast modulo
-#define STRING_CACHE_SIZE 64    // Power of 2 for fast modulo
-#define MAX_CACHED_STRING_LEN 12 // Reduced for memory efficiency
-#define NODE_BATCH_SIZE 16       // Nodes to load in one PSRAM read
-#define RESULT_BATCH_SIZE 8      // Results to load in one PSRAM read
+#define NODE_BATCH_SIZE 16       // Nodes to load in one read
+#define RESULT_BATCH_SIZE 8      // Results to load in one read
 
 // Batch buffer for node loading
 typedef struct {
@@ -26,31 +22,8 @@ typedef struct {
     trie_node_t nodes[NODE_BATCH_SIZE];
 } node_batch_t;
 
-// Enhanced cache entry with sorted index support
-typedef struct {
-    uint32_t node_index;
-    trie_node_t node;
-    uint16_t access_count;
-    uint8_t valid;
-    uint8_t _padding;       // Alignment padding
-} node_cache_entry_t;
-
-typedef struct {
-    uint32_t offset;
-    uint16_t length;
-    uint16_t access_count;
-    char data[MAX_CACHED_STRING_LEN];
-    uint8_t valid;
-    uint8_t _padding[3];    
-} string_cache_entry_t;
-
-// Sorted index for binary search in cache
-typedef struct {
-    uint16_t cache_slot;
-    uint32_t node_index;
-} cache_index_entry_t;
-
-
+// Called for each raw trie hit, in trie order (duplicates included).
+typedef void (*SearchVisitor)(const search_result_t &result, void *ctx);
 
 class MusicIndex {
 private:
@@ -68,19 +41,11 @@ private:
     // Header data
     trie_header_t header;
     
-    // Cache data
-    node_cache_entry_t node_cache[NODE_CACHE_SIZE];
-    string_cache_entry_t string_cache[STRING_CACHE_SIZE];
-    
-    // Sorted index for binary search
-    cache_index_entry_t node_cache_index[NODE_CACHE_SIZE];
-    uint16_t node_cache_count;
-    
-    // Batch loading buffer
+    // The last nodes read: a node's children are contiguous, so a batch
+    // read serves the sibling scans in findNode()/collectResults(). Reads go
+    // through PageStore, whose PSRAM page cache is the only cache.
     node_batch_t node_batch;
-    
-    // Access counter (16-bit to save memory, wraps around)
-    uint16_t access_counter;
+
     // Helper methods
     void readString(uint32_t offset, uint32_t length, char* buffer, uint32_t buffer_size);
     
@@ -88,15 +53,11 @@ private:
     void loadNodeBatch(uint32_t start_index, uint32_t count);
     trie_node_t* getNodeFromBatch(uint32_t node_index);
     void loadResultBatch(uint32_t start_index, search_result_t* results, uint32_t count);
-    
-    // Binary search in cache
-    int16_t binarySearchCache(uint32_t node_index);
-    void insertCacheIndex(uint16_t slot, uint32_t node_index);
-    void removeCacheIndex(uint16_t slot);
+    void visitResults(uint32_t start_index, uint32_t count, SearchVisitor visit, void *ctx);
     
     // Core search methods
     uint32_t findNode(const char* query, uint32_t query_len);
-    void collectResults(uint32_t node_index, search_result_t* results, uint32_t* result_count, uint32_t max_results);
+    void collectResults(uint32_t node_index, SearchVisitor visit, void *ctx, uint32_t* result_count, uint32_t max_results);
     // String comparison (inline for speed)
     inline int compareStrings(const char* str1, const char* str2, uint32_t len) {
         while (len--) {
@@ -117,14 +78,9 @@ private:
         return str1 - start;
     }
     
-    // Cache management methods
-    void initCache();
-    void clearCache();
-    trie_node_t readNodeCached(uint32_t node_index);
-    void readStringCached(uint32_t offset, uint32_t length, char* buffer, uint32_t buffer_size);
-    uint16_t findLRUNodeCacheSlot();
-    uint16_t findLRUStringCacheSlot();
-    
+    // A node, from the current batch or with a fresh batch read from it.
+    trie_node_t readNode(uint32_t node_index);
+
 public:
     MusicIndex();
     ~MusicIndex();
@@ -135,6 +91,9 @@ public:
 
     // Search functions
     uint32_t searchByPrefix(const char* prefix, search_result_t* results, uint32_t max_results);
+    // Same walk, handing each of the first max_results raw hits to visit
+    // instead of storing them. Returns how many were visited.
+    uint32_t searchByPrefix(const char* prefix, SearchVisitor visit, void *ctx, uint32_t max_results);
     uint32_t searchArtists(const char* prefix, search_result_t* results, uint32_t max_results);
     uint32_t searchAlbums(const char* prefix, search_result_t* results, uint32_t max_results);
     uint32_t searchTracks(const char* prefix, search_result_t* results, uint32_t max_results);
@@ -147,6 +106,5 @@ public:
     
     // Debug functions
     void printStats();
-    void printCacheStats();
     void printSearchResult(const search_result_t& result);
 };

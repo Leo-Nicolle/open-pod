@@ -9,6 +9,9 @@
 
 #include <Arduino.h>
 #include "../logging.h"
+#ifndef UNIT_TEST
+#include "../app/stack_probe.h"
+#endif
 
 namespace audioprof {
 
@@ -159,7 +162,9 @@ inline void report() {
       LOG_RAW(LOG_AUDIO_BUFFER, " %luKB", (unsigned long)(s.bytes / 1024));
     }
   }
-  LOG_RAW(LOG_AUDIO_BUFFER, "\n");
+  // Stack high-water mark (app/stack_probe.h): bytes left above the heap.
+  LOG_RAW(LOG_AUDIO_BUFFER, " | stackFree %luB stackMax %luB\n",
+          (unsigned long)stackFreeMin(), (unsigned long)stackUsedMax());
   for (int i = 0; i < CATEGORY_COUNT; i++) {
     st.slots[i] = Slot();
   }
