@@ -1,13 +1,19 @@
 // Scrolling with the virtual finger: one click per 15°, the lift-off filter,
-// and the fast-scroll tiers (src/state/fast_scroll.h, long lists only): rows
-// below 12 clicks/s, then 3-, 2- and 1-letter jumps from 12, 25 and 40
-// clicks/s (24 clicks a turn), with the letter overlay.
+// and the fast-scroll gears (src/state/fast_scroll.h, long lists only, the
+// firmware's default tuning): each half turn (12 clicks) averaging 16, 28,
+// then 40 clicks/s shifts up one gear, to 3-, 2- then 1-letter jumps, with
+// the letter overlay. A gear holds at any speed and both ways; holding still
+// shifts down one, lifting goes back to rows.
 import { Route } from "../scenarios.ts";
 import type { WheelEvent } from "../device.ts";
 import { check, equal, scrolled, type E2ETest } from "./e2e.ts";
 
-/** The letters of each fast-scroll tier change (`#ev fast`), in order. */
-const tiers = (ev: WheelEvent[]) => ev.filter((e) => e.type === "fast").map((e) => e.letters);
+/** The letters of each fast-scroll gear (`#ev fast`, one per scroll and shift down), in order, repeats merged. */
+const tiers = (ev: WheelEvent[]) =>
+  ev
+    .filter((e) => e.type === "fast")
+    .map((e) => e.letters)
+    .filter((l, i, all) => i === 0 || l !== all[i - 1]);
 
 const group = "Scroll";
 
@@ -53,7 +59,8 @@ export const scrollTests: E2ETest[] = [
       t.step("turn a full circle in 1.2 s (20 clicks/s)");
       await t.d.spin(-360, 1200);
       const s1 = await t.state();
-      equal(tiers(t.eventsSince(mark)).join(" "), "3", "tiers");
+      // Rows for the first half turn, the 1st gear, rows again on lift-off.
+      equal(tiers(t.eventsSince(mark)).join(" "), "0 3 0", "gears");
       equal(s1.letters, "3", "overlay letters");
       check(+s1.sel > +s0.sel + 24, `jumped further than 24 rows (from ${s0.sel} to ${s1.sel})`);
       t.step("wait for the overlay to hide (600 ms after the last jump)");
@@ -62,17 +69,16 @@ export const scrollTests: E2ETest[] = [
   },
   {
     group,
-    name: "A flick jumps by first letter, onto a bucket start",
+    name: "A fast spin shifts up gear by gear, onto a first-letter bucket start",
     async run(t) {
       await t.openRootItem("Tracks");
       const s0 = await t.state();
-      check(+s0.total > 21, `needs a list longer than 3 screens, Tracks has ${s0.total}`);
+      check(+s0.total > 1500, `needs a list of 1500+ rows for 3 gears, Tracks has ${s0.total}`);
       const mark = t.mark();
-      t.step("turn a full circle in 400 ms (60 clicks/s)");
-      await t.d.spin(-360, 400);
+      t.step("turn two full circles in 800 ms (60 clicks/s)");
+      await t.d.spin(-720, 800);
       const s1 = await t.state();
-      const seen = tiers(t.eventsSince(mark));
-      equal(seen[seen.length - 1], 1, `last tier (tiers ${seen.join(" ")})`);
+      equal(tiers(t.eventsSince(mark)).join(" "), "0 3 2 1 0", "gears");
       equal(s1.fast, "1", "overlay right after the turn");
       equal(s1.letters, "1", "overlay letters");
       t.step("one click up: the row before is in another bucket");
@@ -84,16 +90,51 @@ export const scrollTests: E2ETest[] = [
   },
   {
     group,
-    name: "Turning back after a flick scrolls by rows",
+    name: "A gear holds turning back slowly",
     async run(t) {
       await t.openRootItem("Tracks");
-      t.step("flick down, then at once turn back 45° slowly");
+      const mark = t.mark();
+      t.step("spin two turns down in 800 ms, turn back 45° over 600 ms, lift");
+      await t.d.gesture([
+        { at: 0, angle: 0 },
+        { at: 800, angle: -720 },
+        { at: 1400, angle: -675 },
+        { at: 1500, angle: -675 },
+        { at: 1510, angle: null },
+      ]);
+      const ev = t.eventsSince(mark);
+      equal(tiers(ev).join(" "), "0 3 2 1 0", "gears");
+      const back = ev.slice(ev.findIndex((e) => e.type === "scroll" && e.value! > 0));
+      const fast = back.filter((e) => e.type === "fast" && e.value! > 0);
+      check(fast.length > 0, "fast-scroll events after turning back");
+      check(fast.every((e) => e.letters === 1), `first letters while turning back, got ${fast.map((e) => e.letters).join(" ")}`);
+    },
+  },
+  {
+    group,
+    name: "A lift goes back to rows",
+    async run(t) {
+      await t.openRootItem("Tracks");
+      t.step("spin a turn down in 400 ms, then turn back 45° slowly");
       await t.d.spin(-360, 400, 0, 0);
       const mark = t.mark();
       const s0 = await t.state();
       await t.d.spin(45, 600);
-      equal(tiers(t.eventsSince(mark)).join(" "), "0", "tiers after turning back");
+      equal(tiers(t.eventsSince(mark)).join(" "), "0", "gears after the new touch");
       equal(+(await t.state()).sel, +s0.sel - 3, "selected row");
+    },
+  },
+  {
+    group,
+    name: "Holding still shifts down one gear",
+    async run(t) {
+      await t.openRootItem("Tracks");
+      const dwell = +(await t.d.scrollConfig()).dwell;
+      const hold = Math.round(dwell * 1.5);
+      const mark = t.mark();
+      t.step(`spin two turns down in 800 ms, hold still ${hold} ms (dwell ${dwell}), lift`);
+      await t.d.spin(-720, 800, 0, hold);
+      equal(tiers(t.eventsSince(mark)).join(" "), "0 3 2 1 2 0", "gears");
     },
   },
   {
