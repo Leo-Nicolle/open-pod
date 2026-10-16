@@ -31,16 +31,16 @@ TEST_CASE("MusicLookup - name lookups") {
   REQUIRE(lookup.init());
 
   char buf[256];
-  CHECK(lookup.getArtistName(1, buf, sizeof(buf)) == true);
+  CHECK(lookup.getArtistName(0, buf, sizeof(buf)) == true);
   CHECK(std::strcmp(buf, "Artist One") == 0);
-  CHECK(lookup.getArtistName(2, buf, sizeof(buf)) == true);
+  CHECK(lookup.getArtistName(1, buf, sizeof(buf)) == true);
   CHECK(std::strcmp(buf, "Artist Two") == 0);
 
-  CHECK(lookup.getAlbumName(1, buf, sizeof(buf)) == true);
+  CHECK(lookup.getAlbumName(0, buf, sizeof(buf)) == true);
   CHECK(std::strcmp(buf, "Album A") == 0);
-  CHECK(lookup.getGenreName(1, buf, sizeof(buf)) == true);
+  CHECK(lookup.getGenreName(0, buf, sizeof(buf)) == true);
   CHECK(std::strcmp(buf, "Rock") == 0);
-  CHECK(lookup.getTrackName(2, buf, sizeof(buf)) == true);
+  CHECK(lookup.getTrackName(1, buf, sizeof(buf)) == true);
   CHECK(std::strcmp(buf, "Track Two") == 0);
 
   CHECK(lookup.getArtistName(999, buf, sizeof(buf)) == false);
@@ -55,9 +55,9 @@ TEST_CASE("MusicLookup - track path lookup") {
   REQUIRE(lookup.init());
 
   char buf[256];
-  CHECK(lookup.getTrackPath(1, buf, sizeof(buf)) == true);
+  CHECK(lookup.getTrackPath(0, buf, sizeof(buf)) == true);
   CHECK(std::strcmp(buf, "/music/artist_one/track_one.flac") == 0);
-  CHECK(lookup.getTrackPath(2, buf, sizeof(buf)) == true);
+  CHECK(lookup.getTrackPath(1, buf, sizeof(buf)) == true);
   CHECK(std::strcmp(buf, "/music/artist_two/track_two.flac") == 0);
   CHECK(lookup.getTrackPath(999, buf, sizeof(buf)) == false);
 }
@@ -102,22 +102,22 @@ TEST_CASE("MusicLookup - relationship string lookups") {
   char buffer[4096];
   const char *ptrs[16];
 
-  uint32_t n = lookup.getTracksByArtist(1, buffer, sizeof(buffer), ptrs, 16);
+  uint32_t n = lookup.getTracksByArtist(0, buffer, sizeof(buffer), ptrs, 16);
   CHECK(n == 1);
   CHECK(std::strcmp(ptrs[0], "Track One") == 0);
 
-  n = lookup.getAlbumsByArtist(1, buffer, sizeof(buffer), ptrs, 16);
+  n = lookup.getAlbumsByArtist(0, buffer, sizeof(buffer), ptrs, 16);
   CHECK(n == 1);
   CHECK(std::strcmp(ptrs[0], "Album A") == 0);
 
-  n = lookup.getTracksByAlbum(2, buffer, sizeof(buffer), ptrs, 16);
+  n = lookup.getTracksByAlbum(1, buffer, sizeof(buffer), ptrs, 16);
   CHECK(n == 1);
   CHECK(std::strcmp(ptrs[0], "Track Two") == 0);
 
-  n = lookup.getTracksByGenre(1, buffer, sizeof(buffer), ptrs, 16);
+  n = lookup.getTracksByGenre(0, buffer, sizeof(buffer), ptrs, 16);
   CHECK(n == 2);
 
-  n = lookup.getAlbumsByGenre(1, buffer, sizeof(buffer), ptrs, 16);
+  n = lookup.getAlbumsByGenre(0, buffer, sizeof(buffer), ptrs, 16);
   CHECK(n == 2);
 }
 
@@ -128,19 +128,22 @@ TEST_CASE("MusicLookup - id accessors") {
   MusicLookup lookup;
   REQUIRE(lookup.init());
 
-  CHECK(lookup.getArtistIdAtIndex(0) == 1);
-  CHECK(lookup.getArtistIdAtIndex(1) == 2);
-  CHECK(lookup.getAlbumIdAtIndex(0) == 1);
-  CHECK(lookup.getAlbumIdAtIndex(1) == 2);
-  CHECK(lookup.getGenreIdAtIndex(0) == 1);
-  CHECK(lookup.getTrackIdAtIndex(0) == 1);
-  CHECK(lookup.getTrackIdAtIndex(1) == 2);
+  // Ids are dense and in list order.
+  CHECK(lookup.getArtistIdAtIndex(0) == 0);
+  CHECK(lookup.getArtistIdAtIndex(1) == 1);
+  CHECK(lookup.getAlbumIdAtIndex(0) == 0);
+  CHECK(lookup.getAlbumIdAtIndex(1) == 1);
+  CHECK(lookup.getGenreIdAtIndex(0) == 0);
+  CHECK(lookup.getTrackIdAtIndex(0) == 0);
+  CHECK(lookup.getTrackIdAtIndex(1) == 1);
+  CHECK(lookup.getTrackIdAtIndex(2) == 0xFFFFFFFFu);
 
-  CHECK(lookup.getTrackIdByArtistAtIndex(1, 0) == 1);
-  CHECK(lookup.getAlbumIdByArtistAtIndex(1, 0) == 1);
-  CHECK(lookup.getTrackIdByAlbumAtIndex(2, 0) == 2);
-  CHECK(lookup.getTrackIdByGenreAtIndex(1, 1) == 2);
-  CHECK(lookup.getAlbumIdByGenreAtIndex(1, 1) == 2);
+  CHECK(lookup.getTrackIdByArtistAtIndex(0, 0) == 0);
+  CHECK(lookup.getAlbumIdByArtistAtIndex(0, 0) == 0);
+  CHECK(lookup.getTrackIdByAlbumAtIndex(1, 0) == 1);
+  CHECK(lookup.getTrackIdByGenreAtIndex(0, 1) == 1);
+  CHECK(lookup.getAlbumIdByGenreAtIndex(0, 1) == 1);
+  CHECK(lookup.getAlbumIdByGenreAtIndex(0, 2) == 0xFFFFFFFFu);
 }
 
 TEST_CASE("MusicLookup - track to album lookup") {
@@ -150,8 +153,8 @@ TEST_CASE("MusicLookup - track to album lookup") {
   MusicLookup lookup;
   REQUIRE(lookup.init());
 
+  CHECK(lookup.getAlbumIdForTrack(0) == 0);
   CHECK(lookup.getAlbumIdForTrack(1) == 1);
-  CHECK(lookup.getAlbumIdForTrack(2) == 2);
   CHECK(lookup.getAlbumIdForTrack(999) == 0xFFFFFFFFu);
 }
 
@@ -162,17 +165,17 @@ TEST_CASE("MusicLookup - track to artist lookup") {
   MusicLookup lookup;
   REQUIRE(lookup.init());
 
+  CHECK(lookup.getArtistIdForTrack(0) == 0);
   CHECK(lookup.getArtistIdForTrack(1) == 1);
-  CHECK(lookup.getArtistIdForTrack(2) == 2);
   CHECK(lookup.getArtistIdForTrack(999) == 0xFFFFFFFFu);
 
   char name[64];
-  REQUIRE(lookup.getArtistName(lookup.getArtistIdForTrack(2), name,
+  REQUIRE(lookup.getArtistName(lookup.getArtistIdForTrack(1), name,
                                sizeof(name)));
   CHECK(std::strcmp(name, "Artist Two") == 0);
 }
 
-TEST_CASE("MusicLookup - track_to_artist.bin is optional") {
+TEST_CASE("MusicLookup - the track->artist section is optional") {
   openpod_test::resetAll();
   openpod_test::registerSampleCatalog();
   openpod_test::FakeFs::get().files.erase("/openpod/track_to_artist.bin");
@@ -180,9 +183,8 @@ TEST_CASE("MusicLookup - track_to_artist.bin is optional") {
   MusicLookup lookup;
   REQUIRE(lookup.init());
 
-  CHECK(lookup.getArtistIdForTrack(1) == 0xFFFFFFFFu);
-  // Indexes loaded after it still land at the right PSRAM addresses.
-  CHECK(lookup.getAlbumIdForTrack(2) == 2);
+  CHECK(lookup.getArtistIdForTrack(0) == 0xFFFFFFFFu);
+  CHECK(lookup.getAlbumIdForTrack(1) == 1);
 }
 
 TEST_CASE("MusicLookup - album cover lookup") {
@@ -193,12 +195,12 @@ TEST_CASE("MusicLookup - album cover lookup") {
   REQUIRE(lookup.init());
 
   album_cover_entry_t cover;
-  CHECK(lookup.getAlbumCoverEntry(1, cover) == true);
+  CHECK(lookup.getAlbumCoverEntry(0, cover) == true);
   CHECK(cover.offset == 0);
   CHECK(cover.length == 100);
   CHECK(cover.format == 1);
 
-  CHECK(lookup.getAlbumCoverEntry(2, cover) == true);
+  CHECK(lookup.getAlbumCoverEntry(1, cover) == true);
   CHECK(cover.offset == 100);
   CHECK(cover.length == 200);
   CHECK(cover.format == 0);
@@ -224,22 +226,22 @@ TEST_CASE("MusicLookup - relation counts") {
   MusicLookup lookup;
   REQUIRE(lookup.init());
 
-  CHECK(lookup.getAlbumCountForArtist(1) == 1);
-  CHECK(lookup.getAlbumCountForGenre(1) == 2);
-  CHECK(lookup.getTrackCountForAlbum(2) == 1);
+  CHECK(lookup.getAlbumCountForArtist(0) == 1);
+  CHECK(lookup.getAlbumCountForGenre(0) == 2);
+  CHECK(lookup.getTrackCountForAlbum(1) == 1);
   CHECK(lookup.getAlbumCountForArtist(999) == 0);
 
-  CHECK(lookup.getTrackIndexInAlbum(2, 2) == 0);
-  CHECK(lookup.getTrackIndexInAlbum(2, 1) == -1);
+  CHECK(lookup.getTrackIndexInAlbum(1, 1) == 0);
+  CHECK(lookup.getTrackIndexInAlbum(1, 0) == -1);
 }
 
-TEST_CASE("MusicLookup - album artist from album_to_artist.bin") {
+TEST_CASE("MusicLookup - album artist from the album->artist section") {
   openpod_test::resetAll();
   openpod_test::registerSampleCatalog();
   // Deliberately differs from the tracks' artists, to tell it from the
-  // fallback. Dense by album id: [0] unused, album 1 -> artist 2.
+  // fallback. Dense by album id: album 0 -> artist 1.
   std::vector<std::pair<uint32_t, uint32_t>> album_to_artist;
-  album_to_artist.push_back(std::make_pair(1u, 2u));
+  album_to_artist.push_back(std::make_pair(0u, 1u));
   openpod_test::FakeFs::get().addFile(
       "/openpod/album_to_artist.bin",
       openpod_test::buildTrackToAlbumIndex(album_to_artist));
@@ -247,17 +249,17 @@ TEST_CASE("MusicLookup - album artist from album_to_artist.bin") {
   MusicLookup lookup;
   REQUIRE(lookup.init());
 
-  CHECK(lookup.getArtistIdForAlbum(1) == 2);
+  CHECK(lookup.getArtistIdForAlbum(0) == 1);
 }
 
 TEST_CASE("MusicLookup - album artist falls back to the first track's") {
   openpod_test::resetAll();
-  openpod_test::registerSampleCatalog(); // no album_to_artist.bin
+  openpod_test::registerSampleCatalog(); // no album->artist section
 
   MusicLookup lookup;
   REQUIRE(lookup.init());
 
-  CHECK(lookup.getArtistIdForAlbum(2) == 2); // album 2 -> track 2 -> artist 2
+  CHECK(lookup.getArtistIdForAlbum(1) == 1); // album 1 -> track 1 -> artist 1
   CHECK(lookup.getArtistIdForAlbum(999) == 0xFFFFFFFFu);
 }
 
@@ -275,12 +277,12 @@ TEST_CASE("MusicLookup - long lists load in windows") {
   CHECK(strcmp(names[49], "Artist 300") == 0);
 
   // An album's tracks past the old 50-id cap, after another album's.
-  CHECK(lookup.getTrackCountForAlbum(2) == 120);
-  REQUIRE(lookup.getTracksByAlbum(2, buffer, sizeof(buffer), names, LOOKUP_WINDOW, 100) == 20);
+  CHECK(lookup.getTrackCountForAlbum(1) == 120);
+  REQUIRE(lookup.getTracksByAlbum(1, buffer, sizeof(buffer), names, LOOKUP_WINDOW, 100) == 20);
   CHECK(strcmp(names[0], "Track 101") == 0);
   CHECK(strcmp(names[19], "Track 120") == 0);
-  CHECK(lookup.getTrackIndexInAlbum(2, 101) == 100);
-  CHECK(lookup.getTrackIndexInAlbum(1, 202) == 1);
+  CHECK(lookup.getTrackIndexInAlbum(1, 100) == 100);
+  CHECK(lookup.getTrackIndexInAlbum(0, 121) == 1);
 }
 
 TEST_CASE("MusicLookup - a full buffer stops loading instead of overflowing") {

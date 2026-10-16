@@ -58,3 +58,5 @@ void benchBootDone(uint32_t lookupMs, uint32_t searchIndexMs);
 void benchInputTick();
 // Echoes a wheel event the UI is about to handle ("#ev ..." lines).
 void benchOnWheelEvent(const ClickWheel::Event &e);
+// Echoes a list scroll's fast-scroll tier when it changes ("#ev fast ...").
+void benchOnScrollSpeed(int letters, uint16_t clicksPerSecond);

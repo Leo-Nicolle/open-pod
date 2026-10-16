@@ -6,6 +6,8 @@ You'll find here some articles on how the project is advancing, how I made it wo
 
 ### 2026
 
+- [17-10](17-10.md): Fast scrolling and long lists
+- [16-10](16-10.md): Benchmarks and e2e tests
 - [11-10](11-10.md): Bluetooth module setup
 - [09-10](09-10.md): Smooth FLAC: buses, buffers and an audio interrupt
 - [20-09](20-09.md): Displaying covers

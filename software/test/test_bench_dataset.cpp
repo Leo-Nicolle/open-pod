@@ -30,7 +30,9 @@ int loadCardIndex(const std::string &card) {
   int n = 0;
   while (dirent *e = readdir(d)) {
     std::string name = e->d_name;
-    if (name.size() < 4 || name.compare(name.size() - 4, 4, ".bin") != 0)
+    bool bin = name.size() > 4 && name.compare(name.size() - 4, 4, ".bin") == 0;
+    bool pack = name.size() > 5 && name.compare(name.size() - 5, 5, ".pack") == 0;
+    if (!bin && !pack)
       continue;
     std::ifstream f(dir + "/" + name, std::ios::binary);
     std::vector<uint8_t> bytes((std::istreambuf_iterator<char>(f)),
@@ -64,14 +66,13 @@ TEST_CASE("Bench dataset - loads and searches") {
     return;
   }
   openpod_test::resetAll();
-  REQUIRE(loadCardIndex(card) > 10);
+  REQUIRE(loadCardIndex(card) > 0);
 
   MusicLookup lookup;
   REQUIRE(lookup.init());
   MESSAGE("tracks=" << lookup.getTrackCount()
                     << " albums=" << lookup.getAlbumCount()
-                    << " artists=" << lookup.getArtistCount()
-                    << " psram_end=" << lookup.getLastPSRAMAddress());
+                    << " artists=" << lookup.getArtistCount());
   CHECK(lookup.getTrackCount() > 0);
 
   // The bench reads the highlighted row's name this way (app/bench.cpp).
@@ -88,22 +89,13 @@ TEST_CASE("Bench dataset - loads and searches") {
   CHECK(lookup.getArtistName(artistId, name, sizeof(name)));
   MESSAGE("artist 0: id=" << artistId << " name='" << name << "'");
 
-  // Neither MusicLookup nor MusicIndex checks the end of the chip: past it,
-  // the real PSRAM wraps around onto the audio buffer (and the fake one
-  // reads zeros, which makes the search below spin).
-  uint32_t trieEnd = lookup.getLastPSRAMAddress() +
-                     (uint32_t)openpod_test::FakeFs::get()
-                         .files["/openpod/music_index.bin"]
-                         ->size();
-  MESSAGE("index ends at " << trieEnd << " of " << PSRAM_SIZE << " bytes");
-  REQUIRE_MESSAGE(trieEnd <= PSRAM_SIZE,
-                  "the library index doesn't fit PSRAM: use fewer tracks");
-
   MusicIndex index;
-  REQUIRE(index.init(lookup.getLastPSRAMAddress()));
+  REQUIRE(index.init(lookup.getSearchTrie()));
   SearchModel search;
   search.setIndex(&index);
   // The runner finds the samples this way (bench/scenarios.ts).
   typeQuery(search, lookup, "openpod bench");
   CHECK(search.getHitCount() > 0);
+  const PageStore::Stats &st = pageStore.stats();
+  MESSAGE("page cache: " << st.hits << " hits, " << st.misses << " misses");
 }

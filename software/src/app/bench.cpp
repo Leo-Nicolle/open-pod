@@ -1,6 +1,7 @@
 #include "app.h"
 #include "../logging.h"
 #include "../sound/AudioProfiler.h"
+#include "../state/fast_scroll.h"
 
 // Test bench console (software/bench/ drives it over the debug serial, see
 // docs/tools/bench.md). Commands arrive from app/console.cpp without their
@@ -142,11 +143,17 @@ static const char *selectedLabel()
 static void printState()
 {
   Route_t &route = state.getCurrentRoute();
+  // The highlighted row's fast-scroll key at 3 letters (the overlay shows
+  // its first `letters`).
+  const char *label = selectedLabel();
+  char key[4];
+  fastScrollKey(label, 3, key);
   const char *playing = state.getPlayingTrackName();
   Serial.printf("#ok state route=%d sel=%d total=%d top=%d playing=%d "
                 "track=%d pos=%d dur=%d vol=%d repeat=%d search=%d hits=%d "
-                "fast=%d seek=%d screen=%d anim=%d "
-                "query=\"%s\" header=\"%s\" now=\"%s\" item=\"%s\"\n",
+                "fast=%d letters=%d seek=%d screen=%d anim=%d miss=%lu "
+                "query=\"%s\" header=\"%s\" now=\"%s\" item=\"%s\" "
+                "key=\"%s\"\n",
                 (int)route.type, state.getSelectedIndex(),
                 state.getTotalElements(), state.getTopVisibleIndex(),
                 state.getIsPlaying() ? 1 : 0, state.getPlayingTrackId(),
@@ -156,10 +163,12 @@ static void printState()
                 (int)state.getSearch().getMode(),
                 state.getSearch().getHitCount(),
                 state.getFastScrollActive() ? 1 : 0,
+                state.getFastScrollLetters(),
                 state.getSeekModeActive() ? 1 : 0, screenOff ? 0 : 1,
                 isNavigationBusy() ? 1 : 0,
+                (unsigned long)pageStore.stats().misses,
                 state.getSearch().getQuery(), state.getHeaderTitle(),
-                playing ? playing : "", selectedLabel());
+                playing ? playing : "", label, key);
 }
 
 static void printDataset()
@@ -507,6 +516,50 @@ void benchOnWheelEvent(const ClickWheel::Event &e)
     Serial.printf("#ev %s t=%lu\n", TYPES[type], t);
 }
 
+void benchOnScrollSpeed(int letters, uint16_t clicksPerSecond)
+{
+  static int last = 0;
+  if (letters == last)
+    return;
+  last = letters;
+  Serial.printf("#ev fast l=%d v=%u t=%lu\n", letters,
+                (unsigned)clicksPerSecond, millis());
+}
+
+// "#scrollcfg [t3=<c/s>] [t2=] [t1=] [win=<ms>] [gap=<ms>] [drop=<%>]": sets
+// the fast-scroll tiers (state/fast_scroll.h) and prints them.
+static void scrollConfig(const char *arg)
+{
+  ScrollTuning &t = scrollTuning;
+  char key[8];
+  unsigned value;
+  int n = 0;
+  while (sscanf(arg, " %7[a-z0-9]=%u%n", key, &value, &n) == 2)
+  {
+    arg += n;
+    if (!strcmp(key, "t3"))
+      t.letters3 = (uint16_t)value;
+    else if (!strcmp(key, "t2"))
+      t.letters2 = (uint16_t)value;
+    else if (!strcmp(key, "t1"))
+      t.letters1 = (uint16_t)value;
+    else if (!strcmp(key, "win") && value > 0)
+      t.windowMs = (uint16_t)value;
+    else if (!strcmp(key, "gap"))
+      t.gapMs = (uint16_t)value;
+    else if (!strcmp(key, "drop") && value <= 100)
+      t.dropPct = (uint8_t)value;
+    else
+    {
+      Serial.printf("#err scrollcfg unknown %s\n", key);
+      return;
+    }
+  }
+  Serial.printf("#ok scrollcfg t3=%u t2=%u t1=%u win=%u gap=%u drop=%u\n",
+                t.letters3, t.letters2, t.letters1, t.windowMs, t.gapMs,
+                t.dropPct);
+}
+
 void benchCommand(const char *line)
 {
   char cmd[16] = "";
@@ -541,6 +594,23 @@ void benchCommand(const char *line)
   else if (!strcmp(cmd, "state"))
   {
     printState();
+  }
+  else if (!strcmp(cmd, "scrollcfg"))
+  {
+    scrollConfig(arg);
+  }
+  else if (!strcmp(cmd, "cache"))
+  {
+    // Index page cache (storage/PageStore.h); "#cache reset" zeroes it.
+    if (!strcmp(arg, "reset"))
+      pageStore.resetStats();
+    const PageStore::Stats &st = pageStore.stats();
+    Serial.printf("#ok cache slots=%u page=%lu hits=%lu misses=%lu miss_us=%lu "
+                  "seek_us=%lu\n",
+                  (unsigned)pageStore.slotCount(),
+                  (unsigned long)PageStore::PAGE_SIZE, (unsigned long)st.hits,
+                  (unsigned long)st.misses, (unsigned long)st.missUs,
+                  (unsigned long)st.seekUs);
   }
   else if (!strcmp(cmd, "stats"))
   {
@@ -638,13 +708,30 @@ void benchCommand(const char *line)
   }
 }
 
+// Whether the wheel's debounced buttons have caught up with the virtual
+// finger's: a gesture ending on a release is played before the wheel
+// reports it (20 ms debounce), and its up/click must come before the answer.
+static bool buttonsSettled()
+{
+  if (!wheel.isVirtual())
+    return true;
+  for (uint8_t b = 0; b < ClickWheel::BUTTON_COUNT; b++)
+  {
+    bool want = finger.buttons & (1 << b);
+    if (wheel.isPressed((ClickWheel::Button)b) != want)
+      return false;
+  }
+  return true;
+}
+
 void benchTick(bool uiBusy)
 {
   if (!pending.name[0] || pending.playing)
     return;
   pending.loops++;
   bool settled = pending.loops >= 2 && wheel.pendingEvents() == 0 &&
-                 !uiBusy && !isNavigationBusy() && !state.getIsAnimating();
+                 buttonsSettled() && !uiBusy && !isNavigationBusy() &&
+                 !state.getIsAnimating();
   if (settled)
   {
     Serial.printf("#ok %s us=%lu events=%u\n", pending.name,
@@ -676,5 +763,6 @@ void benchTick(bool) {}
 void benchBootDone(uint32_t, uint32_t) {}
 void benchInputTick() {}
 void benchOnWheelEvent(const ClickWheel::Event &) {}
+void benchOnScrollSpeed(int, uint16_t) {}
 
 #endif

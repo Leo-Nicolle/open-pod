@@ -10,7 +10,8 @@
 // Fast-scroll letter overlay (see docs/ui-builder, "Track list"): a 120x90
 // box at 100,90 - exactly chunks 3-5 - with a SURFACE fill, a 2px ACCENT
 // border inset and r=6 corners, holding the first letters of the selected
-// title (Sans 600 at 60/46/36px for 1/2/3 letters).
+// title's fast-scroll key (state/fast_scroll.h; Sans 600 at 60/46/36px for
+// 1/2/3 letters).
 //
 // It is composed into a row's CHUNK_HEIGHT buffer before that row is pushed,
 // so the rows under it never flash while scrolling.
@@ -50,14 +51,30 @@ public:
       }
     }
 
-    // Label: centred on the cap height (A-Z only, so the font's baseline is
-    // the glyph height). renderGlyph clips rows outside this chunk.
+    // Label: centred on the cap height (A-Z and #, so the font's baseline
+    // is the glyph height). The font has no space: a space in the key ("A D"
+    // for "A Day") is a third of the cap height wide. Drawn a letter at a
+    // time; renderGlyph clips rows outside this chunk.
     const FastFont &font = fontFor(strlen(label));
     fontRenderer.setBuffer(buf, stride, CHUNK_HEIGHT);
-    int tw = fontRenderer.measureText(label, font);
+    int gap = font.baseline / 3;
+    int tw = 0;
+    char one[2] = {0, 0};
+    for (const char *c = label; *c; c++) {
+      one[0] = *c;
+      tw += *c == ' ' ? gap : fontRenderer.measureText(one, font);
+    }
     int tx = X + (W - tw) / 2 - bufX0;
     int ty = Y + (H - font.baseline) / 2 - chunkY;
-    fontRenderer.renderText(label, tx, ty, font, COLOR_TEXT, COLOR_SURFACE);
+    for (const char *c = label; *c; c++) {
+      one[0] = *c;
+      if (*c == ' ') {
+        tx += gap;
+        continue;
+      }
+      fontRenderer.renderText(one, tx, ty, font, COLOR_TEXT, COLOR_SURFACE);
+      tx += fontRenderer.measureText(one, font);
+    }
   }
 
 private:

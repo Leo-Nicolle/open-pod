@@ -125,7 +125,7 @@ trie_node_t MusicIndex::readNodeCached(uint32_t node_index) {
     // Shouldn't happen, but handle gracefully
     trie_node_t single_node;
     uint32_t addr = nodes_offset + (node_index * sizeof(trie_node_t));
-    psram.readData(addr, (uint8_t *)&single_node, sizeof(trie_node_t));
+    pageStore.read(trie, addr, &single_node, sizeof(trie_node_t));
     return single_node;
   }
 

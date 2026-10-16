@@ -1,180 +1,55 @@
 #include "Music_index.h"
-#include "SharedSpiDriver.h"
 #include "../sound/AudioYield.h"
 #include "../logging.h"
 
-MusicIndex::MusicIndex( uint32_t psram_base_addr)
-    : base_address(psram_base_addr),
-      initialized(false), node_cache_count(0), access_counter(0) {
+MusicIndex::MusicIndex()
+    : initialized(false), node_cache_count(0), access_counter(0) {
   memset(&header, 0, sizeof(header));
+  memset(&trie, 0, sizeof(trie));
   memset(&node_batch, 0, sizeof(node_batch));
   initCache();
 }
 
-MusicIndex::~MusicIndex() {
-  // Nothing to clean up - PSRAM controller is managed externally
-}
+MusicIndex::~MusicIndex() {}
 
-bool MusicIndex::init(uint32_t base_address) {
-  this->base_address = base_address;
-  LOG_INFO("=== MUSIC INDEX INIT ===");
-  LOG_CAT(INDEX_USAGE, "Loading index from: %s", index_filename);
-
-  // The index lives in PSRAM: make sure it's up (idempotent) rather than
-  // relying on another subsystem having initialized it first.
-  if (!psram.init()) {
-    LOG_ERROR("PSRAM initialization failed");
+// The trie stays on the SD card, in index.pack: it's read through the PSRAM
+// page cache (PageStore.h) as searches walk it.
+bool MusicIndex::init(const PackRef &trieSection) {
+  initialized = false;
+  trie = trieSection;
+  if (trie.length < sizeof(trie_header_t) ||
+      !pageStore.read(trie, 0, &header, sizeof(header))) {
+    LOG_ERROR("No search trie in index.pack");
     return false;
   }
-
-  // Initialize SD card with default SPI configuration
-  if (!sd.begin(OPENPOD_SD_CONFIG(CARDCS))) {
-    LOG_ERROR("SD card initialization failed");
-    return false;
-  }
-
-  // Load the binary trie data from SD card to PSRAM
-  if (!loadFromSDCard(index_filename)) {
-    LOG_ERROR("Failed to load music index from SD card");
-    return false;
-  }
-
-  // Calculate offsets within the loaded data
-  string_pool_offset = base_address + sizeof(trie_header_t);
-
-  // String pool is padded to 4-byte alignment
-  uint32_t string_pool_padded = (header.string_pool_size); //  + 3) & ~3;
-
-  string_offsets_offset = string_pool_offset + string_pool_padded;
-  nodes_offset = string_offsets_offset + (header.string_offset_count * 4);
-  results_offset = nodes_offset + (header.node_count * sizeof(trie_node_t));
-
-  initialized = true;
-
-  // Clear cache since we loaded new data
-  clearCache();
-
-  LOG_INFO("Music index loaded successfully!");
-  // printStats();
-
-  return true;
-}
-
-bool MusicIndex::initWithSDConfig(SdSpiConfig sdConfig, const char *index_filename) {
-  LOG_INFO("=== MUSIC INDEX INIT WITH CUSTOM CONFIG ===");
-  LOG_CAT(INDEX_USAGE, "Loading index from: %s", index_filename);
-
-  // The index lives in PSRAM: make sure it's up (idempotent) rather than
-  // relying on another subsystem having initialized it first.
-  if (!psram.init()) {
-    LOG_ERROR("PSRAM initialization failed");
-    return false;
-  }
-
-  // Initialize SD card with custom configuration
-  if (!sd.begin(sdConfig)) {
-    LOG_ERROR("SD card initialization failed with custom config");
-    return false;
-  }
-
-  // Load the binary trie data from SD card to PSRAM
-  if (!loadFromSDCard(index_filename)) {
-    LOG_ERROR("Failed to load music index from SD card");
-    return false;
-  }
-
-  // Calculate offsets within the loaded data
-  string_pool_offset = base_address + sizeof(trie_header_t);
-  uint32_t string_pool_padded = (header.string_pool_size);
-  string_offsets_offset = string_pool_offset + string_pool_padded;
-  nodes_offset = string_offsets_offset + (header.string_offset_count * 4);
-  results_offset = nodes_offset + (header.node_count * sizeof(trie_node_t));
-
-  initialized = true;
-  clearCache();
-
-  LOG_INFO("Music index loaded successfully with custom config!");
-  printStats();
-
-  return true;
-}
-
-uint32_t MusicIndex::readLittleEndian32(FsFile &file) {
-  uint8_t bytes[4];
-  file.read(bytes, 4);
-  return (uint32_t)bytes[0] | ((uint32_t)bytes[1] << 8) |
-         ((uint32_t)bytes[2] << 16) | ((uint32_t)bytes[3] << 24);
-}
-
-bool MusicIndex::loadFromSDCard(const char *filename) {
-  // Open file using SDFat
-  FsFile file;
-  if (!file.open(filename, O_RDONLY)) {
-    LOG_ERROR("Could not open file: %s", filename);
-    return false;
-  }
-
-  uint32_t file_size = file.size();
-  LOG_CAT(INDEX_USAGE, "File size: %lu bytes", (unsigned long)file_size);
-
-  if (file.read(&header, sizeof(header)) != sizeof(header)) {
-    LOG_ERROR("Failed to read header");
-    file.close();
-    return false;
-  }
-
   LOG_CAT(INDEX_USAGE,
-          "Header - String pool: %lu, Nodes: %lu, Results: %lu, "
+          "Trie - String pool: %lu, Nodes: %lu, Results: %lu, "
           "String offsets: %lu",
           (unsigned long)header.string_pool_size,
           (unsigned long)header.node_count, (unsigned long)header.result_count,
           (unsigned long)header.string_offset_count);
 
-  // Reset file position to beginning
-  file.seekSet(0);
-
-  // One SD sector at a time, on the stack: SdFat reads whole aligned sectors
-  // straight into it, and there's no heap left for a bigger one (the list
-  // cache takes most of it).
-  const uint32_t CHUNK_SIZE = 512;
-  uint8_t buffer[CHUNK_SIZE];
-
-  uint32_t bytes_read = 0;
-  uint32_t psram_addr = base_address;
-
-  while (bytes_read < file_size) {
-    uint32_t to_read = min(CHUNK_SIZE, file_size - bytes_read);
-    uint32_t actual_read = file.read(buffer, to_read);
-
-    if (actual_read == 0) {
-      LOG_ERROR("Failed to read from file");
-      file.close();
-      return false;
-    }
-
-    psram.writeData(psram_addr, buffer, actual_read);
-    psram_addr += actual_read;
-    bytes_read += actual_read;
-
-    // Show progress every 16KB
-    if (bytes_read % 16384 == 0) {
-      LOG_CAT(INDEX_USAGE, "Loaded %lu/%lu bytes", (unsigned long)bytes_read,
-              (unsigned long)file_size);
-    }
+  // Offsets within the section
+  string_pool_offset = sizeof(trie_header_t);
+  string_offsets_offset = string_pool_offset + header.string_pool_size;
+  nodes_offset = string_offsets_offset + (header.string_offset_count * 4);
+  results_offset = nodes_offset + (header.node_count * sizeof(trie_node_t));
+  uint64_t end = (uint64_t)results_offset +
+                 (uint64_t)header.result_count * sizeof(search_result_t);
+  if (end > trie.length) {
+    LOG_ERROR("Search trie is truncated");
+    return false;
   }
 
-  file.close();
-
-  LOG_CAT(INDEX_USAGE, "Successfully loaded %lu bytes to PSRAM",
-          (unsigned long)bytes_read);
-
+  initialized = true;
+  clearCache();
   return true;
 }
 
 void MusicIndex::readString(uint32_t offset, uint32_t length, char *buffer,
                              uint32_t buffer_size) {
   uint32_t copy_len = min(length, buffer_size - 1);
-  psram.readData(string_pool_offset + offset, (uint8_t *)buffer, copy_len);
+  pageStore.read(trie, string_pool_offset + offset, buffer, copy_len);
   buffer[copy_len] = '\0';
 }
 
@@ -188,8 +63,7 @@ void MusicIndex::loadNodeBatch(uint32_t start_index, uint32_t count) {
 
   // Read all nodes in one PSRAM operation
   uint32_t addr = nodes_offset + (start_index * sizeof(trie_node_t));
-  psram.readData(addr, (uint8_t *)node_batch.nodes,
-                  count * sizeof(trie_node_t));
+  pageStore.read(trie, addr, node_batch.nodes, count * sizeof(trie_node_t));
 }
 
 trie_node_t *MusicIndex::getNodeFromBatch(uint32_t node_index) {
@@ -205,7 +79,7 @@ void MusicIndex::loadResultBatch(uint32_t start_index, search_result_t *results,
                                  uint32_t count) {
   // Read all results in one PSRAM operation
   uint32_t addr = results_offset + (start_index * sizeof(search_result_t));
-  psram.readData(addr, (uint8_t *)results, count * sizeof(search_result_t));
+  pageStore.read(trie, addr, results, count * sizeof(search_result_t));
 }
 
 uint32_t MusicIndex::findNode(const char *query, uint32_t query_len) {
@@ -415,30 +289,17 @@ void MusicIndex::printStats() {
     LOG_WARN("Music index not initialized");
     return;
   }
-
-  uint64_t sectors = sd.sectorsPerCluster() * sd.clusterCount();
-
-  // Each sector is 512 bytes. No %f in nano printf: GB with one decimal.
-  uint64_t cardSizeBytes = sectors * 512ULL;
-  unsigned long cardSizeMB = (unsigned long)(cardSizeBytes / (1024ULL * 1024ULL));
-  unsigned long cardSizeGB10 = cardSizeMB * 10 / 1024;
   LOG_INFO("=== MUSIC INDEX STATS ===\n"
            "String pool size: %lu bytes\n"
            "Node count: %lu\n"
            "Result count: %lu\n"
            "String offset count: %lu\n"
-           "Base address: 0x%lX\n"
-           "String pool offset: 0x%lX\n"
-           "Nodes offset: 0x%lX\n"
-           "Results offset: 0x%lX\n"
-           "SD card size: %lu MB (%lu.%lu GB)\n"
+           "Trie section: %lu bytes at pack offset 0x%lX\n"
            "========================",
            (unsigned long)header.string_pool_size,
            (unsigned long)header.node_count, (unsigned long)header.result_count,
            (unsigned long)header.string_offset_count,
-           (unsigned long)base_address, (unsigned long)string_pool_offset,
-           (unsigned long)nodes_offset, (unsigned long)results_offset,
-           cardSizeMB, cardSizeGB10 / 10, cardSizeGB10 % 10);
+           (unsigned long)trie.length, (unsigned long)trie.offset());
 }
 
 void MusicIndex::printSearchResult(const search_result_t &result) {

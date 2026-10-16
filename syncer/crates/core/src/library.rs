@@ -124,7 +124,7 @@ pub fn load_or_adopt(card: &Path, progress: &(dyn Fn(AdoptProgress) + Sync)) -> 
     Ok((m, true))
 }
 
-/// Rebuilds `<card>/openpod/*.bin` from the manifest (no tag re-reading;
+/// Rebuilds `<card>/openpod/index.pack` and the covers from the manifest (no tag re-reading;
 /// covers come from the card files).
 pub fn reindex(card: &Path, m: &Manifest, album_key: AlbumKey) -> io::Result<index::Summary> {
     let records = index_records(m);
@@ -316,7 +316,7 @@ pub fn finish_sync(
     seconds: u64,
 ) -> io::Result<Finished> {
     let covers = if out.interrupted { 0 } else { sync::refresh_covers(card, m, machine) };
-    let index_missing = !card.join(manifest::DIR).join("music_index.bin").is_file();
+    let index_missing = !card.join(manifest::DIR).join(index::pack::MUSIC_FILE).is_file();
     let index = if out.written.is_empty() && covers == 0 && !index_missing {
         None
     } else {

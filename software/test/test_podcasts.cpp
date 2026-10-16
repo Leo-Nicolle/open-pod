@@ -129,7 +129,7 @@ struct Fixture {
     openpod_test::resetAll();
     registerPodcasts(stateGeneration);
     REQUIRE(lookup.init());
-    listening.load(sd, lookup.getLastPSRAMAddress(), lookup.podcastEpisodeCount(),
+    listening.load(sd, PODCAST_STATE_BASE_ADDRESS, lookup.podcastEpisodeCount(),
                    lookup.podcastGeneration());
   }
 };
@@ -192,7 +192,7 @@ TEST_CASE("Podcasts - MusicLookup reads the podcast tables") {
   CHECK(std::string(b) == "Tchekhov");
   CHECK(l.getTrackDurationSeconds(podcastTrackId(3)) == 1740);
   // Music is untouched.
-  CHECK(l.getTrackPath(1, b, sizeof(b)));
+  CHECK(l.getTrackPath(0, b, sizeof(b)));
   CHECK(std::string(b) == "/music/artist_one/track_one.flac");
 }
 

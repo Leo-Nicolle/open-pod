@@ -83,7 +83,7 @@ TEST_CASE("MusicIndex - init loads the binary trie") {
                                       buildMinimalMusicIndex());
 
   MusicIndex idx;
-  CHECK(idx.init(0x200000) == true);
+  CHECK(idx.init(openpod_test::openSearchTrie()) == true);
   CHECK(idx.isInitialized() == true);
 }
 
@@ -91,7 +91,7 @@ TEST_CASE("MusicIndex - init fails when file is missing") {
   openpod_test::resetAll();
 
   MusicIndex idx;
-  CHECK(idx.init(0x200000) == false);
+  CHECK(idx.init(openpod_test::openSearchTrie()) == false);
   CHECK(idx.isInitialized() == false);
 }
 
@@ -101,7 +101,7 @@ TEST_CASE("MusicIndex - prefix search returns the matching subtree") {
                                       buildMinimalMusicIndex());
 
   MusicIndex idx;
-  REQUIRE(idx.init(0x200000));
+  REQUIRE(idx.init(openpod_test::openSearchTrie()));
 
   search_result_t results[10];
 
@@ -130,7 +130,7 @@ TEST_CASE("MusicIndex - type-filtered searches") {
                                       buildMinimalMusicIndex());
 
   MusicIndex idx;
-  REQUIRE(idx.init(0x200000));
+  REQUIRE(idx.init(openpod_test::openSearchTrie()));
 
   search_result_t results[10];
 
@@ -153,7 +153,7 @@ TEST_CASE("MusicIndex - getResultName and search type name") {
                                       buildMinimalMusicIndex());
 
   MusicIndex idx;
-  REQUIRE(idx.init(0x200000));
+  REQUIRE(idx.init(openpod_test::openSearchTrie()));
 
   search_result_t results[10];
   uint32_t n = idx.searchByPrefix("ab", results, 10);

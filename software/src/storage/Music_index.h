@@ -4,6 +4,7 @@
 #include <SdFat.h>  // Changed from SD.h to SdFat.h
 #include <string.h>
 #include "PSRAM_controller.hpp"
+#include "PageStore.h"
 #include "types.h" 
 #include "../pinout.h"
 
@@ -53,13 +54,11 @@ typedef struct {
 
 class MusicIndex {
 private:
-    uint32_t base_address;
     bool initialized;
-    const char* index_filename= "/openpod/music_index.bin";
-    // SDFat objects
-    SdFat sd;               // SDFat object for SD card operations
-    
-    // Offsets within the loaded data
+    // The trie section of index.pack (read through PageStore).
+    PackRef trie;
+
+    // Offsets within the section
     uint32_t string_pool_offset;
     uint32_t string_offsets_offset;
     uint32_t nodes_offset;
@@ -82,10 +81,7 @@ private:
     
     // Access counter (16-bit to save memory, wraps around)
     uint16_t access_counter;
-    uint32_t readLittleEndian32(FsFile& file);  // Changed from File& to FsFile&
-    
     // Helper methods
-    bool loadFromSDCard(const char* filename);
     void readString(uint32_t offset, uint32_t length, char* buffer, uint32_t buffer_size);
     
     // Optimized batch loading methods
@@ -130,18 +126,13 @@ private:
     uint16_t findLRUStringCacheSlot();
     
 public:
-    MusicIndex(uint32_t psram_base_addr = MUSIC_INDEX_BASE_ADDRESS);
+    MusicIndex();
     ~MusicIndex();
-    
-    // Initialize the music index by loading from SD card
-    bool init(uint32_t base_address=MUSIC_INDEX_BASE_ADDRESS);
-    
-    // Initialize with custom SDFat configuration
-    bool initWithSDConfig(SdSpiConfig sdConfig, const char* index_filename = "/openpod/music_index.bin");
-    
-    // Get SDFat object reference for advanced operations
-    SdFat& getSD() { return sd; }
-    
+
+    // Uses the search trie section of index.pack
+    // (MusicLookup::getSearchTrie()).
+    bool init(const PackRef &trieSection);
+
     // Search functions
     uint32_t searchByPrefix(const char* prefix, search_result_t* results, uint32_t max_results);
     uint32_t searchArtists(const char* prefix, search_result_t* results, uint32_t max_results);

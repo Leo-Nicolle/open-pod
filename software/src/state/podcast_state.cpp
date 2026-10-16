@@ -27,6 +27,12 @@ bool PodcastState::load(SdFat &card, uint32_t psramBase, uint32_t episodes,
   records = 0;
   sequence = 0;
   changes++;
+  if (episodes > PODCAST_STATE_SIZE / RECORD) {
+    LOG_ERROR("%lu podcast episodes: listening state holds %lu at most",
+              (unsigned long)episodes,
+              (unsigned long)(PODCAST_STATE_SIZE / RECORD));
+    return false;
+  }
   FsFile f;
   if (!f.open(PATH, O_RDONLY)) {
     LOG_WARN("No %s: podcast episodes all show as new", PATH);

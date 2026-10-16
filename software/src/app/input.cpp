@@ -1,5 +1,6 @@
 #include "app.h"
 #include "../logging.h"
+#include "../state/fast_scroll.h"
 
 // Tracks whether a route-transition animation is currently playing, kept in
 // sync via EVENT_ANIMATION_STARTED/FINISHED (see onNavigationStateEvent
@@ -45,19 +46,14 @@ static const unsigned long SEEK_SCRUB_GAP_MS = 300;
 static int seekScrubClicks = 0;
 static int seekScrubDir = 0;
 
-// Fast scrolling jumps a whole screen per tick; on short lists that overshoots,
-// so it is only enabled when the list spans more than this many screens.
+// Fast scrolling (state/fast_scroll.h): on lists longer than this many
+// screens, the wheel's speed picks how far a click jumps - a row, or to the
+// next 3-, 2- or 1-letter prefix - and the letter overlay shows while it
+// jumps by letters, until FAST_SCROLL_HIDE_DELAY ms after it went back to
+// rows. Speed thresholds: scrollTuning (live over the bench's #scrollcfg).
 static const int FAST_SCROLL_MIN_PAGES = 3;
-
-// Fast-scroll letter overlay (same long-list condition as above): shown once
-// FAST_SCROLL_MIN_CLICKS wheel clicks land within FAST_SCROLL_WINDOW_MS (or a
-// single multi-click tick), hidden FAST_SCROLL_HIDE_DELAY ms after the wheel
-// slows down. Starting values - tune on hardware.
-static const unsigned long FAST_SCROLL_WINDOW_MS = 300;
-static const int FAST_SCROLL_MIN_CLICKS = 6;
 static const unsigned long FAST_SCROLL_HIDE_DELAY = 600;
-static unsigned long fastScrollWindowStart = 0;
-static int fastScrollWindowClicks = 0;
+static ScrollSpeed scrollSpeed;
 static unsigned long lastFastScrollTime = 0;
 
 static void onButtonClick(ClickWheel::Button button);
@@ -68,7 +64,7 @@ static int seekStepSeconds(int scrollClicks, int duration);
 static void onSearchButtonClick(ClickWheel::Button button);
 static void onMenuButtonClick(ClickWheel::Button button);
 static void onPodcastButtonClick(ClickWheel::Button button);
-static void trackFastScroll(int scrollClicks);
+static int fastScrollLetters(int scrollClicks);
 static void commitPendingSeek();
 
 void handleWheelInput()
@@ -445,19 +441,12 @@ static void onScroll(int scrollClicks)
   }
   else
   {
-    // Before moving, so the scroll event already renders the overlay.
-    trackFastScroll(scrollClicks);
-    if (abs(scrollClicks) > 1 &&
-        state.getTotalElements() > FAST_SCROLL_MIN_PAGES * ELEMENTS_PER_SCREEN)
+    int letters = fastScrollLetters(scrollClicks);
+    if (letters > 0)
     {
-      if (scrollClicks < 0)
-      {
-        state.pageDown(); // Fast scroll down
-      }
-      else
-      {
-        state.pageUp(); // Fast scroll up
-      }
+      // Before moving, so the jump already renders the overlay.
+      state.setFastScroll(letters);
+      state.letterJump(scrollClicks, letters);
     }
     else
     {
@@ -491,24 +480,19 @@ static int seekStepSeconds(int scrollClicks, int duration)
   return min(SEEK_SECONDS_PER_CLICK << shift, cap);
 }
 
-// List scrolling: counts clicks in a FAST_SCROLL_WINDOW_MS window and shows
-// the letter overlay on long lists once the wheel spins fast enough.
-static void trackFastScroll(int scrollClicks)
+// List scrolling: the letters this event jumps by (0: rows), from the
+// wheel's speed. Short lists always scroll by rows.
+static int fastScrollLetters(int scrollClicks)
 {
-  if (state.getTotalElements() <= FAST_SCROLL_MIN_PAGES * ELEMENTS_PER_SCREEN)
-    return;
-  unsigned long now = millis();
-  if (now - fastScrollWindowStart > FAST_SCROLL_WINDOW_MS)
-  {
-    fastScrollWindowStart = now;
-    fastScrollWindowClicks = 0;
-  }
-  fastScrollWindowClicks += abs(scrollClicks);
-  if (abs(scrollClicks) > 1 || fastScrollWindowClicks >= FAST_SCROLL_MIN_CLICKS)
-  {
-    lastFastScrollTime = now;
-    state.setFastScroll(true);
-  }
+  int total = state.getTotalElements();
+  int maxLetters = total > FAST_SCROLL_MIN_PAGES * ELEMENTS_PER_SCREEN
+                       ? fastScrollLetterCount(total)
+                       : 0;
+  int letters = scrollSpeed.update(scrollClicks, millis(), maxLetters);
+  benchOnScrollSpeed(letters, scrollSpeed.clicksPerSecond());
+  if (letters > 0)
+    lastFastScrollTime = millis();
+  return letters;
 }
 
 void checkFastScrollTimeout()

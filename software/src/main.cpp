@@ -109,13 +109,18 @@ void setup()
 
   boot.runStep([] {
     uint32_t t0 = millis();
-    musicLookup.init();
+    // Index pages load through the audio buffer's 4 KB chunk buffer: 8x
+    // fewer card reads per page than 512 bytes at a time.
+    pageStore.setScratch(player.audioPlayer.buffer().scratch(),
+                         Audio_buffer::SCRATCH_SIZE);
+    if (!musicLookup.init() && musicLookup.indexMissing())
+      appToast.show(BtModel::TOAST_ERROR, "Library needs a ", "re-sync");
     lookupInitMs = millis() - t0;
     albumArt.init(musicLookup.getSD());
-    // The listening state sits in PSRAM right after the lookup tables (the
-    // search index goes after it, see below).
+    // The listening state has its own PSRAM region; the index pages are
+    // cached after it (PSRAM_controller.hpp).
     if (musicLookup.hasPodcasts())
-      podcastState.load(musicLookup.getSD(), musicLookup.getLastPSRAMAddress(),
+      podcastState.load(musicLookup.getSD(), PODCAST_STATE_BASE_ADDRESS,
                         musicLookup.podcastEpisodeCount(),
                         musicLookup.podcastGeneration());
     state.setPodcasts(musicLookup.hasPodcasts() ? &musicLookup : nullptr,
@@ -171,8 +176,7 @@ void setup()
   boot.runStep([] {
     // --- MusicIndex initialization and artist/track search ---
     uint32_t t0 = millis();
-    bool indexOk = musicIndex.init(musicLookup.getLastPSRAMAddress() +
-                                   podcastState.bytesUsed());
+    bool indexOk = musicIndex.init(musicLookup.getSearchTrie());
     searchIndexInitMs = millis() - t0;
     if (!indexOk)
     {

@@ -6,6 +6,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::AtomicBool;
 
+use openpod_core::index::pack;
 use openpod_core::podcasts::{self, mirror, state};
 use openpod_core::sync::Progress;
 
@@ -66,12 +67,14 @@ fn read_state(card: &Path) -> (u32, Vec<state::Record>) {
     state::parse(&fs::read(card.join("openpod").join(state::FILE)).unwrap()).unwrap()
 }
 
-/// Card path of each episode id, from `podcast_episode_paths.bin`.
+/// Card path of each episode id, from `podcasts.pack`.
 fn episode_paths(card: &Path) -> Vec<String> {
-    let b = fs::read(card.join("openpod/podcast_episode_paths.bin")).unwrap();
+    let file = fs::read(card.join("openpod").join(pack::PODCAST_FILE)).unwrap();
+    let sections = pack::unpack(&file).unwrap();
+    let b = sections.iter().find(|(id, _)| *id == pack::section::POD_EPISODE_PATHS).unwrap().1;
     let n = u32::from_le_bytes(b[0..4].try_into().unwrap()) as usize;
-    let data = 8 + n * 4 + (n + 1) * 4;
-    let off = |i: usize| u32::from_le_bytes(b[8 + n * 4 + i * 4..][..4].try_into().unwrap()) as usize;
+    let data = 8 + (n + 1) * 4;
+    let off = |i: usize| u32::from_le_bytes(b[8 + i * 4..][..4].try_into().unwrap()) as usize;
     (0..n).map(|i| String::from_utf8(b[data + off(i)..data + off(i + 1) - 1].to_vec()).unwrap()).collect()
 }
 

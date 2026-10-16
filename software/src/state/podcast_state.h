@@ -57,8 +57,10 @@ public:
 
   PodcastState();
 
-  // Copies the state file into PSRAM at psramBase. `episodes` and
-  // `generation` come from the podcast index. Returns whether it is usable.
+  // Copies the state file into PSRAM at psramBase (PODCAST_STATE_BASE_ADDRESS
+  // on the device: PODCAST_STATE_SIZE bytes, so at most that / RECORD
+  // episodes). `episodes` and `generation` come from the podcast index.
+  // Returns whether it is usable.
   bool load(SdFat &sd, uint32_t psramBase, uint32_t episodes,
             uint32_t generation);
   bool isLoaded() const { return loaded; }

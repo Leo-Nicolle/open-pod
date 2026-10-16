@@ -1,6 +1,7 @@
 #pragma once
 #include "../pinout.h"
 #include "PSRAM_controller.hpp"
+#include "PageStore.h"
 #include "../state/podcast_source.h"
 #include "types.h"
 #include <Arduino.h>
@@ -14,60 +15,49 @@
 // around the visible rows; lists themselves can be any length).
 #define LOOKUP_WINDOW 64
 
-// Structure for index headers (string indexes)
+// The lookup tables are sections of /openpod/index.pack (and
+// podcasts.pack), read through the PSRAM page cache (PageStore.h). Formats
+// in syncer/crates/core/src/index/binary.rs; ids are dense, so every table
+// is indexed by id directly.
+
+// String table: [u32 count][u32 data_size][u32 offset]*(count+1)[strings]
 typedef struct {
-  uint32_t baseOffset;  // Base address in PSRAM
+  PackRef sec;
   uint32_t entry_count; // Number of entries
   uint32_t data_size;   // Size of string data section
 } index_header_t;
 
-// Structure for relationship headers
+// Relation: [u32 count][u32 total][u32 start]*(count+1)[u32 target]*total,
+// source id's targets at [start[id], start[id+1]).
 typedef struct {
-  uint32_t baseOffset;         // Base address in PSRAM
-  uint32_t entry_count;        // Number of source entries
-  uint32_t total_target_count; // Total number of target IDs
+  PackRef sec;
+  uint32_t entry_count;        // Number of source ids
+  uint32_t total_target_count; // Total number of target ids
 } relation_header_t;
 
-// Structure for the duration index: a flat, fixed-width array of uint16
-// seconds directly indexed by (dense, 0-based) track id - no string data or
-// offset table like index_header_t's format, since every entry is the same
-// size.
+// Dense fixed-width arrays, [u32 count][entry]*count, indexed by id:
+// durations (u16 seconds), track->album / track->artist / album->artist
+// (u32 ids), covers (9-byte album_cover_entry_t).
 typedef struct {
-  uint32_t baseOffset;  // PSRAM address of the first uint16 entry
+  PackRef sec;
   uint32_t entry_count; // Number of entries
 } duration_index_t;
+typedef duration_index_t track_to_id_index_t;
+typedef duration_index_t album_cover_index_t;
 
-// Structure for the track->album and track->artist indexes: same
-// dense/fixed-width shape as duration_index_t (one uint32 id per track,
-// directly indexed by dense, 0-based track id), since both are 1:1 (artist
-// is the track's primary artist) - no need for the relation_header_t 1:many
-// format used by e.g. album_to_tracks.
-typedef struct {
-  uint32_t baseOffset;  // PSRAM address of the first uint32 id entry
-  uint32_t entry_count; // Number of entries
-} track_to_id_index_t;
-
-// One album's cover location within thumbs.bin, as written by the indexer's
-// exportAlbumCoverIndexToBinary (indexer/src/thumbnails.ts). format byte is
-// a shared contract with that function's ALBUM_COVER_FORMAT_BYTE map: 0 =
-// qoi, 1 = raw565. length == 0 means no cover was resolved for this album.
+// One album's cover location within thumbs.bin (index/thumbs.rs
+// cover_index). format byte: 0 = qoi, 1 = raw565. length == 0 means no cover
+// was resolved for this album.
 typedef struct {
   uint32_t offset;
   uint32_t length;
   uint8_t format;
 } album_cover_entry_t;
 
-// Structure for the album->cover index: dense/fixed-width array of
-// album_cover_entry_t, directly indexed by (dense, 0-based) album id.
+// A string inside a string table section.
 typedef struct {
-  uint32_t baseOffset;  // PSRAM address of the first entry (9 bytes each)
-  uint32_t entry_count; // Number of entries
-} album_cover_index_t;
-
-// Structure for lookup results
-typedef struct {
-  uint32_t address; // PSRAM address of data
-  uint32_t length;  // Length of data
+  uint32_t offset; // in the section
+  uint32_t length; // without the NUL
 } lookup_result_t;
 
 // Route management for navigation
@@ -134,30 +124,10 @@ public:
 class MusicLookup : public PodcastSource {
 private:
   bool initialized;
-  uint32_t psram_base_address;
-  uint32_t psram_last_address;
+  bool index_missing = false;
 
-  // File paths
-  const char *genre_to_tracks_path = "/openpod/genre_to_tracks.bin";
-  const char *genre_to_albums_path = "/openpod/genre_to_albums.bin";
-  const char *artist_to_tracks_path = "/openpod/artist_to_tracks.bin";
-  const char *artist_to_albums_path = "/openpod/artist_to_albums.bin";
-  const char *album_to_tracks_path = "/openpod/album_to_tracks.bin";
-
-  const char *artist_index_path = "/openpod/artist_index.bin";
-  const char *album_index_path = "/openpod/album_index.bin";
-  const char *genre_index_path = "/openpod/genre_index.bin";
-  const char *track_index_path = "/openpod/track_index.bin";
-  const char *path_index_path = "/openpod/path_index.bin";
-  const char *duration_index_path = "/openpod/duration_index.bin";
-  const char *track_to_album_path = "/openpod/track_to_album.bin";
-  const char *track_to_artist_path = "/openpod/track_to_artist.bin";
-  const char *album_to_artist_path = "/openpod/album_to_artist.bin";
-  const char *album_to_cover_path = "/openpod/album_to_cover.bin";
-
-  // SD card and file handling
+  // SD card (its own SdFat: see notes/performance-and-memory.md step 2)
   SdFat sd;
-  FsFile file;
 
   // Headers for all indexes and relationships
   relation_header_t genre_to_tracks_h;
@@ -176,6 +146,7 @@ private:
   track_to_id_index_t track_to_artist_h;
   track_to_id_index_t album_to_artist_h;
   album_cover_index_t album_cover_h;
+  PackRef search_trie;
 
   // Podcasts (optional: a card without podcast tables has no Podcasts
   // screen). See state/podcast_source.h.
@@ -194,34 +165,24 @@ private:
   relation_header_t pod_folder_episodes_h;
   duration_index_t pod_episode_durations_h;
   album_cover_index_t pod_folder_cover_h;
-  // Loads every podcast table after `address`; false (and nothing
-  // loaded) when one is missing or the meta file doesn't match.
-  bool loadPodcasts(uint32_t &address);
+  // Opens podcasts.pack; false (no Podcasts screen) when it's missing, a
+  // table is, or the meta file doesn't match.
+  bool loadPodcasts();
   uint32_t readDense(const track_to_id_index_t &h, uint32_t i);
 
-  // Private helper methods
-  bool loadIndexFromSDCard(const char *filename, uint32_t &base_address,
-                           index_header_t &header);
-  bool loadRelationFromSDCard(const char *filename, uint32_t &base_address,
-                              relation_header_t &header);
-  bool loadDurationIndexFromSDCard(const char *filename,
-                                   uint32_t &base_address,
-                                   duration_index_t &header);
-  bool loadTrackToIdIndexFromSDCard(const char *filename,
-                                    uint32_t &base_address,
-                                    track_to_id_index_t &header);
-  bool loadAlbumCoverIndexFromSDCard(const char *filename,
-                                     uint32_t &base_address,
-                                     album_cover_index_t &header);
-  bool loadDataFromSDCard(uint32_t base_address, uint32_t size);
-  int32_t binarySearch(uint32_t id, uint32_t baseAddress, uint32_t count);
-  uint32_t readLittleEndian32(FsFile &file);
-  lookup_result_t getStringAtIndex(int32_t index, const index_header_t &header);
+  // Section headers, checked against the section length.
+  bool openStrings(uint8_t pack, uint32_t id, index_header_t &h);
+  bool openRelation(uint8_t pack, uint32_t id, relation_header_t &h);
+  bool openDense(uint8_t pack, uint32_t id, duration_index_t &h,
+                 uint32_t entrySize);
+
+  lookup_result_t getStringAtIndex(uint32_t index, const index_header_t &header);
   uint32_t getRelatedIds(uint32_t source_id, const relation_header_t &header,
                          uint32_t *results, uint32_t max_results,
                          uint32_t offset = 0);
-  bool copyString(const lookup_result_t &result, char *&buffer_pos,
-                  uint32_t &buffer_remaining, const char *&out);
+  bool copyString(const index_header_t &header, const lookup_result_t &result,
+                  char *&buffer_pos, uint32_t &buffer_remaining,
+                  const char *&out);
   uint32_t getIndexRange(const index_header_t &header, char *buffer,
                          uint32_t buffer_size, const char **string_pointers,
                          uint32_t max_results, uint32_t offset);
@@ -230,6 +191,8 @@ private:
   uint32_t getRelatedCount(uint32_t source_id, const relation_header_t &header);
   bool getString(uint32_t id, const index_header_t &index_header, char *buffer,
                  uint32_t buffer_size);
+  bool readCover(const album_cover_index_t &h, uint32_t id,
+                 album_cover_entry_t &out);
 
   // Generic string loading function
   uint32_t getLookupStrings(uint32_t source_id,
@@ -240,11 +203,15 @@ private:
                             uint32_t offset = 0);
 
 public:
-  MusicLookup(uint32_t psram_base_addr = MUSIC_INDEX_BASE_ADDRESS);
+  MusicLookup();
   ~MusicLookup();
 
+  // Opens /openpod/index.pack (false: no library, the card needs a
+  // re-sync) and podcasts.pack if there is one.
   bool init();
-  void test();
+  // The card is readable but has no usable index.pack (indexed by an older
+  // syncer, or never synced): it needs a re-sync.
+  bool indexMissing() const { return index_missing; }
   // Utility
   SdFat &getSD() { return sd; }
   bool isInitialized() const { return initialized; }
@@ -268,13 +235,12 @@ public:
   uint32_t getAlbumIdForTrack(uint32_t track_id);
 
   // Primary artist for a track, O(1) direct index - returns UINT32_MAX if
-  // track_id is out of range or track_to_artist.bin is missing (SD cards
-  // indexed before it existed).
+  // track_id is out of range or the pack has no track->artist section.
   uint32_t getArtistIdForTrack(uint32_t track_id);
 
-  // Artist for an album, O(1) direct index from album_to_artist.bin. SD
-  // cards indexed before it existed fall back to the artist of the album's
-  // first track. Returns UINT32_MAX if neither resolves.
+  // Artist for an album, O(1) direct index from the album->artist section.
+  // Without it, falls back to the artist of the album's first track.
+  // Returns UINT32_MAX if neither resolves.
   uint32_t getArtistIdForAlbum(uint32_t album_id);
 
   // Relationship sizes (0 if the id is unknown).
@@ -335,7 +301,15 @@ public:
   uint32_t getRelatedIdAtIndex(uint32_t source_id,
                                const relation_header_t &header, uint32_t index);
   uint32_t getIdAtIndex(const index_header_t &header, uint32_t index);
-  uint32_t getLastPSRAMAddress();
+  // Fast scroll on a full list (list 0 artists, 1 albums, 2 genres, 3
+  // tracks): where a click from position `pos` lands at `letters` (1-3)
+  // letters, from the syncer's letter tables. dir > 0: the next bucket's
+  // start (pos at the last one); dir < 0: this bucket's start, or the
+  // previous one's when already there. -1 when the pack has no table.
+  int32_t letterBucket(uint32_t list, uint32_t letters, uint32_t pos, int dir);
+
+  // The search trie section (for MusicIndex::init).
+  const PackRef &getSearchTrie() const { return search_trie; }
   uint32_t getArtistIdAtIndex(uint32_t index);
   uint32_t getAlbumIdAtIndex(uint32_t index);
   uint32_t getGenreIdAtIndex(uint32_t index);

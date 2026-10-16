@@ -1,0 +1,1606 @@
+{
+  "rev": "c110316-dirty",
+  "date": "2026-10-16T12:35:19.673Z",
+  "host": "leo-pc",
+  "dataset": {
+    "generator": 1,
+    "seed": 1,
+    "tracks": 100008,
+    "albums": 7656,
+    "artists": 3521,
+    "genres": 41,
+    "samples": 8,
+    "covers": false,
+    "tracksLoaded": 100008,
+    "albumsLoaded": 7656
+  },
+  "boot": {
+    "ms": 3080,
+    "lookup_ms": 166,
+    "search_index_ms": 8
+  },
+  "scenarios": {
+    "scroll": {
+      "tracks": 100008,
+      "singleTickUs": {
+        "n": 250,
+        "p50": 57020,
+        "p95": 76285,
+        "max": 89099,
+        "mean": 48435
+      },
+      "fastBurstUs": {
+        "n": 40,
+        "p50": 849,
+        "p95": 38660,
+        "max": 104011,
+        "mean": 5644
+      },
+      "seconds": 15,
+      "underruns": 0,
+      "minRunwayS": 2.2,
+      "meanRateKBs": 70,
+      "maxStallMs": 4,
+      "maxTickGapUs": 1012,
+      "maxLoopMs": 96.77,
+      "cpuPercent": {
+        "isr": 5,
+        "sd": 7,
+        "psramWrite": 7.9,
+        "psramRead": 8.8,
+        "ui": 1.9,
+        "audio": 21.1,
+        "wheel": 2.4,
+        "input": 69.5,
+        "bench": 0.5,
+        "bt": 0.9,
+        "misc": 1.1,
+        "loop": 99.5
+      }
+    },
+    "fastScrollReal": {
+      "turns": 20,
+      "settleUs": {
+        "n": 20,
+        "p50": 70,
+        "p95": 3704,
+        "max": 3704,
+        "mean": 409
+      },
+      "overlayTurns": 20,
+      "eventsPerTurn": 9.7,
+      "seconds": 12,
+      "underruns": 0,
+      "minRunwayS": 2.3,
+      "meanRateKBs": 70,
+      "maxStallMs": 4,
+      "maxTickGapUs": 1011,
+      "maxLoopMs": 88.03,
+      "cpuPercent": {
+        "isr": 5.1,
+        "sd": 7.2,
+        "psramWrite": 6.2,
+        "psramRead": 8.8,
+        "ui": 3.4,
+        "audio": 25.1,
+        "wheel": 5.1,
+        "input": 56.2,
+        "bench": 1.9,
+        "bt": 1.7,
+        "misc": 1.4,
+        "loop": 99.1
+      }
+    },
+    "navigation": {
+      "enterUs": {
+        "n": 29,
+        "p50": 854514,
+        "p95": 1001460,
+        "max": 1114018,
+        "mean": 885727
+      },
+      "backUs": {
+        "n": 26,
+        "p50": 849048,
+        "p95": 856097,
+        "max": 864390,
+        "mean": 848477
+      },
+      "seconds": 51,
+      "underruns": 0,
+      "minRunwayS": 0.1,
+      "meanRateKBs": 70,
+      "maxStallMs": 4,
+      "maxTickGapUs": 1011,
+      "maxLoopMs": 265.11,
+      "cpuPercent": {
+        "isr": 5.1,
+        "sd": 7.5,
+        "psramWrite": 6.8,
+        "psramRead": 6.7,
+        "ui": 15.1,
+        "audio": 38.8,
+        "wheel": 13.6,
+        "input": 7,
+        "bench": 3.3,
+        "bt": 5.1,
+        "misc": 2.6,
+        "loop": 97.4
+      }
+    },
+    "search": {
+      "queries": [
+        {
+          "query": "a",
+          "totalUs": 157814,
+          "maxCharUs": 157814,
+          "hits": 78
+        },
+        {
+          "query": "the",
+          "totalUs": 209327,
+          "maxCharUs": 152102,
+          "hits": 20
+        },
+        {
+          "query": "lo",
+          "totalUs": 354572,
+          "maxCharUs": 178474,
+          "hits": 100
+        },
+        {
+          "query": "kalo",
+          "totalUs": 302302,
+          "maxCharUs": 130662,
+          "hits": 76
+        },
+        {
+          "query": "night river",
+          "totalUs": 735357,
+          "maxCharUs": 174823,
+          "hits": 8
+        },
+        {
+          "query": "zz",
+          "totalUs": 202413,
+          "maxCharUs": 179357,
+          "hits": 0
+        },
+        {
+          "query": "openpod bench",
+          "totalUs": 421027,
+          "maxCharUs": 117025,
+          "hits": 2
+        },
+        {
+          "query": "e",
+          "totalUs": 160001,
+          "maxCharUs": 160001,
+          "hits": 88
+        }
+      ],
+      "worstCharUs": 179357,
+      "browseUs": {
+        "n": 30,
+        "p50": 26957,
+        "p95": 40896,
+        "max": 42318,
+        "mean": 25647
+      },
+      "seconds": 4,
+      "underruns": 0,
+      "minRunwayS": 1.6,
+      "meanRateKBs": 70,
+      "maxStallMs": 4,
+      "maxTickGapUs": 1011,
+      "maxLoopMs": 372.99,
+      "cpuPercent": {
+        "isr": 5.1,
+        "sd": 6.9,
+        "psramWrite": 17.8,
+        "psramRead": 13.3,
+        "ui": 75.2,
+        "audio": 16.3,
+        "wheel": 1.5,
+        "input": 4,
+        "bench": 0.4,
+        "bt": 0.6,
+        "misc": 0.4,
+        "loop": 99.7
+      }
+    },
+    "startup": [
+      {
+        "sample": "01 mp3 64k mono 22k",
+        "stillPlaying": true,
+        "loadMs": 5239,
+        "load": [
+          {
+            "what": "start + slide to Now Playing",
+            "us": 902864
+          },
+          {
+            "what": "back to the album",
+            "us": 848706
+          },
+          {
+            "what": "back to the results",
+            "us": 829861
+          },
+          {
+            "what": "back to typing",
+            "us": 21960
+          },
+          {
+            "what": "search \"the\"",
+            "us": 70888
+          },
+          {
+            "what": "search \"a\"",
+            "us": 29203
+          },
+          {
+            "what": "leave search",
+            "us": 843429
+          },
+          {
+            "what": "open Tracks",
+            "us": 829868
+          },
+          {
+            "what": "fast scroll",
+            "us": 72523
+          },
+          {
+            "what": "fast scroll",
+            "us": 1419
+          },
+          {
+            "what": "fast scroll",
+            "us": 849
+          },
+          {
+            "what": "fast scroll",
+            "us": 851
+          },
+          {
+            "what": "fast scroll back",
+            "us": 48680
+          },
+          {
+            "what": "fast scroll back",
+            "us": 1413
+          }
+        ],
+        "trace": [
+          {
+            "s": 0,
+            "runwayS": 2.5,
+            "underruns": 0
+          },
+          {
+            "s": 1.2,
+            "runwayS": 2.7,
+            "underruns": 0
+          },
+          {
+            "s": 2.2,
+            "runwayS": 2.7,
+            "underruns": 0
+          },
+          {
+            "s": 3.2,
+            "runwayS": 3.8,
+            "underruns": 0
+          },
+          {
+            "s": 4.2,
+            "runwayS": 2.8,
+            "underruns": 0
+          },
+          {
+            "s": 5.2,
+            "runwayS": 2.8,
+            "underruns": 0
+          },
+          {
+            "s": 6.2,
+            "runwayS": 31.9,
+            "underruns": 0
+          },
+          {
+            "s": 7.2,
+            "runwayS": 32.6,
+            "underruns": 0
+          },
+          {
+            "s": 8.2,
+            "runwayS": 31.6,
+            "underruns": 0
+          },
+          {
+            "s": 9.2,
+            "runwayS": 30.7,
+            "underruns": 0
+          },
+          {
+            "s": 10.2,
+            "runwayS": 29.7,
+            "underruns": 0
+          },
+          {
+            "s": 11.2,
+            "runwayS": 28.7,
+            "underruns": 0
+          }
+        ],
+        "seconds": 12,
+        "underruns": 0,
+        "minRunwayS": 2,
+        "meanRateKBs": 13,
+        "maxStallMs": 3,
+        "maxTickGapUs": 1011,
+        "maxLoopMs": 164.62,
+        "cpuPercent": {
+          "isr": 1.1,
+          "sd": 7.8,
+          "psramWrite": 6.2,
+          "psramRead": 1.4,
+          "ui": 18,
+          "audio": 35.5,
+          "wheel": 14.5,
+          "input": 5.7,
+          "bench": 3.1,
+          "bt": 5.3,
+          "misc": 2.6,
+          "loop": 97.2
+        }
+      },
+      {
+        "sample": "02 mp3 128k",
+        "stillPlaying": true,
+        "loadMs": 5310,
+        "load": [
+          {
+            "what": "start + slide to Now Playing",
+            "us": 897458
+          },
+          {
+            "what": "back to the album",
+            "us": 848655
+          },
+          {
+            "what": "back to the results",
+            "us": 833821
+          },
+          {
+            "what": "back to typing",
+            "us": 22263
+          },
+          {
+            "what": "search \"the\"",
+            "us": 70766
+          },
+          {
+            "what": "search \"a\"",
+            "us": 29345
+          },
+          {
+            "what": "leave search",
+            "us": 840048
+          },
+          {
+            "what": "open Tracks",
+            "us": 838240
+          },
+          {
+            "what": "fast scroll",
+            "us": 75344
+          },
+          {
+            "what": "fast scroll",
+            "us": 1419
+          },
+          {
+            "what": "fast scroll",
+            "us": 849
+          },
+          {
+            "what": "fast scroll",
+            "us": 851
+          },
+          {
+            "what": "fast scroll back",
+            "us": 39060
+          },
+          {
+            "what": "fast scroll back",
+            "us": 1415
+          }
+        ],
+        "trace": [
+          {
+            "s": 1.2,
+            "runwayS": 2.6,
+            "underruns": 0
+          },
+          {
+            "s": 2.2,
+            "runwayS": 2.6,
+            "underruns": 0
+          },
+          {
+            "s": 3.3,
+            "runwayS": 3.9,
+            "underruns": 0
+          },
+          {
+            "s": 4.3,
+            "runwayS": 3.1,
+            "underruns": 0
+          },
+          {
+            "s": 5.3,
+            "runwayS": 2.6,
+            "underruns": 0
+          },
+          {
+            "s": 6.3,
+            "runwayS": 16.5,
+            "underruns": 0
+          },
+          {
+            "s": 7.3,
+            "runwayS": 32.7,
+            "underruns": 0
+          },
+          {
+            "s": 8.3,
+            "runwayS": 31.7,
+            "underruns": 0
+          },
+          {
+            "s": 9.3,
+            "runwayS": 30.7,
+            "underruns": 0
+          },
+          {
+            "s": 10.2,
+            "runwayS": 29.8,
+            "underruns": 0
+          }
+        ],
+        "seconds": 10,
+        "underruns": 0,
+        "minRunwayS": 2,
+        "meanRateKBs": 16,
+        "maxStallMs": 3,
+        "maxTickGapUs": 1011,
+        "maxLoopMs": 416.91,
+        "cpuPercent": {
+          "isr": 1.1,
+          "sd": 13.4,
+          "psramWrite": 11.2,
+          "psramRead": 2,
+          "ui": 17.3,
+          "audio": 42.3,
+          "wheel": 12.4,
+          "input": 5.4,
+          "bench": 2.6,
+          "bt": 4.6,
+          "misc": 2.3,
+          "loop": 97.6
+        }
+      },
+      {
+        "sample": "03 mp3 320k",
+        "stillPlaying": true,
+        "loadMs": 5391,
+        "load": [
+          {
+            "what": "start + slide to Now Playing",
+            "us": 903978
+          },
+          {
+            "what": "back to the album",
+            "us": 851847
+          },
+          {
+            "what": "back to the results",
+            "us": 839272
+          },
+          {
+            "what": "back to typing",
+            "us": 21959
+          },
+          {
+            "what": "search \"the\"",
+            "us": 75737
+          },
+          {
+            "what": "search \"a\"",
+            "us": 29909
+          },
+          {
+            "what": "leave search",
+            "us": 856932
+          },
+          {
+            "what": "open Tracks",
+            "us": 843088
+          },
+          {
+            "what": "fast scroll",
+            "us": 76752
+          },
+          {
+            "what": "fast scroll",
+            "us": 1420
+          },
+          {
+            "what": "fast scroll",
+            "us": 849
+          },
+          {
+            "what": "fast scroll",
+            "us": 852
+          },
+          {
+            "what": "fast scroll back",
+            "us": 40188
+          },
+          {
+            "what": "fast scroll back",
+            "us": 1410
+          }
+        ],
+        "trace": [
+          {
+            "s": 1.2,
+            "runwayS": 2.5,
+            "underruns": 0
+          },
+          {
+            "s": 2.2,
+            "runwayS": 2.5,
+            "underruns": 0
+          },
+          {
+            "s": 3.3,
+            "runwayS": 2.1,
+            "underruns": 0
+          },
+          {
+            "s": 4.4,
+            "runwayS": 2.3,
+            "underruns": 0
+          },
+          {
+            "s": 5.3,
+            "runwayS": 2.5,
+            "underruns": 0
+          },
+          {
+            "s": 6.3,
+            "runwayS": 6.9,
+            "underruns": 0
+          },
+          {
+            "s": 7.3,
+            "runwayS": 20.1,
+            "underruns": 0
+          },
+          {
+            "s": 8.3,
+            "runwayS": 31.8,
+            "underruns": 0
+          },
+          {
+            "s": 9.3,
+            "runwayS": 30.8,
+            "underruns": 0
+          },
+          {
+            "s": 10.3,
+            "runwayS": 29.8,
+            "underruns": 0
+          }
+        ],
+        "seconds": 10,
+        "underruns": 0,
+        "minRunwayS": 0.8,
+        "meanRateKBs": 40,
+        "maxStallMs": 3,
+        "maxTickGapUs": 1011,
+        "maxLoopMs": 168.85,
+        "cpuPercent": {
+          "isr": 2.8,
+          "sd": 20.6,
+          "psramWrite": 16.9,
+          "psramRead": 3.8,
+          "ui": 15.1,
+          "audio": 53.3,
+          "wheel": 9.3,
+          "input": 4.9,
+          "bench": 2,
+          "bt": 3.4,
+          "misc": 2,
+          "loop": 98.2
+        }
+      },
+      {
+        "sample": "04 mp3 V0 VBR",
+        "stillPlaying": true,
+        "loadMs": 5331,
+        "load": [
+          {
+            "what": "start + slide to Now Playing",
+            "us": 902287
+          },
+          {
+            "what": "back to the album",
+            "us": 853567
+          },
+          {
+            "what": "back to the results",
+            "us": 829794
+          },
+          {
+            "what": "back to typing",
+            "us": 25481
+          },
+          {
+            "what": "search \"the\"",
+            "us": 71694
+          },
+          {
+            "what": "search \"a\"",
+            "us": 29486
+          },
+          {
+            "what": "leave search",
+            "us": 840668
+          },
+          {
+            "what": "open Tracks",
+            "us": 837715
+          },
+          {
+            "what": "fast scroll",
+            "us": 75654
+          },
+          {
+            "what": "fast scroll",
+            "us": 1424
+          },
+          {
+            "what": "fast scroll",
+            "us": 851
+          },
+          {
+            "what": "fast scroll",
+            "us": 928
+          },
+          {
+            "what": "fast scroll back",
+            "us": 39141
+          },
+          {
+            "what": "fast scroll back",
+            "us": 1412
+          }
+        ],
+        "trace": [
+          {
+            "s": 1.2,
+            "runwayS": 2.5,
+            "underruns": 0
+          },
+          {
+            "s": 2.2,
+            "runwayS": 2.6,
+            "underruns": 0
+          },
+          {
+            "s": 3.3,
+            "runwayS": 3.2,
+            "underruns": 0
+          },
+          {
+            "s": 4.3,
+            "runwayS": 2.3,
+            "underruns": 0
+          },
+          {
+            "s": 5.3,
+            "runwayS": 2.6,
+            "underruns": 0
+          },
+          {
+            "s": 6.3,
+            "runwayS": 10.3,
+            "underruns": 0
+          },
+          {
+            "s": 7.3,
+            "runwayS": 32.8,
+            "underruns": 0
+          },
+          {
+            "s": 8.3,
+            "runwayS": 31.8,
+            "underruns": 0
+          },
+          {
+            "s": 9.2,
+            "runwayS": 30.8,
+            "underruns": 0
+          },
+          {
+            "s": 10.2,
+            "runwayS": 29.9,
+            "underruns": 0
+          }
+        ],
+        "seconds": 10,
+        "underruns": 0,
+        "minRunwayS": 1.4,
+        "meanRateKBs": 23,
+        "maxStallMs": 3,
+        "maxTickGapUs": 1011,
+        "maxLoopMs": 166.58,
+        "cpuPercent": {
+          "isr": 1.6,
+          "sd": 16,
+          "psramWrite": 13,
+          "psramRead": 2.5,
+          "ui": 16.1,
+          "audio": 46.5,
+          "wheel": 11.3,
+          "input": 5.5,
+          "bench": 2.3,
+          "bt": 4.1,
+          "misc": 2.2,
+          "loop": 97.8
+        }
+      },
+      {
+        "sample": "05 flac 16-44",
+        "stillPlaying": true,
+        "loadMs": 5529,
+        "load": [
+          {
+            "what": "start + slide to Now Playing",
+            "us": 912251
+          },
+          {
+            "what": "back to the album",
+            "us": 846849
+          },
+          {
+            "what": "back to the results",
+            "us": 838475
+          },
+          {
+            "what": "back to typing",
+            "us": 21959
+          },
+          {
+            "what": "search \"the\"",
+            "us": 73348
+          },
+          {
+            "what": "search \"a\"",
+            "us": 38058
+          },
+          {
+            "what": "leave search",
+            "us": 850759
+          },
+          {
+            "what": "open Tracks",
+            "us": 835644
+          },
+          {
+            "what": "fast scroll",
+            "us": 83350
+          },
+          {
+            "what": "fast scroll",
+            "us": 1420
+          },
+          {
+            "what": "fast scroll",
+            "us": 851
+          },
+          {
+            "what": "fast scroll",
+            "us": 851
+          },
+          {
+            "what": "fast scroll back",
+            "us": 52749
+          },
+          {
+            "what": "fast scroll back",
+            "us": 1415
+          }
+        ],
+        "trace": [
+          {
+            "s": 1.2,
+            "runwayS": 2.5,
+            "underruns": 0
+          },
+          {
+            "s": 2.2,
+            "runwayS": 2.5,
+            "underruns": 0
+          },
+          {
+            "s": 3.3,
+            "runwayS": 2,
+            "underruns": 0
+          },
+          {
+            "s": 4.4,
+            "runwayS": 2.3,
+            "underruns": 0
+          },
+          {
+            "s": 5.4,
+            "runwayS": 2.3,
+            "underruns": 0
+          },
+          {
+            "s": 6.4,
+            "runwayS": 4.3,
+            "underruns": 0
+          },
+          {
+            "s": 7.4,
+            "runwayS": 10.9,
+            "underruns": 0
+          },
+          {
+            "s": 8.4,
+            "runwayS": 17.6,
+            "underruns": 0
+          },
+          {
+            "s": 9.4,
+            "runwayS": 24.1,
+            "underruns": 0
+          },
+          {
+            "s": 10.3,
+            "runwayS": 29.7,
+            "underruns": 0
+          }
+        ],
+        "seconds": 10,
+        "underruns": 0,
+        "minRunwayS": 0.3,
+        "meanRateKBs": 70,
+        "maxStallMs": 4,
+        "maxTickGapUs": 1011,
+        "maxLoopMs": 451.62,
+        "cpuPercent": {
+          "isr": 4.7,
+          "sd": 24.7,
+          "psramWrite": 20.4,
+          "psramRead": 6.6,
+          "ui": 14.6,
+          "audio": 59.2,
+          "wheel": 7.2,
+          "input": 5.5,
+          "bench": 1.7,
+          "bt": 2.7,
+          "misc": 1.5,
+          "loop": 98.6
+        }
+      },
+      {
+        "sample": "06 wav 16-44",
+        "stillPlaying": true,
+        "loadMs": 5474,
+        "load": [
+          {
+            "what": "start + slide to Now Playing",
+            "us": 908922
+          },
+          {
+            "what": "back to the album",
+            "us": 840026
+          },
+          {
+            "what": "back to the results",
+            "us": 836067
+          },
+          {
+            "what": "back to typing",
+            "us": 21962
+          },
+          {
+            "what": "search \"the\"",
+            "us": 77213
+          },
+          {
+            "what": "search \"a\"",
+            "us": 38035
+          },
+          {
+            "what": "leave search",
+            "us": 851694
+          },
+          {
+            "what": "open Tracks",
+            "us": 852353
+          },
+          {
+            "what": "fast scroll",
+            "us": 83774
+          },
+          {
+            "what": "fast scroll",
+            "us": 1423
+          },
+          {
+            "what": "fast scroll",
+            "us": 847
+          },
+          {
+            "what": "fast scroll",
+            "us": 847
+          },
+          {
+            "what": "fast scroll back",
+            "us": 38671
+          },
+          {
+            "what": "fast scroll back",
+            "us": 8530
+          }
+        ],
+        "trace": [
+          {
+            "s": 1.2,
+            "runwayS": 2.5,
+            "underruns": 0
+          },
+          {
+            "s": 2.2,
+            "runwayS": 2.5,
+            "underruns": 0
+          },
+          {
+            "s": 3.3,
+            "runwayS": 2,
+            "underruns": 0
+          },
+          {
+            "s": 4.4,
+            "runwayS": 2.3,
+            "underruns": 0
+          },
+          {
+            "s": 5.4,
+            "runwayS": 2.5,
+            "underruns": 0
+          },
+          {
+            "s": 6.4,
+            "runwayS": 4.6,
+            "underruns": 0
+          },
+          {
+            "s": 7.4,
+            "runwayS": 11.4,
+            "underruns": 0
+          },
+          {
+            "s": 8.4,
+            "runwayS": 18.3,
+            "underruns": 0
+          },
+          {
+            "s": 9.4,
+            "runwayS": 25.1,
+            "underruns": 0
+          },
+          {
+            "s": 10.3,
+            "runwayS": 29.7,
+            "underruns": 0
+          }
+        ],
+        "seconds": 10,
+        "underruns": 0,
+        "minRunwayS": 0.3,
+        "meanRateKBs": 69,
+        "maxStallMs": 3,
+        "maxTickGapUs": 1011,
+        "maxLoopMs": 176.34,
+        "cpuPercent": {
+          "isr": 4.9,
+          "sd": 27.2,
+          "psramWrite": 22.4,
+          "psramRead": 6.8,
+          "ui": 13.4,
+          "audio": 63.4,
+          "wheel": 6.2,
+          "input": 5.2,
+          "bench": 1.4,
+          "bt": 2.3,
+          "misc": 1.3,
+          "loop": 98.8
+        }
+      },
+      {
+        "sample": "07 flac 24-48",
+        "stillPlaying": true,
+        "loadMs": 5807,
+        "load": [
+          {
+            "what": "start + slide to Now Playing",
+            "us": 930835
+          },
+          {
+            "what": "back to the album",
+            "us": 850342
+          },
+          {
+            "what": "back to the results",
+            "us": 832899
+          },
+          {
+            "what": "back to typing",
+            "us": 51206
+          },
+          {
+            "what": "search \"the\"",
+            "us": 90410
+          },
+          {
+            "what": "search \"a\"",
+            "us": 48190
+          },
+          {
+            "what": "leave search",
+            "us": 855413
+          },
+          {
+            "what": "open Tracks",
+            "us": 829855
+          },
+          {
+            "what": "fast scroll",
+            "us": 91454
+          },
+          {
+            "what": "fast scroll",
+            "us": 1420
+          },
+          {
+            "what": "fast scroll",
+            "us": 4801
+          },
+          {
+            "what": "fast scroll",
+            "us": 850
+          },
+          {
+            "what": "fast scroll back",
+            "us": 45826
+          },
+          {
+            "what": "fast scroll back",
+            "us": 842
+          }
+        ],
+        "trace": [
+          {
+            "s": 1.2,
+            "runwayS": 1.5,
+            "underruns": 0
+          },
+          {
+            "s": 2.2,
+            "runwayS": 1.7,
+            "underruns": 0
+          },
+          {
+            "s": 3.4,
+            "runwayS": 1.1,
+            "underruns": 0
+          },
+          {
+            "s": 4.3,
+            "runwayS": 1.6,
+            "underruns": 0
+          },
+          {
+            "s": 5.3,
+            "runwayS": 1.7,
+            "underruns": 0
+          },
+          {
+            "s": 6.3,
+            "runwayS": 1.8,
+            "underruns": 0
+          },
+          {
+            "s": 7.3,
+            "runwayS": 3.5,
+            "underruns": 0
+          },
+          {
+            "s": 8.3,
+            "runwayS": 5.6,
+            "underruns": 0
+          },
+          {
+            "s": 9.3,
+            "runwayS": 7.7,
+            "underruns": 0
+          },
+          {
+            "s": 10.3,
+            "runwayS": 9.6,
+            "underruns": 0
+          }
+        ],
+        "seconds": 10,
+        "underruns": 0,
+        "minRunwayS": 0,
+        "meanRateKBs": 154,
+        "maxStallMs": 4,
+        "maxTickGapUs": 1011,
+        "maxLoopMs": 516.06,
+        "cpuPercent": {
+          "isr": 10.7,
+          "sd": 28,
+          "psramWrite": 24.3,
+          "psramRead": 15.9,
+          "ui": 13.4,
+          "audio": 70.7,
+          "wheel": 3.5,
+          "input": 5.4,
+          "bench": 0.9,
+          "bt": 1.3,
+          "misc": 1.1,
+          "loop": 99.3
+        }
+      },
+      {
+        "sample": "08 flac 24-96",
+        "stillPlaying": true,
+        "loadMs": 5548,
+        "load": [
+          {
+            "what": "start + slide to Now Playing",
+            "us": 921403
+          },
+          {
+            "what": "back to the album",
+            "us": 841638
+          },
+          {
+            "what": "back to the results",
+            "us": 839432
+          },
+          {
+            "what": "back to typing",
+            "us": 22157
+          },
+          {
+            "what": "search \"the\"",
+            "us": 81973
+          },
+          {
+            "what": "search \"a\"",
+            "us": 35417
+          },
+          {
+            "what": "leave search",
+            "us": 847899
+          },
+          {
+            "what": "open Tracks",
+            "us": 844836
+          },
+          {
+            "what": "fast scroll",
+            "us": 83096
+          },
+          {
+            "what": "fast scroll",
+            "us": 1419
+          },
+          {
+            "what": "fast scroll",
+            "us": 848
+          },
+          {
+            "what": "fast scroll",
+            "us": 847
+          },
+          {
+            "what": "fast scroll back",
+            "us": 53804
+          },
+          {
+            "what": "fast scroll back",
+            "us": 1461
+          }
+        ],
+        "trace": [
+          {
+            "s": 1.2,
+            "runwayS": 2.4,
+            "underruns": 0
+          },
+          {
+            "s": 2.2,
+            "runwayS": 2.5,
+            "underruns": 0
+          },
+          {
+            "s": 3.3,
+            "runwayS": 2.1,
+            "underruns": 0
+          },
+          {
+            "s": 4.5,
+            "runwayS": 2.3,
+            "underruns": 0
+          },
+          {
+            "s": 5.5,
+            "runwayS": 2.4,
+            "underruns": 0
+          },
+          {
+            "s": 6.5,
+            "runwayS": 4.2,
+            "underruns": 0
+          },
+          {
+            "s": 7.4,
+            "runwayS": 10,
+            "underruns": 0
+          },
+          {
+            "s": 8.4,
+            "runwayS": 15.6,
+            "underruns": 0
+          },
+          {
+            "s": 9.4,
+            "runwayS": 21.4,
+            "underruns": 0
+          },
+          {
+            "s": 10.4,
+            "runwayS": 27.2,
+            "underruns": 0
+          }
+        ],
+        "seconds": 10,
+        "underruns": 0,
+        "minRunwayS": 0.2,
+        "meanRateKBs": 78,
+        "maxStallMs": 4,
+        "maxTickGapUs": 1011,
+        "maxLoopMs": 461.48,
+        "cpuPercent": {
+          "isr": 5.5,
+          "sd": 26.8,
+          "psramWrite": 21.4,
+          "psramRead": 7.3,
+          "ui": 13.9,
+          "audio": 62.1,
+          "wheel": 6.2,
+          "input": 6.1,
+          "bench": 1.5,
+          "bt": 2.3,
+          "misc": 1.4,
+          "loop": 98.8
+        }
+      }
+    ],
+    "playback": [
+      {
+        "sample": "01 mp3 64k mono 22k",
+        "durationS": 40,
+        "uiStartUs": 928368,
+        "firstSecondMs": 297,
+        "seekUs": 59229,
+        "seekSettleMs": 969,
+        "nextUs": 28187,
+        "prevUs": 34486,
+        "seconds": 19,
+        "underruns": 0,
+        "minRunwayS": 2.4,
+        "meanRateKBs": 8,
+        "maxStallMs": 3,
+        "maxTickGapUs": 1010,
+        "maxLoopMs": 119,
+        "cpuPercent": {
+          "isr": 0.6,
+          "sd": 5.3,
+          "psramWrite": 3.9,
+          "psramRead": 0.6,
+          "ui": 11.9,
+          "audio": 36.2,
+          "wheel": 17.3,
+          "input": 3.1,
+          "bench": 3.2,
+          "bt": 6.4,
+          "misc": 3.7,
+          "loop": 96.7
+        }
+      },
+      {
+        "sample": "02 mp3 128k",
+        "durationS": 40,
+        "uiStartUs": 936788,
+        "firstSecondMs": 304,
+        "seekUs": 41651,
+        "seekSettleMs": 1104,
+        "nextUs": 29114,
+        "prevUs": 36771,
+        "seconds": 19,
+        "underruns": 0,
+        "minRunwayS": 1.4,
+        "meanRateKBs": 16,
+        "maxStallMs": 3,
+        "maxTickGapUs": 1011,
+        "maxLoopMs": 136.6,
+        "cpuPercent": {
+          "isr": 1.2,
+          "sd": 10,
+          "psramWrite": 7.3,
+          "psramRead": 1.2,
+          "ui": 10.8,
+          "audio": 42.2,
+          "wheel": 15.6,
+          "input": 2.8,
+          "bench": 3,
+          "bt": 5.7,
+          "misc": 3.5,
+          "loop": 97
+        }
+      },
+      {
+        "sample": "03 mp3 320k",
+        "durationS": 40,
+        "uiStartUs": 938792,
+        "firstSecondMs": 288,
+        "seekUs": 61121,
+        "seekSettleMs": 1046,
+        "nextUs": 30372,
+        "prevUs": 30873,
+        "seconds": 19,
+        "underruns": 0,
+        "minRunwayS": 0.6,
+        "meanRateKBs": 40,
+        "maxStallMs": 4,
+        "maxTickGapUs": 1011,
+        "maxLoopMs": 133.3,
+        "cpuPercent": {
+          "isr": 2.9,
+          "sd": 17,
+          "psramWrite": 11.9,
+          "psramRead": 3.1,
+          "ui": 9,
+          "audio": 51.7,
+          "wheel": 12.9,
+          "input": 2.3,
+          "bench": 2.6,
+          "bt": 4.8,
+          "misc": 3.2,
+          "loop": 97.6
+        }
+      },
+      {
+        "sample": "04 mp3 V0 VBR",
+        "durationS": 40,
+        "uiStartUs": 935050,
+        "firstSecondMs": 289,
+        "seekUs": 55133,
+        "seekSettleMs": 1104,
+        "nextUs": 29473,
+        "prevUs": 59064,
+        "seconds": 19,
+        "underruns": 0,
+        "minRunwayS": 1,
+        "meanRateKBs": 23,
+        "maxStallMs": 4,
+        "maxTickGapUs": 1011,
+        "maxLoopMs": 119.62,
+        "cpuPercent": {
+          "isr": 1.6,
+          "sd": 12.6,
+          "psramWrite": 8.8,
+          "psramRead": 1.7,
+          "ui": 10.2,
+          "audio": 45.6,
+          "wheel": 14.6,
+          "input": 2.6,
+          "bench": 2.8,
+          "bt": 5.4,
+          "misc": 3.4,
+          "loop": 97.2
+        }
+      },
+      {
+        "sample": "05 flac 16-44",
+        "durationS": 40,
+        "uiStartUs": 938863,
+        "firstSecondMs": 432,
+        "seekUs": 62023,
+        "seekSettleMs": 1181,
+        "nextUs": 48667,
+        "prevUs": 64179,
+        "seconds": 19,
+        "underruns": 0,
+        "minRunwayS": 0.3,
+        "meanRateKBs": 70,
+        "maxStallMs": 4,
+        "maxTickGapUs": 1011,
+        "maxLoopMs": 146.93,
+        "cpuPercent": {
+          "isr": 5.1,
+          "sd": 27.6,
+          "psramWrite": 19.6,
+          "psramRead": 6.7,
+          "ui": 6.2,
+          "audio": 67.1,
+          "wheel": 8.5,
+          "input": 1.5,
+          "bench": 1.9,
+          "bt": 3.2,
+          "misc": 2.5,
+          "loop": 98.4
+        }
+      },
+      {
+        "sample": "06 wav 16-44",
+        "durationS": 40,
+        "uiStartUs": 931706,
+        "firstSecondMs": 435,
+        "seekUs": 60715,
+        "seekSettleMs": 1180,
+        "nextUs": 48653,
+        "prevUs": 63174,
+        "seconds": 19,
+        "underruns": 0,
+        "minRunwayS": 0.3,
+        "meanRateKBs": 69,
+        "maxStallMs": 4,
+        "maxTickGapUs": 1011,
+        "maxLoopMs": 149.42,
+        "cpuPercent": {
+          "isr": 5,
+          "sd": 25.7,
+          "psramWrite": 19.7,
+          "psramRead": 6.4,
+          "ui": 6.6,
+          "audio": 65.5,
+          "wheel": 8.9,
+          "input": 1.6,
+          "bench": 2,
+          "bt": 3.3,
+          "misc": 2.7,
+          "loop": 98.3
+        }
+      },
+      {
+        "sample": "07 flac 24-48",
+        "durationS": 40,
+        "uiStartUs": 962505,
+        "firstSecondMs": 462,
+        "seekUs": 47168,
+        "seekSettleMs": 1175,
+        "nextUs": 19879,
+        "prevUs": 63287,
+        "seconds": 19,
+        "underruns": 0,
+        "minRunwayS": 0,
+        "meanRateKBs": 154,
+        "maxStallMs": 4,
+        "maxTickGapUs": 1013,
+        "maxLoopMs": 190.09,
+        "cpuPercent": {
+          "isr": 11.1,
+          "sd": 39.8,
+          "psramWrite": 33.8,
+          "psramRead": 16.1,
+          "ui": 1.8,
+          "audio": 92,
+          "wheel": 1.4,
+          "input": 0.3,
+          "bench": 0.8,
+          "bt": 0.5,
+          "misc": 1.6,
+          "loop": 99.7
+        }
+      },
+      {
+        "sample": "08 flac 24-96",
+        "durationS": 40,
+        "uiStartUs": 936038,
+        "firstSecondMs": 445,
+        "seekUs": 76492,
+        "seekSettleMs": 1143,
+        "nextUs": 1040,
+        "prevUs": 58667,
+        "seconds": 19,
+        "underruns": 0,
+        "minRunwayS": 0.2,
+        "meanRateKBs": 78,
+        "maxStallMs": 5,
+        "maxTickGapUs": 1011,
+        "maxLoopMs": 155.99,
+        "cpuPercent": {
+          "isr": 5.7,
+          "sd": 22.9,
+          "psramWrite": 17.6,
+          "psramRead": 7.4,
+          "ui": 7.2,
+          "audio": 62.1,
+          "wheel": 10,
+          "input": 1.8,
+          "bench": 2.1,
+          "bt": 3.6,
+          "misc": 2.7,
+          "loop": 98.1
+        }
+      }
+    ],
+    "stress": {
+      "stillPlaying": true,
+      "scrollUs": {
+        "n": 1920,
+        "p50": 850,
+        "p95": 24695,
+        "max": 94593,
+        "mean": 5437
+      },
+      "seconds": 26,
+      "underruns": 0,
+      "minRunwayS": 2.1,
+      "meanRateKBs": 154,
+      "maxStallMs": 3,
+      "maxTickGapUs": 1012,
+      "maxLoopMs": 126.73,
+      "cpuPercent": {
+        "isr": 11,
+        "sd": 15.7,
+        "psramWrite": 13.7,
+        "psramRead": 21.3,
+        "ui": 4.6,
+        "audio": 55,
+        "wheel": 6.7,
+        "input": 21.1,
+        "bench": 1.4,
+        "bt": 2.5,
+        "misc": 1.5,
+        "loop": 98.7
+      }
+    },
+    "stats": {
+      "uptime_ms": "469412",
+      "free_ram": "3520",
+      "_raw": "uptime_ms=469412 free_ram=3520"
+    }
+  },
+  "errors": [],
+  "background": {
+    "enabled": true,
+    "sample": "05 flac 16-44",
+    "restarts": 0,
+    "startMs": 713
+  }
+}

@@ -30,6 +30,14 @@
 #define NEXT_TRACK_BUFFER_SIZE    (1 * 1024 * 1024) // 1 Mb
 #define MUSIC_INDEX_BASE_ADDRESS  (NEXT_TRACK_BUFFER_BASE_ADDRESS + NEXT_TRACK_BUFFER_SIZE)
 #define MUSIC_INDEX_SIZE          (PSRAM_SIZE - AUDIO_BUFFER_SIZE - COVER_BUFFER_SIZE - NEXT_TRACK_BUFFER_SIZE) // Remaining PSRAM size for music index
+// The music region holds the podcast listening state (state/podcast_state.h,
+// 20 B per episode: 6,553 episodes) and, after it, the cache of index pages
+// read from the SD card (storage/PageStore.h). The index itself stays on the
+// card, so it can be any size.
+#define PODCAST_STATE_BASE_ADDRESS MUSIC_INDEX_BASE_ADDRESS
+#define PODCAST_STATE_SIZE        (128 * 1024)
+#define INDEX_CACHE_BASE_ADDRESS  (PODCAST_STATE_BASE_ADDRESS + PODCAST_STATE_SIZE)
+#define INDEX_CACHE_SIZE          (MUSIC_INDEX_SIZE - PODCAST_STATE_SIZE)
 
 static_assert(AUDIO_BUFFER_SIZE + COVER_BUFFER_SIZE + NEXT_TRACK_BUFFER_SIZE < PSRAM_SIZE,
              "Audio + cover buffer + next-track prefetch regions must leave room in PSRAM for the music index");

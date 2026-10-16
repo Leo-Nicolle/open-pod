@@ -72,6 +72,7 @@ public:
   uint16_t getDecodeTime();
   // Estimated total track length in seconds (0 if not yet known).
   uint32_t getDurationSeconds() { return _buffer.getDurationSeconds(); }
+  Audio_buffer &buffer() { return _buffer; }
   void setPlaySpeed(uint16_t speed);
   uint16_t getPlaySpeed();
 

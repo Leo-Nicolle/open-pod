@@ -1,5 +1,15 @@
 # Performance and memory: a music index that scales to a full SD card
 
+> **Status (2026-10-16): superseded by the paged index.** The syncer now writes every
+> table and the search trie into one file, `openpod/index.pack`
+> (`syncer/crates/core/src/index/pack.rs`), with dense formats (no id arrays, relations
+> with prefix-sum starts). The firmware no longer copies anything at boot: it reads
+> 8 KB pages of the pack on demand into a PSRAM cache (`software/src/storage/PageStore.h`,
+> ~240 pages, CLOCK eviction), so the library is bounded by the card (20k tracks: 5.3 MB
+> pack; 100k: 24 MB). Podcasts get `podcasts.pack`; the listening state has a fixed
+> 128 KB region (`PODCAST_STATE_*` in `PSRAM_controller.hpp`). Old cards show
+> "Library needs a re-sync". What follows is the original analysis.
+
 ## Context
 
 At boot, the whole music index (`/openpod/*.bin`, from the indexer) is copied into the

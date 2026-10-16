@@ -1,4 +1,5 @@
 #include "state.h"
+#include "fast_scroll.h"
 #include "app_toast.h"
 #include "podcast_menu.h"
 
@@ -13,7 +14,7 @@ State::State()
       playingListEntityId(0), playingListTotalTracks(0),
       podcastSource(nullptr), podcastState(nullptr), lastPodcastSave(0),
       volume(60),
-      seekModeActive(false), fastScrollActive(false), selectedIndex(0), topVisibleIndex(0),
+      seekModeActive(false), fastScrollLetters(0), selectedIndex(0), topVisibleIndex(0),
       isAnimating(false), scrollAnimId(0),
       transitionAnimId(0), isRotatedMode(false) {
   playingTrackName[0] = '\0';
@@ -444,6 +445,63 @@ void State::pageDown() {
   }
 }
 
+void State::jumpTo(int index) {
+  if (totalElements <= 0) {
+    return;
+  }
+  int oldSelected = selectedIndex;
+  int oldTopVisible = topVisibleIndex;
+  int offset = selectedIndex - topVisibleIndex;
+  selectedIndex = constrain(index, 0, totalElements - 1);
+  topVisibleIndex = constrain(selectedIndex - offset, 0,
+                              max(0, totalElements - ELEMENTS_PER_SCREEN));
+  if (needsScrollUpdate(oldSelected, oldTopVisible)) {
+    updateVisibleElements();
+    ScrollChangedEvent event = {selectedIndex, topVisibleIndex, oldSelected,
+                                oldTopVisible, visibleElements};
+    emitEvent(EVENT_PAGE_CHANGED, &event);
+  }
+}
+
+void State::letterJump(int clicks, int letters) {
+  int dir = clicks < 0 ? 1 : -1; // negative clicks scroll down
+  int list = globalList();
+  int pos = selectedIndex;
+  for (int i = 0; i < abs(clicks); i++) {
+    int next = -1;
+    if (list >= 0 && windowLookup) {
+      next = windowLookup->letterBucket(list, letters, pos, dir);
+    }
+    if (next < 0) {
+      next = fastScrollJump(pos, dir, letters, totalElements, keyAt, this);
+    }
+    if (next == pos) {
+      break;
+    }
+    pos = next;
+  }
+  jumpTo(pos);
+}
+
+bool State::keyAt(void *self, int index, int letters, char *out) {
+  State *s = (State *)self;
+  const char *name = s->elementAt(index);
+  if (!name && !s->elements && s->windowLookup) {
+    // Outside the window: read just this name, the window stays.
+    char buf[256];
+    const char *ptr = nullptr;
+    if (s->loadNames(index, buf, sizeof(buf), &ptr, 1) == 1) {
+      fastScrollKey(ptr, letters, out);
+      return true;
+    }
+  }
+  if (!name) {
+    return false;
+  }
+  fastScrollKey(name, letters, out);
+  return true;
+}
+
 void State::updateVisibleElements() {
   ensureWindow(topVisibleIndex, topVisibleIndex + ELEMENTS_PER_SCREEN - 1);
   for (int i = 0; i < ELEMENTS_PER_SCREEN; i++) {
@@ -511,10 +569,11 @@ void State::exitSeekMode() {
   }
 }
 
-void State::setFastScroll(bool active) {
-  if (fastScrollActive != active) {
-    fastScrollActive = active;
-    FastScrollEvent event = {active};
+void State::setFastScroll(int letters) {
+  uint8_t l = (uint8_t)constrain(letters, 0, 3);
+  if (fastScrollLetters != l) {
+    fastScrollLetters = l;
+    FastScrollEvent event = {l > 0, l};
     emitEvent(EVENT_FAST_SCROLL_CHANGED, &event);
   }
 }

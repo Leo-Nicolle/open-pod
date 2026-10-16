@@ -8,6 +8,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include <functional>
 #include <map>
 #include <memory>
 #include <string>
@@ -31,6 +32,10 @@ namespace openpod_test {
 struct FakeFs {
   std::map<std::string, std::shared_ptr<std::vector<uint8_t>>> files;
   bool sdBeginResult = true;
+  // Called with the path before a "*.pack" file is opened, so tests can
+  // register index tables one by one and have them packed on demand
+  // (test_helpers.h packTables).
+  std::function<void(const std::string &)> packer;
 
   static FakeFs &get() {
     static FakeFs instance;
@@ -40,6 +45,7 @@ struct FakeFs {
   void reset() {
     files.clear();
     sdBeginResult = true;
+    packer = nullptr;
   }
 
   void addFile(const std::string &name, const std::vector<uint8_t> &data) {
@@ -67,8 +73,13 @@ public:
     open_ = false;
     data_.reset();
     pos_ = 0;
-    auto &files = openpod_test::FakeFs::get().files;
-    auto it = files.find(std::string(path));
+    openpod_test::FakeFs &fs = openpod_test::FakeFs::get();
+    std::string p(path);
+    if (fs.packer && p.size() > 5 && p.compare(p.size() - 5, 5, ".pack") == 0) {
+      fs.packer(p);
+    }
+    auto &files = fs.files;
+    auto it = files.find(p);
     if (it == files.end()) {
       return false;
     }
@@ -92,6 +103,15 @@ public:
     memcpy(buf, data_->data() + pos_, n);
     pos_ += n;
     return n;
+  }
+
+  // The fake card's files are all contiguous.
+  bool contiguousRange(uint32_t *bgn, uint32_t *end) {
+    if (bgn)
+      *bgn = 0;
+    if (end)
+      *end = 0;
+    return open_;
   }
 
   bool seekSet(uint32_t pos) {
@@ -126,6 +146,12 @@ class SdFat {
 public:
   bool begin(const SdSpiConfig &) {
     return openpod_test::FakeFs::get().sdBeginResult;
+  }
+  // Opens on this volume, as the real SdFs::open does.
+  FsFile open(const char *path, int flags = O_RDONLY) {
+    FsFile f;
+    f.open(path, flags);
+    return f;
   }
   uint32_t sectorsPerCluster() { return 1; }
   uint32_t clusterCount() { return 1024; }

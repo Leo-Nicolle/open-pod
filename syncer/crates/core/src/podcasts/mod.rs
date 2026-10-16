@@ -19,7 +19,7 @@ use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
 
-use crate::index::thumbs;
+use crate::index::{pack, thumbs};
 use crate::manifest::{self, SourceRef};
 
 pub const VERSION: u32 = 1;
@@ -279,7 +279,8 @@ where
         .map(|e| tree::EpisodeIn { folders: &e.folders, title: &e.title, date: e.date, duration: e.duration, path: &e.path })
         .collect();
     let t = tree::build(&ins);
-    let mut files = t.files(&ins);
+    let mut sections = t.sections(&ins);
+    let mut files: Vec<(String, Vec<u8>)> = Vec::new();
 
     // Covers: a folder without its own art shows its parent's.
     let own: Vec<Option<Vec<u8>>> = t
@@ -304,8 +305,9 @@ where
         .map(|(i, f)| thumbs::generate(source[i].and_then(|s| own[s].as_deref()), thumbs_cfg, &f.dir))
         .collect();
     let packed = thumbs::pack(&thumbs, thumbs_cfg.format);
+    sections.push((pack::section::POD_FOLDER_TO_COVER, thumbs::cover_index(&packed.entries)));
+    files.push((pack::PODCAST_FILE.into(), pack::pack(&sections)));
     files.push(("podcast_thumbs.bin".into(), packed.blob));
-    files.push(("podcast_folder_to_cover.bin".into(), thumbs::cover_index(&packed.entries)));
 
     let keys: Vec<u64> = t.order.iter().map(|&i| m.episodes[i].key()).collect();
     let old = old_state.and_then(state::parse).map(|(_, r)| r).unwrap_or_default();
@@ -370,8 +372,20 @@ pub fn reindex(card: &Path, m: &mut PodcastManifest) -> io::Result<Summary> {
     for (name, bytes) in files {
         write_atomic(&dir.join(name), &bytes)?;
     }
+    for name in LEGACY_FILES {
+        let _ = fs::remove_file(dir.join(name));
+    }
     Ok(summary)
 }
+
+/// The per-table files that `podcasts.pack` replaced.
+const LEGACY_FILES: [&str; 13] = [
+    "podcast_folder_names.bin", "podcast_folder_parent.bin", "podcast_folder_flags.bin",
+    "podcast_folder_span.bin", "podcast_folder_children.bin", "podcast_folder_episodes.bin",
+    "podcast_episode_titles.bin", "podcast_episode_paths.bin", "podcast_episode_durations.bin",
+    "podcast_episode_folder.bin", "podcast_episode_date.bin", "podcast_episode_number.bin",
+    "podcast_folder_to_cover.bin",
+];
 
 /// What the podcast mirror did, in the sync report.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]

@@ -1,4 +1,4 @@
-//! The podcast browser's tables (`openpod/podcast_*.bin`): a folder tree of
+//! The podcast browser's tables (`openpod/podcasts.pack`): a folder tree of
 //! any depth (publisher / show / [series] / episode) mirrored from the
 //! podcasts folder.
 //!
@@ -12,6 +12,7 @@
 use std::collections::BTreeMap;
 
 use crate::index::binary::{dense_u32, durations, relation, string_index};
+use crate::index::pack::section;
 use crate::index::model::Relation;
 use crate::index::text::sanitize_name;
 
@@ -165,7 +166,9 @@ fn first_episode(node: &Node) -> Option<usize> {
 impl Tree {
     /// The tables, as (file name, bytes). Covers and state are written by
     /// the caller.
-    pub fn files(&self, eps: &[EpisodeIn]) -> Vec<(String, Vec<u8>)> {
+    /// The tables as `podcasts.pack` sections (the cover index is added by
+    /// the caller).
+    pub fn sections(&self, eps: &[EpisodeIn]) -> Vec<(u32, Vec<u8>)> {
         let f = &self.folders;
         let rel = |pick: &dyn Fn(&Folder) -> &Vec<u32>| -> Relation {
             f.iter().enumerate().map(|(i, x)| (i as u32, pick(x).iter().copied().collect())).collect()
@@ -182,18 +185,18 @@ impl Tree {
         let secs: Vec<f64> = self.order.iter().map(|&i| eps[i].duration).collect();
         let spans: Vec<u32> = f.iter().flat_map(|x| [x.span.0, x.span.1]).collect();
         vec![
-            ("podcast_folder_names.bin".into(), string_index(&names)),
-            ("podcast_folder_parent.bin".into(), dense_u32(&f.iter().map(|x| x.parent).collect::<Vec<_>>())),
-            ("podcast_folder_flags.bin".into(), dense_u32(&f.iter().map(|x| if x.series { SERIES } else { 0 }).collect::<Vec<_>>())),
-            ("podcast_folder_span.bin".into(), dense_u32(&spans)),
-            ("podcast_folder_children.bin".into(), relation(&rel(&|x| &x.children))),
-            ("podcast_folder_episodes.bin".into(), relation(&rel(&|x| &x.episodes))),
-            ("podcast_episode_titles.bin".into(), string_index(&self.titles)),
-            ("podcast_episode_paths.bin".into(), string_index(&paths)),
-            ("podcast_episode_durations.bin".into(), durations(&secs)),
-            ("podcast_episode_folder.bin".into(), dense_u32(&episode_folder)),
-            ("podcast_episode_date.bin".into(), dense_u32(&ep(&|e| e.date))),
-            ("podcast_episode_number.bin".into(), dense_u32(&self.numbers)),
+            (section::POD_FOLDER_NAMES, string_index(&names)),
+            (section::POD_FOLDER_PARENT, dense_u32(&f.iter().map(|x| x.parent).collect::<Vec<_>>())),
+            (section::POD_FOLDER_FLAGS, dense_u32(&f.iter().map(|x| if x.series { SERIES } else { 0 }).collect::<Vec<_>>())),
+            (section::POD_FOLDER_SPAN, dense_u32(&spans)),
+            (section::POD_FOLDER_CHILDREN, relation(&rel(&|x| &x.children), f.len())),
+            (section::POD_FOLDER_EPISODES, relation(&rel(&|x| &x.episodes), f.len())),
+            (section::POD_EPISODE_TITLES, string_index(&self.titles)),
+            (section::POD_EPISODE_PATHS, string_index(&paths)),
+            (section::POD_EPISODE_DURATIONS, durations(&secs)),
+            (section::POD_EPISODE_FOLDER, dense_u32(&episode_folder)),
+            (section::POD_EPISODE_DATE, dense_u32(&ep(&|e| e.date))),
+            (section::POD_EPISODE_NUMBER, dense_u32(&self.numbers)),
         ]
     }
 }
@@ -242,6 +245,6 @@ mod tests {
         assert_eq!(t.folders[3].dir, "Podcasts/France Culture/Fiction");
         assert_eq!(t.folders[1].children, [2, 3]);
         assert_eq!(t.folders[4].parent, 3);
-        assert_eq!(t.files(&eps).len(), 12);
+        assert_eq!(t.sections(&eps).len(), 12);
     }
 }

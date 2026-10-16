@@ -38,13 +38,15 @@ int State::routeListLength(MusicLookup &musicLookup) {
 }
 
 int State::loadWindow(int start) {
+  return loadNames(start, elementsBuffer, ELEMENTS_BUFFER_SIZE, stringPointers,
+                   MAX_STRING_POINTERS);
+}
+
+int State::loadNames(int start, char *buf, uint32_t size, const char **ptrs,
+                     uint32_t n) {
   MusicLookup &m = *windowLookup;
   Route_t &route = router.getCurrentRoute();
   bool scoped = router.getDepth() > 0;
-  char *buf = elementsBuffer;
-  const uint32_t size = ELEMENTS_BUFFER_SIZE;
-  const char **ptrs = stringPointers;
-  const uint32_t n = MAX_STRING_POINTERS;
   const uint32_t id = route.entityId;
   switch (route.type) {
   case Route_t::ARTISTS:
@@ -67,6 +69,29 @@ int State::loadWindow(int start) {
     return m.getAllTracks(buf, size, ptrs, n, start);
   default:
     return 0;
+  }
+}
+
+int State::globalList() {
+  if (elements || !windowLookup) {
+    return -1;
+  }
+  Route_t &route = router.getCurrentRoute();
+  bool scoped = router.getDepth() > 0;
+  bool byArtistOrGenre = scoped && (route.scope == Route_t::ARTISTS ||
+                                    route.scope == Route_t::GENRES);
+  switch (route.type) {
+  case Route_t::ARTISTS:
+    return 0;
+  case Route_t::ALBUMS:
+    return byArtistOrGenre ? -1 : 1;
+  case Route_t::GENRES:
+    return 2;
+  case Route_t::TRACKS:
+    return byArtistOrGenre || (scoped && route.scope == Route_t::ALBUMS) ? -1
+                                                                          : 3;
+  default:
+    return -1;
   }
 }
 
@@ -303,7 +328,7 @@ void State::goToSelected(MusicLookup &musicLookup) {
   if (newRouteType != Route_t::NOW_PLAYING) {
     loadCurrentRouteData(musicLookup);
   }
-  fastScrollActive = false;
+  fastScrollLetters = 0;
   emitEvent(EVENT_ROUTE_CHANGED, &event);
 }
 
@@ -336,7 +361,7 @@ bool State::back(MusicLookup &musicLookup) {
                              currentRoute.entityName,
                              false,
                              router.canGoBack()};
-  fastScrollActive = false;
+  fastScrollLetters = 0;
   emitEvent(EVENT_ROUTE_CHANGED, &event);
 
   return true;
@@ -365,7 +390,7 @@ void State::pushMenuRoute(Route_t::RouteType type, uint32_t entityId,
                              0,            (uint32_t)selected,
                              title,        true,  router.canGoBack()};
   setAnimating(true);
-  fastScrollActive = false;
+  fastScrollLetters = 0;
   emitEvent(EVENT_ROUTE_CHANGED, &event);
 }
 
@@ -395,7 +420,7 @@ void State::backToMain(MusicLookup &musicLookup) {
                              currentRoute.entityName,
                              false,
                              router.canGoBack()};
-  fastScrollActive = false;
+  fastScrollLetters = 0;
   emitEvent(EVENT_ROUTE_CHANGED, &event);
 }
 
@@ -410,7 +435,7 @@ void State::goToNowPlaying(MusicLookup &musicLookup) {
   RouteChangedEvent event = {oldRouteType, Route_t::NOW_PLAYING, 0, 0, 0,
                              nullptr,      true,                router.canGoBack()};
   setAnimating(true);
-  fastScrollActive = false;
+  fastScrollLetters = 0;
   emitEvent(EVENT_ROUTE_CHANGED, &event);
 }
 

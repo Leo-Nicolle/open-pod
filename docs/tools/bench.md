@@ -6,7 +6,7 @@ aside: false
 
 A hardware-in-the-loop test bench for the firmware. A Nucleo board with the real display, VS1053 and click wheel boots on a card holding a **large synthetic library** (20,000 tracks by default, with no audio files behind them) plus **one real sample per audio quality**. A script then drives it over serial, the way a user would: it scrolls, opens menus, searches, plays, seeks and skips tracks. It records how long each step took and what the audio buffer went through. Each firmware revision gets a report, and the reports are published below.
 
-To watch a board live, drive it, or run the bench without the command line, see the [live bench](./bench-live).
+To watch a board live, drive it, or run the bench without the command line, see the [live bench](./bench-live). To compare any two reports, including ones not published yet, see [Compare reports](./bench-compare).
 
 <BenchReport />
 
@@ -86,7 +86,7 @@ The `bench` build (`-DOPENPOD_BENCH=1`) adds these commands to the debug serial.
 | Command | Answer |
 |---|---|
 | `#click <select\|menu\|play\|next\|prev>`, `#long <button>` | Once the UI has settled: `us=` time it took |
-| `#scroll <clicks>` | Same; negative clicks scroll down. One event of N clicks: past 1 it's a fast-scroll page jump |
+| `#scroll <clicks>` | Same; negative clicks scroll down. One event of N clicks counts as N clicks at once for the fast-scroll speed, so a big one jumps by letters |
 | `#spin <deg> <ms> [startDeg] [stillMs]` | Virtual finger: touches, turns `deg` (15° a click, positive = counter-clockwise = up) over `ms`, rests `stillMs` (100), lifts. `us=` from the end of the gesture to a settled UI, `events=` handled |
 | `#hold <button[+button]> <ms>` | Virtual finger: holds the button(s). Same answer |
 | `#gesture <ms>:<deg\|up>[+button] …` | Virtual finger: raw keyframes, e.g. `0:90 300:90 320:75 330:up`. Same answer |
@@ -95,13 +95,15 @@ The `bench` build (`-DOPENPOD_BENCH=1`) adds these commands to the debug serial.
 | `#clear` | Empties the search query |
 | `#seek <seconds>` | Seeks the playing track, `us=` |
 | `#repeat <0\|1>` | Loops the playing track at its end, instead of moving on |
-| `#state` | Route, selection, highlighted row label, playing track, position, volume, search query and hits, and `fast=` (fast-scroll overlay), `seek=` (seek mode), `screen=` (display on), `anim=` (a transition playing) |
+| `#state` | Route, selection, highlighted row label, playing track, position, volume, search query and hits, and `fast=` (fast-scroll overlay), `letters=` (letters it shows), `key=` (the highlighted row's 3-letter fast-scroll key), `seek=` (seek mode), `screen=` (display on), `anim=` (a transition playing), `miss=` (index pages read from the card so far) |
+| `#scrollcfg [t3=] [t2=] [t1=] [win=] [gap=] [drop=]` | Fast-scroll tiers (`src/state/fast_scroll.h`): clicks per second from which a click jumps by 3, 2 or 1 letters, the speed window and the pause that starts over (ms), and how far below a tier's threshold it drops back (%). Sets the given ones, answers all of them |
+| `#cache [reset]` | Index page cache (`src/storage/PageStore.h`): `slots=`, `page=` bytes, `hits=`, `misses=`, `miss_us=` (time spent reading pages from the card) |
 | `#dataset` | The card's `bench.json` and the counts the firmware loaded |
 | `#stats`, `#version`, `#ping` | Uptime and free RAM, the git revision it was built from |
 
 At the end of `setup()` it prints `#boot ms=… lookup_ms=… search_index_ms=… rev=…`.
 
-Every wheel event the UI handles is echoed as `#ev <type> [b=<button>] [v=<clicks>] t=<board ms>`: `down`, `up`, `click`, `long`, `verylong`, `scroll`, `touch`, `untouch`. That covers events from the real wheel, the virtual finger and `#click`/`#scroll`. While a finger is on the wheel, `#ev finger a=<deg>` follows it, at most 30 times a second (`a=-1` when lifted).
+Every wheel event the UI handles is echoed as `#ev <type> [b=<button>] [v=<clicks>] t=<board ms>`: `down`, `up`, `click`, `long`, `verylong`, `scroll`, `touch`, `untouch`. When list scrolling changes speed tier, `#ev fast l=<letters> v=<clicks/s>` (`l=0`: rows). That covers events from the real wheel, the virtual finger and `#click`/`#scroll`. While a finger is on the wheel, `#ev finger a=<deg>` follows it, at most 30 times a second (`a=-1` when lifted).
 
 ## Using the live bench
 
@@ -136,7 +138,7 @@ stty -F /dev/ttyACM0 min 1 time 0
 
 ## End-to-end tests
 
-`#click` and `#scroll` hand the UI ready-made events. That's right for timing the UI, but it skips the wheel's own rules: 20 ms debounce, scroll clicks held 80 ms and dropped if the finger lifts meanwhile, long press at 800 ms, very long at 2000 ms, and the fast-scroll overlay after 6 clicks within 300 ms.
+`#click` and `#scroll` hand the UI ready-made events. That's right for timing the UI, but it skips the wheel's own rules: 20 ms debounce, scroll clicks held 80 ms and dropped if the finger lifts meanwhile, long press at 800 ms, very long at 2000 ms, and the fast-scroll speed tiers.
 
 The **virtual finger** (`#spin`, `#hold`, `#gesture`) stands in for the wheel's sensors instead: the angle the capacitive pads would read, and the button pins. Everything after that runs as with a real finger. The board plays the gesture itself, so USB timing doesn't blur a 300 ms flick. It hands the wheel back to the sensors 1.5 s after the finger lifts.
 

@@ -114,6 +114,7 @@ struct SeekModeEvent {
 
 struct FastScrollEvent {
   bool active;
+  uint8_t letters; // the overlay's letter count (0 when hidden)
 };
 
 // Which parts of the search screen a change touched, so the UI redraws
@@ -174,7 +175,7 @@ private:
   int volume;          // 0-100 logical volume
   bool seekModeActive; // Now Playing seek-mode (center press to enter)
   bool repeatTrack = false; // see setRepeatTrack()
-  bool fastScrollActive; // list letter overlay (wheel spinning fast)
+  uint8_t fastScrollLetters; // list letter overlay: letters shown, 0 = hidden
 
   // Navigation state - RENAMED for generalization
   int selectedIndex;        // Currently selected item (was selectedTrackIndex)
@@ -199,6 +200,13 @@ private:
   // Loads up to MAX_STRING_POINTERS names of the current route's list
   // from `start`; returns how many.
   int loadWindow(int start);
+  // Names [start, start + n) of the current route's list into buf/ptrs.
+  int loadNames(int start, char *buf, uint32_t size, const char **ptrs,
+                uint32_t n);
+  // Which full list (MusicLookup letter tables: 0 artists, 1 albums, 2
+  // genres, 3 tracks) the current route shows, -1 for a scoped or static one.
+  int globalList();
+  static bool keyAt(void *self, int index, int letters, char *out);
   // Name of row i of the current list, nullptr if not loaded.
   const char *elementAt(int i) const;
   // Length of the current route's list in the music index.
@@ -237,6 +245,12 @@ public:
   void scrollDown();
   void pageUp();
   void pageDown();
+  // Moves the highlight to `index`, keeping its row on screen where it was;
+  // one EVENT_PAGE_CHANGED.
+  void jumpTo(int index);
+  // Fast scroll: |clicks| jumps to the next (clicks < 0, down) or previous
+  // `letters`-letter bucket (state/fast_scroll.h), then one jumpTo().
+  void letterJump(int clicks, int letters);
   
   // Playback control. startAt: seconds to start from.
   void startPlayback(int trackIndex, uint32_t trackId, MusicLookup &musicLookup,
@@ -308,11 +322,13 @@ public:
   void exitSeekMode();
   bool getSeekModeActive() const { return seekModeActive; }
 
-  // Fast-scroll letter overlay on lists. Emits EVENT_FAST_SCROLL_CHANGED on
+  // Fast-scroll letter overlay on lists, showing `letters` (1-3) letters of
+  // the highlighted title, 0 = hidden. Emits EVENT_FAST_SCROLL_CHANGED on
   // change only. Route changes clear it without an event (the transition
   // redraws the whole screen anyway).
-  void setFastScroll(bool active);
-  bool getFastScrollActive() const { return fastScrollActive; }
+  void setFastScroll(int letters);
+  bool getFastScrollActive() const { return fastScrollLetters > 0; }
+  int getFastScrollLetters() const { return fastScrollLetters; }
 
   // UI state management
   void setAnimating(bool animating, uint32_t animId = 0);

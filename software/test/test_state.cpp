@@ -548,11 +548,11 @@ TEST_SUITE("State Playback Tests") {
 
     State state;
     navigateToTracks(state, lookup);
-    state.goToSelected(lookup); // Start playback of track 0 (id 1)
+    state.goToSelected(lookup); // Start playback of track 0 (id 0)
 
     uint32_t nextTrackId = 0;
     CHECK(state.getNextTrackId(lookup, nextTrackId) == true);
-    CHECK(nextTrackId == 2);
+    CHECK(nextTrackId == 1);
 
     state.notifyTrackEnded(lookup); // Advance to the last track
 

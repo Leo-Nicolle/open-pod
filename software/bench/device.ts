@@ -62,12 +62,14 @@ export type WheelEvent = {
   t: number;
   /** Board time (millis()), ms: exact spacing between events. */
   boardMs: number;
-  type: "down" | "up" | "click" | "long" | "verylong" | "scroll" | "touch" | "untouch" | "finger";
+  type: "down" | "up" | "click" | "long" | "verylong" | "scroll" | "touch" | "untouch" | "finger" | "fast";
   button?: ButtonName;
   /** Scroll clicks (positive = up) for `scroll`. */
   value?: number;
   /** Degrees for `finger`, -1 = lifted. */
   angle?: number;
+  /** For `fast`: the letters list scrolling now jumps by (0 = rows); `value` is the wheel's clicks/s. */
+  letters?: number;
 };
 
 /** What a gesture or input command answers once the UI has settled. */
@@ -120,6 +122,7 @@ export function parseEvent(line: string, t: number): WheelEvent | null {
   if (f.b) e.button = f.b as ButtonName;
   if (f.v !== undefined) e.value = +f.v;
   if (f.a !== undefined) e.angle = +f.a;
+  if (f.l !== undefined) e.letters = +f.l;
   return e;
 }
 
@@ -185,6 +188,15 @@ export class Device {
   }
 
   private onLine(line: string) {
+    // Output the board printed while nobody read the port loses bytes, a
+    // line's newline among them: an answer can then follow the truncated
+    // line it was glued to ("...max20#ok state ...").
+    const glued = line.search(/#(ok|err|ev) /);
+    if (glued > 0) {
+      this.onLine(line.slice(0, glued));
+      this.onLine(line.slice(glued));
+      return;
+    }
     const t = this.now();
     this.log.push(`${t}\t${line}`);
     const prof = parseProf(line, t);
@@ -262,6 +274,21 @@ export class Device {
 
   async state(): Promise<Fields> {
     return this.send("state");
+  }
+
+  /**
+   * Fast-scroll speed tiers (clicks/s for 3, 2 and 1 letter jumps, speed
+   * window, pause that resets, hysteresis %): sets the given ones, answers
+   * them all (`#scrollcfg`).
+   */
+  scrollConfig(set: Partial<Record<"t3" | "t2" | "t1" | "win" | "gap" | "drop", number>> = {}): Promise<Fields> {
+    const args = Object.entries(set).map(([k, v]) => `${k}=${Math.round(v!)}`).join(" ");
+    return this.send("scrollcfg", args);
+  }
+
+  /** Index page cache counters (`#cache`); `reset` zeroes them first. */
+  cache(reset = false): Promise<Fields> {
+    return this.send("cache", reset ? "reset" : "");
   }
 
   // --- Virtual finger: the board plays these through the wheel's sensor

@@ -94,29 +94,29 @@ std::vector<uint8_t> buildFlatMusicIndex(const std::vector<TrieLeaf> &leaves) {
 
 // registerStateTestCatalog() ("Solo Artist" / "Double Album" with "First
 // Song" + "Second Song" / genre "Indie") plus a trie over it. No
-// album_to_artist.bin, so album rows exercise the first-track fallback.
+// album->artist section, so album rows exercise the first-track fallback.
 void setupSearchCatalog() {
   openpod_test::resetAll();
   openpod_test::registerStateTestCatalog();
   auto &fs = openpod_test::FakeFs::get();
 
   std::vector<std::pair<uint32_t, uint32_t>> track_to_artist;
-  track_to_artist.push_back(std::make_pair(1u, 1u));
-  track_to_artist.push_back(std::make_pair(2u, 1u));
+  track_to_artist.push_back(std::make_pair(0u, 0u));
+  track_to_artist.push_back(std::make_pair(1u, 0u));
   fs.addFile("/openpod/track_to_artist.bin",
              openpod_test::buildTrackToAlbumIndex(track_to_artist));
 
   std::vector<TrieLeaf> leaves = {
-      {"first song", {{SEARCH_TRACK, 1, "first song", 100}}},
-      {"second song", {{SEARCH_TRACK, 2, "second song", 100}}},
-      // word key: both tracks, plus a duplicate of track 1
+      {"first song", {{SEARCH_TRACK, 0, "first song", 100}}},
+      {"second song", {{SEARCH_TRACK, 1, "second song", 100}}},
+      // word key: both tracks, plus a duplicate of track 0
       {"song",
-       {{SEARCH_TRACK, 2, "second song", 40},
-        {SEARCH_TRACK, 1, "first song", 40},
-        {SEARCH_TRACK, 1, "first song", 30}}},
-      {"double album", {{SEARCH_ALBUM, 1, "double album", 100}}},
-      {"solo artist", {{SEARCH_ARTIST, 1, "solo artist", 100}}},
-      {"indie", {{SEARCH_GENRE, 1, "indie", 100}}},
+       {{SEARCH_TRACK, 1, "second song", 40},
+        {SEARCH_TRACK, 0, "first song", 40},
+        {SEARCH_TRACK, 0, "first song", 30}}},
+      {"double album", {{SEARCH_ALBUM, 0, "double album", 100}}},
+      {"solo artist", {{SEARCH_ARTIST, 0, "solo artist", 100}}},
+      {"indie", {{SEARCH_GENRE, 0, "indie", 100}}},
       // ten unnamed tracks, to scroll through
       {"many",
        {{SEARCH_TRACK, 10, "m0", 100}, {SEARCH_TRACK, 11, "m1", 100},
@@ -198,7 +198,7 @@ TEST_SUITE("Search model") {
     MusicLookup lookup;
     REQUIRE(lookup.init());
     MusicIndex index;
-    REQUIRE(index.init(lookup.getLastPSRAMAddress()));
+    REQUIRE(index.init(lookup.getSearchTrie()));
     SearchModel search;
     search.setIndex(&index);
 
@@ -207,7 +207,7 @@ TEST_SUITE("Search model") {
     CHECK(std::string(search.getQuery()) == "son");
     REQUIRE(search.getHitCount() == 2);
     // equal relevance: the shorter name first
-    CHECK(search.getHit(0).id == 1);
+    CHECK(search.getHit(0).id == 0);
     CHECK(std::string(search.getRowTitle(0)) == "First Song");
     CHECK(std::string(search.getRowSub(0)) == "Solo Artist");
     CHECK(std::string(search.getRowTitle(1)) == "Second Song");
@@ -219,7 +219,7 @@ TEST_SUITE("Search model") {
     MusicLookup lookup;
     REQUIRE(lookup.init());
     MusicIndex index;
-    REQUIRE(index.init(lookup.getLastPSRAMAddress()));
+    REQUIRE(index.init(lookup.getSearchTrie()));
     SearchModel search;
     search.setIndex(&index);
 
@@ -248,7 +248,7 @@ TEST_SUITE("Search model") {
     MusicLookup lookup;
     REQUIRE(lookup.init());
     MusicIndex index;
-    REQUIRE(index.init(lookup.getLastPSRAMAddress()));
+    REQUIRE(index.init(lookup.getSearchTrie()));
     SearchModel search;
     search.setIndex(&index);
 
@@ -272,7 +272,7 @@ TEST_SUITE("Search model") {
     MusicLookup lookup;
     REQUIRE(lookup.init());
     MusicIndex index;
-    REQUIRE(index.init(lookup.getLastPSRAMAddress()));
+    REQUIRE(index.init(lookup.getSearchTrie()));
     SearchModel search;
     search.setIndex(&index);
 
@@ -326,7 +326,7 @@ TEST_SUITE("State search navigation") {
     MusicLookup lookup;
     REQUIRE(lookup.init());
     MusicIndex index;
-    REQUIRE(index.init(lookup.getLastPSRAMAddress()));
+    REQUIRE(index.init(lookup.getSearchTrie()));
     State state;
     openSearch(state, lookup, index, "sol");
 
@@ -349,7 +349,7 @@ TEST_SUITE("State search navigation") {
     MusicLookup lookup;
     REQUIRE(lookup.init());
     MusicIndex index;
-    REQUIRE(index.init(lookup.getLastPSRAMAddress()));
+    REQUIRE(index.init(lookup.getSearchTrie()));
     State state;
     openSearch(state, lookup, index, "dou");
 
@@ -370,19 +370,19 @@ TEST_SUITE("State search navigation") {
     MusicLookup lookup;
     REQUIRE(lookup.init());
     MusicIndex index;
-    REQUIRE(index.init(lookup.getLastPSRAMAddress()));
+    REQUIRE(index.init(lookup.getSearchTrie()));
     State state;
     openSearch(state, lookup, index, "second");
 
     state.goToSelected(lookup);
 
     CHECK(state.getCurrentRoute().type == Route_t::NOW_PLAYING);
-    CHECK(state.getPlayingTrackId() == 2);
+    CHECK(state.getPlayingTrackId() == 1);
     CHECK(state.getPlayingTrackIndex() == 1); // second track of the album
     CHECK(std::string(state.getPlayingTrackName()) == "Second Song");
 
     // previous walks back through the album
     CHECK(state.previousTrack(lookup) == true);
-    CHECK(state.getPlayingTrackId() == 1);
+    CHECK(state.getPlayingTrackId() == 0);
   }
 }

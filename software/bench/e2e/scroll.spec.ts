@@ -1,8 +1,13 @@
 // Scrolling with the virtual finger: one click per 15°, the lift-off filter,
-// and when the fast-scroll overlay kicks in (src/app/input.cpp,
-// trackFastScroll: 6 clicks within 300 ms, long lists only).
+// and the fast-scroll tiers (src/state/fast_scroll.h, long lists only): rows
+// below 12 clicks/s, then 3-, 2- and 1-letter jumps from 12, 25 and 40
+// clicks/s (24 clicks a turn), with the letter overlay.
 import { Route } from "../scenarios.ts";
+import type { WheelEvent } from "../device.ts";
 import { check, equal, scrolled, type E2ETest } from "./e2e.ts";
+
+/** The letters of each fast-scroll tier change (`#ev fast`), in order. */
+const tiers = (ev: WheelEvent[]) => ev.filter((e) => e.type === "fast").map((e) => e.letters);
 
 const group = "Scroll";
 
@@ -39,18 +44,56 @@ export const scrollTests: E2ETest[] = [
   },
   {
     group,
-    name: "A fast turn on a long list shows the overlay, then hides it",
+    name: "A steady turn jumps by 3 letters",
+    async run(t) {
+      await t.openRootItem("Tracks");
+      const s0 = await t.state();
+      check(+s0.total > 1500, `needs a list of 1500+ rows for 3 letters, Tracks has ${s0.total}`);
+      const mark = t.mark();
+      t.step("turn a full circle in 1.2 s (20 clicks/s)");
+      await t.d.spin(-360, 1200);
+      const s1 = await t.state();
+      equal(tiers(t.eventsSince(mark)).join(" "), "3", "tiers");
+      equal(s1.letters, "3", "overlay letters");
+      check(+s1.sel > +s0.sel + 24, `jumped further than 24 rows (from ${s0.sel} to ${s1.sel})`);
+      t.step("wait for the overlay to hide (600 ms after the last jump)");
+      await t.waitFor("overlay hidden", (s) => s.fast === "0", 2000);
+    },
+  },
+  {
+    group,
+    name: "A flick jumps by first letter, onto a bucket start",
     async run(t) {
       await t.openRootItem("Tracks");
       const s0 = await t.state();
       check(+s0.total > 21, `needs a list longer than 3 screens, Tracks has ${s0.total}`);
-      t.step("turn a full circle in 400 ms");
+      const mark = t.mark();
+      t.step("turn a full circle in 400 ms (60 clicks/s)");
       await t.d.spin(-360, 400);
       const s1 = await t.state();
-      equal(s1.fast, "1", "fast-scroll overlay right after the turn");
-      check(+s1.sel >= +s0.sel + 24, `moved at least 24 rows (from ${s0.sel} to ${s1.sel})`);
-      t.step("wait for the overlay to hide (600 ms after the wheel stops)");
+      const seen = tiers(t.eventsSince(mark));
+      equal(seen[seen.length - 1], 1, `last tier (tiers ${seen.join(" ")})`);
+      equal(s1.fast, "1", "overlay right after the turn");
+      equal(s1.letters, "1", "overlay letters");
+      t.step("one click up: the row before is in another bucket");
+      await t.d.scroll(1);
+      const s2 = await t.state();
+      check(s2.key[0] !== s1.key[0] || +s1.sel === 0, `"${s2.item}" (${s2.key}) and "${s1.item}" (${s1.key}) share a first letter`);
       await t.waitFor("overlay hidden", (s) => s.fast === "0", 2000);
+    },
+  },
+  {
+    group,
+    name: "Turning back after a flick scrolls by rows",
+    async run(t) {
+      await t.openRootItem("Tracks");
+      t.step("flick down, then at once turn back 45° slowly");
+      await t.d.spin(-360, 400, 0, 0);
+      const mark = t.mark();
+      const s0 = await t.state();
+      await t.d.spin(45, 600);
+      equal(tiers(t.eventsSince(mark)).join(" "), "0", "tiers after turning back");
+      equal(+(await t.state()).sel, +s0.sel - 3, "selected row");
     },
   },
   {

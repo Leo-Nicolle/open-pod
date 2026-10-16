@@ -229,8 +229,8 @@ void OpenPodUIEngine::updateFastScrollOverlay()
   bool active = state.getFastScrollActive();
   if (active)
   {
-    fastScrollLabel(state.getCurrentTrackName(), state.getTotalElements(),
-                    fastScrollLabelText);
+    fastScrollKey(state.getCurrentTrackName(), state.getFastScrollLetters(),
+                  fastScrollLabelText);
   }
   elementList.setOverlayLabel(active ? fastScrollLabelText : nullptr);
   scrollbar.setWide(active);

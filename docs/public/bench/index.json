@@ -1,0 +1,251 @@
+{
+  "metrics": [
+    {
+      "key": "boot.ms",
+      "label": "Boot to ready",
+      "unit": "ms",
+      "better": "lower",
+      "group": "Boot"
+    },
+    {
+      "key": "boot.lookup_ms",
+      "label": "Library index load",
+      "unit": "ms",
+      "better": "lower",
+      "group": "Boot"
+    },
+    {
+      "key": "boot.search_index_ms",
+      "label": "Search index load",
+      "unit": "ms",
+      "better": "lower",
+      "group": "Boot"
+    },
+    {
+      "key": "scroll.single.p95",
+      "label": "Scroll one row (p95)",
+      "unit": "us",
+      "better": "lower",
+      "group": "Browsing"
+    },
+    {
+      "key": "scroll.fast.p95",
+      "label": "Fast scroll burst (p95)",
+      "unit": "us",
+      "better": "lower",
+      "group": "Browsing"
+    },
+    {
+      "key": "scroll.real_fast.p95",
+      "label": "Fast scroll, real finger (p95)",
+      "unit": "us",
+      "better": "lower",
+      "group": "Browsing"
+    },
+    {
+      "key": "nav.enter.p95",
+      "label": "Open a list (p95)",
+      "unit": "us",
+      "better": "lower",
+      "group": "Browsing"
+    },
+    {
+      "key": "nav.back.p95",
+      "label": "Go back (p95)",
+      "unit": "us",
+      "better": "lower",
+      "group": "Browsing"
+    },
+    {
+      "key": "search.worst_char",
+      "label": "Search, slowest keystroke",
+      "unit": "us",
+      "better": "lower",
+      "group": "Search"
+    },
+    {
+      "key": "search.browse.p95",
+      "label": "Scroll search results (p95)",
+      "unit": "us",
+      "better": "lower",
+      "group": "Search"
+    },
+    {
+      "key": "browse.underruns",
+      "label": "Underruns while browsing",
+      "unit": "count",
+      "better": "lower",
+      "group": "Browsing"
+    },
+    {
+      "key": "browse.min_runway",
+      "label": "Runway while browsing",
+      "unit": "s",
+      "better": "higher",
+      "group": "Browsing"
+    },
+    {
+      "key": "startup.underruns",
+      "label": "Underruns, track start under load",
+      "unit": "count",
+      "better": "lower",
+      "group": "Track start"
+    },
+    {
+      "key": "startup.min_runway",
+      "label": "Lowest runway, track start under load",
+      "unit": "s",
+      "better": "higher",
+      "group": "Track start"
+    },
+    {
+      "key": "startup.max_loop",
+      "label": "Longest main loop, track start under load",
+      "unit": "ms",
+      "better": "lower",
+      "group": "Track start"
+    },
+    {
+      "key": "playback.underruns",
+      "label": "Underruns, all samples",
+      "unit": "count",
+      "better": "lower",
+      "group": "Playback"
+    },
+    {
+      "key": "playback.min_runway",
+      "label": "Lowest buffer runway",
+      "unit": "s",
+      "better": "higher",
+      "group": "Playback"
+    },
+    {
+      "key": "playback.start.max",
+      "label": "Slowest track start",
+      "unit": "ms",
+      "better": "lower",
+      "group": "Playback"
+    },
+    {
+      "key": "playback.isr_max",
+      "label": "Feeder CPU, heaviest sample",
+      "unit": "%",
+      "better": "lower",
+      "group": "Playback"
+    },
+    {
+      "key": "stress.underruns",
+      "label": "Underruns, scrolling while playing",
+      "unit": "count",
+      "better": "lower",
+      "group": "Stress"
+    },
+    {
+      "key": "stress.min_runway",
+      "label": "Runway, scrolling while playing",
+      "unit": "s",
+      "better": "higher",
+      "group": "Stress"
+    },
+    {
+      "key": "stress.max_loop",
+      "label": "Longest main loop, stress",
+      "unit": "ms",
+      "better": "lower",
+      "group": "Stress"
+    },
+    {
+      "key": "bench.overhead_max",
+      "label": "Bench's own CPU, worst scenario",
+      "unit": "%",
+      "better": "lower",
+      "group": "Bench"
+    }
+  ],
+  "runs": [
+    {
+      "rev": "a3a66f2-dirty",
+      "date": "2026-10-16T12:18:37.312Z",
+      "file": "a3a66f2-dirty.json",
+      "dataset": {
+        "generator": 1,
+        "seed": 1,
+        "tracks": 100008,
+        "albums": 7656,
+        "artists": 3521,
+        "genres": 41,
+        "samples": 8,
+        "covers": false,
+        "tracksLoaded": 100008,
+        "albumsLoaded": 7656
+      },
+      "summary": {
+        "boot.ms": 3099,
+        "boot.lookup_ms": 318,
+        "boot.search_index_ms": 15,
+        "scroll.single.p95": 87770,
+        "scroll.fast.p95": 38651,
+        "scroll.real_fast.p95": 8311,
+        "nav.enter.p95": 1139772,
+        "nav.back.p95": 881722,
+        "search.worst_char": 468471,
+        "search.browse.p95": 77212,
+        "browse.underruns": 11173,
+        "browse.min_runway": 0,
+        "startup.underruns": 0,
+        "startup.min_runway": 0,
+        "startup.max_loop": 526.47,
+        "playback.underruns": 0,
+        "playback.min_runway": 0,
+        "playback.start.max": 493,
+        "playback.isr_max": 11,
+        "stress.underruns": 0,
+        "stress.min_runway": 2.3,
+        "stress.max_loop": 108.46,
+        "bench.overhead_max": 3.3
+      }
+    },
+    {
+      "rev": "c110316-dirty",
+      "date": "2026-10-16T12:35:19.673Z",
+      "file": "c110316-dirty.json",
+      "dataset": {
+        "generator": 1,
+        "seed": 1,
+        "tracks": 100008,
+        "albums": 7656,
+        "artists": 3521,
+        "genres": 41,
+        "samples": 8,
+        "covers": false,
+        "tracksLoaded": 100008,
+        "albumsLoaded": 7656
+      },
+      "summary": {
+        "boot.ms": 3080,
+        "boot.lookup_ms": 166,
+        "boot.search_index_ms": 8,
+        "scroll.single.p95": 76285,
+        "scroll.fast.p95": 38660,
+        "scroll.real_fast.p95": 3704,
+        "nav.enter.p95": 1001460,
+        "nav.back.p95": 856097,
+        "search.worst_char": 179357,
+        "search.browse.p95": 40896,
+        "browse.underruns": 0,
+        "browse.min_runway": 0.1,
+        "startup.underruns": 0,
+        "startup.min_runway": 0,
+        "startup.max_loop": 516.06,
+        "playback.underruns": 0,
+        "playback.min_runway": 0,
+        "playback.start.max": 462,
+        "playback.isr_max": 11.1,
+        "stress.underruns": 0,
+        "stress.min_runway": 2.1,
+        "stress.max_loop": 126.73,
+        "bench.overhead_max": 3.3
+      }
+    }
+  ]
+}

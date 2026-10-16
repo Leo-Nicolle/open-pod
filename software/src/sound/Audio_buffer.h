@@ -62,6 +62,11 @@ class SDToPSRAMTest; // Forward declaration
 
 class Audio_buffer {
 public:
+  // The SD -> PSRAM chunk buffer, lent to the index page cache
+  // (PageStore::setScratch): both only use it within one call of their own,
+  // and audioYield() (the only thing a page load calls out to) doesn't.
+  uint8_t *scratch() { return _scratchBuffer; }
+  static const uint32_t SCRATCH_SIZE = AUDIO_PRELOAD_CHUNK_SIZE;
   explicit Audio_buffer(uint8_t sdCS);
   ~Audio_buffer();
 
