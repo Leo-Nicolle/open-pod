@@ -2,19 +2,25 @@ name: syncer
 
 on:
   push:
-    branches: [master, develop]
-    paths: ["syncer/**", ".github/workflows/syncer.yml"]
     tags: ["syncer-v*"]
-  pull_request:
-    paths: ["syncer/**", ".github/workflows/syncer.yml"]
-  workflow_dispatch:
 
 defaults:
   run:
     working-directory: syncer
 
 jobs:
+  # Tag pushes carry no branch, so check the tagged commit is on master.
+  on-master:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - run: git merge-base --is-ancestor "$GITHUB_SHA" origin/master
+        working-directory: .
+
   test:
+    needs: on-master
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
