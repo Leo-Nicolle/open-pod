@@ -38,8 +38,8 @@ album_key = "artist-album"  # or "name"
 podcasts = "~/Podcasts"     # mirrored to <card>/Podcasts (see below)
 ```
 
-Flags win over the `OPENPOD_SD` / `OPENPOD_LIBRARY` / `OPENPOD_EXCLUDE` /
-`OPENPOD_PODCASTS` environment variables, which win over the file.
+Flags win over the `OPENTONE_SD` / `OPENTONE_LIBRARY` / `OPENTONE_EXCLUDE` /
+`OPENTONE_PODCASTS` environment variables, which win over the file.
 
 - **Additive.** `sync` only adds and upgrades: run it from any number of
   computers, each with its own library, and the card gets the union. A

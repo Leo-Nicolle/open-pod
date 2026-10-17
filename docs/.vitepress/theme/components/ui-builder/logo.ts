@@ -485,11 +485,11 @@ export function buildLogoHeader(p: Palette, logo: LogoRaster, squash: LogoRaster
   L.push('');
   L.push('// --- intro timeline ("Drop & hop"), ms from the start of the boot screen');
   const defs: [string, number][] = [
-    ['OPENPOD_BOOT_BG', pack565(p.bg)],
-    ['OPENPOD_LOGO_X', B.LOGO_X],
-    ['OPENPOD_LOGO_Y', B.LOGO_Y],
-    ['OPENPOD_SQUASH_X', sq.x],
-    ['OPENPOD_SQUASH_Y', sq.y],
+    ['OPENTONE_BOOT_BG', pack565(p.bg)],
+    ['OPENTONE_LOGO_X', B.LOGO_X],
+    ['OPENTONE_LOGO_Y', B.LOGO_Y],
+    ['OPENTONE_SQUASH_X', sq.x],
+    ['OPENTONE_SQUASH_Y', sq.y],
     ['BOOT_DROP_START', B.DROP_START],
     ['BOOT_DROP_END', B.DROP_END],
     ['BOOT_DROP_PX', B.DROP_PX],
@@ -502,10 +502,10 @@ export function buildLogoHeader(p: Palette, logo: LogoRaster, squash: LogoRaster
     ['BOOT_WIPE_AT', B.WIPE_AT],
     ['BOOT_CHUNK_MS', B.CHUNK_MS],
   ];
-  for (const [n, v] of defs) L.push(`#define ${n.padEnd(18)} ${n === 'OPENPOD_BOOT_BG' ? hex4(v) : v}`);
+  for (const [n, v] of defs) L.push(`#define ${n.padEnd(18)} ${n === 'OPENTONE_BOOT_BG' ? hex4(v) : v}`);
   L.push('');
   L.push('// RGB565. [0] is unused (transparent); the blit fills it with the background.');
-  L.push('static const uint16_t OPENPOD_LOGO_PALETTE[16] = {');
+  L.push('static const uint16_t OPENTONE_LOGO_PALETTE[16] = {');
   L.push(`  ${hex4(pack565(pal[0]))}, // transparent`);
   LOGO_ROLES.forEach((role, i) => {
     L.push(`  ${hex4(pack565(pal[i + 1]))}, // ${String(i + 1).padStart(2)} ${role.name.padEnd(7)} ${pal[i + 1]}  <- ${role.key}`);
@@ -514,26 +514,26 @@ export function buildLogoHeader(p: Palette, logo: LogoRaster, squash: LogoRaster
   L.push('};');
   L.push('');
   L.push(`// Logo ${logo.w}x${logo.h}, and the landing squash frame ${squash.w}x${squash.h}.`);
-  emitImage(L, 'OPENPOD_LOGO', logo);
-  emitImage(L, 'OPENPOD_LOGO_SQUASH', squash);
+  emitImage(L, 'OPENTONE_LOGO', logo);
+  emitImage(L, 'OPENTONE_LOGO_SQUASH', squash);
 
   L.push(`// Wordmark "${WORDMARK}" ${word.w}x${word.h} at (${word.x}, ${word.y}). Glyph i covers`);
   L.push('// strip columns [SPLIT[i], SPLIT[i+1]); glyphs from ACCENT_FROM on use the accent ramp.');
-  L.push(`#define OPENPOD_WORD_X ${word.x}`);
-  L.push(`#define OPENPOD_WORD_Y ${word.y}`);
-  L.push(`#define OPENPOD_WORD_W ${word.w}`);
-  L.push(`#define OPENPOD_WORD_H ${word.h}`);
-  L.push(`#define OPENPOD_WORD_STRIDE ${Math.ceil(word.w / 2)}`);
-  L.push(`#define OPENPOD_WORD_GLYPHS ${WORDMARK.length}`);
-  L.push(`#define OPENPOD_WORD_ACCENT_FROM ${WORDMARK_ACCENT_FROM}`);
-  L.push(`static const uint8_t OPENPOD_WORD_SPLIT[${word.split.length}] = {${word.split.join(', ')}};`);
+  L.push(`#define OPENTONE_WORD_X ${word.x}`);
+  L.push(`#define OPENTONE_WORD_Y ${word.y}`);
+  L.push(`#define OPENTONE_WORD_W ${word.w}`);
+  L.push(`#define OPENTONE_WORD_H ${word.h}`);
+  L.push(`#define OPENTONE_WORD_STRIDE ${Math.ceil(word.w / 2)}`);
+  L.push(`#define OPENTONE_WORD_GLYPHS ${WORDMARK.length}`);
+  L.push(`#define OPENTONE_WORD_ACCENT_FROM ${WORDMARK_ACCENT_FROM}`);
+  L.push(`static const uint8_t OPENTONE_WORD_SPLIT[${word.split.length}] = {${word.split.join(', ')}};`);
   for (const [name, key] of [['TEXT', 'text'], ['ACCENT', 'accent']] as const) {
-    L.push(`static const uint16_t OPENPOD_WORD_RAMP_${name}[16] = {`);
+    L.push(`static const uint16_t OPENTONE_WORD_RAMP_${name}[16] = {`);
     L.push('  ' + wordRamp(p, key).map((c) => hex4(pack565(c))).join(', ') + ',');
     L.push('};');
   }
   L.push('');
-  emitBytes(L, 'OPENPOD_WORD_DATA', pack4bpp(word.w, word.h, word.cov).bytes, Math.ceil(word.w / 2));
+  emitBytes(L, 'OPENTONE_WORD_DATA', pack4bpp(word.w, word.h, word.cov).bytes, Math.ceil(word.w / 2));
 
   L.push('// Push the rect (rx, ry, rw, rh) with img drawn at (ix, iy) and bg everywhere');
   L.push('// else, one row per window write. Covering the union of the previous and the');
@@ -557,7 +557,7 @@ export function buildLogoHeader(p: Palette, logo: LogoRaster, squash: LogoRaster
   L.push('      uint16_t c = bg;');
   L.push('      if (inRow && lx >= 0 && lx < (int)img.w) {');
   L.push('        uint8_t i = (lx & 1) ? (src[lx >> 1] & 0x0F) : (src[lx >> 1] >> 4);');
-  L.push('        if (i) c = OPENPOD_LOGO_PALETTE[i];');
+  L.push('        if (i) c = OPENTONE_LOGO_PALETTE[i];');
   L.push('      }');
   L.push('      row[x] = c;');
   L.push('    }');
@@ -568,16 +568,16 @@ export function buildLogoHeader(p: Palette, logo: LogoRaster, squash: LogoRaster
   L.push('// Draw wordmark glyph i (its whole column band, background included).');
   L.push('static inline void drawWordmarkGlyph(ILI9341_GFX* d, int i) {');
   L.push('  const uint16_t* ramp =');
-  L.push('      i < OPENPOD_WORD_ACCENT_FROM ? OPENPOD_WORD_RAMP_TEXT : OPENPOD_WORD_RAMP_ACCENT;');
-  L.push('  int x0 = OPENPOD_WORD_SPLIT[i], x1 = OPENPOD_WORD_SPLIT[i + 1];');
-  L.push('  uint16_t row[OPENPOD_WORD_W];');
-  L.push('  for (int y = 0; y < OPENPOD_WORD_H; ++y) {');
-  L.push('    const uint8_t* src = OPENPOD_WORD_DATA + y * OPENPOD_WORD_STRIDE;');
+  L.push('      i < OPENTONE_WORD_ACCENT_FROM ? OPENTONE_WORD_RAMP_TEXT : OPENTONE_WORD_RAMP_ACCENT;');
+  L.push('  int x0 = OPENTONE_WORD_SPLIT[i], x1 = OPENTONE_WORD_SPLIT[i + 1];');
+  L.push('  uint16_t row[OPENTONE_WORD_W];');
+  L.push('  for (int y = 0; y < OPENTONE_WORD_H; ++y) {');
+  L.push('    const uint8_t* src = OPENTONE_WORD_DATA + y * OPENTONE_WORD_STRIDE;');
   L.push('    for (int x = x0; x < x1; ++x) {');
   L.push('      uint8_t v = (x & 1) ? (src[x >> 1] & 0x0F) : (src[x >> 1] >> 4);');
   L.push('      row[x - x0] = ramp[v];');
   L.push('    }');
-  L.push('    d->pushWindow(OPENPOD_WORD_X + x0, OPENPOD_WORD_Y + y, x1 - x0, 1, row);');
+  L.push('    d->pushWindow(OPENTONE_WORD_X + x0, OPENTONE_WORD_Y + y, x1 - x0, 1, row);');
   L.push('  }');
   L.push('}');
   L.push('');

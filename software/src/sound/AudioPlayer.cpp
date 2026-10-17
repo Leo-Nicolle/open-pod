@@ -297,7 +297,7 @@ void AudioPlayer::pausePlaying(bool pause) {
 
 void AudioPlayer::resumePlaying() { pausePlaying(false); }
 
-// Diagnostic mode (OPENPOD_FEED_MAIN_LOOP): same fifo and same send code
+// Diagnostic mode (OPENTONE_FEED_MAIN_LOOP): same fifo and same send code
 // as the feeder interrupt, but run from the main loop like Phase 1 did.
 void AudioPlayer::feedFromMainLoop() {
   if (!FEED_FROM_MAIN_LOOP || !_feederEnabled) {

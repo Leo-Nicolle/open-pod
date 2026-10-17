@@ -19,7 +19,7 @@ bool MusicLookup::init() {
 
   // Audio_buffer::begin() usually mounted the card already (same SdFat): a
   // second begin() would reset it under the files the player has open.
-  if (sd.fatType() == 0 && !sd.begin(OPENPOD_SD_CONFIG(CARDCS))) {
+  if (sd.fatType() == 0 && !sd.begin(OPENTONE_SD_CONFIG(CARDCS))) {
     LOG_ERROR("SD card initialization failed");
     return false;
   }

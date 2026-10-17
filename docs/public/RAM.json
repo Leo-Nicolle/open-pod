@@ -355,7 +355,7 @@
         "file": "software/src/main.cpp:29",
         "size": 488,
         "usage": "static .bss, always",
-        "description": "OpenPodUIEngine: animation manager, scrollbar, list component (holds 7 pointers to the heap row cache), now-playing (artist/album names 2 × 64 B), menu and podcast views."
+        "description": "OpenToneUIEngine: animation manager, scrollbar, list component (holds 7 pointers to the heap row cache), now-playing (artist/album names 2 × 64 B), menu and podcast views."
       },
       {
         "nickname": "Podcast menu",

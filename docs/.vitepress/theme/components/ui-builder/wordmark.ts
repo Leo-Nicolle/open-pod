@@ -15,7 +15,7 @@ import plexSemiBoldUrl from './fonts/IBMPlexSans-SemiBold.ttf?url';
 import { WORDMARK, type Wordmark } from './logo';
 
 const SIZE = 28;
-const FAMILY = 'OpenpodWordmark';
+const FAMILY = 'OpentoneWordmark';
 const FONT = `600 ${SIZE}px "${FAMILY}"`;
 const LETTER_SPACING = -0.01 * SIZE;
 const LINE_TOP = 174;

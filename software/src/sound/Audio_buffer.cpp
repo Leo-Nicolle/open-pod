@@ -16,7 +16,7 @@ Audio_buffer::~Audio_buffer() {
 }
 
 bool Audio_buffer::begin(uint32_t sdFreq) {
-  if (!_sd.begin(OPENPOD_SD_CONFIG(_sdCS))) {
+  if (!_sd.begin(OPENTONE_SD_CONFIG(_sdCS))) {
     LOG_ERROR("SD card initialization failed");
     return false;
   }

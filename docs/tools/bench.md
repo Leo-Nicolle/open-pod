@@ -73,7 +73,7 @@ Compare two revisions; it exits with an error on a regression above 10%, or on a
 npm run bench -- compare v0.4 v0.5-3-gabc123
 ```
 
-Before burning a card, check that the dataset fits PSRAM and is searchable with the native tests: `OPENPOD_BENCH_CARD=/media/$USER/SDCARD npm test`.
+Before burning a card, check that the dataset fits PSRAM and is searchable with the native tests: `OPENTONE_BENCH_CARD=/media/$USER/SDCARD npm test`.
 
 ::: warning Library size limit
 The music index gets the last 2 MB of the 8 MB PSRAM (see `PSRAM_controller.hpp`), which holds about **7,000 tracks** with these names: at 6,000 the index ends at 7.99 MB, at 8,000 it already overflows. Nothing on the device checks for it yet (past the end, the PSRAM wraps around onto the audio buffer), so bench above that only once the index has more room.
@@ -81,7 +81,7 @@ The music index gets the last 2 MB of the 8 MB PSRAM (see `PSRAM_controller.hpp`
 
 ### The serial protocol
 
-The `bench` build (`-DOPENPOD_BENCH=1`) adds these commands to the debug serial. Each answers one `#ok <cmd> …` or `#err <cmd> …` line; lines starting with `AT` still go to the Bluetooth module. Idle screen-off and the jump to Now Playing are disabled, so they don't interfere with a scenario.
+The `bench` build (`-DOPENTONE_BENCH=1`) adds these commands to the debug serial. Each answers one `#ok <cmd> …` or `#err <cmd> …` line; lines starting with `AT` still go to the Bluetooth module. Idle screen-off and the jump to Now Playing are disabled, so they don't interfere with a scenario.
 
 | Command | Answer |
 |---|---|

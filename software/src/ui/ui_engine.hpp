@@ -26,7 +26,7 @@ extern BtModel btModel;
 extern BtMenu btMenu;
 extern PodcastMenu podcastMenu;
 
-class OpenPodUIEngine
+class OpenToneUIEngine
 {
 private:
   ILI9341_GFX *display;
@@ -65,7 +65,7 @@ private:
   static void onStateEvent(int eventType, void *eventData, EventTarget *source);
 
   // Instance pointer for static callback access
-  static OpenPodUIEngine *instance;
+  static OpenToneUIEngine *instance;
 
   // Internal UI update methods (called by event handlers)
   void handleTrackSelected(const TrackSelectedEvent *event);
@@ -88,8 +88,8 @@ private:
   void handleFastScrollChanged(const FastScrollEvent *event);
 
 public:
-  OpenPodUIEngine(ILI9341_GFX *disp);
-  ~OpenPodUIEngine();
+  OpenToneUIEngine(ILI9341_GFX *disp);
+  ~OpenToneUIEngine();
 
   // Lifecycle. begin() draws nothing: the boot screen is still up, and its
   // exit wipe paints the first frame through renderBootChunk().
@@ -153,10 +153,10 @@ private:
 };
 
 // Static member definition
-OpenPodUIEngine *OpenPodUIEngine::instance = nullptr;
+OpenToneUIEngine *OpenToneUIEngine::instance = nullptr;
 
 // Implementation
-OpenPodUIEngine::OpenPodUIEngine(ILI9341_GFX *disp)
+OpenToneUIEngine::OpenToneUIEngine(ILI9341_GFX *disp)
     : display(disp), elementList(nullptr, 0), menuView(header),
       podcastView(header),
       lastDrawnOffset(0)
@@ -167,7 +167,7 @@ OpenPodUIEngine::OpenPodUIEngine(ILI9341_GFX *disp)
   instance = this;
 }
 
-OpenPodUIEngine::~OpenPodUIEngine()
+OpenToneUIEngine::~OpenToneUIEngine()
 {
   // Remove event listener on destruction
   state.removeEventListener(onStateEvent);
@@ -179,7 +179,7 @@ OpenPodUIEngine::~OpenPodUIEngine()
   }
 }
 
-void OpenPodUIEngine::begin()
+void OpenToneUIEngine::begin()
 {
   booting = true;
   LOG_INFO("opentone UI Engine initializing...");
@@ -190,7 +190,7 @@ void OpenPodUIEngine::begin()
   LOG_INFO("opentone UI Engine initialized with event-driven architecture");
 }
 
-void OpenPodUIEngine::hookToEvents()
+void OpenToneUIEngine::hookToEvents()
 {
   // Register for all state change events
   bool success = state.addEventListener(onStateEvent);
@@ -205,7 +205,7 @@ void OpenPodUIEngine::hookToEvents()
   }
 }
 
-bool OpenPodUIEngine::update()
+bool OpenToneUIEngine::update()
 {
   // Update animation manager
   bool result = animManager.update();
@@ -225,7 +225,7 @@ bool OpenPodUIEngine::update()
   return result;
 }
 
-void OpenPodUIEngine::updateFastScrollOverlay()
+void OpenToneUIEngine::updateFastScrollOverlay()
 {
   bool active = state.getFastScrollActive();
   if (active)
@@ -237,24 +237,24 @@ void OpenPodUIEngine::updateFastScrollOverlay()
   scrollbar.setWide(active);
 }
 
-void OpenPodUIEngine::renderSearch()
+void OpenToneUIEngine::renderSearch()
 {
   searchView.renderAll(display, state.getSearch());
 }
 
-void OpenPodUIEngine::renderMenu()
+void OpenToneUIEngine::renderMenu()
 {
   btMenu.sync(state.getCurrentRoute(), millis());
   menuView.renderAll(display, btMenu, state.getIsPlaying());
 }
 
-void OpenPodUIEngine::renderPodcasts()
+void OpenToneUIEngine::renderPodcasts()
 {
   podcastMenu.sync(state.getCurrentRoute());
   podcastView.renderAll(display, podcastMenu, state.getIsPlaying());
 }
 
-void OpenPodUIEngine::repaintHeader()
+void OpenToneUIEngine::repaintHeader()
 {
   if (onPodcast())
   {
@@ -277,7 +277,7 @@ void OpenPodUIEngine::repaintHeader()
   }
 }
 
-void OpenPodUIEngine::updateBluetooth()
+void OpenToneUIEngine::updateBluetooth()
 {
   unsigned long now = millis();
   uikit::HeaderStatus &hs = uikit::headerStatus;
@@ -361,7 +361,7 @@ void OpenPodUIEngine::updateBluetooth()
     header.renderIconBox(display);
 }
 
-void OpenPodUIEngine::renderBodySlice(int x, int chunkY, int width, int height)
+void OpenToneUIEngine::renderBodySlice(int x, int chunkY, int width, int height)
 {
   if (onSearch())
   {
@@ -389,7 +389,7 @@ void OpenPodUIEngine::renderBodySlice(int x, int chunkY, int width, int height)
 }
 
 // Rendering methods (mostly unchanged, but now use state getters)
-void OpenPodUIEngine::renderBootChunk(int k)
+void OpenToneUIEngine::renderBootChunk(int k)
 {
   Route_t::RouteType route = state.getCurrentRoute().type;
   if (route == Route_t::NOW_PLAYING || onSearch())
@@ -414,7 +414,7 @@ void OpenPodUIEngine::renderBootChunk(int k)
   }
 }
 
-void OpenPodUIEngine::renderCurrentState()
+void OpenToneUIEngine::renderCurrentState()
 {
   if (booting)
   {
@@ -446,14 +446,14 @@ void OpenPodUIEngine::renderCurrentState()
   }
 }
 
-void OpenPodUIEngine::renderTrackList()
+void OpenToneUIEngine::renderTrackList()
 {
   header.render(display, state.getHeaderTitle(), state.getIsPlaying());
   elementList.renderAllElements(display);
   scrollbar.render(display);
 }
 
-void OpenPodUIEngine::renderNowPlaying(int xOffset, int width)
+void OpenToneUIEngine::renderNowPlaying(int xOffset, int width)
 {
   // Mid-slide the display is hardware-scrolled: a full render would land in
   // the wrong place and mark the cover as drawn, so the final render (from
@@ -488,7 +488,7 @@ void OpenPodUIEngine::renderNowPlaying(int xOffset, int width)
   }
 }
 
-void OpenPodUIEngine::updateAlbumArtForTrack(int trackId)
+void OpenToneUIEngine::updateAlbumArtForTrack(int trackId)
 {
   nowPlaying.setPodcastMode(false);
   if (trackId < 0)
@@ -565,7 +565,7 @@ void OpenPodUIEngine::updateAlbumArtForTrack(int trackId)
   }
 }
 
-void OpenPodUIEngine::renderTrackListArea()
+void OpenToneUIEngine::renderTrackListArea()
 {
   // Only re-render the track list portion (not header or scrollbar)
   elementList.renderAllElements(display, 0, BODY_Y,
@@ -574,18 +574,18 @@ void OpenPodUIEngine::renderTrackListArea()
   scrollbar.render(display);
 }
 
-void OpenPodUIEngine::updateScrollbar()
+void OpenToneUIEngine::updateScrollbar()
 {
   scrollbar.setScrollData(state.getTotalElements(), ELEMENTS_PER_SCREEN,
                           state.getTopVisibleIndex());
 }
 
-void OpenPodUIEngine::updateTrackListScroll()
+void OpenToneUIEngine::updateTrackListScroll()
 {
   elementList.setScroll(state.getSelectedIndex(), state.getTopVisibleIndex());
 }
 
-void OpenPodUIEngine::measurePerformance()
+void OpenToneUIEngine::measurePerformance()
 {
   uint32_t avg, min, max;
   animManager.getPerformanceStats(avg, min, max);

@@ -51,7 +51,7 @@ void sendTelemetry();
 void pollConsole();
 void onConsoleAtLine(const char *line);
 
-// bench.cpp: test bench commands (only with -DOPENPOD_BENCH=1, see
+// bench.cpp: test bench commands (only with -DOPENTONE_BENCH=1, see
 // docs/tools/bench.md). benchTick() runs every loop, after the UI update.
 void benchCommand(const char *line);
 void benchTick(bool uiBusy);

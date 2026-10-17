@@ -27,7 +27,7 @@ const DOCS_BENCH = join(REPO, "docs/public/bench");
 const PIO = join(REPO, "scripts/pio.sh");
 const opentone = join(REPO, "syncer/target/release/opentone");
 
-function buildOpenpod() {
+function buildOpentone() {
   console.log("Building the opentone CLI (release)...");
   execFileSync("cargo", ["build", "--release", "-p", "opentone-cli"], { cwd: join(REPO, "syncer"), stdio: "inherit" });
 }
@@ -49,7 +49,7 @@ async function prepare(argv: string[]) {
   });
   const card = positionals[0];
   if (!card) throw new Error("usage: bench prepare <card mount> [--tracks N] [--seed S] [--covers] [--force]");
-  buildOpenpod();
+  buildOpentone();
   console.log("Samples:");
   const samples = buildSamples(join(BENCH, ".cache/samples"), opentone);
   const args = ["bench-dataset", card, "--samples", samples, "--tracks", values.tracks!, "--seed", values.seed!];
@@ -64,7 +64,7 @@ async function run(argv: string[]) {
   const { values } = parseArgs({
     args: argv,
     options: {
-      port: { type: "string", default: process.env.OPENPOD_PORT ?? "/dev/ttyACM0" },
+      port: { type: "string", default: process.env.OPENTONE_PORT ?? "/dev/ttyACM0" },
       "no-flash": { type: "boolean", default: false },
       "no-publish": { type: "boolean", default: false },
       "no-background": { type: "boolean", default: false },
@@ -121,7 +121,7 @@ async function e2e(argv: string[]) {
     args: argv,
     allowPositionals: true,
     options: {
-      port: { type: "string", default: process.env.OPENPOD_PORT ?? "/dev/ttyACM0" },
+      port: { type: "string", default: process.env.OPENTONE_PORT ?? "/dev/ttyACM0" },
       flash: { type: "boolean", default: false },
     },
   });

@@ -25,7 +25,7 @@ public:
     // Same wiring as ClickWheel::setButtonPins: pull-ups, active low. The
     // wheel takes the pins over (with its interrupts) after finish().
     for (int pin : BUTTON_PINS) pinMode(pin, INPUT_PULLUP);
-    display->fillScreen(OPENPOD_BOOT_BG);
+    display->fillScreen(OPENTONE_BOOT_BG);
     t0 = millis();
   }
 
@@ -77,12 +77,12 @@ private:
   static constexpr int BUTTON_PINS[5] = {BTN_CENTER, BTN_TOP, BTN_RIGHT,
                                          BTN_BOTTOM, BTN_LEFT};
   static const int WIPE_CHUNKS = 8;
-  static const int GLYPHS = OPENPOD_WORD_GLYPHS;
+  static const int GLYPHS = OPENTONE_WORD_GLYPHS;
 
   enum Logo : uint8_t { NONE, NORMAL, SQUASH };
   struct Frame {
     Logo logo;
-    int dy; // offset of the normal logo from OPENPOD_LOGO_Y
+    int dy; // offset of the normal logo from OPENTONE_LOGO_Y
     int letters;
   };
   struct Rect {
@@ -149,10 +149,10 @@ private:
   void drawLogo(const Frame &f) {
     if (f.logo == drawnLogo && (f.logo != NORMAL || f.dy == drawnDy)) return;
     if (f.logo == NONE) return;
-    const LogoImage &img = f.logo == SQUASH ? OPENPOD_LOGO_SQUASH : OPENPOD_LOGO;
+    const LogoImage &img = f.logo == SQUASH ? OPENTONE_LOGO_SQUASH : OPENTONE_LOGO;
     Rect r = f.logo == SQUASH
-                 ? Rect{OPENPOD_SQUASH_X, OPENPOD_SQUASH_Y, img.w, img.h}
-                 : Rect{OPENPOD_LOGO_X, OPENPOD_LOGO_Y + f.dy, img.w, img.h};
+                 ? Rect{OPENTONE_SQUASH_X, OPENTONE_SQUASH_Y, img.w, img.h}
+                 : Rect{OPENTONE_LOGO_X, OPENTONE_LOGO_Y + f.dy, img.w, img.h};
     Rect u = r;
     if (drawnLogo != NONE) {
       int x1 = max(r.x + r.w, drawnRect.x + drawnRect.w);
@@ -162,7 +162,7 @@ private:
       u.w = x1 - u.x;
       u.h = y1 - u.y;
     }
-    blitLogoImage(display, img, r.x, r.y, u.x, u.y, u.w, u.h, OPENPOD_BOOT_BG);
+    blitLogoImage(display, img, r.x, r.y, u.x, u.y, u.w, u.h, OPENTONE_BOOT_BG);
     drawnLogo = f.logo;
     drawnDy = f.dy;
     drawnRect = r;

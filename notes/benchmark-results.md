@@ -125,7 +125,7 @@ animation is the single biggest perceived-speed win, and costs nothing.
   5.45 MB and overflows silently (nothing checks the end; past 8 MB it wraps onto the audio
   buffer). That's what `notes/performance-and-memory.md` predicted; its step 1 (bounds
   checks) and step 2/3 (paths and trie on SD) are the fix. Native check:
-  `OPENPOD_BENCH_CARD=<card> npm test` (`test/test_bench_dataset.cpp`).
+  `OPENTONE_BENCH_CARD=<card> npm test` (`test/test_bench_dataset.cpp`).
 - **Boot is linear in library size**: 1.7 MB of index in 4.4 s, about 390 KB/s, far below
   what the SD and PSRAM buses do (`docs/blog/09-10.md`). At 20k tracks it was 13.9 s
   (6.3 + 6.4). Bigger read chunks or overlapping SD reads with PSRAM writes should cut it

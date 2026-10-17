@@ -1,9 +1,9 @@
 // Loads a test bench card's index (opentone bench-dataset, see
 // docs/tools/bench.md) into the firmware's lookup and search code, to check
 // that the synthetic library fits PSRAM and is searchable before burning a
-// card. Skipped unless OPENPOD_BENCH_CARD names the card (or a folder with
+// card. Skipped unless OPENTONE_BENCH_CARD names the card (or a folder with
 // its opentone/ directory):
-//   OPENPOD_BENCH_CARD=/media/sd pio test -e test_native -f "*" \
+//   OPENTONE_BENCH_CARD=/media/sd pio test -e test_native -f "*" \
 //     -a '--test-case=*bench*'
 #include <doctest.h>
 #include <cstdlib>
@@ -60,9 +60,9 @@ void typeQuery(SearchModel &search, MusicLookup &lookup, const char *text) {
 } // namespace
 
 TEST_CASE("Bench dataset - loads and searches") {
-  const char *card = getenv("OPENPOD_BENCH_CARD");
+  const char *card = getenv("OPENTONE_BENCH_CARD");
   if (!card) {
-    MESSAGE("OPENPOD_BENCH_CARD not set, skipped");
+    MESSAGE("OPENTONE_BENCH_CARD not set, skipped");
     return;
   }
   opentone_test::resetAll();

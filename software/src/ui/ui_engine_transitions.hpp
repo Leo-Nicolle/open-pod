@@ -1,10 +1,10 @@
 #pragma once
-// OpenPodUIEngine route-transition slide animations.
+// OpenToneUIEngine route-transition slide animations.
 // Included at the end of ui_engine.hpp - include that instead (it may only
 // be included from one translation unit, see app/app.h).
 #include "ui_engine.hpp"
 
-void OpenPodUIEngine::transitionToNowPlaying()
+void OpenToneUIEngine::transitionToNowPlaying()
 {
   // Set transitioning state
   lastDrawnOffset = 0;
@@ -53,7 +53,7 @@ void OpenPodUIEngine::transitionToNowPlaying()
       Easing::easeInOutCubic);
 }
 
-void OpenPodUIEngine::transitionToTrackList(bool leftToRight)
+void OpenToneUIEngine::transitionToTrackList(bool leftToRight)
 {
   lastDrawnOffset = 0;
   animatingLeftToRight = leftToRight;

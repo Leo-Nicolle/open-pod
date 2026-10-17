@@ -95,15 +95,15 @@ void VS1053_driver::updateClockSpeeds(uint16_t clockf) {
 }
 
 // Cap on the SDI clock the feeder interrupt uses (0 = none), for testing
-// signal integrity on the breadboard: -DOPENPOD_FEEDER_SDI_MAX_HZ=5625000.
-#ifndef OPENPOD_FEEDER_SDI_MAX_HZ
-#define OPENPOD_FEEDER_SDI_MAX_HZ 0
+// signal integrity on the breadboard: -DOPENTONE_FEEDER_SDI_MAX_HZ=5625000.
+#ifndef OPENTONE_FEEDER_SDI_MAX_HZ
+#define OPENTONE_FEEDER_SDI_MAX_HZ 0
 #endif
 
 void VS1053_driver::setSdiFreq(uint32_t hz) {
   _sdiFreq = hz;
-  if (OPENPOD_FEEDER_SDI_MAX_HZ && hz > OPENPOD_FEEDER_SDI_MAX_HZ) {
-    hz = OPENPOD_FEEDER_SDI_MAX_HZ;
+  if (OPENTONE_FEEDER_SDI_MAX_HZ && hz > OPENTONE_FEEDER_SDI_MAX_HZ) {
+    hz = OPENTONE_FEEDER_SDI_MAX_HZ;
   }
   // SPI1 baud rate bits for the feeder interrupt, which programs SPI1
   // directly: PCLK2 / 2^(BR+1), the largest that doesn't exceed hz (same

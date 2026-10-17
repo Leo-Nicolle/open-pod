@@ -11,7 +11,7 @@
 
 #ifdef UNIT_TEST
 
-#define OPENPOD_SD_CONFIG(cs) SdSpiConfig((cs), SHARED_SPI, SD_SCK_MHZ(25))
+#define OPENTONE_SD_CONFIG(cs) SdSpiConfig((cs), SHARED_SPI, SD_SCK_MHZ(25))
 
 #else
 
@@ -59,7 +59,7 @@ private:
 
 extern SharedSpiDriver sharedSpiDriver;
 
-#define OPENPOD_SD_CONFIG(cs)                                                  \
+#define OPENTONE_SD_CONFIG(cs)                                                  \
   SdSpiConfig((cs), SHARED_SPI, SD_SCK_MHZ(25), &sharedSpiDriver)
 
 #endif

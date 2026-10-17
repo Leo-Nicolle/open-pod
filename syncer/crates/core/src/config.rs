@@ -9,8 +9,8 @@
 //! podcasts = "~/Podcasts"     # mirrored to <card>/Podcasts (adds and deletes)
 //! ```
 //!
-//! For the CLI, flags win, then the OPENPOD_SD / OPENPOD_LIBRARY /
-//! OPENPOD_EXCLUDE environment variables (as in the former sync/.env), then
+//! For the CLI, flags win, then the OPENTONE_SD / OPENTONE_LIBRARY /
+//! OPENTONE_EXCLUDE environment variables (as in the former sync/.env), then
 //! this file. The app reads and edits the file itself.
 
 use std::io;

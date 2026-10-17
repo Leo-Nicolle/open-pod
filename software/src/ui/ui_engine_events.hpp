@@ -1,11 +1,11 @@
 #pragma once
-// OpenPodUIEngine state-event dispatch and handlers.
+// OpenToneUIEngine state-event dispatch and handlers.
 // Included at the end of ui_engine.hpp - include that instead (it may only
 // be included from one translation unit, see app/app.h).
 #include "ui_engine.hpp"
 
 // Static event handler - routes events to instance methods
-void OpenPodUIEngine::onStateEvent(int eventType, void *eventData,
+void OpenToneUIEngine::onStateEvent(int eventType, void *eventData,
                                    EventTarget *source)
 {
   if (!instance)
@@ -94,7 +94,7 @@ void OpenPodUIEngine::onStateEvent(int eventType, void *eventData,
   }
 }
 
-void OpenPodUIEngine::handleTrackSelected(const TrackSelectedEvent *event)
+void OpenToneUIEngine::handleTrackSelected(const TrackSelectedEvent *event)
 {
   LOG_CAT(UI, "Track selected - %s", event->trackName);
 
@@ -108,7 +108,7 @@ void OpenPodUIEngine::handleTrackSelected(const TrackSelectedEvent *event)
   }
 }
 
-void OpenPodUIEngine::handleScrollChanged(const ScrollChangedEvent *event)
+void OpenToneUIEngine::handleScrollChanged(const ScrollChangedEvent *event)
 {
   LOG_CAT(UI, "Scroll changed - selected: %d, top visible: %d",
           event->selectedIndex, event->topVisibleIndex);
@@ -134,7 +134,7 @@ void OpenPodUIEngine::handleScrollChanged(const ScrollChangedEvent *event)
   renderTrackListArea();
 }
 
-void OpenPodUIEngine::handlePageChanged(const ScrollChangedEvent *event)
+void OpenToneUIEngine::handlePageChanged(const ScrollChangedEvent *event)
 {
   LOG_CAT(UI, "Page changed");
   for (int i = 0; LOG_ENABLED(UI) && i < ELEMENTS_PER_SCREEN; i++)
@@ -148,7 +148,7 @@ void OpenPodUIEngine::handlePageChanged(const ScrollChangedEvent *event)
   renderTrackList(); // Full re-render for page changes
 }
 
-void OpenPodUIEngine::handlePlaybackStarted(const PlaybackEvent *event)
+void OpenToneUIEngine::handlePlaybackStarted(const PlaybackEvent *event)
 {
   LOG_CAT(UI, "Playback started - %s", event->trackName);
 
@@ -167,7 +167,7 @@ void OpenPodUIEngine::handlePlaybackStarted(const PlaybackEvent *event)
   // transitionToNowPlaying();
 }
 
-void OpenPodUIEngine::handlePlaybackPaused(const PlaybackEvent *event)
+void OpenToneUIEngine::handlePlaybackPaused(const PlaybackEvent *event)
 {
   LOG_CAT(UI, "Playback paused");
 
@@ -179,7 +179,7 @@ void OpenPodUIEngine::handlePlaybackPaused(const PlaybackEvent *event)
   }
 }
 
-void OpenPodUIEngine::handlePlaybackResumed(const PlaybackEvent *event)
+void OpenToneUIEngine::handlePlaybackResumed(const PlaybackEvent *event)
 {
   LOG_CAT(UI, "Playback resumed");
 
@@ -191,7 +191,7 @@ void OpenPodUIEngine::handlePlaybackResumed(const PlaybackEvent *event)
   }
 }
 
-void OpenPodUIEngine::handlePlaybackStopped(const PlaybackEvent *event)
+void OpenToneUIEngine::handlePlaybackStopped(const PlaybackEvent *event)
 {
   LOG_CAT(UI, "Playback stopped");
 
@@ -204,7 +204,7 @@ void OpenPodUIEngine::handlePlaybackStopped(const PlaybackEvent *event)
   }
 }
 
-void OpenPodUIEngine::handleProgressUpdated(const ProgressEvent *event)
+void OpenToneUIEngine::handleProgressUpdated(const ProgressEvent *event)
 {
   // Only update if we're showing the now playing screen
   if (state.getCurrentRoute().type == Route_t::RouteType::NOW_PLAYING)
@@ -219,14 +219,14 @@ void OpenPodUIEngine::handleProgressUpdated(const ProgressEvent *event)
   }
 }
 
-void OpenPodUIEngine::handleTrackEnded(const PlaybackEvent *event)
+void OpenToneUIEngine::handleTrackEnded(const PlaybackEvent *event)
 {
   LOG_CAT(UI, "Track ended - %s", event->trackName);
 
   // Visual feedback for track end (could show brief message, etc.)
 }
 
-void OpenPodUIEngine::handleNavigationChanged(const RouteChangedEvent *event)
+void OpenToneUIEngine::handleNavigationChanged(const RouteChangedEvent *event)
 {
   LOG_CAT(UI, "State changed from %d to %d", (int)event->oldRouteType,
           (int)event->newRouteType);
@@ -269,12 +269,12 @@ void OpenPodUIEngine::handleNavigationChanged(const RouteChangedEvent *event)
   }
 }
 
-void OpenPodUIEngine::handleAnimationStarted(const AnimationEvent *event)
+void OpenToneUIEngine::handleAnimationStarted(const AnimationEvent *event)
 {
   LOG_CAT(UI, "Animation started - ID: %d", (int)event->animationId);
 }
 
-void OpenPodUIEngine::handleAnimationFinished(const AnimationEvent *event)
+void OpenToneUIEngine::handleAnimationFinished(const AnimationEvent *event)
 {
   LOG_CAT(UI, "Animation finished - ID: %d", (int)event->animationId);
 
@@ -291,7 +291,7 @@ void OpenPodUIEngine::handleAnimationFinished(const AnimationEvent *event)
   renderCurrentState();
 }
 
-void OpenPodUIEngine::handleTrackListUpdated(const ListEvent *event)
+void OpenToneUIEngine::handleTrackListUpdated(const ListEvent *event)
 {
   LOG_CAT(UI, "Track list updated - %d tracks", (int)event->totalElements);
   elementList.setScroll(event->selectedIndex, event->topVisibleIndex);
@@ -305,7 +305,7 @@ void OpenPodUIEngine::handleTrackListUpdated(const ListEvent *event)
   }
 }
 
-void OpenPodUIEngine::handleTrackDurationChanged(int *duration)
+void OpenToneUIEngine::handleTrackDurationChanged(int *duration)
 {
   LOG_CAT(UI, "Track duration changed to %d seconds", *duration);
 
@@ -316,7 +316,7 @@ void OpenPodUIEngine::handleTrackDurationChanged(int *duration)
     renderNowPlaying();
   }
 }
-void OpenPodUIEngine::handleVolumeChanged(const VolumeEvent *event)
+void OpenToneUIEngine::handleVolumeChanged(const VolumeEvent *event)
 {
   nowPlaying.setVolumeOverlay(event->volume, true);
   volumeOverlayHideAt = millis() + VOLUME_OVERLAY_HIDE_DELAY;
@@ -327,7 +327,7 @@ void OpenPodUIEngine::handleVolumeChanged(const VolumeEvent *event)
   }
 }
 
-void OpenPodUIEngine::handleSeekModeChanged(const SeekModeEvent *event)
+void OpenToneUIEngine::handleSeekModeChanged(const SeekModeEvent *event)
 {
   nowPlaying.setSeekModeActive(event->active);
   if (state.getCurrentRoute().type == Route_t::RouteType::NOW_PLAYING)
@@ -336,7 +336,7 @@ void OpenPodUIEngine::handleSeekModeChanged(const SeekModeEvent *event)
   }
 }
 
-void OpenPodUIEngine::handleSearchChanged(const SearchEvent *event)
+void OpenToneUIEngine::handleSearchChanged(const SearchEvent *event)
 {
   if (state.getIsAnimating() || !onSearch())
     return; // the transition's final render draws it
@@ -364,7 +364,7 @@ void OpenPodUIEngine::handleSearchChanged(const SearchEvent *event)
   }
 }
 
-void OpenPodUIEngine::handleFastScrollChanged(const FastScrollEvent *event)
+void OpenToneUIEngine::handleFastScrollChanged(const FastScrollEvent *event)
 {
   updateFastScrollOverlay();
   Route_t::RouteType route = state.getCurrentRoute().type;

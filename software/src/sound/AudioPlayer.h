@@ -141,9 +141,9 @@ private:
   }
   static void feederIsr();
   static void yieldHook(); // see AudioYield.h
-  // Diagnostic: -DOPENPOD_FEED_MAIN_LOOP feeds from loop() instead of the
+  // Diagnostic: -DOPENTONE_FEED_MAIN_LOOP feeds from loop() instead of the
   // timer interrupt (see feedFromMainLoop()).
-#ifdef OPENPOD_FEED_MAIN_LOOP
+#ifdef OPENTONE_FEED_MAIN_LOOP
   static const bool FEED_FROM_MAIN_LOOP = true;
 #else
   static const bool FEED_FROM_MAIN_LOOP = false;
@@ -152,10 +152,10 @@ private:
   static const uint32_t FEEDER_HZ = 1000;
   // The most one tick may send, ~0.75 ms of SPI so a tick stays under the
   // 1 ms period: 1 KB at 11.25 MHz, 512 B with the 5.6 MHz breadboard cap
-  // (OPENPOD_FEEDER_SDI_MAX_HZ in platformio.ini). Either way 500+ KB/s of
+  // (OPENTONE_FEEDER_SDI_MAX_HZ in platformio.ini). Either way 500+ KB/s of
   // feeding capacity, against ~90-200 KB/s for FLAC.
-#if defined(OPENPOD_FEEDER_SDI_MAX_HZ) && OPENPOD_FEEDER_SDI_MAX_HZ > 0 &&    \
-    OPENPOD_FEEDER_SDI_MAX_HZ < 11250000
+#if defined(OPENTONE_FEEDER_SDI_MAX_HZ) && OPENTONE_FEEDER_SDI_MAX_HZ > 0 &&    \
+    OPENTONE_FEEDER_SDI_MAX_HZ < 11250000
   static const size_t FEEDER_MAX_BYTES_PER_TICK = 512;
 #else
   static const size_t FEEDER_MAX_BYTES_PER_TICK = 1024;

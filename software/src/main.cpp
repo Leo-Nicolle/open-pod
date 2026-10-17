@@ -26,7 +26,7 @@ AlbumArt albumArt;
 // Display and UI instances
 ILI9341_GFX display;
 PodPlayer player;
-OpenPodUIEngine ui(&display);
+OpenToneUIEngine ui(&display);
 BootScreen boot(&display);
 
 // ClickWheel instances

@@ -23,10 +23,10 @@
 //
 // The profiler counts the console as BENCH overhead, except the work a
 // command runs on the spot (a search, a seek): that goes to UI or AUDIO.
-#if OPENPOD_BENCH
+#if OPENTONE_BENCH
 
-#ifndef OPENPOD_GIT_REV
-#define OPENPOD_GIT_REV "unknown"
+#ifndef OPENTONE_GIT_REV
+#define OPENTONE_GIT_REV "unknown"
 #endif
 
 extern "C" char *sbrk(int incr);
@@ -62,7 +62,7 @@ static void printBoot(const char *prefix)
 {
   Serial.printf("%s ms=%lu lookup_ms=%lu search_index_ms=%lu rev=%s\n", prefix,
                 (unsigned long)bootInfo.ms, (unsigned long)bootInfo.lookupMs,
-                (unsigned long)bootInfo.searchIndexMs, OPENPOD_GIT_REV);
+                (unsigned long)bootInfo.searchIndexMs, OPENTONE_GIT_REV);
 }
 
 static bool parseButton(const char *name, ClickWheel::Button &out)
@@ -579,7 +579,7 @@ void benchCommand(const char *line)
   }
   else if (!strcmp(cmd, "version"))
   {
-    Serial.printf("#ok version rev=%s\n", OPENPOD_GIT_REV);
+    Serial.printf("#ok version rev=%s\n", OPENTONE_GIT_REV);
   }
   else if (!strcmp(cmd, "boot"))
   {

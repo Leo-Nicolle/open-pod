@@ -24,14 +24,14 @@ struct Cli {
 
 #[derive(Args)]
 struct CardArg {
-    /// Mounted SD card (default: $OPENPOD_SD, then `card` in the config file).
+    /// Mounted SD card (default: $OPENTONE_SD, then `card` in the config file).
     #[arg(long, short)]
     card: Option<PathBuf>,
 }
 
 #[derive(Args)]
 struct LibraryArgs {
-    /// Music libraries to sync from (default: $OPENPOD_LIBRARY, then
+    /// Music libraries to sync from (default: $OPENTONE_LIBRARY, then
     /// `libraries` in the config file).
     libraries: Vec<PathBuf>,
     #[command(flatten)]
@@ -46,7 +46,7 @@ struct LibraryArgs {
     #[arg(long)]
     include_removed: bool,
     /// Podcasts folder to mirror to <card>/Podcasts (default:
-    /// $OPENPOD_PODCASTS, then `podcasts` in the config file). The mirror
+    /// $OPENTONE_PODCASTS, then `podcasts` in the config file). The mirror
     /// adds, moves and deletes episodes.
     #[arg(long)]
     podcasts: Option<PathBuf>,
