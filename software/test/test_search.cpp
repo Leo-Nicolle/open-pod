@@ -51,42 +51,42 @@ std::vector<uint8_t> buildFlatMusicIndex(const std::vector<TrieLeaf> &leaves) {
   }
 
   std::vector<uint8_t> out;
-  openpod_test::pushU32(out, (uint32_t)pool.size());
-  openpod_test::pushU32(out, (uint32_t)leaves.size() + 1);
-  openpod_test::pushU32(out, resultCount);
-  openpod_test::pushU32(out, (uint32_t)offsets.size());
+  opentone_test::pushU32(out, (uint32_t)pool.size());
+  opentone_test::pushU32(out, (uint32_t)leaves.size() + 1);
+  opentone_test::pushU32(out, resultCount);
+  opentone_test::pushU32(out, (uint32_t)offsets.size());
   for (char c : pool)
     out.push_back((uint8_t)c);
   for (uint32_t off : offsets)
-    openpod_test::pushU32(out, off);
+    opentone_test::pushU32(out, off);
 
   // root
-  openpod_test::pushU32(out, 0);
-  openpod_test::pushU32(out, 0);
-  openpod_test::pushU32(out, (uint32_t)leaves.size());
-  openpod_test::pushU32(out, 1);
-  openpod_test::pushU32(out, 0);
-  openpod_test::pushU32(out, 0);
+  opentone_test::pushU32(out, 0);
+  opentone_test::pushU32(out, 0);
+  opentone_test::pushU32(out, (uint32_t)leaves.size());
+  opentone_test::pushU32(out, 1);
+  opentone_test::pushU32(out, 0);
+  opentone_test::pushU32(out, 0);
 
   uint32_t firstResult = 0;
   for (size_t i = 0; i < leaves.size(); i++) {
-    openpod_test::pushU32(out, keyOffsets[i]);
-    openpod_test::pushU32(out, (uint32_t)leaves[i].key.size());
-    openpod_test::pushU32(out, 0);
-    openpod_test::pushU32(out, 0);
-    openpod_test::pushU32(out, (uint32_t)leaves[i].results.size());
-    openpod_test::pushU32(out, firstResult);
+    opentone_test::pushU32(out, keyOffsets[i]);
+    opentone_test::pushU32(out, (uint32_t)leaves[i].key.size());
+    opentone_test::pushU32(out, 0);
+    opentone_test::pushU32(out, 0);
+    opentone_test::pushU32(out, (uint32_t)leaves[i].results.size());
+    opentone_test::pushU32(out, firstResult);
     firstResult += (uint32_t)leaves[i].results.size();
   }
 
   for (size_t i = 0; i < leaves.size(); i++) {
     for (size_t j = 0; j < leaves[i].results.size(); j++) {
       const auto &r = leaves[i].results[j];
-      openpod_test::pushU32(out, r.type);
-      openpod_test::pushU32(out, r.id);
-      openpod_test::pushU32(out, nameOffsets[i][j]);
-      openpod_test::pushU32(out, (uint32_t)r.name.size());
-      openpod_test::pushU32(out, r.relevance);
+      opentone_test::pushU32(out, r.type);
+      opentone_test::pushU32(out, r.id);
+      opentone_test::pushU32(out, nameOffsets[i][j]);
+      opentone_test::pushU32(out, (uint32_t)r.name.size());
+      opentone_test::pushU32(out, r.relevance);
     }
   }
   return out;
@@ -96,15 +96,15 @@ std::vector<uint8_t> buildFlatMusicIndex(const std::vector<TrieLeaf> &leaves) {
 // Song" + "Second Song" / genre "Indie") plus a trie over it. No
 // album->artist section, so album rows exercise the first-track fallback.
 void setupSearchCatalog() {
-  openpod_test::resetAll();
-  openpod_test::registerStateTestCatalog();
-  auto &fs = openpod_test::FakeFs::get();
+  opentone_test::resetAll();
+  opentone_test::registerStateTestCatalog();
+  auto &fs = opentone_test::FakeFs::get();
 
   std::vector<std::pair<uint32_t, uint32_t>> track_to_artist;
   track_to_artist.push_back(std::make_pair(0u, 0u));
   track_to_artist.push_back(std::make_pair(1u, 0u));
-  fs.addFile("/openpod/track_to_artist.bin",
-             openpod_test::buildTrackToAlbumIndex(track_to_artist));
+  fs.addFile("/opentone/track_to_artist.bin",
+             opentone_test::buildTrackToAlbumIndex(track_to_artist));
 
   std::vector<TrieLeaf> leaves = {
       {"first song", {{SEARCH_TRACK, 0, "first song", 100}}},
@@ -125,7 +125,7 @@ void setupSearchCatalog() {
         {SEARCH_TRACK, 16, "m6", 100}, {SEARCH_TRACK, 17, "m7", 100},
         {SEARCH_TRACK, 18, "m8", 100}, {SEARCH_TRACK, 19, "m9", 100}}},
   };
-  fs.addFile("/openpod/music_index.bin", buildFlatMusicIndex(leaves));
+  fs.addFile("/opentone/music_index.bin", buildFlatMusicIndex(leaves));
 }
 
 // Types `text` (lowercase letters, digits and spaces) through the ribbon.

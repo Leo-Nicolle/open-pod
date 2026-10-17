@@ -1,5 +1,5 @@
 // Shapes returned by the backend (src-tauri/src/lib.rs and
-// openpod-core's card.rs / view.rs). Keep in sync with the Rust structs.
+// opentone-core's card.rs / view.rs). Keep in sync with the Rust structs.
 
 export interface LastSync {
   machine: string;

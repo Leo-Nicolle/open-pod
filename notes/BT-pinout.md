@@ -2,7 +2,7 @@
 
 Pin names and descriptions are from `datasheets/FSC-BT1035_Datasheet_EN.pdf`
 (table 3-2). The physical layout matches the footprint
-`hardware/openpod/openpod.pretty/fsc-bt1035.kicad_mod`.
+`hardware/opentone/opentone.pretty/fsc-bt1035.kicad_mod`.
 
 ## Physical layout
 

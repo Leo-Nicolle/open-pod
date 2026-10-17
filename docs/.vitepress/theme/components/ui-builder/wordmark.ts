@@ -1,4 +1,4 @@
-// "openpod" wordmark of the title screen, rendered by the browser and baked
+// "opentone" wordmark of the title screen, rendered by the browser and baked
 // into logo.h as 4-bit coverage (the firmware has no 28px font).
 //
 // Layout follows the title-screen handoff: IBM Plex Sans 600 at 28px,

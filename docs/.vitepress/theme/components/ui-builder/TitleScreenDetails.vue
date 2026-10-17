@@ -37,7 +37,7 @@ const steps = computed(() => [
   },
   {
     t: `${s(BOOT.LETTER_START)}–${s(BOOT.LETTER_START + 6 * BOOT.LETTER_STEP)}`,
-    d: `"openpod" types in, one glyph every ${BOOT.LETTER_STEP}ms: "open" in TEXT, "pod" in ACCENT.`,
+    d: `"opentone" types in, one glyph every ${BOOT.LETTER_STEP}ms: "open" in TEXT, "pod" in ACCENT.`,
   },
   { t: `${s(BOOT.HOP_START)}–${s(BOOT.HOP_END)}`, d: `A single ${BOOT.HOP_PX}px hop.` },
   {

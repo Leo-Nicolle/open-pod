@@ -182,12 +182,12 @@ OpenPodUIEngine::~OpenPodUIEngine()
 void OpenPodUIEngine::begin()
 {
   booting = true;
-  LOG_INFO("OpenPod UI Engine initializing...");
+  LOG_INFO("opentone UI Engine initializing...");
   hookToEvents();
   elementList.begin();
   updateTrackListScroll();
   updateScrollbar();
-  LOG_INFO("OpenPod UI Engine initialized with event-driven architecture");
+  LOG_INFO("opentone UI Engine initialized with event-driven architecture");
 }
 
 void OpenPodUIEngine::hookToEvents()
@@ -215,7 +215,8 @@ bool OpenPodUIEngine::update()
   {
     volumeOverlayHideAt = 0;
     nowPlaying.setVolumeOverlay(0, false);
-    if (state.getCurrentRoute().type == Route_t::RouteType::NOW_PLAYING)
+    if (state.getCurrentRoute().type == Route_t::RouteType::NOW_PLAYING &&
+        !state.getIsAnimating())
     {
       nowPlaying.renderVolumeOverlay(display);
     }
@@ -454,6 +455,14 @@ void OpenPodUIEngine::renderTrackList()
 
 void OpenPodUIEngine::renderNowPlaying(int xOffset, int width)
 {
+  // Mid-slide the display is hardware-scrolled: a full render would land in
+  // the wrong place and mark the cover as drawn, so the final render (from
+  // handleAnimationFinished) would skip it. That render reads all of this
+  // state again anyway.
+  if (state.getIsAnimating())
+  {
+    return;
+  }
   header.render(display, state.getHeaderTitle(), state.getIsPlaying(), true);
 
   const char *trackName = state.getPlayingTrackName();

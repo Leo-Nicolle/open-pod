@@ -1,4 +1,4 @@
-//! OpenPod Sync desktop app: Tauri commands over `openpod-core`. The Vue
+//! opentone Sync desktop app: Tauri commands over `opentone-core`. The Vue
 //! frontend (`../src`) calls these and listens to the progress events.
 
 mod cards;
@@ -11,15 +11,15 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
-use openpod_core::card::{self, CardInfo, CardState, free_space};
-use openpod_core::config::{self, Config};
-use openpod_core::index::AlbumKey;
-use openpod_core::library::{self, PlanInfo};
-use openpod_core::manifest::{self, Manifest};
-use openpod_core::podcasts::{self, PodcastManifest, mirror};
-use openpod_core::sync::{self, PlanOptions};
-use openpod_core::view::{self, CardAlbum, PlanSummary, RemovedView, SyncReport};
-use openpod_core::convert;
+use opentone_core::card::{self, CardInfo, CardState, free_space};
+use opentone_core::config::{self, Config};
+use opentone_core::index::AlbumKey;
+use opentone_core::library::{self, PlanInfo};
+use opentone_core::manifest::{self, Manifest};
+use opentone_core::podcasts::{self, PodcastManifest, mirror};
+use opentone_core::sync::{self, PlanOptions};
+use opentone_core::view::{self, CardAlbum, PlanSummary, RemovedView, SyncReport};
+use opentone_core::convert;
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Emitter, Manager, State};
 
@@ -233,7 +233,7 @@ async fn cards(app: State<'_, App>) -> Res<Cards> {
             all.insert(0, info(c, &vols));
         }
         let configured = configured.map(|p| p.to_string_lossy().into_owned());
-        // The configured card first, then one OpenPod already uses, then any.
+        // The configured card first, then one opentone already uses, then any.
         let pick = all
             .iter()
             .position(|c| Some(c.path.as_str()) == configured.as_deref() && !matches!(c.state, CardState::Missing))
@@ -580,7 +580,7 @@ async fn set_podcast_played(app: State<'_, App>, path: String, played: bool) -> 
     .map_err(err)?
 }
 
-/// Copies this app's binary to `<card>/openpod/tools/`, so the card carries
+/// Copies this app's binary to `<card>/opentone/tools/`, so the card carries
 /// it to other computers.
 #[tauri::command]
 async fn install_on_card(app: State<'_, App>) -> Res<String> {
@@ -589,7 +589,7 @@ async fn install_on_card(app: State<'_, App>) -> Res<String> {
         let dir = card.join(manifest::DIR).join("tools");
         std::fs::create_dir_all(&dir).map_err(err)?;
         let ext = if cfg!(windows) { ".exe" } else { "" };
-        let name = format!("openpod-sync-{}-{}{ext}", std::env::consts::OS, std::env::consts::ARCH);
+        let name = format!("opentone-sync-{}-{}{ext}", std::env::consts::OS, std::env::consts::ARCH);
         let exe = std::env::current_exe().map_err(err)?;
         std::fs::copy(exe, dir.join(&name)).map_err(err)?;
         Ok(name)
@@ -638,5 +638,5 @@ pub fn run() {
             install_on_card,
         ])
         .run(tauri::generate_context!())
-        .expect("error while running OpenPod Sync");
+        .expect("error while running opentone Sync");
 }

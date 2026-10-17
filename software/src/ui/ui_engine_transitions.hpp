@@ -28,7 +28,7 @@ void OpenPodUIEngine::transitionToNowPlaying()
                     BODY_HEIGHT, COLOR_BG);
 
   transitionAnimId = animManager.animate(
-      ANIM_CUSTOM, 0, SCREEN_WIDTH, 800,
+      ANIM_CUSTOM, 0, SCREEN_WIDTH, 600,
       [this](float offset)
       {
         int currentOffset = (int)offset;
@@ -80,7 +80,7 @@ void OpenPodUIEngine::transitionToTrackList(bool leftToRight)
                     BODY_HEIGHT, COLOR_BG);
 
   transitionAnimId = animManager.animate(
-      ANIM_CUSTOM, 0, SCREEN_WIDTH, 800,
+      ANIM_CUSTOM, 0, SCREEN_WIDTH, 600,
       [this](float offset)
       {
         int currentOffset = (int)offset;

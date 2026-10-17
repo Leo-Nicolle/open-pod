@@ -38,7 +38,7 @@ async function main() {
       "Usage: tsx generate-index.ts <music-directory> [output-file]"
     );
     console.error(
-      "Example: tsx generate-index.ts /path/to/music /media/me/SD_card/openpod"
+      "Example: tsx generate-index.ts /path/to/music /media/me/SD_card/opentone"
     );
     process.exit(1);
   }

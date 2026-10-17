@@ -10,7 +10,7 @@
 #include <utility>
 #include <vector>
 
-namespace openpod_test {
+namespace opentone_test {
 
 inline void pushU32(std::vector<uint8_t> &out, uint32_t v) {
   out.push_back((uint8_t)(v & 0xFF));
@@ -227,4 +227,4 @@ buildAlbumCoverIndex(const std::vector<CoverIndexEntry> &entries) {
   return out;
 }
 
-} // namespace openpod_test
+} // namespace opentone_test

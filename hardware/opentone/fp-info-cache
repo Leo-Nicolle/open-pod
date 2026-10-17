@@ -1,4 +1,4 @@
-27260444908156141
+27259039866400710
 Audio_Module
 Reverb_BTDR-1H
 Digital Reverberation Unit, http://www.belton.co.kr/inc/downfile.php?seq=17&file=pdf (footprint from http://www.uk-electronic.de/PDF/BTDR-1.pdf)
@@ -107911,77 +107911,70 @@ CUI_SJ-43515TS-SMT-TR
 0
 5
 5
-openpod
+opentone
 CUI_SJ1-3524NG
 
 
 0
 4
 4
-openpod
+opentone
 ESP32-S3-WROOM-2
 2.4 GHz Wi­-Fi and Bluetooth 5 (LE) module: https://www.espressif.com/sites/default/files/documentation/esp32-s3-wroom-2_datasheet_en.pdf
 Bluetooth WiFi Wi-Fi ESP WROOM
 0
 61
 41
-openpod
+opentone
 Hirose_FH12-40S-0.5SH_1x40-1MP_P0.50mm_Horizontal
 Hirose FH12, FFC/FPC connector, FH12-40S-0.5SH, 40 Pins per row (https://www.hirose.com/product/en/products/FH12/FH12-24S-0.5SH(55)/), generated with kicad-footprint-generator
 connector Hirose FH12 horizontal
 0
 42
 41
-openpod
+opentone
 SW_SKQGAFE010
 
 
 0
 4
 4
-openpod
-Untitled
-
-
-0
-0
-0
-openpod
+opentone
 clickwheel
 
 
 0
 26
 20
-openpod
+opentone
 clickwheel_1
 
 
 0
-4
-4
-openpod
+6
+6
+opentone
 fsc-bt1035
-Feasycom FSC-BT1035 Bluetooth 5.2 module (QCC3056), 13.0x26.9mm, 52 castellation pads, 1.0mm pitch
-Bluetooth module Feasycom FSC-BT1035 QCC3056 audio
+Feasycom FSC-BT1035 Bluetooth 5.2 module (QCC3056), 13.0x26.9mm, 52 castellated edge pads; sits flat in a board cutout, plain SMD pads on the cutout edge (0.2mm copper pullback), solder-bridged to the castellations, 0.15mm cutout clearance per side, 1.0mm pitch
+Bluetooth module Feasycom FSC-BT1035 QCC3056 audio castellated edge-mount
 0
 52
 52
-openpod
+opentone
 fsc-bt1046
 
 
 0
 44
 44
-openpod
+opentone
 mpr121qr2
 
 
 0
 20
 20
-openpod
+opentone
 nhd-2.4-240320cf-ctxif
 
 

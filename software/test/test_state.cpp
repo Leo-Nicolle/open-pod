@@ -109,8 +109,8 @@ void navigateToTracks(State &state, MusicLookup &lookup) {
 }
 
 void setupCatalog() {
-  openpod_test::resetAll();
-  openpod_test::registerStateTestCatalog();
+  opentone_test::resetAll();
+  opentone_test::registerStateTestCatalog();
 }
 }
 
@@ -838,8 +838,8 @@ TEST_SUITE("State Navigation Tests") {
     for (uint32_t id = 1; id <= 30; id++) {
       artists.push_back(std::make_pair(id, "Artist " + std::to_string(id)));
     }
-    openpod_test::FakeFs::get().addFile("/openpod/artist_index.bin",
-                                        openpod_test::buildStringIndex(artists));
+    opentone_test::FakeFs::get().addFile("/opentone/artist_index.bin",
+                                        opentone_test::buildStringIndex(artists));
     MusicLookup lookup;
     REQUIRE(lookup.init());
 
@@ -911,8 +911,8 @@ TEST_SUITE("State Navigation Tests") {
   // genre" showed albums from every genre. Genre now routes straight to
   // ALBUMS, which is genre-scoped.
   TEST_CASE("State - Genre Selection Scopes Albums To That Genre") {
-    openpod_test::resetAll();
-    openpod_test::registerMultiGenreTestCatalog();
+    opentone_test::resetAll();
+    opentone_test::registerMultiGenreTestCatalog();
     State state;
     MusicLookup lookup;
     REQUIRE(lookup.init());
@@ -936,8 +936,8 @@ TEST_SUITE("State Navigation Tests") {
   // 50 related ids (an album's tracks…): the state loads a window of names
   // around the visible rows instead.
   TEST_CASE("State - Back Restores The Header Name") {
-    openpod_test::resetAll();
-    openpod_test::registerLargeCatalog();
+    opentone_test::resetAll();
+    opentone_test::registerLargeCatalog();
     State state;
     MusicLookup lookup;
     REQUIRE(lookup.init());
@@ -964,8 +964,8 @@ TEST_SUITE("State Navigation Tests") {
   }
 
   TEST_CASE("State - Long Names Still Fill The Visible Rows") {
-    openpod_test::resetAll();
-    openpod_test::registerLargeCatalog();
+    opentone_test::resetAll();
+    opentone_test::registerLargeCatalog();
     // 200-char artist names: only ~20 fit the window's buffer, not 64.
     std::vector<std::pair<uint32_t, std::string>> artists;
     for (uint32_t id = 0; id < 300; id++) {
@@ -973,8 +973,8 @@ TEST_SUITE("State Navigation Tests") {
       snprintf(head, sizeof(head), "Artist %03u ", (unsigned)(id + 1));
       artists.push_back(std::make_pair(id, std::string(head) + std::string(189, 'x')));
     }
-    openpod_test::FakeFs::get().addFile("/openpod/artist_index.bin",
-                                        openpod_test::buildStringIndex(artists));
+    opentone_test::FakeFs::get().addFile("/opentone/artist_index.bin",
+                                        opentone_test::buildStringIndex(artists));
     State state;
     MusicLookup lookup;
     REQUIRE(lookup.init());
@@ -1003,8 +1003,8 @@ TEST_SUITE("State Navigation Tests") {
   }
 
   TEST_CASE("State - Long Lists Are Complete") {
-    openpod_test::resetAll();
-    openpod_test::registerLargeCatalog();
+    opentone_test::resetAll();
+    opentone_test::registerLargeCatalog();
     State state;
     MusicLookup lookup;
     REQUIRE(lookup.init());

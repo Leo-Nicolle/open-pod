@@ -23,7 +23,7 @@ use crate::policy::{self, Policy};
 use crate::tags::{self, Probed};
 
 /// Suffix of a file being written to the card; renamed when complete.
-pub const PART_SUFFIX: &str = ".openpod-part";
+pub const PART_SUFFIX: &str = ".opentone-part";
 pub(crate) const CHECKPOINT_EVERY: usize = 25;
 pub(crate) const CHECKPOINT_SECS: u64 = 15;
 
@@ -579,7 +579,7 @@ impl Pending {
     }
 }
 
-/// Copies `src` to `card/rel` through a `.openpod-part` file, named by
+/// Copies `src` to `card/rel` through a `.opentone-part` file, named by
 /// [`Pending::finish`] once it is on the card: otherwise the OS buffers
 /// gigabytes in RAM, the progress shows memory speed instead of the card's,
 /// and pulling the card after an interrupted sync loses files the manifest
@@ -634,7 +634,7 @@ fn busy_secs(mut spans: Vec<(Instant, Instant)>) -> f64 {
     total + cur.map_or(0.0, |(a, b)| (b - a).as_secs_f64())
 }
 
-/// Deletes `.openpod-part` leftovers of an interrupted sync.
+/// Deletes `.opentone-part` leftovers of an interrupted sync.
 pub fn remove_partial_files(card: &Path) -> usize {
     let mut removed = 0;
     let mut stack = vec![card.to_path_buf()];
@@ -976,7 +976,7 @@ pub fn execute(
     if writes.is_empty() {
         return Ok(out);
     }
-    let tmp = std::env::temp_dir().join(format!("openpod-{}", std::process::id()));
+    let tmp = std::env::temp_dir().join(format!("opentone-{}", std::process::id()));
     fs::create_dir_all(&tmp)?;
     let dests = card_paths(m, &writes);
 

@@ -93,7 +93,7 @@ export async function selftest() {
     await webApi.syncStart();
     const dp = await donePod;
     say(`sync-pod: error=${dp.error} podcasts=${JSON.stringify(dp.report?.podcasts)}`);
-    say('card podcasts:\n  ' + (await ls(card)).filter((l) => l.startsWith('Podcasts') || l.startsWith('openpod/podcast')).join('\n  '));
+    say('card podcasts:\n  ' + (await ls(card)).filter((l) => l.startsWith('Podcasts') || l.startsWith('opentone/podcast')).join('\n  '));
     const lib = await webApi.library();
     say(`library: ${lib.albums.map((a) => `${a.artist}/${a.title}:${a.tracks.length}`).join(', ')}`);
     const first = lib.albums.find((a) => a.title === 'First Album')!;

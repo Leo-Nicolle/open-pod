@@ -1,4 +1,4 @@
-//! Port of the TS indexer (`indexer/`): builds the `openpod/index.pack`
+//! Port of the TS indexer (`indexer/`): builds the `opentone/index.pack`
 //! (every lookup table and the search trie, see [`pack`]) and `thumbs.bin`
 //! the firmware reads.
 

@@ -3,7 +3,7 @@
 #include <SdFat.h>
 #include <stdint.h>
 
-// Each podcast episode's listening state: /openpod/podcast_state.bin, one
+// Each podcast episode's listening state: /opentone/podcast_state.bin, one
 // fixed-size record per episode id (written by the syncer's podcasts
 // module, which moves the records to the new ids on every sync).
 //
@@ -16,7 +16,7 @@
 // interrupted between the two files) the state is ignored and never
 // written: every episode shows as new until the next sync.
 //
-// Rules (.agents/openpod-podcasts-design/.../README.md §6): new = not
+// Rules (.agents/opentone-podcasts-design/.../README.md §6): new = not
 // played and position 0; in progress = not played, position > 0; played.
 // last_played is a sequence number (no clock): the highest in-progress one
 // is the "continue" row.

@@ -1,7 +1,7 @@
 #pragma once
 #include <stdint.h>
 
-// Section ids of /openpod/index.pack and /openpod/podcasts.pack. Keep in
+// Section ids of /opentone/index.pack and /opentone/podcasts.pack. Keep in
 // sync with `pub mod section` in syncer/crates/core/src/index/pack.rs.
 namespace PackSection {
 // Music (index.pack)

@@ -6,7 +6,7 @@
 //
 // Reads the bench_qoi/ and bench_raw565/ fixture sets produced by
 // indexer/generate-benchmark-covers.ts (copy both onto the SD card under
-// /openpod/ before running this).
+// /opentone/ before running this).
 #include <Arduino.h>
 #include <SdFat.h>
 

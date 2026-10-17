@@ -15,7 +15,7 @@
 // around the visible rows; lists themselves can be any length).
 #define LOOKUP_WINDOW 64
 
-// The lookup tables are sections of /openpod/index.pack (and
+// The lookup tables are sections of /opentone/index.pack (and
 // podcasts.pack), read through the PSRAM page cache (PageStore.h). Formats
 // in syncer/crates/core/src/index/binary.rs; ids are dense, so every table
 // is indexed by id directly.
@@ -146,7 +146,7 @@ public:
   MusicLookup();
   ~MusicLookup();
 
-  // Opens /openpod/index.pack (false: no library, the card needs a
+  // Opens /opentone/index.pack (false: no library, the card needs a
   // re-sync) and podcasts.pack if there is one.
   bool init();
   // The card is readable but has no usable index.pack (indexed by an older

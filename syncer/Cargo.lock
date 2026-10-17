@@ -2644,7 +2644,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "384b8ab6d37215f3c5301a95a4accb5d64aa607f1fcb26a11b5303878451b4fe"
 
 [[package]]
-name = "openpod-cli"
+name = "opentone-cli"
 version = "0.1.0"
 dependencies = [
  "anyhow",
@@ -2652,12 +2652,12 @@ dependencies = [
  "ctrlc",
  "fs4",
  "indicatif",
- "openpod-core",
+ "opentone-core",
  "xxhash-rust",
 ]
 
 [[package]]
-name = "openpod-core"
+name = "opentone-core"
 version = "0.1.0"
 dependencies = [
  "dirs",
@@ -2681,11 +2681,11 @@ dependencies = [
 ]
 
 [[package]]
-name = "openpod-sync"
+name = "opentone-sync"
 version = "0.1.0"
 dependencies = [
  "image",
- "openpod-core",
+ "opentone-core",
  "serde",
  "serde_json",
  "sysinfo",
@@ -2695,11 +2695,11 @@ dependencies = [
 ]
 
 [[package]]
-name = "openpod-web"
+name = "opentone-web"
 version = "0.1.0"
 dependencies = [
  "js-sys",
- "openpod-core",
+ "opentone-core",
  "serde",
  "serde_json",
  "wasm-bindgen",

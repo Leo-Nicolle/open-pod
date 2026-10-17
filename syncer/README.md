@@ -1,37 +1,37 @@
-# openpod (Rust sync tool)
+# opentone (Rust sync tool)
 
 Single binary that replaces the former `sync/sync.sh` and `indexer/`: additive sync
 from any number of computers, conversion to formats the VS1053b plays, and
-the `openpod/*.bin` index the firmware reads. Design and phases:
+the `opentone/*.bin` index the firmware reads. Design and phases:
 [`plans/sync-tool.md`](../plans/sync-tool.md).
 
 Status: **phases 1–3 done** and used on the real card: indexer port; `sync`,
 `status`, `adopt`, `index`, `ls`, `rm` and `install-tools`; CI builds in
 `.github/workflows/syncer.yml` (push a `syncer-vX.Y.Z` tag to publish a
 release). Phase 4, the desktop app, and phase 5, the same app in the
-browser (docs site, Tools → OpenPod Sync), are in `app/` (see below).
+browser (docs site, Tools → opentone Sync), are in `app/` (see below).
 
 ## Build
 
 ```sh
 cd syncer
-cargo build --release   # -> target/release/openpod
+cargo build --release   # -> target/release/opentone
 cargo test
 ```
 
 ## Sync a card
 
 ```sh
-openpod status ~/Music --card /mnt/openpod   # what sync would do
-openpod sync   ~/Music --card /mnt/openpod
+opentone status ~/Music --card /mnt/opentone   # what sync would do
+opentone sync   ~/Music --card /mnt/opentone
 ```
 
-With a config file, both are just `openpod status` and `openpod sync`:
+With a config file, both are just `opentone status` and `opentone sync`:
 
 ```toml
-# ~/.config/openpod/config.toml (every key optional)
+# ~/.config/opentone/config.toml (every key optional)
 machine = "laptop"          # name in the card's manifest (default: hostname)
-card = "/mnt/openpod"
+card = "/mnt/opentone"
 libraries = ["~/Music"]
 exclude = ["Various Artists/Bootlegs"]  # library-relative; hidden ones are always skipped
 album_key = "artist-album"  # or "name"
@@ -46,10 +46,10 @@ Flags win over the `OPENPOD_SD` / `OPENPOD_LIBRARY` / `OPENPOD_EXCLUDE` /
   track is identified by its tags (album artist, album, disc, track,
   title), so the same album from two computers is stored once, and a FLAC
   replaces an MP3 of the same track.
-- **Removal is explicit:** `openpod rm --album "…"` (or `--artist`,
+- **Removal is explicit:** `opentone rm --album "…"` (or `--artist`,
   `--path`) deletes the files and remembers it, so later syncs from any
   computer don't bring them back (`sync --include-removed` does).
-  `openpod ls [--tracks]` lists what's on the card.
+  `opentone ls [--tracks]` lists what's on the card.
 - **Conversion** to what the VS1053b plays (48 kHz, 24-bit, stereo, FLAC
   LPC order ≤ 12): MP3 and FLAC within limits are copied; hi-res or
   multichannel FLAC, WAV, AIFF and ALAC become FLAC (16-bit at 44.1/48 kHz
@@ -59,13 +59,13 @@ Flags win over the `OPENPOD_SD` / `OPENPOD_LIBRARY` / `OPENPOD_EXCLUDE` /
 - **Card layout:** `Album artist/Album/[disc-]NN Title.ext` with FAT-safe
   names, plus the album's `cover`/`folder`/`album`/`front` image.
 - **Bad tags:** missing values come from the library layout
-  (`Artist/Album/NN Title`), else "Unknown". `openpod/sync-report.txt` on
+  (`Artist/Album/NN Title`), else "Unknown". `opentone/sync-report.txt` on
   the card lists those folders, the conversions and skipped files.
 - **Interruptible:** Ctrl-C finishes the current files and saves; the next
-  sync carries on. Files are written as `*.openpod-part`, flushed to the
+  sync carries on. Files are written as `*.opentone-part`, flushed to the
   card, then renamed.
 - **Existing cards:** the first sync reads the card once (`adopt`), builds
-  `openpod/library.json`, and links library files to the tracks already
+  `opentone/library.json`, and links library files to the tracks already
   there instead of copying them again.
 - **Speed:** a no-op sync of ~1,600 tracks takes under a second. Copies run
   at the card's write speed (a USB 2 card reader caps it at ~20 MB/s).
@@ -75,22 +75,22 @@ Flags win over the `OPENPOD_SD` / `OPENPOD_LIBRARY` / `OPENPOD_EXCLUDE` /
   like music), episodes deleted from the folder are deleted from the card,
   and episodes that only moved (same content hash) are renamed on the card
   instead of copied again. Without the setting, a computer leaves the card's
-  podcasts alone. The card keeps them in `openpod/podcasts.json`, apart
+  podcasts alone. The card keeps them in `opentone/podcasts.json`, apart
   from the music manifest, and every change rebuilds the player's podcast
-  tables (`openpod/podcast_*.bin`). The listening state the player writes
+  tables (`opentone/podcast_*.bin`). The listening state the player writes
   (`podcast_state.bin`: position, played) is keyed by the episode's content
   hash, so it follows the episode across rebuilds, renames and moves. A
   podcasts folder inside a music library is left out of the music.
-- `openpod install-tools [--from <release folder>]` copies the binaries to
-  `<card>/openpod/tools/`, so the card carries the tool to other computers.
+- `opentone install-tools [--from <release folder>]` copies the binaries to
+  `<card>/opentone/tools/`, so the card carries the tool to other computers.
 
-## Desktop app (OpenPod Sync)
+## Desktop app (opentone Sync)
 
 `app/`: a Tauri 2 app with a Vue 3 + Vite frontend, built from the design
-handoff in `.agents/OpenPod-Sync-design/`. It does what the CLI does:
+handoff in `.agents/opentone-Sync-design/`. It does what the CLI does:
 detects the card, reads an existing card once, shows what's new, syncs with
 progress, browses and removes albums (and brings them back), shows the last
-report and edits `~/.config/openpod/config.toml`.
+report and edits `~/.config/opentone/config.toml`.
 
 ```sh
 cd syncer/app
@@ -113,15 +113,15 @@ URL parameters for checking screens without a card: `?mock` (sample data,
 browser backend end to end on the browser's private storage (OPFS) and
 prints the result.
 
-- `src-tauri/src/lib.rs`: the commands, over `openpod-core` (`card`,
+- `src-tauri/src/lib.rs`: the commands, over `opentone-core` (`card`,
   `view`, `library`, `sync`), and the `sync-progress` / `card-read` events.
 - `src-tauri/src/covers.rs`: `cover://` thumbnails for the album grids.
 - `src-tauri/src/cards.rs`: finding cards (removable FAT/exFAT volumes, or
-  any volume holding `openpod/library.json`) and ejecting them.
+  any volume holding `opentone/library.json`) and ejecting them.
 - `src/api/`: the frontend's backend interface: `tauri.ts` (desktop),
   `web.ts` (browser: File System Access API, workers in `web-worker.ts`),
   `mock.ts` (sample data).
-- `../crates/web`: `openpod-core` for the browser (wasm-bindgen). Workers
+- `../crates/web`: `opentone-core` for the browser (wasm-bindgen). Workers
   read files synchronously (`FileReaderSync`) for probing, hashing,
   conversion and covers; a `Session` on the page plans and keeps the
   manifest. JavaScript walks folders and writes to the card.
@@ -129,7 +129,7 @@ prints the result.
 ## Index a folder
 
 ```sh
-openpod index <music-folder> <card>/openpod
+opentone index <music-folder> <card>/opentone
 ```
 
 `<music-folder>` must have the same layout as the card: paths in

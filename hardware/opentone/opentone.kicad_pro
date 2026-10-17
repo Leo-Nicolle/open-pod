@@ -451,14 +451,14 @@
   "libraries": {
     "pinned_footprint_libs": [
       "jack",
-      "openpod"
+      "opentone"
     ],
     "pinned_symbol_libs": [
-      "openpod"
+      "opentone"
     ]
   },
   "meta": {
-    "filename": "openpod.kicad_pro",
+    "filename": "opentone.kicad_pro",
     "version": 3
   },
   "net_settings": {
@@ -497,7 +497,7 @@
       "plot": "",
       "pos_files": "",
       "specctra_dsn": "",
-      "step": "../../../../../openpod.step",
+      "step": "../../../../../opentone.step",
       "svg": "",
       "vrml": ""
     },

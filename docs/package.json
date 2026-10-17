@@ -1,11 +1,11 @@
 {
-  "name": "Openpod-docs",
+  "name": "opentone-docs",
   "scripts": {
-    "publish": "gh-pages -d .vitepress/dist",
-    "prepublish": "npm run sync-app && npm run docs:build",
-    "docs:dev": "vitepress dev",
-    "docs:build": "vitepress build",
-    "docs:preview": "vitepress preview",
+    "publish": "./deploy.sh",
+    "prepublish": "npm run sync-app && npm run build",
+    "dev": "vitepress dev",
+    "build": "vitepress build",
+    "preview": "vitepress preview",
     "sync-app": "npm --prefix ../syncer/app run build:web"
   },
   "devDependencies": {

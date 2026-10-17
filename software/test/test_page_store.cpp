@@ -18,12 +18,12 @@ std::vector<uint8_t> patterned(uint32_t size) {
 }
 
 void registerPack(uint32_t size) {
-  openpod_test::resetAll();
+  opentone_test::resetAll();
   std::vector<std::pair<uint32_t, std::vector<uint8_t>>> sections;
   sections.push_back(std::make_pair(1u, patterned(size)));
   sections.push_back(std::make_pair(2u, std::vector<uint8_t>{1, 2, 3}));
-  openpod_test::FakeFs::get().addFile("/openpod/test.pack",
-                                      openpod_test::buildPack(sections));
+  opentone_test::FakeFs::get().addFile("/opentone/test.pack",
+                                      opentone_test::buildPack(sections));
 }
 
 } // namespace
@@ -33,7 +33,7 @@ TEST_CASE("PageStore - reads match the file, across pages") {
   PageStore store;
   SdFat sd;
   store.begin(INDEX_CACHE_BASE_ADDRESS, 16 * PAGE);
-  REQUIRE(store.open(sd, "/openpod/test.pack", 0) == 0);
+  REQUIRE(store.open(sd, "/opentone/test.pack", 0) == 0);
   PackRef s;
   REQUIRE(store.find(0, 1, s));
   CHECK(s.length == 5 * PAGE + 123);
@@ -65,7 +65,7 @@ TEST_CASE("PageStore - pages come from the cache once loaded") {
   PageStore store;
   SdFat sd;
   store.begin(INDEX_CACHE_BASE_ADDRESS, 16 * PAGE);
-  REQUIRE(store.open(sd, "/openpod/test.pack", 0) == 0);
+  REQUIRE(store.open(sd, "/opentone/test.pack", 0) == 0);
   PackRef s;
   REQUIRE(store.find(0, 1, s));
   store.resetStats();
@@ -85,7 +85,7 @@ TEST_CASE("PageStore - eviction keeps reads correct with a tiny cache") {
   SdFat sd;
   store.begin(INDEX_CACHE_BASE_ADDRESS, 3 * PAGE); // 3 slots
   CHECK(store.slotCount() == 3);
-  REQUIRE(store.open(sd, "/openpod/test.pack", 0) == 0);
+  REQUIRE(store.open(sd, "/opentone/test.pack", 0) == 0);
   PackRef s;
   REQUIRE(store.find(0, 1, s));
   std::vector<uint8_t> want = patterned(s.length);
@@ -108,7 +108,7 @@ TEST_CASE("PageStore - reads outside a section are refused") {
   PageStore store;
   SdFat sd;
   store.begin(INDEX_CACHE_BASE_ADDRESS, 4 * PAGE);
-  REQUIRE(store.open(sd, "/openpod/test.pack", 0) == 0);
+  REQUIRE(store.open(sd, "/opentone/test.pack", 0) == 0);
   PackRef s;
   REQUIRE(store.find(0, 1, s));
   uint8_t b[8] = {9, 9, 9, 9, 9, 9, 9, 9};
@@ -123,14 +123,14 @@ TEST_CASE("PageStore - reads outside a section are refused") {
 }
 
 TEST_CASE("PageStore - rejects files that aren't packs") {
-  openpod_test::resetAll();
-  openpod_test::FakeFs::get().addFile("/openpod/x.pack",
+  opentone_test::resetAll();
+  opentone_test::FakeFs::get().addFile("/opentone/x.pack",
                                       std::vector<uint8_t>(64, 0));
   PageStore store;
   SdFat sd;
   store.begin(INDEX_CACHE_BASE_ADDRESS, 4 * PAGE);
-  CHECK(store.open(sd, "/openpod/x.pack", 0) == -1);
-  CHECK(store.open(sd, "/openpod/missing.pack", 0) == -1);
+  CHECK(store.open(sd, "/opentone/x.pack", 0) == -1);
+  CHECK(store.open(sd, "/opentone/missing.pack", 0) == -1);
   CHECK_FALSE(store.isOpen(0));
 }
 
@@ -139,7 +139,7 @@ TEST_CASE("PageStore - reopening a pack drops its cached pages") {
   PageStore store;
   SdFat sd;
   store.begin(INDEX_CACHE_BASE_ADDRESS, 4 * PAGE);
-  REQUIRE(store.open(sd, "/openpod/test.pack", 0) == 0);
+  REQUIRE(store.open(sd, "/opentone/test.pack", 0) == 0);
   PackRef s;
   REQUIRE(store.find(0, 1, s));
   uint8_t before;
@@ -148,9 +148,9 @@ TEST_CASE("PageStore - reopening a pack drops its cached pages") {
   // The card's pack changes (a re-sync): same name, other bytes.
   std::vector<std::pair<uint32_t, std::vector<uint8_t>>> sections;
   sections.push_back(std::make_pair(1u, std::vector<uint8_t>(2 * PAGE, 0xAB)));
-  openpod_test::FakeFs::get().addFile("/openpod/test.pack",
-                                      openpod_test::buildPack(sections));
-  REQUIRE(store.open(sd, "/openpod/test.pack", 0) == 0);
+  opentone_test::FakeFs::get().addFile("/opentone/test.pack",
+                                      opentone_test::buildPack(sections));
+  REQUIRE(store.open(sd, "/opentone/test.pack", 0) == 0);
   REQUIRE(store.find(0, 1, s));
   uint8_t after;
   store.read(s, 100, &after, 1);
@@ -160,20 +160,20 @@ TEST_CASE("PageStore - reopening a pack drops its cached pages") {
 TEST_CASE("PageStore - packs up to MAX_PAGES pages, keys stay clear of EMPTY") {
   // A small pack padded to exactly MAX_PAGES pages, in pack slot 1: its last
   // page has the highest key (0xFFFE), next to the EMPTY sentinel.
-  openpod_test::resetAll();
+  opentone_test::resetAll();
   std::vector<std::pair<uint32_t, std::vector<uint8_t>>> sections;
   sections.push_back(std::make_pair(1u, std::vector<uint8_t>{1, 2, 3}));
-  std::vector<uint8_t> file = openpod_test::buildPack(sections);
+  std::vector<uint8_t> file = opentone_test::buildPack(sections);
   const uint32_t maxSize = (uint32_t)PageStore::MAX_PAGES * PAGE;
   file.resize(maxSize, 0);
   file[maxSize - 1] = 0x5A;
   auto shared = std::make_shared<std::vector<uint8_t>>(std::move(file));
-  openpod_test::FakeFs::get().files["/openpod/big.pack"] = shared;
+  opentone_test::FakeFs::get().files["/opentone/big.pack"] = shared;
 
   PageStore store;
   SdFat sd;
   store.begin(INDEX_CACHE_BASE_ADDRESS, 4 * PAGE);
-  REQUIRE(store.open(sd, "/openpod/big.pack", 1) == 1);
+  REQUIRE(store.open(sd, "/opentone/big.pack", 1) == 1);
   PackRef whole = {(1u << 31), maxSize};
   uint8_t b = 0;
   CHECK(store.read(whole, maxSize - 1, &b, 1));
@@ -184,6 +184,6 @@ TEST_CASE("PageStore - packs up to MAX_PAGES pages, keys stay clear of EMPTY") {
 
   // One byte more and the page numbers would overflow the key: refused.
   shared->push_back(0);
-  CHECK(store.open(sd, "/openpod/big.pack", 1) == -1);
+  CHECK(store.open(sd, "/opentone/big.pack", 1) == -1);
   CHECK_FALSE(store.isOpen(1));
 }

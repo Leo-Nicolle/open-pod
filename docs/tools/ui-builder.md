@@ -16,7 +16,7 @@ head:
 
 # UI builder
 
-Every screen of the Openpod firmware, drawn exactly as the device draws it (320×240, RGB565).
+Every screen of the opentone firmware, drawn exactly as the device draws it (320×240, RGB565).
 **Preview** walks through the screens like a slideshow (←/→ keys work too). **Spec** adds the
 implementation details: pixel geometry, the redraw budget, the chunk grid, the sprites and the
 title-screen timeline.
@@ -28,7 +28,7 @@ Change the palette on the left to re-theme everything. Edits stay in this tab un
 
 ## Using the export
 
-**Export** downloads `openpod-ui.zip`:
+**Export** downloads `opentone-ui.zip`:
 
 - **sprites.h**: the sprite pixel arrays (and 1-bit masks for `play` / `pause` /
   `speaker`), a `Sprite` struct, and `blitSprite` / `blitSpriteToDisplay` helpers,

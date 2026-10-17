@@ -35,7 +35,7 @@ private:
   // Truncates `title` with an ellipsis to fit between the glyph and the
   // Bluetooth icon (or the codec tag), and renders it at row y.
   void drawTitle(uint16_t *buffer, const char *title, int y, bool showCodec) {
-    const char *headerTitle = title ? title : "OpenPod";
+    const char *headerTitle = title ? title : "opentone";
     char truncatedTitle[64];
     strncpy(truncatedTitle, headerTitle, sizeof(truncatedTitle) - 1);
     truncatedTitle[sizeof(truncatedTitle) - 1] = '\0';
@@ -91,7 +91,7 @@ public:
   // Render the 30px header (chunk 0) at its fixed screen position: SURFACE
   // background, a 1px LINE rule at the bottom, the transport glyph on the
   // left, the breadcrumb title, and a battery on the right.
-  void render(ILI9341_GFX *display, const char *title = "OpenPod",
+  void render(ILI9341_GFX *display, const char *title = "opentone",
               bool playing = false, bool showCodec = false);
 };
 

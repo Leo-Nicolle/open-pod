@@ -1,12 +1,12 @@
 [package]
-name = "openpod-sync"
-description = "OpenPod Sync: fill an OpenPod's SD card from your music folders"
+name = "opentone-sync"
+description = "opentone Sync: fill an opentone's SD card from your music folders"
 edition.workspace = true
 version.workspace = true
 license.workspace = true
 
 [lib]
-name = "openpod_sync_lib"
+name = "opentone_sync_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]
@@ -14,7 +14,7 @@ tauri-build = { version = "2", features = [] }
 
 [dependencies]
 image = { version = "0.25.10", default-features = false, features = ["jpeg", "png", "webp"] }
-openpod-core = { path = "../../crates/core" }
+opentone-core = { path = "../../crates/core" }
 serde = { version = "1.0.229", features = ["derive"] }
 serde_json = "1.0.154"
 sysinfo = { version = "0.39", default-features = false, features = ["disk"] }

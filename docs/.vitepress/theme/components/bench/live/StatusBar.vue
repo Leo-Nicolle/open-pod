@@ -1,8 +1,8 @@
 <template>
   <header ref="statusEl" class="bl-status">
     <div class="bl-brand">
-      <img :src="withBase('/openpod_logo.svg')" alt="" />
-      <span><b>OpenPod</b> <span class="bl-muted">BenchLive</span></span>
+      <img :src="withBase('/opentone_logo.svg')" alt="" />
+      <span><b>opentone</b> <span class="bl-muted">BenchLive</span></span>
     </div>
     <span class="bl-divider" />
     <template v-if="!supported">

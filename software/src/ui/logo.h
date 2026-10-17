@@ -1,6 +1,6 @@
 #pragma once
-// Auto-generated openpod title screen (see docs/ui-builder).
-// Logo source: docs/public/openpod_logo.svg. Images are 4 bits per pixel,
+// Auto-generated opentone title screen (see docs/ui-builder).
+// Logo source: docs/public/opentone_logo.svg. Images are 4 bits per pixel,
 // high nibble = left pixel, rows padded to a whole byte. Logo pixels are
 // palette indices (0 = transparent); wordmark pixels are coverage 0..15,
 // looked up in a BG->colour ramp. Colours come from the theme at export.
@@ -296,7 +296,7 @@ static const uint8_t OPENPOD_LOGO_SQUASH_DATA[5883] = {
 
 static const LogoImage OPENPOD_LOGO_SQUASH = {106, 111, 53, OPENPOD_LOGO_SQUASH_DATA};
 
-// Wordmark "openpod" 110x27 at (105, 180). Glyph i covers
+// Wordmark "opentone" 110x27 at (105, 180). Glyph i covers
 // strip columns [SPLIT[i], SPLIT[i+1]); glyphs from ACCENT_FROM on use the accent ramp.
 #define OPENPOD_WORD_X 105
 #define OPENPOD_WORD_Y 180

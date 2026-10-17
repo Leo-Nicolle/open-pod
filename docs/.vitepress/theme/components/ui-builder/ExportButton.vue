@@ -20,8 +20,8 @@ async function onExport() {
   busy.value = true;
   try {
     const logoH = buildLogoHeader(props.palette, props.logo, props.squash, props.wordmark);
-    downloadBlob('openpod-ui.zip', await buildExportZip(props.palette, logoH));
-    status.value = 'Downloaded openpod-ui.zip';
+    downloadBlob('opentone-ui.zip', await buildExportZip(props.palette, logoH));
+    status.value = 'Downloaded opentone-ui.zip';
   } catch (e) {
     status.value = `Export failed: ${e}`;
   } finally {

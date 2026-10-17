@@ -85,8 +85,8 @@ export const GROUPS: SlideGroup[] = [
   {
     id: 'title',
     title: 'Title screen',
-    summary: 'The bird drops in, the "openpod" wordmark types itself, then the menu wipes in.',
-    lede: 'The bird at its native 99×122 at (110, 44), the wordmark under it, then a chunk wipe into the root menu. The logo is rasterized from public/openpod_logo.svg into 4-bit palette indices, one per SVG colour, so its pixels never change with the theme: only the 16-colour palette in logo.h does. Each SVG colour follows one theme colour; colours sharing it form a ramp that keeps the SVG\'s lightness steps between facets. The wordmark is rendered in IBM Plex Sans 600 28px and baked as 4-bit coverage with a BG→colour ramp.',
+    summary: 'The bird drops in, the "opentone" wordmark types itself, then the menu wipes in.',
+    lede: 'The bird at its native 99×122 at (110, 44), the wordmark under it, then a chunk wipe into the root menu. The logo is rasterized from public/opentone_logo.svg into 4-bit palette indices, one per SVG colour, so its pixels never change with the theme: only the 16-colour palette in logo.h does. Each SVG colour follows one theme colour; colours sharing it form a ramp that keeps the SVG\'s lightness steps between facets. The wordmark is rendered in IBM Plex Sans 600 28px and baked as 4-bit coverage with a BG→colour ramp.',
   },
 ];
 

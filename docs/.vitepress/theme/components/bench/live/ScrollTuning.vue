@@ -147,7 +147,7 @@ function fromFields(f: Fields): Tuning | null {
 }
 
 // --- Remembered across sessions (the board resets to its defaults on boot) ---
-const STORE = "openpod.scrollcfg.v3"; // v3: gears (s1-s3, dwell)
+const STORE = "opentone.scrollcfg.v3"; // v3: gears (s1-s3, dwell)
 function load(): Tuning | null {
   try {
     const t = JSON.parse(localStorage.getItem(STORE) ?? "null");

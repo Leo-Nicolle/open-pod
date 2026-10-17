@@ -583,7 +583,7 @@ const char *State::getHeaderTitle() {
   case Route_t::PODCAST_ACTIONS:
     return "Podcasts";
   }
-  return "OpenPod";
+  return "opentone";
 }
 
 void State::restoreSelectionState() {

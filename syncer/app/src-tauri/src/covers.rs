@@ -7,7 +7,7 @@ use std::path::Path;
 use std::sync::{Arc, Mutex};
 
 use image::imageops::FilterType;
-use openpod_core::index::crawl;
+use opentone_core::index::crawl;
 use tauri::http::{Response, StatusCode, header};
 
 /// Thumbnail edge in pixels: album cards are 148–220 px wide, at 2x.

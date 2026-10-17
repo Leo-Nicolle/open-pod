@@ -1,7 +1,7 @@
 /* Shared by BenchLive and its live/ sections. Imported first, before the sections' scoped
    styles; each selector carries one more class than it needs, standing in for the scope
    attribute these rules had in BenchLive.vue, so section rules override them as before. */
-/* Light first; dark below. Tokens from the OpenPod Sync identity. */
+/* Light first; dark below. Tokens from the opentone Sync identity. */
 .bl.bl {
   --bl-bg: var(--vp-c-bg);
   --bl-chrome: #f6f6f7;

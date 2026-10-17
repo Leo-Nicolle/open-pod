@@ -5,8 +5,8 @@
 #include "test_helpers.h"
 
 TEST_CASE("MusicLookup - init with complete catalog") {
-  openpod_test::resetAll();
-  openpod_test::registerSampleCatalog();
+  opentone_test::resetAll();
+  opentone_test::registerSampleCatalog();
 
   MusicLookup lookup;
   CHECK(lookup.init() == true);
@@ -14,9 +14,9 @@ TEST_CASE("MusicLookup - init with complete catalog") {
 }
 
 TEST_CASE("MusicLookup - init fails when a file is missing") {
-  openpod_test::resetAll();
-  openpod_test::registerSampleCatalog();
-  openpod_test::FakeFs::get().files.erase("/openpod/track_index.bin");
+  opentone_test::resetAll();
+  opentone_test::registerSampleCatalog();
+  opentone_test::FakeFs::get().files.erase("/opentone/track_index.bin");
 
   MusicLookup lookup;
   CHECK(lookup.init() == false);
@@ -24,8 +24,8 @@ TEST_CASE("MusicLookup - init fails when a file is missing") {
 }
 
 TEST_CASE("MusicLookup - name lookups") {
-  openpod_test::resetAll();
-  openpod_test::registerSampleCatalog();
+  opentone_test::resetAll();
+  opentone_test::registerSampleCatalog();
 
   MusicLookup lookup;
   REQUIRE(lookup.init());
@@ -48,8 +48,8 @@ TEST_CASE("MusicLookup - name lookups") {
 }
 
 TEST_CASE("MusicLookup - track path lookup") {
-  openpod_test::resetAll();
-  openpod_test::registerSampleCatalog();
+  opentone_test::resetAll();
+  opentone_test::registerSampleCatalog();
 
   MusicLookup lookup;
   REQUIRE(lookup.init());
@@ -63,8 +63,8 @@ TEST_CASE("MusicLookup - track path lookup") {
 }
 
 TEST_CASE("MusicLookup - browse all artists, albums and genres") {
-  openpod_test::resetAll();
-  openpod_test::registerSampleCatalog();
+  opentone_test::resetAll();
+  opentone_test::registerSampleCatalog();
 
   MusicLookup lookup;
   REQUIRE(lookup.init());
@@ -93,8 +93,8 @@ TEST_CASE("MusicLookup - browse all artists, albums and genres") {
 }
 
 TEST_CASE("MusicLookup - relationship string lookups") {
-  openpod_test::resetAll();
-  openpod_test::registerSampleCatalog();
+  opentone_test::resetAll();
+  opentone_test::registerSampleCatalog();
 
   MusicLookup lookup;
   REQUIRE(lookup.init());
@@ -122,8 +122,8 @@ TEST_CASE("MusicLookup - relationship string lookups") {
 }
 
 TEST_CASE("MusicLookup - id accessors") {
-  openpod_test::resetAll();
-  openpod_test::registerSampleCatalog();
+  opentone_test::resetAll();
+  opentone_test::registerSampleCatalog();
 
   MusicLookup lookup;
   REQUIRE(lookup.init());
@@ -147,8 +147,8 @@ TEST_CASE("MusicLookup - id accessors") {
 }
 
 TEST_CASE("MusicLookup - track to album lookup") {
-  openpod_test::resetAll();
-  openpod_test::registerSampleCatalog();
+  opentone_test::resetAll();
+  opentone_test::registerSampleCatalog();
 
   MusicLookup lookup;
   REQUIRE(lookup.init());
@@ -159,8 +159,8 @@ TEST_CASE("MusicLookup - track to album lookup") {
 }
 
 TEST_CASE("MusicLookup - track to artist lookup") {
-  openpod_test::resetAll();
-  openpod_test::registerSampleCatalog();
+  opentone_test::resetAll();
+  opentone_test::registerSampleCatalog();
 
   MusicLookup lookup;
   REQUIRE(lookup.init());
@@ -176,9 +176,9 @@ TEST_CASE("MusicLookup - track to artist lookup") {
 }
 
 TEST_CASE("MusicLookup - the track->artist section is optional") {
-  openpod_test::resetAll();
-  openpod_test::registerSampleCatalog();
-  openpod_test::FakeFs::get().files.erase("/openpod/track_to_artist.bin");
+  opentone_test::resetAll();
+  opentone_test::registerSampleCatalog();
+  opentone_test::FakeFs::get().files.erase("/opentone/track_to_artist.bin");
 
   MusicLookup lookup;
   REQUIRE(lookup.init());
@@ -188,8 +188,8 @@ TEST_CASE("MusicLookup - the track->artist section is optional") {
 }
 
 TEST_CASE("MusicLookup - album cover lookup") {
-  openpod_test::resetAll();
-  openpod_test::registerSampleCatalog();
+  opentone_test::resetAll();
+  opentone_test::registerSampleCatalog();
 
   MusicLookup lookup;
   REQUIRE(lookup.init());
@@ -209,8 +209,8 @@ TEST_CASE("MusicLookup - album cover lookup") {
 }
 
 TEST_CASE("MusicLookup - printStats does not crash") {
-  openpod_test::resetAll();
-  openpod_test::registerSampleCatalog();
+  opentone_test::resetAll();
+  opentone_test::registerSampleCatalog();
 
   MusicLookup lookup;
   REQUIRE(lookup.init());
@@ -220,8 +220,8 @@ TEST_CASE("MusicLookup - printStats does not crash") {
 }
 
 TEST_CASE("MusicLookup - relation counts") {
-  openpod_test::resetAll();
-  openpod_test::registerSampleCatalog();
+  opentone_test::resetAll();
+  opentone_test::registerSampleCatalog();
 
   MusicLookup lookup;
   REQUIRE(lookup.init());
@@ -236,15 +236,15 @@ TEST_CASE("MusicLookup - relation counts") {
 }
 
 TEST_CASE("MusicLookup - album artist from the album->artist section") {
-  openpod_test::resetAll();
-  openpod_test::registerSampleCatalog();
+  opentone_test::resetAll();
+  opentone_test::registerSampleCatalog();
   // Deliberately differs from the tracks' artists, to tell it from the
   // fallback. Dense by album id: album 0 -> artist 1.
   std::vector<std::pair<uint32_t, uint32_t>> album_to_artist;
   album_to_artist.push_back(std::make_pair(0u, 1u));
-  openpod_test::FakeFs::get().addFile(
-      "/openpod/album_to_artist.bin",
-      openpod_test::buildTrackToAlbumIndex(album_to_artist));
+  opentone_test::FakeFs::get().addFile(
+      "/opentone/album_to_artist.bin",
+      opentone_test::buildTrackToAlbumIndex(album_to_artist));
 
   MusicLookup lookup;
   REQUIRE(lookup.init());
@@ -253,8 +253,8 @@ TEST_CASE("MusicLookup - album artist from the album->artist section") {
 }
 
 TEST_CASE("MusicLookup - album artist falls back to the first track's") {
-  openpod_test::resetAll();
-  openpod_test::registerSampleCatalog(); // no album->artist section
+  opentone_test::resetAll();
+  opentone_test::registerSampleCatalog(); // no album->artist section
 
   MusicLookup lookup;
   REQUIRE(lookup.init());
@@ -264,8 +264,8 @@ TEST_CASE("MusicLookup - album artist falls back to the first track's") {
 }
 
 TEST_CASE("MusicLookup - long lists load in windows") {
-  openpod_test::resetAll();
-  openpod_test::registerLargeCatalog();
+  opentone_test::resetAll();
+  opentone_test::registerLargeCatalog();
   MusicLookup lookup;
   REQUIRE(lookup.init());
 
@@ -286,8 +286,8 @@ TEST_CASE("MusicLookup - long lists load in windows") {
 }
 
 TEST_CASE("MusicLookup - a full buffer stops loading instead of overflowing") {
-  openpod_test::resetAll();
-  openpod_test::registerLargeCatalog();
+  opentone_test::resetAll();
+  opentone_test::registerLargeCatalog();
   MusicLookup lookup;
   REQUIRE(lookup.init());
 

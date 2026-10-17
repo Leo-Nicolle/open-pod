@@ -30,10 +30,15 @@ static inline void fillRoundedRect(uint16_t *buf, int bufW, int bufH, int x,
     }
     return;
   }
-  const float cx = x + (w - 1) / 2.0f;
-  const float cy = y + (h - 1) / 2.0f;
-  const float bx = w / 2.0f - r;
-  const float by = h / 2.0f - r;
+  // Pixels are sampled at their centres (px + 0.5), so the rect's centre is
+  // x + w/2, not x + (w-1)/2 (that shifts the shape half a pixel up-left
+  // and the top caps come out flatter than the bottom ones). r is capped
+  // at half the short side so a short fill (fillW < h) stays a capsule.
+  const float rr = fminf((float)r, fminf(w, h) / 2.0f);
+  const float cx = x + w / 2.0f;
+  const float cy = y + h / 2.0f;
+  const float bx = w / 2.0f - rr;
+  const float by = h / 2.0f - rr;
   for (int py = y; py < y + h; py++) {
     if (py < 0 || py >= bufH)
       continue;
@@ -46,7 +51,7 @@ static inline void fillRoundedRect(uint16_t *buf, int bufW, int bufH, int x,
       float qy = fabsf(fy - cy) - by;
       float e = sqrtf(fmaxf(qx, 0.0f) * fmaxf(qx, 0.0f) +
                       fmaxf(qy, 0.0f) * fmaxf(qy, 0.0f)) +
-                fminf(fmaxf(qx, qy), 0.0f) - r;
+                fminf(fmaxf(qx, qy), 0.0f) - rr;
       if (e <= 0.0f)
         buf[py * bufW + px] = color;
     }

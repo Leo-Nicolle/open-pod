@@ -5,7 +5,7 @@
 PodPlayer *PodPlayer::instance = nullptr;
 
 void PodPlayer::setup() {
-  LOG_INFO("=== OpenPod Audio System Initialization ===");
+  LOG_INFO("=== opentone Audio System Initialization ===");
 
   if (!audioPlayer.begin()) {
     LOG_ERROR("Couldn't find VS1053, check pin definitions");

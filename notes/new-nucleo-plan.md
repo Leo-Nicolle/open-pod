@@ -45,7 +45,7 @@ stay as designed.
 
 Still worth checking: what happens when the receiver drops and comes back, and
 whether VBAT_IN needs its decoupling (left off on the wired test). The BT
-devboard PCB (`hardware/openpod/bt_devboard.kicad_sch`) is no longer blocking:
+devboard PCB (`hardware/opentone/bt_devboard.kicad_sch`) is no longer blocking:
 the carrier PCB can carry the module directly.
 
 ### 2. Buy a NUCLEO-F446ZE, stop squeezing the 64-pin one

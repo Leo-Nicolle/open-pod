@@ -3,7 +3,7 @@
 #include <SdFat.h>
 #include <stdint.h>
 
-// Reads the index packs (/openpod/index.pack, /openpod/podcasts.pack, see
+// Reads the index packs (/opentone/index.pack, /opentone/podcasts.pack, see
 // syncer/crates/core/src/index/pack.rs) straight from the SD card, keeping
 // the most recently used PAGE_SIZE pages of them in a PSRAM cache. Nothing
 // is copied at boot, so the library can be any size the card holds; a list

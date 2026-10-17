@@ -3,7 +3,7 @@
 head:
   - - meta
     - http-equiv: refresh
-      content: 0; url=/open-pod/tools/ui-builder
+      content: 0; url=/tools/ui-builder
 sitemap: false
 ---
 

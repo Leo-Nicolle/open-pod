@@ -23,9 +23,9 @@ jobs:
         with:
           workspaces: syncer
       # The app crate needs webkit; it is built in the `app` job.
-      - run: cargo test --locked -p openpod-core -p openpod-cli
-      # The browser build of the core (docs site: Tools → OpenPod Sync).
-      - run: rustup target add wasm32-unknown-unknown && cargo build --locked -p openpod-web --target wasm32-unknown-unknown
+      - run: cargo test --locked -p opentone-core -p opentone-cli
+      # The browser build of the core (docs site: Tools → opentone Sync).
+      - run: rustup target add wasm32-unknown-unknown && cargo build --locked -p opentone-web --target wasm32-unknown-unknown
 
   build:
     needs: test
@@ -33,11 +33,11 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { os: ubuntu-latest, target: x86_64-unknown-linux-gnu, name: openpod-linux-x86_64 }
-          - { os: ubuntu-24.04-arm, target: aarch64-unknown-linux-gnu, name: openpod-linux-aarch64 }
-          - { os: macos-latest, target: aarch64-apple-darwin, name: openpod-macos-aarch64 }
-          - { os: macos-latest, target: x86_64-apple-darwin, name: openpod-macos-x86_64 }
-          - { os: windows-latest, target: x86_64-pc-windows-msvc, name: openpod-windows-x86_64.exe }
+          - { os: ubuntu-latest, target: x86_64-unknown-linux-gnu, name: opentone-linux-x86_64 }
+          - { os: ubuntu-24.04-arm, target: aarch64-unknown-linux-gnu, name: opentone-linux-aarch64 }
+          - { os: macos-latest, target: aarch64-apple-darwin, name: opentone-macos-aarch64 }
+          - { os: macos-latest, target: x86_64-apple-darwin, name: opentone-macos-x86_64 }
+          - { os: windows-latest, target: x86_64-pc-windows-msvc, name: opentone-windows-x86_64.exe }
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -48,13 +48,13 @@ jobs:
         with:
           workspaces: syncer
           key: ${{ matrix.target }}
-      - run: cargo build --release --locked -p openpod-cli --target ${{ matrix.target }}
+      - run: cargo build --release --locked -p opentone-cli --target ${{ matrix.target }}
       - name: Stage binary
         shell: bash
         run: |
           mkdir -p dist
           ext=""; [[ "${{ matrix.target }}" == *windows* ]] && ext=".exe"
-          cp "target/${{ matrix.target }}/release/openpod$ext" "dist/${{ matrix.name }}"
+          cp "target/${{ matrix.target }}/release/opentone$ext" "dist/${{ matrix.name }}"
       - uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.name }}
@@ -98,7 +98,7 @@ jobs:
         run: npm ci && npx tauri build ${{ matrix.args }}
       - uses: actions/upload-artifact@v4
         with:
-          name: openpod-sync-${{ runner.os }}
+          name: opentone-sync-${{ runner.os }}
           path: |
             syncer/target/**/release/bundle/deb/*.deb
             syncer/target/**/release/bundle/appimage/*.AppImage
@@ -112,17 +112,17 @@ jobs:
     steps:
       - uses: actions/download-artifact@v4
         with:
-          pattern: openpod-macos-*
+          pattern: opentone-macos-*
           merge-multiple: true
           path: dist
       - working-directory: dist
         run: |
-          lipo -create -output openpod-macos-universal openpod-macos-aarch64 openpod-macos-x86_64
-          chmod +x openpod-macos-universal
+          lipo -create -output opentone-macos-universal opentone-macos-aarch64 opentone-macos-x86_64
+          chmod +x opentone-macos-universal
       - uses: actions/upload-artifact@v4
         with:
-          name: openpod-macos-universal
-          path: dist/openpod-macos-universal
+          name: opentone-macos-universal
+          path: dist/opentone-macos-universal
 
   release:
     if: startsWith(github.ref, 'refs/tags/syncer-v')
@@ -134,19 +134,19 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
-          pattern: openpod-[lmw]*
+          pattern: opentone-[lmw]*
           merge-multiple: true
           path: dist
       - uses: actions/download-artifact@v4
         with:
-          pattern: openpod-sync-*
+          pattern: opentone-sync-*
           merge-multiple: true
           path: app
       - working-directory: dist
         run: |
-          rm -f openpod-macos-aarch64 openpod-macos-x86_64 && chmod +x openpod-*
+          rm -f opentone-macos-aarch64 opentone-macos-x86_64 && chmod +x opentone-*
           find ../app -type f \( -name '*.deb' -o -name '*.AppImage' -o -name '*.dmg' -o -name '*.msi' \) -exec mv {} . \;
       - working-directory: .
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "$GITHUB_REF_NAME" dist/* --title "openpod sync tool ${GITHUB_REF_NAME#syncer-v}" --generate-notes
+        run: gh release create "$GITHUB_REF_NAME" dist/* --title "opentone sync tool ${GITHUB_REF_NAME#syncer-v}" --generate-notes

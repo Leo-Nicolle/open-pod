@@ -1,4 +1,4 @@
-//! `openpod/library.json`: every track on the card, where it came from, and
+//! `opentone/library.json`: every track on the card, where it came from, and
 //! the tags the index is built from. Source of truth for sync, rm and index.
 
 use std::collections::BTreeSet;
@@ -13,7 +13,7 @@ use crate::index::text::remove_accents;
 use crate::tags::{TagQuality, Tags};
 
 pub const VERSION: u32 = 1;
-pub const DIR: &str = "openpod";
+pub const DIR: &str = "opentone";
 pub const FILE: &str = "library.json";
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -162,7 +162,7 @@ pub fn load(card: &Path) -> io::Result<Manifest> {
     if m.version > VERSION {
         return Err(io::Error::new(
             io::ErrorKind::InvalidData,
-            format!("library.json version {} is newer than this tool ({VERSION}): update openpod", m.version),
+            format!("library.json version {} is newer than this tool ({VERSION}): update opentone", m.version),
         ));
     }
     Ok(m)

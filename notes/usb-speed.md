@@ -1,6 +1,6 @@
 # USB: speed vs MCU, pins, complexity and debug
 
-What USB has to do on OpenPod, what each hardware option costs, and the
+What USB has to do on opentone, what each hardware option costs, and the
 recommendation.
 
 ## What USB has to do
@@ -30,8 +30,7 @@ Keep, whatever the USB choice:
 ## Disk mode
 
 With MSC, the computer owns the card's blocks while it's mounted. The player
-can't touch the filesystem at the same time, or the card gets corrupted. So,
-like the real iPod:
+can't touch the filesystem at the same time, or the card gets corrupted. So, like the real iPod:
 
 1. On plug-in: stop playback, unmount SdFat, show "Do not disconnect".
 2. Hand the raw card to the computer. The syncer runs on the computer meanwhile.

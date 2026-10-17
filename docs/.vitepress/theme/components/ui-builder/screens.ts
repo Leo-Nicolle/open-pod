@@ -1,4 +1,4 @@
-// Canvas renderers for the 320x240 OpenPod screens previewed by the builder.
+// Canvas renderers for the 320x240 opentone screens previewed by the builder.
 //
 // Each draw* function paints a whole screen at 1x in screen pixels, using the
 // same geometry as the firmware (see GEOMETRY in spec.ts). Glyphs and bars go

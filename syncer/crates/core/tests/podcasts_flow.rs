@@ -6,9 +6,9 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::AtomicBool;
 
-use openpod_core::index::pack;
-use openpod_core::podcasts::{self, mirror, state};
-use openpod_core::sync::Progress;
+use opentone_core::index::pack;
+use opentone_core::podcasts::{self, mirror, state};
+use opentone_core::sync::Progress;
 
 struct Quiet;
 impl Progress for Quiet {
@@ -20,7 +20,7 @@ impl Progress for Quiet {
 }
 
 fn tmp(name: &str) -> PathBuf {
-    let d = std::env::temp_dir().join(format!("openpod-test-{}-{name}", std::process::id()));
+    let d = std::env::temp_dir().join(format!("opentone-test-{}-{name}", std::process::id()));
     let _ = fs::remove_dir_all(&d);
     fs::create_dir_all(&d).unwrap();
     d
@@ -64,12 +64,12 @@ fn sync(card: &Path, src: &Path) -> (mirror::MirrorPlan, podcasts::Report) {
 }
 
 fn read_state(card: &Path) -> (u32, Vec<state::Record>) {
-    state::parse(&fs::read(card.join("openpod").join(state::FILE)).unwrap()).unwrap()
+    state::parse(&fs::read(card.join("opentone").join(state::FILE)).unwrap()).unwrap()
 }
 
 /// Card path of each episode id, from `podcasts.pack`.
 fn episode_paths(card: &Path) -> Vec<String> {
-    let file = fs::read(card.join("openpod").join(pack::PODCAST_FILE)).unwrap();
+    let file = fs::read(card.join("opentone").join(pack::PODCAST_FILE)).unwrap();
     let sections = pack::unpack(&file).unwrap();
     let b = sections.iter().find(|(id, _)| *id == pack::section::POD_EPISODE_PATHS).unwrap().1;
     let n = u32::from_le_bytes(b[0..4].try_into().unwrap()) as usize;
@@ -101,7 +101,7 @@ fn state_follows_moved_episodes() {
     let (generation, mut records) = read_state(&card);
     assert_eq!(records.len(), 3);
     assert!(records.iter().all(|r| r.is_blank()));
-    let meta = fs::read(card.join("openpod/podcast_meta.bin")).unwrap();
+    let meta = fs::read(card.join("opentone/podcast_meta.bin")).unwrap();
     assert_eq!(&meta[..4], b"OPPI");
     assert_eq!(u32::from_le_bytes(meta[12..16].try_into().unwrap()), generation);
 
@@ -109,7 +109,7 @@ fn state_follows_moved_episodes() {
     records[2].position = 300;
     records[2].last_played = 1;
     records[0].flags = state::PLAYED;
-    fs::write(card.join("openpod").join(state::FILE), state::encode(generation, &records)).unwrap();
+    fs::write(card.join("opentone").join(state::FILE), state::encode(generation, &records)).unwrap();
 
     // Unchanged source: nothing to do, and the index isn't rebuilt.
     let (plan, report) = sync(&card, &src);
@@ -141,10 +141,10 @@ fn state_follows_moved_episodes() {
     assert_eq!(report.listened, 1);
 
     // A damaged state file is set aside and replaced.
-    fs::write(card.join("openpod").join(state::FILE), b"garbage").unwrap();
+    fs::write(card.join("opentone").join(state::FILE), b"garbage").unwrap();
     let mut m = podcasts::load(&card).unwrap();
     podcasts::reindex(&card, &mut m).unwrap();
-    assert!(card.join("openpod/podcast_state.bin.bad").is_file());
+    assert!(card.join("opentone/podcast_state.bin.bad").is_file());
     assert_eq!(read_state(&card).1.len(), 3);
 
     let _ = fs::remove_dir_all(&src);

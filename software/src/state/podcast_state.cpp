@@ -2,7 +2,7 @@
 #include "../logging.h"
 #include "../storage/PSRAM_controller.hpp"
 
-const char *const PodcastState::PATH = "/openpod/podcast_state.bin";
+const char *const PodcastState::PATH = "/opentone/podcast_state.bin";
 
 static uint32_t le32(const uint8_t *b) {
   return (uint32_t)b[0] | ((uint32_t)b[1] << 8) | ((uint32_t)b[2] << 16) |

@@ -5,7 +5,7 @@
 	(uuid "6aa0a396-eee8-4748-8ff3-b0cf99db5d89")
 	(paper "A4")
 	(lib_symbols
-		(symbol "openpod:MPR121QR2"
+		(symbol "opentone:MPR121QR2"
 			(pin_names
 				(offset 1.016)
 			)
@@ -514,7 +514,7 @@
 			)
 			(embedded_fonts no)
 		)
-		(symbol "openpod:SKQGAFE010"
+		(symbol "opentone:SKQGAFE010"
 			(pin_names
 				(offset 1.016)
 			)
@@ -839,7 +839,7 @@
 			)
 			(embedded_fonts no)
 		)
-		(symbol "openpod:clickwheel"
+		(symbol "opentone:clickwheel"
 			(exclude_from_sim no)
 			(in_bom yes)
 			(on_board yes)
@@ -900,6 +900,24 @@
 				)
 			)
 			(symbol "clickwheel_1_1"
+				(pin power_in line
+					(at -7.62 5.08 0)
+					(length 2.54)
+					(name "GND"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "5"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
 				(pin input line
 					(at -7.62 2.54 0)
 					(length 2.54)
@@ -975,7 +993,7 @@
 			)
 			(embedded_fonts no)
 		)
-		(symbol "openpod:clickwheel-connector"
+		(symbol "opentone:clickwheel-connector"
 			(exclude_from_sim no)
 			(in_bom yes)
 			(on_board yes)
@@ -1294,6 +1312,16 @@
 	)
 	(wire
 		(pts
+			(xy 42.164 87.63) (xy 44.45 87.63)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "4e913dc2-e04a-4918-ac06-c8e3089a8a4d")
+	)
+	(wire
+		(pts
 			(xy 42.164 67.31) (xy 51.054 67.31)
 		)
 		(stroke
@@ -1512,8 +1540,30 @@
 		)
 		(uuid "f0c1aae6-b713-4f30-811e-2c11f608b9ee")
 	)
+	(global_label "GND"
+		(shape bidirectional)
+		(at 44.45 87.63 180)
+		(fields_autoplaced yes)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify right)
+		)
+		(uuid "7ebc2101-0bb8-489a-8c65-5df5dd00ff33")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 37.9 87.63 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+				(hide yes)
+			)
+		)
+	)
 	(symbol
-		(lib_id "openpod:SKQGAFE010")
+		(lib_id "opentone:SKQGAFE010")
 		(at 143.256 42.926 0)
 		(unit 1)
 		(exclude_from_sim no)
@@ -1538,7 +1588,7 @@
 				)
 			)
 		)
-		(property "Footprint" "openpod:SW_SKQGAFE010"
+		(property "Footprint" "opentone:SW_SKQGAFE010"
 			(at 143.256 42.926 0)
 			(effects
 				(font
@@ -1716,7 +1766,7 @@
 			(uuid "fa49f5e6-b08e-4495-ae05-f6e0034fd1dd")
 		)
 		(instances
-			(project "openpod"
+			(project "opentone"
 				(path "/0122bb8c-dbef-4db1-a6c6-9be780a38d9f/a2d473bc-020f-4f45-b688-c249a4b738f4"
 					(reference "top1")
 					(unit 1)
@@ -1725,7 +1775,7 @@
 		)
 	)
 	(symbol
-		(lib_id "openpod:SKQGAFE010")
+		(lib_id "opentone:SKQGAFE010")
 		(at 164.338 58.928 0)
 		(unit 1)
 		(exclude_from_sim no)
@@ -1750,7 +1800,7 @@
 				)
 			)
 		)
-		(property "Footprint" "openpod:SW_SKQGAFE010"
+		(property "Footprint" "opentone:SW_SKQGAFE010"
 			(at 164.338 58.928 0)
 			(effects
 				(font
@@ -1928,7 +1978,7 @@
 			(uuid "e3fb9d54-f923-4d36-9da3-79e9a15970c8")
 		)
 		(instances
-			(project "openpod"
+			(project "opentone"
 				(path "/0122bb8c-dbef-4db1-a6c6-9be780a38d9f/a2d473bc-020f-4f45-b688-c249a4b738f4"
 					(reference "center1")
 					(unit 1)
@@ -1937,7 +1987,7 @@
 		)
 	)
 	(symbol
-		(lib_id "openpod:SKQGAFE010")
+		(lib_id "opentone:SKQGAFE010")
 		(at 165.1 41.91 0)
 		(unit 1)
 		(exclude_from_sim no)
@@ -1962,7 +2012,7 @@
 				)
 			)
 		)
-		(property "Footprint" "openpod:SW_SKQGAFE010"
+		(property "Footprint" "opentone:SW_SKQGAFE010"
 			(at 165.1 41.91 0)
 			(effects
 				(font
@@ -2140,7 +2190,7 @@
 			(uuid "03f05ed9-6189-4097-9cbe-b5c615e9c848")
 		)
 		(instances
-			(project "openpod"
+			(project "opentone"
 				(path "/0122bb8c-dbef-4db1-a6c6-9be780a38d9f/a2d473bc-020f-4f45-b688-c249a4b738f4"
 					(reference "bottom1")
 					(unit 1)
@@ -2149,7 +2199,7 @@
 		)
 	)
 	(symbol
-		(lib_id "openpod:clickwheel-connector")
+		(lib_id "opentone:clickwheel-connector")
 		(at 79.248 24.384 90)
 		(unit 1)
 		(exclude_from_sim no)
@@ -2261,7 +2311,7 @@
 			(uuid "d3cb4f23-e6a7-4b36-8999-3e11f93fa3cc")
 		)
 		(instances
-			(project "openpod"
+			(project "opentone"
 				(path "/0122bb8c-dbef-4db1-a6c6-9be780a38d9f/a2d473bc-020f-4f45-b688-c249a4b738f4"
 					(reference "clickwheel-connector1")
 					(unit 1)
@@ -2270,7 +2320,7 @@
 		)
 	)
 	(symbol
-		(lib_id "openpod:clickwheel")
+		(lib_id "opentone:clickwheel")
 		(at 34.544 82.55 180)
 		(unit 1)
 		(exclude_from_sim no)
@@ -2295,7 +2345,7 @@
 				)
 			)
 		)
-		(property "Footprint" "openpod:clickwheel_1"
+		(property "Footprint" "opentone:clickwheel_1"
 			(at 34.544 80.01 0)
 			(effects
 				(font
@@ -2369,8 +2419,11 @@
 		(pin "4"
 			(uuid "e8c66bb2-6492-4f93-a5b5-3e5320840262")
 		)
+		(pin "5"
+			(uuid "bfa0c824-29f2-41fb-b5d7-e612742544cf")
+		)
 		(instances
-			(project "openpod"
+			(project "opentone"
 				(path "/0122bb8c-dbef-4db1-a6c6-9be780a38d9f/a2d473bc-020f-4f45-b688-c249a4b738f4"
 					(reference "Clickwheel1")
 					(unit 1)
@@ -2379,7 +2432,7 @@
 		)
 	)
 	(symbol
-		(lib_id "openpod:SKQGAFE010")
+		(lib_id "opentone:SKQGAFE010")
 		(at 183.896 42.672 0)
 		(unit 1)
 		(exclude_from_sim no)
@@ -2404,7 +2457,7 @@
 				)
 			)
 		)
-		(property "Footprint" "openpod:SW_SKQGAFE010"
+		(property "Footprint" "opentone:SW_SKQGAFE010"
 			(at 183.896 42.672 0)
 			(effects
 				(font
@@ -2582,7 +2635,7 @@
 			(uuid "42ddffd1-5240-4c15-828c-fe809e1de8eb")
 		)
 		(instances
-			(project "openpod"
+			(project "opentone"
 				(path "/0122bb8c-dbef-4db1-a6c6-9be780a38d9f/a2d473bc-020f-4f45-b688-c249a4b738f4"
 					(reference "left1")
 					(unit 1)
@@ -2591,7 +2644,7 @@
 		)
 	)
 	(symbol
-		(lib_id "openpod:SKQGAFE010")
+		(lib_id "opentone:SKQGAFE010")
 		(at 143.256 59.436 0)
 		(unit 1)
 		(exclude_from_sim no)
@@ -2616,7 +2669,7 @@
 				)
 			)
 		)
-		(property "Footprint" "openpod:SW_SKQGAFE010"
+		(property "Footprint" "opentone:SW_SKQGAFE010"
 			(at 143.256 59.436 0)
 			(effects
 				(font
@@ -2794,7 +2847,7 @@
 			(uuid "eaff637d-e84e-40de-9606-9070354c9b3d")
 		)
 		(instances
-			(project "openpod"
+			(project "opentone"
 				(path "/0122bb8c-dbef-4db1-a6c6-9be780a38d9f/a2d473bc-020f-4f45-b688-c249a4b738f4"
 					(reference "right1")
 					(unit 1)
@@ -2803,7 +2856,7 @@
 		)
 	)
 	(symbol
-		(lib_id "openpod:MPR121QR2")
+		(lib_id "opentone:MPR121QR2")
 		(at 66.294 69.85 0)
 		(unit 1)
 		(exclude_from_sim no)
@@ -2827,7 +2880,7 @@
 				)
 			)
 		)
-		(property "Footprint" "openpod:mpr121qr2"
+		(property "Footprint" "opentone:mpr121qr2"
 			(at 66.294 69.85 0)
 			(effects
 				(font
@@ -3033,7 +3086,7 @@
 			(uuid "e762a9e0-9f4e-4086-9bf5-03caa89e0cc5")
 		)
 		(instances
-			(project "openpod"
+			(project "opentone"
 				(path "/0122bb8c-dbef-4db1-a6c6-9be780a38d9f/a2d473bc-020f-4f45-b688-c249a4b738f4"
 					(reference "MPR1")
 					(unit 1)
@@ -3042,7 +3095,7 @@
 		)
 	)
 	(symbol
-		(lib_id "openpod:clickwheel-connector")
+		(lib_id "opentone:clickwheel-connector")
 		(at 123.19 74.422 90)
 		(unit 1)
 		(exclude_from_sim no)
@@ -3154,7 +3207,7 @@
 			(uuid "788feab3-24e0-43b5-b130-0d8156710632")
 		)
 		(instances
-			(project "openpod"
+			(project "opentone"
 				(path "/0122bb8c-dbef-4db1-a6c6-9be780a38d9f/a2d473bc-020f-4f45-b688-c249a4b738f4"
 					(reference "clickwheel-connector2")
 					(unit 1)

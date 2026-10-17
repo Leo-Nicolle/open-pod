@@ -1,8 +1,8 @@
-//! `~/.config/openpod/config.toml` (all keys optional):
+//! `~/.config/opentone/config.toml` (all keys optional):
 //!
 //! ```toml
 //! machine = "laptop"          # name in the card's manifest (default: hostname)
-//! card = "/mnt/openpod"       # mounted SD card
+//! card = "/mnt/opentone"       # mounted SD card
 //! libraries = ["~/Music"]
 //! exclude = ["Various Artists/Bootlegs"]  # library-relative
 //! album_key = "artist-album"  # or "name"
@@ -57,7 +57,7 @@ pub fn hostname() -> String {
 
 impl Config {
     pub fn path() -> Option<PathBuf> {
-        dirs::config_dir().map(|d| d.join("openpod").join("config.toml"))
+        dirs::config_dir().map(|d| d.join("opentone").join("config.toml"))
     }
 
     pub fn load() -> io::Result<Self> {

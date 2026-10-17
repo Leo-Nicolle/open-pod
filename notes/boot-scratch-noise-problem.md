@@ -61,7 +61,7 @@ When the VS1053 loses power, its output collapses, and only hardware can hide th
 
 This is a decision for the PCB.
 
-## 5. PCB schematic review (`hardware/openpod/audio.kicad_sch`)
+## 5. PCB schematic review (`hardware/opentone/audio.kicad_sch`)
 
 This comes from the netlist exported with `kicad-cli sch export netlist`. Some of it may just be work in progress, but each item affects this problem or the audio chip in general:
 

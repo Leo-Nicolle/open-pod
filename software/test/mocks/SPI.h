@@ -56,7 +56,7 @@ public:
   void endTransaction() {}
 
   uint8_t transfer(uint8_t data) {
-    return openpod_test::fakePsram().transfer(data);
+    return opentone_test::fakePsram().transfer(data);
   }
 
   void transfer(void *buf, size_t count) {

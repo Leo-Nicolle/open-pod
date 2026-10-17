@@ -6,7 +6,7 @@ import { BACKGROUND_SAMPLE, HEAVIEST_SAMPLE, SAMPLES } from "./sample-list.ts";
 /** Route_t::RouteType (src/state/router.h). */
 export const Route = { ROOT: 0, SEARCH: 1, GENRES: 2, ARTISTS: 3, ALBUMS: 4, TRACKS: 5, NOW_PLAYING: 6 } as const;
 
-export const SAMPLES_ALBUM = "Openpod Bench Samples";
+export const SAMPLES_ALBUM = "opentone Bench Samples";
 
 export type Dist = { n: number; p50: number; p95: number; max: number; mean: number };
 
@@ -98,10 +98,10 @@ export async function openRootItem(d: Device, label: string): Promise<number> {
   return d.click("select");
 }
 
-/** Root > Search, typed query "openpod bench", into the samples album. */
+/** Root > Search, typed query "opentone bench", into the samples album. */
 async function openSamplesAlbum(d: Device) {
   await openRootItem(d, "Search");
-  await d.send("type", "openpod bench samples");
+  await d.send("type", "opentone bench samples");
   await d.click("play"); // Bottom: into the results
   await selectLabel(d, SAMPLES_ALBUM, 20);
   await d.click("select");
@@ -199,7 +199,7 @@ export async function navigationScenario(d: Device) {
   return { enterUs: dist(enter), backUs: dist(back), ...audioWindow(d, from, d.now()) };
 }
 
-const QUERIES = ["a", "the", "lo", "kalo", "night river", "zz", "openpod bench", "e"];
+const QUERIES = ["a", "the", "lo", "kalo", "night river", "zz", "opentone bench", "e"];
 
 export async function searchScenario(d: Device) {
   await openRootItem(d, "Search");

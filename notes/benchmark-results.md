@@ -12,7 +12,7 @@ and what to look at next. Raw data:
 | | |
 |---|---|
 | Firmware | `1ebb1f2-dirty`, `pio run -e bench` (develop + the bench changes) |
-| Card | `openpod bench-dataset --tracks 6000`: 6,008 tracks, 460 albums, 242 artists, 41 genres, no covers, plus the 8 samples |
+| Card | `opentone bench-dataset --tracks 6000`: 6,008 tracks, 460 albums, 242 artists, 41 genres, no covers, plus the 8 samples |
 | Run | From the docs' live page (Web Serial, Chromium), all six scenarios, 7.7 min |
 | Background | `05 flac 16-44` looping (`#repeat 1`) under *scroll*, *navigation* and *search* |
 | Result | **0 underruns in every scenario**, no scenario errors |
@@ -102,7 +102,7 @@ The `[prof]` line's `maxLoop` (the longest gap between two `loop()` passes):
   and first fill); navigation 123 ms; stress 90 ms; scroll 66 ms.
 - **Artifacts** (the report's *Longest main loop, track start under load* = 530 ms):
   correlating the log shows every 400–530 ms stall right after a bench `#type` or
-  `#clear`. They process the whole query in one loop pass: typing `openpod bench samples`
+  `#clear`. They process the whole query in one loop pass: typing `opentone bench samples`
   is 21 queries back to back (412 ms), and `#clear` re-runs the query after each deleted
   character. A user types one character per wheel click, each in its own pass (30–45 ms).
   **Fix the bench** before trusting that metric: process one character per loop pass, like
@@ -178,7 +178,7 @@ Fix these before comparing future runs against this one:
 
 ## 2026-10-16: paged index, 100k tracks (`c110316-dirty`)
 
-The index is now one file, `openpod/index.pack`, read from the card a 4 KB page at a
+The index is now one file, `opentone/index.pack`, read from the card a 4 KB page at a
 time into a PSRAM cache (480 pages, 4-way set associative, `src/storage/PageStore.h`).
 That lifts the PSRAM limit, so this run uses a **100,008-track** card (24 MB pack), against
 the 6k-track run above:

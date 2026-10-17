@@ -1,6 +1,6 @@
 # VLSI VS10xx Codec Comparison — VS1053b vs VS1063a vs VS1073a
 
-Context: OpenPod currently uses the **VS1053b** for MP3/audio decoding. This compares it against
+Context: opentone currently uses the **VS1053b** for MP3/audio decoding. This compares it against
 the two newer pin-compatible parts in the same family, VS1063a and VS1073a (datasheets in
 `datasheets/`, prefixed `vs*`), plus VLSI's own 1-page comparison chart
 (`datasheets/vs10xx-comparison.pdf`).
@@ -127,7 +127,7 @@ VS1053b/VS1063a's 1.8 V**. VLSI's own comparison note is explicit about this:
 
 Design the CVDD regulator as a separately-populated part (not hardwired to a fixed 1.8V feedback
 network) to keep the board able to accept any of VS1053b/VS1063a/VS1073a interchangeably. If the
-current OpenPod board hardwired an 1.8V CVDD regulator assuming VS1053b, dropping in a VS1073a
+current opentone board hardwired an 1.8V CVDD regulator assuming VS1053b, dropping in a VS1073a
 as-is would run its core out of spec — the fix is changing that one regulator (or its feedback
 resistors) to produce 1.25V; everything else on the board (footprint, all other pins, crystal,
 SPI/UART wiring) stays the same.

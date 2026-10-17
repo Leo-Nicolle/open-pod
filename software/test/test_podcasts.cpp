@@ -11,8 +11,8 @@
 
 namespace {
 
-using openpod_test::FakeFs;
-using openpod_test::pushU32;
+using opentone_test::FakeFs;
+using opentone_test::pushU32;
 
 const uint32_t GENERATION = 7;
 const uint32_t NONE = 0xFFFFFFFFu;
@@ -29,7 +29,7 @@ std::vector<uint8_t> strings(const std::vector<std::string> &values) {
   std::vector<std::pair<uint32_t, std::string>> entries;
   for (size_t i = 0; i < values.size(); i++)
     entries.push_back(std::make_pair((uint32_t)i, values[i]));
-  return openpod_test::buildStringIndex(entries);
+  return opentone_test::buildStringIndex(entries);
 }
 
 // The tree, ids in display order (as the syncer numbers them):
@@ -40,44 +40,44 @@ std::vector<uint8_t> strings(const std::vector<std::string> &values) {
 const uint32_t OCT12 = 20738; // 2026-10-12, a Monday
 
 void registerPodcasts(uint32_t stateGeneration = GENERATION) {
-  openpod_test::registerSampleCatalog();
+  opentone_test::registerSampleCatalog();
   auto &fs = FakeFs::get();
-  fs.addFile("/openpod/podcast_folder_names.bin",
+  fs.addFile("/opentone/podcast_folder_names.bin",
              strings({"Podcasts", "France Culture", "Les chemins", "Vargas"}));
-  fs.addFile("/openpod/podcast_folder_parent.bin", dense({NONE, 0, 1, 1}));
-  fs.addFile("/openpod/podcast_folder_flags.bin", dense({0, 0, 0, 1}));
-  fs.addFile("/openpod/podcast_folder_span.bin",
+  fs.addFile("/opentone/podcast_folder_parent.bin", dense({NONE, 0, 1, 1}));
+  fs.addFile("/opentone/podcast_folder_flags.bin", dense({0, 0, 0, 1}));
+  fs.addFile("/opentone/podcast_folder_span.bin",
              dense({0, 6, 0, 6, 0, 3, 3, 6}));
   std::vector<std::pair<uint32_t, std::vector<uint32_t>>> children;
   children.push_back(std::make_pair(0u, std::vector<uint32_t>{1}));
   children.push_back(std::make_pair(1u, std::vector<uint32_t>{2, 3}));
   children.push_back(std::make_pair(2u, std::vector<uint32_t>{}));
   children.push_back(std::make_pair(3u, std::vector<uint32_t>{}));
-  fs.addFile("/openpod/podcast_folder_children.bin",
-             openpod_test::buildRelation(children));
+  fs.addFile("/opentone/podcast_folder_children.bin",
+             opentone_test::buildRelation(children));
   std::vector<std::pair<uint32_t, std::vector<uint32_t>>> episodes;
   episodes.push_back(std::make_pair(0u, std::vector<uint32_t>{}));
   episodes.push_back(std::make_pair(1u, std::vector<uint32_t>{}));
   episodes.push_back(std::make_pair(2u, std::vector<uint32_t>{0, 1, 2}));
   episodes.push_back(std::make_pair(3u, std::vector<uint32_t>{3, 4, 5}));
-  fs.addFile("/openpod/podcast_folder_episodes.bin",
-             openpod_test::buildRelation(episodes));
-  fs.addFile("/openpod/podcast_episode_titles.bin",
+  fs.addFile("/opentone/podcast_folder_episodes.bin",
+             opentone_test::buildRelation(episodes));
+  fs.addFile("/opentone/podcast_episode_titles.bin",
              strings({"Tchekhov", "Simone Weil", "Arendt", "Le hetre",
                       "Marc, Mathias et Lucien", "Fin"}));
-  fs.addFile("/openpod/podcast_episode_paths.bin",
+  fs.addFile("/opentone/podcast_episode_paths.bin",
              strings({"Podcasts/FC/Chemins/a.mp3", "Podcasts/FC/Chemins/b.mp3",
                       "Podcasts/FC/Chemins/c.mp3", "Podcasts/FC/Vargas/1.mp3",
                       "Podcasts/FC/Vargas/2.mp3", "Podcasts/FC/Vargas/3.mp3"}));
   std::vector<std::pair<uint32_t, uint16_t>> durations;
   for (uint32_t i = 0; i < 6; i++)
     durations.push_back(std::make_pair(i, (uint16_t)(i < 3 ? 3480 : 1740)));
-  fs.addFile("/openpod/podcast_episode_durations.bin",
-             openpod_test::buildDurationIndex(durations));
-  fs.addFile("/openpod/podcast_episode_folder.bin", dense({2, 2, 2, 3, 3, 3}));
-  fs.addFile("/openpod/podcast_episode_date.bin",
+  fs.addFile("/opentone/podcast_episode_durations.bin",
+             opentone_test::buildDurationIndex(durations));
+  fs.addFile("/opentone/podcast_episode_folder.bin", dense({2, 2, 2, 3, 3, 3}));
+  fs.addFile("/opentone/podcast_episode_date.bin",
              dense({OCT12, OCT12 - 2, OCT12 - 3, 0, 0, 0}));
-  fs.addFile("/openpod/podcast_episode_number.bin",
+  fs.addFile("/opentone/podcast_episode_number.bin",
              dense({0, 0, 0, 1 | 3 << 16, 2 | 3 << 16, 3 | 3 << 16}));
   std::vector<uint8_t> covers;
   pushU32(covers, 4);
@@ -86,12 +86,12 @@ void registerPodcasts(uint32_t stateGeneration = GENERATION) {
     pushU32(covers, 51200);
     covers.push_back(1);
   }
-  fs.addFile("/openpod/podcast_folder_to_cover.bin", covers);
+  fs.addFile("/opentone/podcast_folder_to_cover.bin", covers);
 
   std::vector<uint8_t> meta = {'O', 'P', 'P', 'I', 1, 0, 0, 0};
   pushU32(meta, 6);
   pushU32(meta, GENERATION);
-  fs.addFile("/openpod/podcast_meta.bin", meta);
+  fs.addFile("/opentone/podcast_meta.bin", meta);
 
   std::vector<uint8_t> st = {'O', 'P', 'P', 'S', 1, 0, 20, 0};
   pushU32(st, 6);
@@ -126,7 +126,7 @@ struct Fixture {
   SdFat sd;
 
   explicit Fixture(uint32_t stateGeneration = GENERATION) {
-    openpod_test::resetAll();
+    opentone_test::resetAll();
     registerPodcasts(stateGeneration);
     REQUIRE(lookup.init());
     listening.load(sd, PODCAST_STATE_BASE_ADDRESS, lookup.podcastEpisodeCount(),
@@ -197,8 +197,8 @@ TEST_CASE("Podcasts - MusicLookup reads the podcast tables") {
 }
 
 TEST_CASE("Podcasts - a card without podcast tables still loads") {
-  openpod_test::resetAll();
-  openpod_test::registerSampleCatalog();
+  opentone_test::resetAll();
+  opentone_test::registerSampleCatalog();
   MusicLookup l;
   REQUIRE(l.init());
   CHECK_FALSE(l.hasPodcasts());

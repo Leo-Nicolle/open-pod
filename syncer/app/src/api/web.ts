@@ -1,6 +1,6 @@
 // The browser backend (Chrome/Edge): folders come from the File System
 // Access API, per-file work runs in a pool of workers (web-worker.ts), and
-// a Session from openpod-web (Rust, WebAssembly) on this page plans syncs
+// a Session from opentone-web (Rust, WebAssembly) on this page plans syncs
 // and keeps the card's manifest. See plans/sync-tool.md, phase 5.
 import type {
   Access,
@@ -150,7 +150,7 @@ async function copyCovers(where: { root: Dir; dirs: string[] } | null, root: Dir
 
 function idb<T>(op: (s: IDBObjectStore) => IDBRequest<T>, mode: IDBTransactionMode = 'readonly'): Promise<T> {
   return new Promise((resolve, reject) => {
-    const open = indexedDB.open('openpod-sync', 1);
+    const open = indexedDB.open('opentone-sync', 1);
     open.onupgradeneeded = () => open.result.createObjectStore('kv');
     open.onerror = () => reject(open.error);
     open.onsuccess = () => {
@@ -168,7 +168,7 @@ interface Prefs {
   exclude: string[];
   albumKey: 'artist-album' | 'name';
 }
-const PREFS_KEY = 'openpod-sync-prefs';
+const PREFS_KEY = 'opentone-sync-prefs';
 function prefs(): Prefs {
   try {
     return { machine: 'browser', exclude: [], albumKey: 'artist-album', ...JSON.parse(localStorage.getItem(PREFS_KEY) ?? '{}') };
@@ -195,10 +195,10 @@ async function granted(h: Dir, write: boolean): Promise<boolean> {
 
 // ---- WebAssembly: the page's session and the worker pool -------------------
 
-type Wasm = typeof import('../wasm/openpod_web.js');
+type Wasm = typeof import('../wasm/opentone_web.js');
 let wasmP: Promise<Wasm> | null = null;
 const wasm = () =>
-  (wasmP ??= import('../wasm/openpod_web.js').then(async (m) => {
+  (wasmP ??= import('../wasm/opentone_web.js').then(async (m) => {
     await m.default();
     return m;
   }));
@@ -275,7 +275,7 @@ let sessionStamp = '';
  * the one being written. */
 async function loadSession() {
   if (syncing) return session;
-  const f = card ? await fileAt(card, 'openpod/library.json') : null;
+  const f = card ? await fileAt(card, 'opentone/library.json') : null;
   const stamp = f ? `${f.size}:${f.lastModified}` : '';
   if (session && stamp === sessionStamp) return session;
   const w = await wasm();
@@ -287,17 +287,17 @@ async function loadSession() {
 
 async function saveManifest() {
   if (!card || !session) return;
-  await writeAt(card, 'openpod/library.json', session.manifest());
-  const f = await fileAt(card, 'openpod/library.json');
+  await writeAt(card, 'opentone/library.json', session.manifest());
+  const f = await fileAt(card, 'opentone/library.json');
   sessionStamp = f ? `${f.size}:${f.lastModified}` : '';
 }
 
-/** Audio files on the card (outside openpod/), card path → File. */
+/** Audio files on the card (outside opentone/), card path → File. */
 async function cardAudio(): Promise<Map<string, File>> {
   const out = new Map<string, File>();
   if (!card) return out;
   // Podcasts/ is the podcast mirror's, not music.
-  const files = await walk(card, (rel) => rel === 'openpod' || rel === 'Podcasts' || rel === 'System Volume Information');
+  const files = await walk(card, (rel) => rel === 'opentone' || rel === 'Podcasts' || rel === 'System Volume Information');
   for (const [rel, h] of files) if (AUDIO.has(ext(rel))) out.set(rel, await h.getFile());
   return out;
 }
@@ -403,7 +403,7 @@ const short = (p: string) => p.split('/').slice(-3).join(' / ');
 
 // ---- Index ---------------------------------------------------------------------
 
-/** Rebuilds openpod/*.bin from the session's manifest. Returns warnings. */
+/** Rebuilds opentone/*.bin from the session's manifest. Returns warnings. */
 async function reindex() {
   const s = session!;
   const key = prefs().albumKey;
@@ -413,7 +413,7 @@ async function reindex() {
     if (art) s.add_art(rel, art);
   });
   const names: string[] = JSON.parse(s.build_index(key));
-  for (const n of names) await writeAt(card!, `openpod/${n}`, s.index_file(n)! as BufferSource);
+  for (const n of names) await writeAt(card!, `opentone/${n}`, s.index_file(n)! as BufferSource);
 }
 
 /** Plans the podcast mirror (the podcast part of "What's new"). */
@@ -422,7 +422,7 @@ async function checkPodcasts(): Promise<PlanSummary['podcasts']> {
   podSession = null;
   if (!podcastsDir || !card) return undefined;
   const w = await wasm();
-  const manifest = await fileAt(card, 'openpod/podcasts.json');
+  const manifest = await fileAt(card, 'opentone/podcasts.json');
   const ps = (podSession = new w.PodcastSession(manifest ? await manifest.text() : undefined));
   podFiles = new Map();
   for (const [rel, h] of await walk(podcastsDir, () => false)) if (AUDIO.has(ext(rel))) podFiles.set(`pod/${rel}`, await h.getFile());
@@ -459,11 +459,11 @@ async function reindexPodcasts(root: Dir, ps: InstanceType<Wasm['PodcastSession'
     }
     if (bytes) ps.add_art(dir, bytes);
   });
-  const old = await fileAt(root, 'openpod/podcast_state.bin');
+  const old = await fileAt(root, 'opentone/podcast_state.bin');
   const names: string[] = JSON.parse(ps.build_index(old ? new Uint8Array(await old.arrayBuffer()) : undefined));
   // In order: the state, then the meta file last (see podcasts::build_files).
-  for (const n of names) await writeAt(root, `openpod/${n}`, ps.index_file(n)! as BufferSource);
-  await writeAt(root, 'openpod/podcasts.json', ps.manifest());
+  for (const n of names) await writeAt(root, `opentone/${n}`, ps.index_file(n)! as BufferSource);
+  await writeAt(root, 'opentone/podcasts.json', ps.manifest());
 }
 
 // ---- The Api -------------------------------------------------------------------
@@ -636,7 +636,7 @@ export const webApi: Api = {
       } = JSON.parse(ps.start());
       for (const d of ops.deletes) await removeAt(root, d);
       for (const [from, to] of ops.renames) await moveAt(root, from, to);
-      await writeAt(root, 'openpod/podcasts.json', ps.manifest());
+      await writeAt(root, 'opentone/podcasts.json', ps.manifest());
       emit(true);
       for (let i = 0; i < ops.copies.length && !stop; i++) {
         const c = ops.copies[i];
@@ -663,10 +663,10 @@ export const webApi: Api = {
         p.bytesDone = Math.min(total, advanced);
         p.filesDone++;
         emit();
-        if (i % 25 === 24) await writeAt(root, 'openpod/podcasts.json', ps.manifest());
+        if (i % 25 === 24) await writeAt(root, 'opentone/podcasts.json', ps.manifest());
       }
-      if (ps.changed() || !(await fileAt(root, 'openpod/podcast_meta.bin'))) await reindexPodcasts(root, ps);
-      else await writeAt(root, 'openpod/podcasts.json', ps.manifest());
+      if (ps.changed() || !(await fileAt(root, 'opentone/podcast_meta.bin'))) await reindexPodcasts(root, ps);
+      else await writeAt(root, 'opentone/podcasts.json', ps.manifest());
       return JSON.parse(ps.report(stop)) as { report: NonNullable<SyncReport['podcasts']>; text: string };
     };
 
@@ -759,8 +759,8 @@ export const webApi: Api = {
           report!.podcasts = pod.report;
           text += pod.text;
         }
-        await writeAt(root, 'openpod/last-sync.json', JSON.stringify(report, null, 2));
-        await writeAt(root, 'openpod/sync-report.txt', text);
+        await writeAt(root, 'opentone/last-sync.json', JSON.stringify(report, null, 2));
+        await writeAt(root, 'opentone/sync-report.txt', text);
         await saveManifest();
       } catch (e) {
         error ??= String(e instanceof Error ? e.message : e);
@@ -781,7 +781,7 @@ export const webApi: Api = {
 
   async report() {
     if (!card) return null;
-    const f = await fileAt(card, 'openpod/last-sync.json');
+    const f = await fileAt(card, 'opentone/last-sync.json');
     return f ? (JSON.parse(await f.text()) as SyncReport) : null;
   },
 
@@ -812,8 +812,8 @@ export const webApi: Api = {
 
   async podcasts(): Promise<CardPodcasts> {
     const w = await wasm();
-    const m = card ? await fileAt(card, 'openpod/podcasts.json') : null;
-    const st = card ? await fileAt(card, 'openpod/podcast_state.bin') : null;
+    const m = card ? await fileAt(card, 'opentone/podcasts.json') : null;
+    const st = card ? await fileAt(card, 'opentone/podcast_state.bin') : null;
     const v: CardPodcasts = JSON.parse(
       w.card_podcasts(m ? await m.text() : undefined, st ? new Uint8Array(await st.arrayBuffer()) : undefined, prefs().machine),
     );
@@ -828,18 +828,18 @@ export const webApi: Api = {
 
   async setPodcastKeep(show, keep) {
     const w = await wasm();
-    const m = await fileAt(card!, 'openpod/podcasts.json');
-    await writeAt(card!, 'openpod/podcasts.json', w.podcast_set_keep(m ? await m.text() : undefined, show, keep ?? undefined));
+    const m = await fileAt(card!, 'opentone/podcasts.json');
+    await writeAt(card!, 'opentone/podcasts.json', w.podcast_set_keep(m ? await m.text() : undefined, show, keep ?? undefined));
     return webApi.podcasts();
   },
 
   async setPodcastPlayed(path, played) {
     const w = await wasm();
-    const m = await fileAt(card!, 'openpod/podcasts.json');
-    const st = await fileAt(card!, 'openpod/podcast_state.bin');
+    const m = await fileAt(card!, 'opentone/podcasts.json');
+    const st = await fileAt(card!, 'opentone/podcast_state.bin');
     if (!m || !st) throw new Error('No podcasts on this card yet.');
     const out = w.podcast_set_played(await m.text(), new Uint8Array(await st.arrayBuffer()), path, played);
-    await writeAt(card!, 'openpod/podcast_state.bin', out as BufferSource);
+    await writeAt(card!, 'opentone/podcast_state.bin', out as BufferSource);
     return webApi.podcasts();
   },
 
@@ -850,7 +850,7 @@ export const webApi: Api = {
   async pickFolder(_title, _start, write, purpose) {
     let h: Dir;
     try {
-      const id = write ? 'openpod-card' : purpose === 'podcasts' ? 'openpod-podcasts' : 'openpod-music';
+      const id = write ? 'opentone-card' : purpose === 'podcasts' ? 'opentone-podcasts' : 'opentone-music';
       h = await (window as any).showDirectoryPicker({ mode: write ? 'readwrite' : 'read', id });
     } catch {
       return null; // cancelled

@@ -1,8 +1,8 @@
 #pragma once
 // Startup sound, played over the title screen straight from flash (see
 // AudioPlayer::playClip()). Generated from software/assets/startup.mp3, which
-// is openpod-fast.wav encoded to fit the 32 KB audio fifo whole:
-//   ffmpeg -i openpod-fast.wav -codec:a libmp3lame -b:a 96k -ar 44100 assets/startup.mp3
+// is opentone-fast.wav encoded to fit the 32 KB audio fifo whole:
+//   ffmpeg -i opentone-fast.wav -codec:a libmp3lame -b:a 96k -ar 44100 assets/startup.mp3
 // then dump its bytes here (e.g. `xxd -i assets/startup.mp3`), keeping these names.
 #include <stdint.h>
 

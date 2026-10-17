@@ -1,7 +1,7 @@
 # Performance and memory: a music index that scales to a full SD card
 
 > **Status (2026-10-16): superseded by the paged index.** The syncer now writes every
-> table and the search trie into one file, `openpod/index.pack`
+> table and the search trie into one file, `opentone/index.pack`
 > (`syncer/crates/core/src/index/pack.rs`), with dense formats (no id arrays, relations
 > with prefix-sum starts). The firmware no longer copies anything at boot: it reads
 > 4 KB pages of the pack on demand into a PSRAM cache (`software/src/storage/PageStore.h`,
@@ -144,7 +144,7 @@ a bigger page cache → the rest.
 
 ## Context
 
-At boot, the whole music index (`/openpod/*.bin`, from the indexer) is copied into the
+At boot, the whole music index (`/opentone/*.bin`, from the indexer) is copied into the
 2 MB music region of PSRAM (`MUSIC_INDEX_BASE_ADDRESS`, 6–8 MB, see
 `software/src/storage/PSRAM_controller.hpp`). Two problems:
 

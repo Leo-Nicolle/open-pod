@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <export version="E">
   <design>
-    <source>/home/leo/Documents/dev/perso/open-pod/hardware/openpod/openpod.kicad_sch</source>
+    <source>/home/leo/Documents/dev/perso/open-pod/hardware/opentone/opentone.kicad_sch</source>
     <date>Thu May 15 12:42:54 2025</date>
     <tool>Eeschema 7.0.11+dfsg-1build4</tool>
     <sheet number="1" name="/" tstamps="/">
@@ -10,7 +10,7 @@
         <company/>
         <rev/>
         <date/>
-        <source>openpod.kicad_sch</source>
+        <source>opentone.kicad_sch</source>
         <comment number="1" value=""/>
         <comment number="2" value=""/>
         <comment number="3" value=""/>
@@ -94,7 +94,7 @@
       <property name="Supplier" value="DigiKey"/>
       <property name="Supplier Part number" value="1965-ESP32-S3-WROOM-2-N32R16VTR-ND"/>
       <property name="Sheetname" value=""/>
-      <property name="Sheetfile" value="openpod.kicad_sch"/>
+      <property name="Sheetfile" value="opentone.kicad_sch"/>
       <property name="ki_description" value="RF Module, 2.4 GHz, Wi­-Fi, Bluetooth, BLE, ESP32­-S3R8V"/>
       <property name="ki_keywords" value="Bluetooth WiFi Wi-Fi ESP WROOM"/>
       <sheetpath names="/" tstamps="/"/>
@@ -102,7 +102,7 @@
     </comp>
     <comp ref="SCREEN1">
       <value>~</value>
-      <footprint>openpod:nhd-2.4-240320cf-ctxif</footprint>
+      <footprint>opentone:nhd-2.4-240320cf-ctxif</footprint>
       <datasheet>https://newhavendisplay.com/content/specs/NHD-2.4-240320CF-CTXI-F.pdf</datasheet>
       <fields>
         <field name="Manufacturer">Newhaven Display Intl</field>
@@ -116,13 +116,13 @@
       <property name="Supplier" value="DigiKey"/>
       <property name="Supplier Part number" value="NHD-2.4-240320CF-CTXI#-F-ND"/>
       <property name="Sheetname" value=""/>
-      <property name="Sheetfile" value="openpod.kicad_sch"/>
+      <property name="Sheetfile" value="opentone.kicad_sch"/>
       <sheetpath names="/" tstamps="/"/>
       <tstamps>b8eb09c5-eb1a-4158-b8f4-dc040ab50851</tstamps>
     </comp>
     <comp ref="S_CONNECTOR1">
       <value>~</value>
-      <footprint>openpod:Hirose_FH12-40S-0.5SH_1x40-1MP_P0.50mm_Horizontal</footprint>
+      <footprint>opentone:Hirose_FH12-40S-0.5SH_1x40-1MP_P0.50mm_Horizontal</footprint>
       <datasheet>https://www.mouser.fr/datasheet/2/185/FH12_40S_0_5SH_55__CL0586_0527_7_55_2DDrawing_0000-1614809.pdf</datasheet>
       <fields>
         <field name="Manufacturer">Hirose Electric</field>
@@ -136,7 +136,7 @@
       <property name="Supplier" value="DigiKey"/>
       <property name="Supplier Part number" value="26-FH12-40S-0.5SH(55)TR-ND"/>
       <property name="Sheetname" value=""/>
-      <property name="Sheetfile" value="openpod.kicad_sch"/>
+      <property name="Sheetfile" value="opentone.kicad_sch"/>
       <sheetpath names="/" tstamps="/"/>
       <tstamps>c629c35f-0f96-4ef1-837e-0f2705567965</tstamps>
     </comp>
@@ -853,7 +853,7 @@
     </comp>
     <comp ref="bottom1">
       <value>SKQGAFE010</value>
-      <footprint>openpod:SW_SKQGAFE010</footprint>
+      <footprint>opentone:SW_SKQGAFE010</footprint>
       <datasheet>https://eu.mouser.com/datasheet/2/15/SKQG-1155865.pdf</datasheet>
       <fields>
         <field name="Description">
@@ -866,7 +866,7 @@
         <field name="Supplier">DigiKey</field>
         <field name="Supplier Part number">4809-SKQGAFE010TR-ND</field>
       </fields>
-      <libsource lib="openpod" part="SKQGAFE010" description=""/>
+      <libsource lib="opentone" part="SKQGAFE010" description=""/>
       <property name="Manufacturer" value="Alps Alpine"/>
       <property name="Part number" value="SKQGAFE010"/>
       <property name="Supplier" value="DigiKey"/>
@@ -889,7 +889,7 @@
     </comp>
     <comp ref="center1">
       <value>SKQGAFE010</value>
-      <footprint>openpod:SW_SKQGAFE010</footprint>
+      <footprint>opentone:SW_SKQGAFE010</footprint>
       <datasheet>https://eu.mouser.com/datasheet/2/15/SKQG-1155865.pdf</datasheet>
       <fields>
         <field name="Description">
@@ -902,7 +902,7 @@
         <field name="Supplier">DigiKey</field>
         <field name="Supplier Part number">4809-SKQGAFE010TR-ND</field>
       </fields>
-      <libsource lib="openpod" part="SKQGAFE010" description=""/>
+      <libsource lib="opentone" part="SKQGAFE010" description=""/>
       <property name="Manufacturer" value="Alps Alpine"/>
       <property name="Part number" value="SKQGAFE010"/>
       <property name="Supplier" value="DigiKey"/>
@@ -926,7 +926,7 @@
     <comp ref="clickwheel-connector1">
       <value>~</value>
       <footprint>Connector_FFC-FPC:Hirose_FH12-8S-0.5SH_1x08-1MP_P0.50mm_Horizontal</footprint>
-      <libsource lib="openpod" part="clickwheel-connector" description=""/>
+      <libsource lib="opentone" part="clickwheel-connector" description=""/>
       <property name="Manufacturer" value=""/>
       <property name="Part number" value=""/>
       <property name="Supplier" value=""/>
@@ -938,8 +938,8 @@
     </comp>
     <comp ref="Clickwheel1">
       <value>~</value>
-      <footprint>openpod:clickwheel_1</footprint>
-      <libsource lib="openpod" part="clickwheel" description=""/>
+      <footprint>opentone:clickwheel_1</footprint>
+      <libsource lib="opentone" part="clickwheel" description=""/>
       <property name="Manufacturer" value=""/>
       <property name="Part number" value=""/>
       <property name="Supplier" value=""/>
@@ -951,7 +951,7 @@
     </comp>
     <comp ref="left1">
       <value>SKQGAFE010</value>
-      <footprint>openpod:SW_SKQGAFE010</footprint>
+      <footprint>opentone:SW_SKQGAFE010</footprint>
       <datasheet>https://eu.mouser.com/datasheet/2/15/SKQG-1155865.pdf</datasheet>
       <fields>
         <field name="Description">
@@ -964,7 +964,7 @@
         <field name="Supplier">DigiKey</field>
         <field name="Supplier Part number">4809-SKQGAFE010TR-ND</field>
       </fields>
-      <libsource lib="openpod" part="SKQGAFE010" description=""/>
+      <libsource lib="opentone" part="SKQGAFE010" description=""/>
       <property name="Manufacturer" value="Alps Alpine"/>
       <property name="Part number" value="SKQGAFE010"/>
       <property name="Supplier" value="DigiKey"/>
@@ -987,7 +987,7 @@
     </comp>
     <comp ref="MPR1">
       <value>MPR121QR2</value>
-      <footprint>openpod:mpr121qr2</footprint>
+      <footprint>opentone:mpr121qr2</footprint>
       <datasheet>https://cdn.sparkfun.com/assets/8/5/c/b/6/MPR121.pdf</datasheet>
       <fields>
         <field name="Description">
@@ -996,7 +996,7 @@
                         
 </field>
       </fields>
-      <libsource lib="openpod" part="MPR121QR2" description=""/>
+      <libsource lib="opentone" part="MPR121QR2" description=""/>
       <property name="MF" value=""/>
       <property name="Description" value="&#xA;                        &#xA;                            Capacitive Touch Buttons, Slider, Wheel 20-QFN (3x3)&#xA;                        &#xA;"/>
       <property name="Package" value=""/>
@@ -1017,7 +1017,7 @@
     </comp>
     <comp ref="right1">
       <value>SKQGAFE010</value>
-      <footprint>openpod:SW_SKQGAFE010</footprint>
+      <footprint>opentone:SW_SKQGAFE010</footprint>
       <datasheet>https://eu.mouser.com/datasheet/2/15/SKQG-1155865.pdf</datasheet>
       <fields>
         <field name="Description">
@@ -1030,7 +1030,7 @@
         <field name="Supplier">DigiKey</field>
         <field name="Supplier Part number">4809-SKQGAFE010TR-ND</field>
       </fields>
-      <libsource lib="openpod" part="SKQGAFE010" description=""/>
+      <libsource lib="opentone" part="SKQGAFE010" description=""/>
       <property name="Manufacturer" value="Alps Alpine"/>
       <property name="Part number" value="SKQGAFE010"/>
       <property name="Supplier" value="DigiKey"/>
@@ -1053,7 +1053,7 @@
     </comp>
     <comp ref="top1">
       <value>SKQGAFE010</value>
-      <footprint>openpod:SW_SKQGAFE010</footprint>
+      <footprint>opentone:SW_SKQGAFE010</footprint>
       <datasheet>https://eu.mouser.com/datasheet/2/15/SKQG-1155865.pdf</datasheet>
       <fields>
         <field name="Description">
@@ -1066,7 +1066,7 @@
         <field name="Supplier">DigiKey</field>
         <field name="Supplier Part number">4809-SKQGAFE010TR-ND</field>
       </fields>
-      <libsource lib="openpod" part="SKQGAFE010" description=""/>
+      <libsource lib="opentone" part="SKQGAFE010" description=""/>
       <property name="Manufacturer" value="Alps Alpine"/>
       <property name="Part number" value="SKQGAFE010"/>
       <property name="Supplier" value="DigiKey"/>
@@ -1415,7 +1415,7 @@
         <pin num="5" name="" type="passive"/>
       </pins>
     </libpart>
-    <libpart lib="openpod" part="MPR121QR2">
+    <libpart lib="opentone" part="MPR121QR2">
       <fields>
         <field name="Reference">U</field>
         <field name="Value">MPR121QR2</field>
@@ -1448,7 +1448,7 @@
         <pin num="20" name="VDD" type="power_in"/>
       </pins>
     </libpart>
-    <libpart lib="openpod" part="SKQGAFE010">
+    <libpart lib="opentone" part="SKQGAFE010">
       <fields>
         <field name="Reference">S</field>
         <field name="Value">SKQGAFE010</field>
@@ -1465,7 +1465,7 @@
         <pin num="4" name="4" type="passive"/>
       </pins>
     </libpart>
-    <libpart lib="openpod" part="clickwheel">
+    <libpart lib="opentone" part="clickwheel">
       <fields>
         <field name="Reference">Clickwheel</field>
       </fields>
@@ -1476,7 +1476,7 @@
         <pin num="4" name="left" type="input"/>
       </pins>
     </libpart>
-    <libpart lib="openpod" part="clickwheel-connector">
+    <libpart lib="opentone" part="clickwheel-connector">
       <fields>
         <field name="Reference">clickwheel-connector</field>
       </fields>
@@ -1661,10 +1661,10 @@
       <uri>/usr/share/kicad/symbols//Regulator_Switching.kicad_sym</uri>
     </library>
     <library logical="jack">
-      <uri>/home/leo/Documents/dev/perso/open-pod/hardware/openpod/jack/SJ-43515TS-SMT-TR.lib</uri>
+      <uri>/home/leo/Documents/dev/perso/open-pod/hardware/opentone/jack/SJ-43515TS-SMT-TR.lib</uri>
     </library>
-    <library logical="openpod">
-      <uri>/home/leo/Documents/dev/perso/open-pod/hardware/openpod/openpod.kicad_sym</uri>
+    <library logical="opentone">
+      <uri>/home/leo/Documents/dev/perso/open-pod/hardware/opentone/opentone.kicad_sym</uri>
     </library>
   </libraries>
   <nets>

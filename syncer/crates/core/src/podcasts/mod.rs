@@ -2,7 +2,7 @@
 //! [`mirror`]), the browser tree the firmware reads ([`tree`]) and the
 //! listening state it writes ([`state`]).
 //!
-//! The card's podcasts are recorded in `openpod/podcasts.json`, apart from
+//! The card's podcasts are recorded in `opentone/podcasts.json`, apart from
 //! the music manifest: music sync is additive, the podcast mirror deletes.
 //! An episode is identified by its source file's [`crate::sync::content_hash`],
 //! which also keys its listening state, so moving or renaming folders in the
@@ -139,7 +139,7 @@ pub fn load(card: &Path) -> io::Result<PodcastManifest> {
     if m.version > VERSION {
         return Err(io::Error::new(
             io::ErrorKind::InvalidData,
-            format!("{FILE} version {} is newer than this tool ({VERSION}): update openpod", m.version),
+            format!("{FILE} version {} is newer than this tool ({VERSION}): update opentone", m.version),
         ));
     }
     Ok(m)

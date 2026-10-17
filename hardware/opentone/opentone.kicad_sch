@@ -3439,7 +3439,7 @@
 			(uuid "c2b14d73-db51-42af-8f89-4fe4a69fa672")
 		)
 		(instances
-			(project "openpod"
+			(project "opentone"
 				(path "/0122bb8c-dbef-4db1-a6c6-9be780a38d9f"
 					(reference "U1")
 					(unit 1)
@@ -3474,7 +3474,7 @@
 				)
 			)
 		)
-		(property "Footprint" "openpod:nhd-2.4-240320cf-ctxif"
+		(property "Footprint" "opentone:nhd-2.4-240320cf-ctxif"
 			(at 259.08 35.56 0)
 			(effects
 				(font
@@ -3657,7 +3657,7 @@
 			(uuid "e6de88d4-9bb9-4d67-a038-d64a0a24ccd0")
 		)
 		(instances
-			(project "openpod"
+			(project "opentone"
 				(path "/0122bb8c-dbef-4db1-a6c6-9be780a38d9f"
 					(reference "SCREEN1")
 					(unit 1)
@@ -3692,7 +3692,7 @@
 				)
 			)
 		)
-		(property "Footprint" "openpod:Hirose_FH12-40S-0.5SH_1x40-1MP_P0.50mm_Horizontal"
+		(property "Footprint" "opentone:Hirose_FH12-40S-0.5SH_1x40-1MP_P0.50mm_Horizontal"
 			(at 203.2 35.56 0)
 			(effects
 				(font
@@ -3875,7 +3875,7 @@
 			(uuid "1864f632-151b-4ce8-97fd-5bc523244782")
 		)
 		(instances
-			(project "openpod"
+			(project "opentone"
 				(path "/0122bb8c-dbef-4db1-a6c6-9be780a38d9f"
 					(reference "S_CONNECTOR1")
 					(unit 1)
@@ -3918,7 +3918,7 @@
 			)
 		)
 		(instances
-			(project "openpod"
+			(project "opentone"
 				(path "/0122bb8c-dbef-4db1-a6c6-9be780a38d9f"
 					(page "3")
 				)
@@ -3960,7 +3960,7 @@
 			)
 		)
 		(instances
-			(project "openpod"
+			(project "opentone"
 				(path "/0122bb8c-dbef-4db1-a6c6-9be780a38d9f"
 					(page "4")
 				)
@@ -4002,7 +4002,7 @@
 			)
 		)
 		(instances
-			(project "openpod"
+			(project "opentone"
 				(path "/0122bb8c-dbef-4db1-a6c6-9be780a38d9f"
 					(page "7")
 				)
@@ -4044,7 +4044,7 @@
 			)
 		)
 		(instances
-			(project "openpod"
+			(project "opentone"
 				(path "/0122bb8c-dbef-4db1-a6c6-9be780a38d9f"
 					(page "5")
 				)
@@ -4086,7 +4086,7 @@
 			)
 		)
 		(instances
-			(project "openpod"
+			(project "opentone"
 				(path "/0122bb8c-dbef-4db1-a6c6-9be780a38d9f"
 					(page "2")
 				)

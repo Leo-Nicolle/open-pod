@@ -1,4 +1,4 @@
-//! `openpod/podcast_state.bin`: each episode's listening state, one
+//! `opentone/podcast_state.bin`: each episode's listening state, one
 //! fixed-size record per episode id so the firmware reads and writes it in
 //! place. Episode ids change on every rebuild, so each record carries the
 //! episode's content key and [`remap`] moves the records to the new ids.

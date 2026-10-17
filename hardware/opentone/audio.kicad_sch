@@ -602,7 +602,7 @@
 			)
 			(embedded_fonts no)
 		)
-		(symbol "openpod:SJ1-3524NG"
+		(symbol "opentone:SJ1-3524NG"
 			(pin_names
 				(offset 1.016)
 				(hide yes)
@@ -984,7 +984,7 @@
 			)
 			(embedded_fonts no)
 		)
-		(symbol "openpod:vs1063"
+		(symbol "opentone:vs1063"
 			(exclude_from_sim no)
 			(in_bom yes)
 			(on_board yes)
@@ -4737,7 +4737,7 @@
 			(uuid "42c473a8-d602-4c21-bf77-c0696728785b")
 		)
 		(instances
-			(project "openpod"
+			(project "opentone"
 				(path "/0122bb8c-dbef-4db1-a6c6-9be780a38d9f/624e7c04-d7d5-4e26-80cd-388aaab1d060"
 					(reference "#PWR09")
 					(unit 1)
@@ -4841,7 +4841,7 @@
 			(uuid "635baaef-39b2-487e-8daa-5f560a4a128b")
 		)
 		(instances
-			(project "openpod"
+			(project "opentone"
 				(path "/0122bb8c-dbef-4db1-a6c6-9be780a38d9f/624e7c04-d7d5-4e26-80cd-388aaab1d060"
 					(reference "C34")
 					(unit 1)
@@ -4945,7 +4945,7 @@
 			(uuid "b3bf76b7-f647-4296-96b5-2123ea1510b0")
 		)
 		(instances
-			(project "openpod"
+			(project "opentone"
 				(path "/0122bb8c-dbef-4db1-a6c6-9be780a38d9f/624e7c04-d7d5-4e26-80cd-388aaab1d060"
 					(reference "C39")
 					(unit 1)
@@ -5009,7 +5009,7 @@
 			(uuid "8bcf35db-9981-453f-9885-3f881035faf4")
 		)
 		(instances
-			(project "openpod"
+			(project "opentone"
 				(path "/0122bb8c-dbef-4db1-a6c6-9be780a38d9f/624e7c04-d7d5-4e26-80cd-388aaab1d060"
 					(reference "#PWR018")
 					(unit 1)
@@ -5112,7 +5112,7 @@
 			(uuid "d571365f-daac-414e-bb3c-f23ebd473476")
 		)
 		(instances
-			(project "openpod"
+			(project "opentone"
 				(path "/0122bb8c-dbef-4db1-a6c6-9be780a38d9f/624e7c04-d7d5-4e26-80cd-388aaab1d060"
 					(reference "C3")
 					(unit 1)
@@ -5216,7 +5216,7 @@
 			(uuid "7f6d2ba0-d971-4f55-ae5c-c2cda304b707")
 		)
 		(instances
-			(project "openpod"
+			(project "opentone"
 				(path "/0122bb8c-dbef-4db1-a6c6-9be780a38d9f/624e7c04-d7d5-4e26-80cd-388aaab1d060"
 					(reference "C32")
 					(unit 1)
@@ -5280,7 +5280,7 @@
 			(uuid "b244b854-90ad-488a-b664-d9a48004e36a")
 		)
 		(instances
-			(project "openpod"
+			(project "opentone"
 				(path "/0122bb8c-dbef-4db1-a6c6-9be780a38d9f/624e7c04-d7d5-4e26-80cd-388aaab1d060"
 					(reference "#PWR014")
 					(unit 1)
@@ -5384,7 +5384,7 @@
 			(uuid "820e9f4f-b6aa-4f60-beae-598bb67426fc")
 		)
 		(instances
-			(project "openpod"
+			(project "opentone"
 				(path "/0122bb8c-dbef-4db1-a6c6-9be780a38d9f/624e7c04-d7d5-4e26-80cd-388aaab1d060"
 					(reference "C44")
 					(unit 1)
@@ -5448,7 +5448,7 @@
 			(uuid "2786fbb8-6761-47d5-830c-9c6340da1df3")
 		)
 		(instances
-			(project "openpod"
+			(project "opentone"
 				(path "/0122bb8c-dbef-4db1-a6c6-9be780a38d9f/624e7c04-d7d5-4e26-80cd-388aaab1d060"
 					(reference "#PWR037")
 					(unit 1)
@@ -5550,7 +5550,7 @@
 			(uuid "09fbd03a-965f-4ad3-bfc1-7a86e8f29cd5")
 		)
 		(instances
-			(project "openpod"
+			(project "opentone"
 				(path "/0122bb8c-dbef-4db1-a6c6-9be780a38d9f/624e7c04-d7d5-4e26-80cd-388aaab1d060"
 					(reference "R2")
 					(unit 1)
@@ -5654,7 +5654,7 @@
 			(uuid "394f2cbe-b593-4a70-83e5-ced29b006494")
 		)
 		(instances
-			(project "openpod"
+			(project "opentone"
 				(path "/0122bb8c-dbef-4db1-a6c6-9be780a38d9f/624e7c04-d7d5-4e26-80cd-388aaab1d060"
 					(reference "C36")
 					(unit 1)
@@ -5718,7 +5718,7 @@
 			(uuid "25ec75de-fb94-46d5-81f8-c2e3bff4823d")
 		)
 		(instances
-			(project "openpod"
+			(project "opentone"
 				(path "/0122bb8c-dbef-4db1-a6c6-9be780a38d9f/624e7c04-d7d5-4e26-80cd-388aaab1d060"
 					(reference "#PWR017")
 					(unit 1)
@@ -5783,7 +5783,7 @@
 			(uuid "e9b80aec-d9a6-4cb1-b3a7-88e0ec03dd3d")
 		)
 		(instances
-			(project "openpod"
+			(project "opentone"
 				(path "/0122bb8c-dbef-4db1-a6c6-9be780a38d9f/624e7c04-d7d5-4e26-80cd-388aaab1d060"
 					(reference "#PWR015")
 					(unit 1)
@@ -5848,7 +5848,7 @@
 			(uuid "b6c50ace-96f1-4746-9c61-8196158b7200")
 		)
 		(instances
-			(project "openpod"
+			(project "opentone"
 				(path "/0122bb8c-dbef-4db1-a6c6-9be780a38d9f/624e7c04-d7d5-4e26-80cd-388aaab1d060"
 					(reference "#PWR027")
 					(unit 1)
@@ -5952,7 +5952,7 @@
 			(uuid "4b1ae24a-d3ab-4e12-bac7-2dce52966157")
 		)
 		(instances
-			(project "openpod"
+			(project "opentone"
 				(path "/0122bb8c-dbef-4db1-a6c6-9be780a38d9f/624e7c04-d7d5-4e26-80cd-388aaab1d060"
 					(reference "C35")
 					(unit 1)
@@ -6056,7 +6056,7 @@
 			(uuid "13d981bc-5adb-4053-b22d-8fc1c72b5cf2")
 		)
 		(instances
-			(project "openpod"
+			(project "opentone"
 				(path "/0122bb8c-dbef-4db1-a6c6-9be780a38d9f/624e7c04-d7d5-4e26-80cd-388aaab1d060"
 					(reference "C45")
 					(unit 1)
@@ -6121,7 +6121,7 @@
 			(uuid "d361e30b-dad1-4c1a-8f86-953aa5e83931")
 		)
 		(instances
-			(project "openpod"
+			(project "opentone"
 				(path "/0122bb8c-dbef-4db1-a6c6-9be780a38d9f/624e7c04-d7d5-4e26-80cd-388aaab1d060"
 					(reference "#PWR013")
 					(unit 1)
@@ -6186,7 +6186,7 @@
 			(uuid "3e1d1c3d-daf2-48f5-9df8-f23e56ddade4")
 		)
 		(instances
-			(project "openpod"
+			(project "opentone"
 				(path "/0122bb8c-dbef-4db1-a6c6-9be780a38d9f/624e7c04-d7d5-4e26-80cd-388aaab1d060"
 					(reference "#PWR033")
 					(unit 1)
@@ -6290,7 +6290,7 @@
 			(uuid "dc25552b-4f3c-48dc-8bfc-f1d137450f16")
 		)
 		(instances
-			(project "openpod"
+			(project "opentone"
 				(path "/0122bb8c-dbef-4db1-a6c6-9be780a38d9f/624e7c04-d7d5-4e26-80cd-388aaab1d060"
 					(reference "Cristal1")
 					(unit 1)
@@ -6394,7 +6394,7 @@
 			(uuid "ba991c31-c612-4d59-ad21-c1a237f7e277")
 		)
 		(instances
-			(project "openpod"
+			(project "opentone"
 				(path "/0122bb8c-dbef-4db1-a6c6-9be780a38d9f/624e7c04-d7d5-4e26-80cd-388aaab1d060"
 					(reference "C40")
 					(unit 1)
@@ -6496,7 +6496,7 @@
 			(uuid "014b4843-fa07-4a4b-8a8d-95acba5eef52")
 		)
 		(instances
-			(project "openpod"
+			(project "opentone"
 				(path "/0122bb8c-dbef-4db1-a6c6-9be780a38d9f/624e7c04-d7d5-4e26-80cd-388aaab1d060"
 					(reference "R18")
 					(unit 1)
@@ -6598,7 +6598,7 @@
 			(uuid "f106bacb-ab2d-4ce8-a24b-7338859a5bca")
 		)
 		(instances
-			(project "openpod"
+			(project "opentone"
 				(path "/0122bb8c-dbef-4db1-a6c6-9be780a38d9f/624e7c04-d7d5-4e26-80cd-388aaab1d060"
 					(reference "R13")
 					(unit 1)
@@ -6702,7 +6702,7 @@
 			(uuid "c7981783-3b68-4f9d-82ed-759279d7f409")
 		)
 		(instances
-			(project "openpod"
+			(project "opentone"
 				(path "/0122bb8c-dbef-4db1-a6c6-9be780a38d9f/624e7c04-d7d5-4e26-80cd-388aaab1d060"
 					(reference "C42")
 					(unit 1)
@@ -6806,7 +6806,7 @@
 			(uuid "a98f9335-3f8c-4608-bcf0-b96dd7e275e1")
 		)
 		(instances
-			(project "openpod"
+			(project "opentone"
 				(path "/0122bb8c-dbef-4db1-a6c6-9be780a38d9f/624e7c04-d7d5-4e26-80cd-388aaab1d060"
 					(reference "C33")
 					(unit 1)
@@ -6909,7 +6909,7 @@
 			(uuid "bbb8796d-4a99-4713-8d6e-245908b44e50")
 		)
 		(instances
-			(project "openpod"
+			(project "opentone"
 				(path "/0122bb8c-dbef-4db1-a6c6-9be780a38d9f/624e7c04-d7d5-4e26-80cd-388aaab1d060"
 					(reference "C29")
 					(unit 1)
@@ -7011,7 +7011,7 @@
 			(uuid "694dccb6-d571-424a-82ca-0f2b27b31edf")
 		)
 		(instances
-			(project "openpod"
+			(project "opentone"
 				(path "/0122bb8c-dbef-4db1-a6c6-9be780a38d9f/624e7c04-d7d5-4e26-80cd-388aaab1d060"
 					(reference "R14")
 					(unit 1)
@@ -7076,7 +7076,7 @@
 			(uuid "87bc2426-44f4-4151-a672-55c4d9a3486a")
 		)
 		(instances
-			(project "openpod"
+			(project "opentone"
 				(path "/0122bb8c-dbef-4db1-a6c6-9be780a38d9f/624e7c04-d7d5-4e26-80cd-388aaab1d060"
 					(reference "#PWR08")
 					(unit 1)
@@ -7180,7 +7180,7 @@
 			(uuid "6cb43559-653e-493b-b565-f723958299ae")
 		)
 		(instances
-			(project "openpod"
+			(project "opentone"
 				(path "/0122bb8c-dbef-4db1-a6c6-9be780a38d9f/624e7c04-d7d5-4e26-80cd-388aaab1d060"
 					(reference "C30")
 					(unit 1)
@@ -7244,7 +7244,7 @@
 			(uuid "cc8b26b3-19d8-483b-9119-07e3e2bb41ad")
 		)
 		(instances
-			(project "openpod"
+			(project "opentone"
 				(path "/0122bb8c-dbef-4db1-a6c6-9be780a38d9f/624e7c04-d7d5-4e26-80cd-388aaab1d060"
 					(reference "#PWR038")
 					(unit 1)
@@ -7347,7 +7347,7 @@
 			(uuid "429ed2f0-4d58-44d7-ab74-c8c6266def4f")
 		)
 		(instances
-			(project "openpod"
+			(project "opentone"
 				(path "/0122bb8c-dbef-4db1-a6c6-9be780a38d9f/624e7c04-d7d5-4e26-80cd-388aaab1d060"
 					(reference "C9")
 					(unit 1)
@@ -7356,7 +7356,7 @@
 		)
 	)
 	(symbol
-		(lib_id "openpod:SJ1-3524NG")
+		(lib_id "opentone:SJ1-3524NG")
 		(at 74.676 69.596 270)
 		(unit 1)
 		(exclude_from_sim no)
@@ -7383,7 +7383,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" "openpod:CUI_SJ1-3524NG"
+		(property "Footprint" "opentone:CUI_SJ1-3524NG"
 			(at 74.676 69.596 0)
 			(effects
 				(font
@@ -7460,7 +7460,7 @@
 			(uuid "979118d1-05f0-437a-942b-8ddd8c1da245")
 		)
 		(instances
-			(project "openpod"
+			(project "opentone"
 				(path "/0122bb8c-dbef-4db1-a6c6-9be780a38d9f/624e7c04-d7d5-4e26-80cd-388aaab1d060"
 					(reference "Jack1")
 					(unit 1)
@@ -7564,7 +7564,7 @@
 			(uuid "7be16a58-c0ec-4f78-b9e2-6fd00444cba9")
 		)
 		(instances
-			(project "openpod"
+			(project "opentone"
 				(path "/0122bb8c-dbef-4db1-a6c6-9be780a38d9f/624e7c04-d7d5-4e26-80cd-388aaab1d060"
 					(reference "C31")
 					(unit 1)
@@ -7668,7 +7668,7 @@
 			(uuid "0ca1589b-62e2-465a-b736-e6491c45a20c")
 		)
 		(instances
-			(project "openpod"
+			(project "opentone"
 				(path "/0122bb8c-dbef-4db1-a6c6-9be780a38d9f/624e7c04-d7d5-4e26-80cd-388aaab1d060"
 					(reference "C43")
 					(unit 1)
@@ -7770,7 +7770,7 @@
 			(uuid "eb75d3fc-fc07-4aeb-b638-7a4f23614f21")
 		)
 		(instances
-			(project "openpod"
+			(project "opentone"
 				(path "/0122bb8c-dbef-4db1-a6c6-9be780a38d9f/624e7c04-d7d5-4e26-80cd-388aaab1d060"
 					(reference "R17")
 					(unit 1)
@@ -7872,7 +7872,7 @@
 			(uuid "d2b8efbd-97dd-4e2b-9f2d-3a5986362e30")
 		)
 		(instances
-			(project "openpod"
+			(project "opentone"
 				(path "/0122bb8c-dbef-4db1-a6c6-9be780a38d9f/624e7c04-d7d5-4e26-80cd-388aaab1d060"
 					(reference "R16")
 					(unit 1)
@@ -7937,7 +7937,7 @@
 			(uuid "2d3b00bf-8eb3-42ba-9a33-53661c2b7e57")
 		)
 		(instances
-			(project "openpod"
+			(project "opentone"
 				(path "/0122bb8c-dbef-4db1-a6c6-9be780a38d9f/624e7c04-d7d5-4e26-80cd-388aaab1d060"
 					(reference "#PWR016")
 					(unit 1)
@@ -8002,7 +8002,7 @@
 			(uuid "6ce951a9-9a3e-4b43-8f34-cc45fd43ece2")
 		)
 		(instances
-			(project "openpod"
+			(project "opentone"
 				(path "/0122bb8c-dbef-4db1-a6c6-9be780a38d9f/624e7c04-d7d5-4e26-80cd-388aaab1d060"
 					(reference "#PWR012")
 					(unit 1)
@@ -8106,7 +8106,7 @@
 			(uuid "4d2e5734-059d-4d5c-a789-6355cbdff939")
 		)
 		(instances
-			(project "openpod"
+			(project "opentone"
 				(path "/0122bb8c-dbef-4db1-a6c6-9be780a38d9f/624e7c04-d7d5-4e26-80cd-388aaab1d060"
 					(reference "C37")
 					(unit 1)
@@ -8210,7 +8210,7 @@
 			(uuid "2bcfd363-a43d-4cf9-b447-6fb1e50b9de6")
 		)
 		(instances
-			(project "openpod"
+			(project "opentone"
 				(path "/0122bb8c-dbef-4db1-a6c6-9be780a38d9f/624e7c04-d7d5-4e26-80cd-388aaab1d060"
 					(reference "C38")
 					(unit 1)
@@ -8314,7 +8314,7 @@
 			(uuid "e4dafcf7-e65b-4ed5-ac7a-a59d7201f3b6")
 		)
 		(instances
-			(project "openpod"
+			(project "opentone"
 				(path "/0122bb8c-dbef-4db1-a6c6-9be780a38d9f/624e7c04-d7d5-4e26-80cd-388aaab1d060"
 					(reference "C41")
 					(unit 1)
@@ -8323,7 +8323,7 @@
 		)
 	)
 	(symbol
-		(lib_id "openpod:vs1063")
+		(lib_id "opentone:vs1063")
 		(at 158.242 66.04 0)
 		(unit 1)
 		(exclude_from_sim no)
@@ -8519,7 +8519,7 @@
 			(uuid "75f7e44a-cb1c-4ff3-b9d4-d46513563241")
 		)
 		(instances
-			(project "openpod"
+			(project "opentone"
 				(path "/0122bb8c-dbef-4db1-a6c6-9be780a38d9f/624e7c04-d7d5-4e26-80cd-388aaab1d060"
 					(reference "VS1")
 					(unit 1)
@@ -8621,7 +8621,7 @@
 			(uuid "cd239331-5e19-4127-8ff9-81a228e8093e")
 		)
 		(instances
-			(project "openpod"
+			(project "opentone"
 				(path "/0122bb8c-dbef-4db1-a6c6-9be780a38d9f/624e7c04-d7d5-4e26-80cd-388aaab1d060"
 					(reference "R3")
 					(unit 1)

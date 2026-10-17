@@ -1,4 +1,4 @@
-import { EnhanceAppContext, useRoute } from "vitepress";
+import { EnhanceAppContext, useRoute, withBase } from "vitepress";
 import Clickwheel from "./components/clickwheel.vue";
 import Video from "./components/video.vue";
 import IndexCalculator from "./components/index-calculator.vue";
@@ -16,7 +16,7 @@ import { NConfigProvider } from "naive-ui";
 import DefaultTheme from "vitepress/theme";
 import "./style.css";
 import { defineComponent, h, inject } from "vue";
-
+import { onMounted, watch } from 'vue'
 const { Layout } = DefaultTheme;
 
 const CssRenderStyle = defineComponent({
@@ -79,4 +79,46 @@ export default {
       app.provide("css-render-collect", collect);
     }
   },
+
+  setup() {
+    const route = useRoute()
+
+    const updateFavicon = async () => {
+      // Prevent running during server-side build steps
+      try {
+        const response = await fetch(withBase('/opentone_logo.svg'));
+        const svgText = await response.text();
+
+        // Parse the SVG text with DOMParser
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(svgText, 'image/svg+xml');
+        const svgElement = doc.querySelector('svg');
+
+        if (svgElement) {
+          // Modify the viewBox dynamically via JS
+          svgElement.setAttribute('viewBox', '70 0 1 60');
+          // Serialize back to string and convert to Data URL
+          const serializer = new XMLSerializer();
+          const updatedSvgString = serializer.serializeToString(svgElement);
+          const dataUrl = `data:image/svg+xml,${encodeURIComponent(updatedSvgString)}`;
+          let faviconLink = document.querySelector("link[rel*='icon']") || document.createElement('link');
+          faviconLink.rel = 'icon';
+          faviconLink.type = 'image/svg+xml';
+          faviconLink.href = dataUrl;
+          document.head.appendChild(faviconLink);
+        }
+      } catch (error) {
+        console.error('Failed to load or modify SVG favicon:', error);
+      }
+    }
+
+    onMounted(() => {
+      updateFavicon() // Run on initial page load
+    })
+
+    // Watch for route changes if you want it to recalculate per page
+    watch(() => route.path, () => {
+      updateFavicon()
+    })
+  }
 };

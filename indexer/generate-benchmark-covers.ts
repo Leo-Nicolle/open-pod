@@ -9,7 +9,7 @@
 // Usage: tsx generate-benchmark-covers.ts <music-directory> <output-dir>
 // Writes <output-dir>/bench_qoi/{thumbs.bin,album_to_cover.bin} and
 // <output-dir>/bench_raw565/{thumbs.bin,album_to_cover.bin}. Copy both
-// bench_* folders onto the SD card under /openpod/ for the benchmark to read.
+// bench_* folders onto the SD card under /opentone/ for the benchmark to read.
 
 import fs from "fs/promises";
 import path from "path";
@@ -69,7 +69,7 @@ async function main() {
     `Copy ${path.join(outputPath, "bench_qoi")} and ${path.join(
       outputPath,
       "bench_raw565"
-    )} onto the SD card under /openpod/ for the cover_benchmark firmware.`
+    )} onto the SD card under /opentone/ for the cover_benchmark firmware.`
   );
 }
 

@@ -72,7 +72,7 @@ public:
 };
 inline String operator+(const char *, const String &) { return String(); }
 
-namespace openpod_test {
+namespace opentone_test {
 
 class SerialClass {
 public:
@@ -91,7 +91,7 @@ inline SerialClass &serial() {
   return instance;
 }
 
-} // namespace openpod_test
+} // namespace opentone_test
 
 // The Arduino API lives in the global namespace, matching the real Arduino
 // core, so the storage layer can call it unqualified.
@@ -101,7 +101,7 @@ inline void digitalWrite(uint8_t pin, uint8_t val) {
   // The only digitalWrite in the storage layer drives the PSRAM chip select
   // (PSRAM_CS, see src/pinout.h).
   if (pin == PSRAM_CS) {
-    openpod_test::fakePsram().select(val == LOW);
+    opentone_test::fakePsram().select(val == LOW);
   }
 }
 
@@ -133,4 +133,4 @@ inline void interrupts() {}
 
 // Make `Serial.println(...)` resolve to the mock singleton. This matches how
 // the storage layer uses Serial and avoids a global object definition.
-#define Serial (::openpod_test::serial())
+#define Serial (::opentone_test::serial())

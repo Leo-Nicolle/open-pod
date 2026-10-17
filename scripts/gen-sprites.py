@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Generates the Now Playing UI sprites for the OpenPod firmware.
+Generates the Now Playing UI sprites for the opentone firmware.
 
 Sprites are emitted as plain RGB565 uint16 arrays, matching theme.h's
 COLOR_* macros (HEX_TO_RGB565). The ILI9341 is configured with the MADCTL

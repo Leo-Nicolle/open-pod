@@ -9,7 +9,7 @@
 #include "ui_types.h"
 #include <Arduino.h>
 
-// The podcast screens (.agents/openpod-podcasts-design/), drawn one 320x30
+// The podcast screens (.agents/opentone-podcasts-design/), drawn one 320x30
 // chunk at a time from PodcastMenu, like MenuView:
 //   chunk 0     header (title, Bluetooth icon, battery) or the toast
 //   chunks 1-7  rows: a 6x6 state mark at x=10, the series number column,
@@ -185,7 +185,7 @@ private:
     const int areaTop = CHUNK_HEIGHT;
     int top = areaTop + (SCREEN_HEIGHT - areaTop - 41) / 2 - screenY;
     const char *title = "No podcasts yet";
-    const char *sub = "set a podcasts folder in OpenPod Sync";
+    const char *sub = "set a podcasts folder in opentone Sync";
     int w = fontRenderer.measureText(title, IBMPlexSans16);
     fontRenderer.renderText(title, (SCREEN_WIDTH - w) / 2, top + 4,
                             IBMPlexSans16, COLOR_DIM, COLOR_BG);

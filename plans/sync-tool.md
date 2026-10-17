@@ -1,6 +1,6 @@
-# OpenPod library sync: Rust rewrite plan
+# opentone library sync: Rust rewrite plan
 
-> **Status (2026-10-12):** phases 1–3 done and used on the real card; `sync/` is removed. Phase 4: the desktop app is in `syncer/app/` (design in `.agents/OpenPod-Sync-design/`), used on the real card. Phase 5: the same app runs in the browser (`syncer/crates/web` + `app/src/api/web.ts`), embedded in the docs at Tools → OpenPod Sync; tested end to end on OPFS in headless Chrome, not yet on a real card. Usage: [`syncer/README.md`](../syncer/README.md).
+> **Status (2026-10-12):** phases 1–3 done and used on the real card; `sync/` is removed. Phase 4: the desktop app is in `syncer/app/` (design in `.agents/opentone-Sync-design/`), used on the real card. Phase 5: the same app runs in the browser (`syncer/crates/web` + `app/src/api/web.ts`), embedded in the docs at Tools → opentone Sync; tested end to end on OPFS in headless Chrome, not yet on a real card. Usage: [`syncer/README.md`](../syncer/README.md).
 
 ## Context
 
@@ -25,7 +25,7 @@ New Cargo workspace at `syncer/`:
 
 ```
 syncer/
-  crates/core/   openpod-core: no direct std::fs, I/O behind traits
+  crates/core/   opentone-core: no direct std::fs, I/O behind traits
     storage.rs     trait Source / trait Card (read/write/rename/list); native impl = std::fs
     scan.rs        walk + fingerprint (size, mtime, xxh3 of first+last 64 KiB)
     probe.rs       format/rate/depth/channels/duration (symphonia), FLAC LPC order (port of flac-max-lpc-order.py)
@@ -35,7 +35,7 @@ syncer/
     manifest.rs    on-card library manifest (load/merge/atomic save)
     plan.rs        diff(source scan, manifest) -> SyncPlan {add, upgrade, skip, conflicts}
     index/         port of indexer: trie, string/relationship/duration/track_to_* binaries, thumbnails (QOI/raw565 + dither)
-  crates/cli/    `openpod` binary (clap, indicatif)
+  crates/cli/    `opentone` binary (clap, indicatif)
 ```
 
 Crates: `symphonia` (decodes mp3/flac/wav/aiff/alac/aac/vorbis), `flacenc` (a pure-Rust FLAC encoder that we limit to the subset, max LPC 12), `rubato`, `lofty`, `image`, `rayon`, `xxhash-rust`, `serde` + `ciborium`/JSON. The core avoids C dependencies, which keeps the `wasm32-unknown-unknown` build open.
@@ -43,10 +43,10 @@ Crates: `symphonia` (decodes mp3/flac/wav/aiff/alac/aac/vorbis), `flacenc` (a pu
 ### On-card layout
 ```
 /Music/<AlbumArtist>/<Album>/<D-NN> <Title>.<ext>   canonical, tag-derived, FAT/exFAT-safe names
-/openpod/*.bin, thumbs.bin                         unchanged formats; firmware untouched
-/openpod/library.json                              manifest (source of truth)
-/openpod/.cache/thumbs/<srcHash>.qoi               per-album thumbnail cache, so reindexing is cheap
-/openpod/tools/                                    optional: CLI binaries for every platform
+/opentone/*.bin, thumbs.bin                         unchanged formats; firmware untouched
+/opentone/library.json                              manifest (source of truth)
+/opentone/.cache/thumbs/<srcHash>.qoi               per-album thumbnail cache, so reindexing is cheap
+/opentone/tools/                                    optional: CLI binaries for every platform
 ```
 The paths come from the tags, so the same album synced from two machines lands in the same place and dedupes. The firmware only reads `path_index.bin`, so the layout change is transparent to it.
 
@@ -55,8 +55,8 @@ The paths come from the tags, so the same album synced from two machines lands i
 
 The index is rebuilt **from the manifest alone**, with no re-crawl or re-parse of the card, so it takes seconds.
 
-### Sync algorithm (`openpod sync <lib>...`)
-1. Load `library.json` from the card. If it's missing, run `openpod adopt`, which scans the existing card once and builds the manifest. This migrates current cards.
+### Sync algorithm (`opentone sync <lib>...`)
+1. Load `library.json` from the card. If it's missing, run `opentone adopt`, which scans the existing card once and builds the manifest. This migrates current cards.
 2. Scan the source in parallel and fingerprint each file. A file whose fingerprint is already in the manifest is skipped without decoding (fast path).
 3. Probe and read tags (rayon), then compute the key and the policy:
    - FLAC within limits and LPC ≤12 → copy. FLAC outside them → re-encode to 48k/16/2, or a lossless LPC-only re-encode (same rules as `sync/convert-flac.sh`).
@@ -71,15 +71,15 @@ The index is rebuilt **from the manifest alone**, with no re-crawl or re-parse o
    - N converter threads feed one bounded channel into **a single card writer**. SD write throughput is the bottleneck, and parallel writes thrash it.
    - Each file is written as `*.part`, then renamed.
    - The manifest is checkpointed atomically (tmp + rename) every N files, so an interrupted sync resumes cleanly. Orphan `.part` files are cleaned up at startup.
-6. Rebuild `/openpod/*.bin` from the manifest, reusing cached thumbnails.
-7. Print a summary and write `openpod/sync-report.txt` (inferred or unknown tags, skipped files, conversions). The report replaces `sync/conversions.log`.
+6. Rebuild `/opentone/*.bin` from the manifest, reusing cached thumbnails.
+7. Print a summary and write `opentone/sync-report.txt` (inferred or unknown tags, skipped files, conversions). The report replaces `sync/conversions.log`.
 
 ### Other commands
-- `openpod status <lib>`: a dry run (what would be added or upgraded, and how much space it needs vs. free space).
-- `openpod ls [--artist|--album]`, and `openpod rm --artist X | --album Y | --path P` (deletes the files and manifest entries, then reindexes).
-- `openpod index`: rebuild only.
-- `openpod install-tools`: copy the release binaries into `/openpod/tools/`.
-- Config in `~/.config/openpod/config.toml`: machine name, default libraries, excludes. It replaces `sync/.env` and `exclude.txt`.
+- `opentone status <lib>`: a dry run (what would be added or upgraded, and how much space it needs vs. free space).
+- `opentone ls [--artist|--album]`, and `opentone rm --artist X | --album Y | --path P` (deletes the files and manifest entries, then reindexes).
+- `opentone index`: rebuild only.
+- `opentone install-tools`: copy the release binaries into `/opentone/tools/`.
+- Config in `~/.config/opentone/config.toml`: machine name, default libraries, excludes. It replaces `sync/.env` and `exclude.txt`.
 - Optional `--autotag beets`: when `beet` is on PATH, list the inferred/unknown albums and print the `beet import` commands to run. The tool never runs them silently and never modifies the source library.
 
 ## Phases
@@ -112,13 +112,13 @@ The index is rebuilt **from the manifest alone**, with no re-crawl or re-parse o
 
 ## Verification
 - `cargo test`:
-  - Golden parity test: the TS indexer vs. `openpod index --album-key=name` on `indexer/test` fixtures, with identical `.bin` files.
+  - Golden parity test: the TS indexer vs. `opentone index --album-key=name` on `indexer/test` fixtures, with identical `.bin` files.
   - LPC parser tested on FLACs encoded at compression levels 8 and 12, cross-checked against the Python script.
   - Policy table tests (96k/24, 32-bit, 5.1, LPC 32, WAV, m4a).
 - Multi-machine scenario in a temp dir:
   - Sync lib A to the card, then lib B (overlapping album at MP3 vs. FLAC). Expect a union, one copy of the overlap upgraded to FLAC, and `added_by` = both machines.
   - Re-run sync A. Expect zero work, and it should finish in under 2 s on the ~1000-file library.
 - Interrupt mid-sync (Ctrl-C), then re-run. Expect no `.part` leftovers, a valid manifest, and only the remaining files copied.
-- `openpod rm --album X`: the files are gone and the index has no dangling ids.
+- `opentone rm --album X`: the files are gone and the index has no dangling ids.
 - On the device: flash the current firmware and boot with a Rust-synced card. Browse artists, albums and genres, play a converted hi-res FLAC and an LPC-32 FLAC without stutter, and check that the covers display.
 - Benchmark against `sync/sync.sh` on `~/Music` (15 GB, 606 flac and 348 mp3): a cold sync and a no-op re-sync.

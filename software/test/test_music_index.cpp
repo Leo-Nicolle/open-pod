@@ -24,84 +24,84 @@ static std::vector<uint8_t> buildMinimalMusicIndex() {
   const uint32_t resultCount = 2;
   const uint32_t stringOffsetCount = 5;
 
-  openpod_test::pushU32(out, poolSize);
-  openpod_test::pushU32(out, nodeCount);
-  openpod_test::pushU32(out, resultCount);
-  openpod_test::pushU32(out, stringOffsetCount);
+  opentone_test::pushU32(out, poolSize);
+  opentone_test::pushU32(out, nodeCount);
+  opentone_test::pushU32(out, resultCount);
+  opentone_test::pushU32(out, stringOffsetCount);
 
   for (uint32_t i = 0; i < poolSize; i++)
     out.push_back((uint8_t)pool[i]);
 
   const uint32_t offsets[5] = {0, 0, 2, 4, 9}; // "", "ab", "ac", "alpha", "acid"
   for (uint32_t i = 0; i < 5; i++)
-    openpod_test::pushU32(out, offsets[i]);
+    opentone_test::pushU32(out, offsets[i]);
 
   // node 0: root, key "", 2 children starting at 1, no results
-  openpod_test::pushU32(out, 0);  // key_offset
-  openpod_test::pushU32(out, 0);  // key_length
-  openpod_test::pushU32(out, 2);  // child_count
-  openpod_test::pushU32(out, 1);  // first_child_offset
-  openpod_test::pushU32(out, 0);  // result_count
-  openpod_test::pushU32(out, 0);  // first_result_offset
+  opentone_test::pushU32(out, 0);  // key_offset
+  opentone_test::pushU32(out, 0);  // key_length
+  opentone_test::pushU32(out, 2);  // child_count
+  opentone_test::pushU32(out, 1);  // first_child_offset
+  opentone_test::pushU32(out, 0);  // result_count
+  opentone_test::pushU32(out, 0);  // first_result_offset
 
   // node 1: key "ab", no children, 1 result at 0
-  openpod_test::pushU32(out, 0);
-  openpod_test::pushU32(out, 2);
-  openpod_test::pushU32(out, 0);
-  openpod_test::pushU32(out, 0);
-  openpod_test::pushU32(out, 1);
-  openpod_test::pushU32(out, 0);
+  opentone_test::pushU32(out, 0);
+  opentone_test::pushU32(out, 2);
+  opentone_test::pushU32(out, 0);
+  opentone_test::pushU32(out, 0);
+  opentone_test::pushU32(out, 1);
+  opentone_test::pushU32(out, 0);
 
   // node 2: key "ac", no children, 1 result at 1
-  openpod_test::pushU32(out, 2);
-  openpod_test::pushU32(out, 2);
-  openpod_test::pushU32(out, 0);
-  openpod_test::pushU32(out, 0);
-  openpod_test::pushU32(out, 1);
-  openpod_test::pushU32(out, 1);
+  opentone_test::pushU32(out, 2);
+  opentone_test::pushU32(out, 2);
+  opentone_test::pushU32(out, 0);
+  opentone_test::pushU32(out, 0);
+  opentone_test::pushU32(out, 1);
+  opentone_test::pushU32(out, 1);
 
   // result 0: type=track(0), id=1, name "alpha" (offset 4, len 5)
-  openpod_test::pushU32(out, 0);
-  openpod_test::pushU32(out, 1);
-  openpod_test::pushU32(out, 4);
-  openpod_test::pushU32(out, 5);
-  openpod_test::pushU32(out, 100);
+  opentone_test::pushU32(out, 0);
+  opentone_test::pushU32(out, 1);
+  opentone_test::pushU32(out, 4);
+  opentone_test::pushU32(out, 5);
+  opentone_test::pushU32(out, 100);
 
   // result 1: type=artist(1), id=2, name "acid" (offset 9, len 4)
-  openpod_test::pushU32(out, 1);
-  openpod_test::pushU32(out, 2);
-  openpod_test::pushU32(out, 9);
-  openpod_test::pushU32(out, 4);
-  openpod_test::pushU32(out, 90);
+  opentone_test::pushU32(out, 1);
+  opentone_test::pushU32(out, 2);
+  opentone_test::pushU32(out, 9);
+  opentone_test::pushU32(out, 4);
+  opentone_test::pushU32(out, 90);
 
   return out;
 }
 
 TEST_CASE("MusicIndex - init loads the binary trie") {
-  openpod_test::resetAll();
-  openpod_test::FakeFs::get().addFile("/openpod/music_index.bin",
+  opentone_test::resetAll();
+  opentone_test::FakeFs::get().addFile("/opentone/music_index.bin",
                                       buildMinimalMusicIndex());
 
   MusicIndex idx;
-  CHECK(idx.init(openpod_test::openSearchTrie()) == true);
+  CHECK(idx.init(opentone_test::openSearchTrie()) == true);
   CHECK(idx.isInitialized() == true);
 }
 
 TEST_CASE("MusicIndex - init fails when file is missing") {
-  openpod_test::resetAll();
+  opentone_test::resetAll();
 
   MusicIndex idx;
-  CHECK(idx.init(openpod_test::openSearchTrie()) == false);
+  CHECK(idx.init(opentone_test::openSearchTrie()) == false);
   CHECK(idx.isInitialized() == false);
 }
 
 TEST_CASE("MusicIndex - prefix search returns the matching subtree") {
-  openpod_test::resetAll();
-  openpod_test::FakeFs::get().addFile("/openpod/music_index.bin",
+  opentone_test::resetAll();
+  opentone_test::FakeFs::get().addFile("/opentone/music_index.bin",
                                       buildMinimalMusicIndex());
 
   MusicIndex idx;
-  REQUIRE(idx.init(openpod_test::openSearchTrie()));
+  REQUIRE(idx.init(opentone_test::openSearchTrie()));
 
   search_result_t results[10];
 
@@ -125,12 +125,12 @@ TEST_CASE("MusicIndex - prefix search returns the matching subtree") {
 }
 
 TEST_CASE("MusicIndex - type-filtered searches") {
-  openpod_test::resetAll();
-  openpod_test::FakeFs::get().addFile("/openpod/music_index.bin",
+  opentone_test::resetAll();
+  opentone_test::FakeFs::get().addFile("/opentone/music_index.bin",
                                       buildMinimalMusicIndex());
 
   MusicIndex idx;
-  REQUIRE(idx.init(openpod_test::openSearchTrie()));
+  REQUIRE(idx.init(opentone_test::openSearchTrie()));
 
   search_result_t results[10];
 
@@ -148,12 +148,12 @@ TEST_CASE("MusicIndex - type-filtered searches") {
 }
 
 TEST_CASE("MusicIndex - getResultName and search type name") {
-  openpod_test::resetAll();
-  openpod_test::FakeFs::get().addFile("/openpod/music_index.bin",
+  opentone_test::resetAll();
+  opentone_test::FakeFs::get().addFile("/opentone/music_index.bin",
                                       buildMinimalMusicIndex());
 
   MusicIndex idx;
-  REQUIRE(idx.init(openpod_test::openSearchTrie()));
+  REQUIRE(idx.init(opentone_test::openSearchTrie()));
 
   search_result_t results[10];
   uint32_t n = idx.searchByPrefix("ab", results, 10);

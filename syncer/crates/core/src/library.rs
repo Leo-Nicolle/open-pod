@@ -124,7 +124,7 @@ pub fn load_or_adopt(card: &Path, progress: &(dyn Fn(AdoptProgress) + Sync)) -> 
     Ok((m, true))
 }
 
-/// Rebuilds `<card>/openpod/index.pack` and the covers from the manifest (no tag re-reading;
+/// Rebuilds `<card>/opentone/index.pack` and the covers from the manifest (no tag re-reading;
 /// covers come from the card files).
 pub fn reindex(card: &Path, m: &Manifest, album_key: AlbumKey) -> io::Result<index::Summary> {
     let records = index_records(m);
@@ -417,10 +417,10 @@ pub fn report(
     }
 }
 
-/// `openpod/sync-report.txt`: what this sync did and what needs attention.
+/// `opentone/sync-report.txt`: what this sync did and what needs attention.
 pub fn text_report_of(machine: &str, m: &Manifest, plan_info: &PlanInfo, out: &Outcome) -> String {
     let mut r = String::new();
-    let _ = writeln!(r, "OpenPod sync report — machine '{machine}', unix time {}", sync::now_secs());
+    let _ = writeln!(r, "opentone sync report — machine '{machine}', unix time {}", sync::now_secs());
     let _ = writeln!(
         r,
         "written {}, converted {}, attached {}, unchanged {}, skipped as removed {}, failed {}, unsupported {}{}\n",

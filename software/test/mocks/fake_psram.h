@@ -10,7 +10,7 @@
 #include <stdint.h>
 #include <string.h>
 
-namespace openpod_test {
+namespace opentone_test {
 
 class FakePsram {
 public:
@@ -150,4 +150,4 @@ inline FakePsram &fakePsram() {
   return instance;
 }
 
-} // namespace openpod_test
+} // namespace opentone_test
