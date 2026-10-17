@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # parity.sh <music-dir> — runs the TS indexer (indexer/) and the Rust one
-# (`openpod index --album-key name`) on the same folder and byte-compares
+# (`opentone index --album-key name`) on the same folder and byte-compares
 # every .bin. thumbs.bin is expected to differ slightly: sharp and the
 # `image` crate resample differently (offsets/lengths/dedupe still match, see
 # album_to_cover.bin).

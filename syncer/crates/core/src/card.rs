@@ -17,7 +17,7 @@ pub enum CardState {
     Missing,
     /// Mounted but not writable (lock switch, permissions).
     Locked { reason: String },
-    /// No OpenPod manifest and no music: the first sync sets it up.
+    /// No opentone manifest and no music: the first sync sets it up.
     Empty,
     /// Music but no manifest: it has to be read once (`library::adopt`).
     Unread { files: usize, bytes: u64 },
@@ -48,12 +48,12 @@ pub fn capacity(card: &Path) -> u64 {
 
 /// Tries to create and delete a file at the card's root.
 pub fn check_writable(card: &Path) -> io::Result<()> {
-    let probe = card.join(".openpod-write-test");
+    let probe = card.join(".opentone-write-test");
     fs::write(&probe, b"")?;
     fs::remove_file(probe)
 }
 
-/// Audio files outside `openpod/` (count, bytes): what an unread card holds.
+/// Audio files outside `opentone/` (count, bytes): what an unread card holds.
 fn count_audio(card: &Path) -> (usize, u64) {
     let (mut n, mut bytes) = (0, 0);
     let mut stack = vec![card.to_path_buf()];
@@ -107,7 +107,7 @@ pub fn inspect(card: &Path, name: Option<String>, mounted: bool) -> CardInfo {
                         m.tracks.iter().map(|e| manifest::album_id(&e.tags)).collect();
                     CardState::Ready { tracks: m.tracks.len(), albums: albums.len(), last_sync: m.last_sync }
                 }
-                Err(e) => CardState::Locked { reason: format!("openpod/library.json can't be read: {e}") },
+                Err(e) => CardState::Locked { reason: format!("opentone/library.json can't be read: {e}") },
             },
             Ok(()) => match count_audio(card) {
                 (0, _) => CardState::Empty,

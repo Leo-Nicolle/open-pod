@@ -52,7 +52,7 @@ export const PACKAGES: PackageInfo[] = [
     chip: "STM32F446VET6",
     label: "LQFP100 · final board",
     board: null,
-    blurb: "Pin allocation of the final Openpod board (datasheets/lqfp100-pins.md), developed on a NUCLEO-F446ZE.",
+    blurb: "Pin allocation of the final opentone board (datasheets/lqfp100-pins.md), developed on a NUCLEO-F446ZE.",
   },
   {
     id: "LQFP64",

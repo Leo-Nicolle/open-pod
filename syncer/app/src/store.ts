@@ -326,7 +326,7 @@ export async function eject() {
 export async function installOnCard() {
   try {
     const name = await api.installOnCard();
-    toast(`Copied ${name} to the card's openpod/tools folder.`);
+    toast(`Copied ${name} to the card's opentone/tools folder.`);
   } catch (e) {
     toast(message(e));
   }

@@ -9,14 +9,14 @@ use std::time::{Duration, Instant};
 use anyhow::{Context, bail};
 use clap::{Args, Parser, Subcommand, ValueEnum};
 use indicatif::{ProgressBar, ProgressStyle};
-use openpod_core::index::{self, AlbumKey, thumbs};
-use openpod_core::library::{self, Filter, PlanInfo};
-use openpod_core::sync::{self, PlanOptions, WriteReason};
-use openpod_core::podcasts::{self, mirror};
-use openpod_core::{convert, manifest, policy, tags};
+use opentone_core::index::{self, AlbumKey, thumbs};
+use opentone_core::library::{self, Filter, PlanInfo};
+use opentone_core::sync::{self, PlanOptions, WriteReason};
+use opentone_core::podcasts::{self, mirror};
+use opentone_core::{convert, manifest, policy, tags};
 
 #[derive(Parser)]
-#[command(name = "openpod", version, about = "OpenPod SD card library tool")]
+#[command(name = "opentone", version, about = "opentone SD card library tool")]
 struct Cli {
     #[command(subcommand)]
     command: Command,
@@ -110,12 +110,12 @@ enum Command {
         #[arg(long)]
         force: bool,
     },
-    /// Rebuild the openpod/*.bin index: from the card's manifest, or (with
+    /// Rebuild the opentone/*.bin index: from the card's manifest, or (with
     /// MUSIC and OUT) by crawling a folder laid out like the card.
     Index {
         /// Music folder to crawl (legacy mode, no manifest needed).
         music: Option<PathBuf>,
-        /// Output folder for the legacy mode (usually <card>/openpod).
+        /// Output folder for the legacy mode (usually <card>/opentone).
         out: Option<PathBuf>,
         #[command(flatten)]
         card: CardArg,
@@ -127,13 +127,13 @@ enum Command {
         #[arg(long)]
         dither: bool,
     },
-    /// Copy openpod binaries to <card>/openpod/tools, so the card carries the
+    /// Copy opentone binaries to <card>/opentone/tools, so the card carries the
     /// tool to any computer. Without --from, copies this binary only.
     InstallTools {
         #[command(flatten)]
         card: CardArg,
-        /// Folder with release binaries (openpod-linux-x86_64,
-        /// openpod-macos-universal, openpod-windows-x86_64.exe…).
+        /// Folder with release binaries (opentone-linux-x86_64,
+        /// opentone-macos-universal, opentone-windows-x86_64.exe…).
         #[arg(long)]
         from: Option<PathBuf>,
     },
@@ -142,7 +142,7 @@ enum Command {
     Convert { src: PathBuf, dst: PathBuf },
     /// Write a synthetic library's index to a card for the firmware test bench
     /// (software/bench): seeded fake tracks whose files don't exist, plus the
-    /// real audio files of SAMPLES as the album "Openpod Bench Samples".
+    /// real audio files of SAMPLES as the album "opentone Bench Samples".
     #[command(hide = true)]
     BenchDataset {
         /// Mounted bench card.
@@ -236,7 +236,7 @@ fn check_card(card: &Path) -> anyhow::Result<()> {
     if std::fs::read_dir(card).is_ok_and(|mut d| d.next().is_none()) {
         bail!("{} is empty: is the card plugged in and mounted?", card.display());
     }
-    openpod_core::card::check_writable(card).with_context(|| {
+    opentone_core::card::check_writable(card).with_context(|| {
         format!(
             "no write permission on {} — remount with your user id:\n  sudo mount -o remount,uid=$(id -u),gid=$(id -g) {}",
             card.display(),
@@ -601,7 +601,7 @@ fn cmd_sync(cfg: &config::Config, lib: LibraryArgs, jobs: Option<usize>, album_k
 }
 
 fn cmd_ls(card: &Path, filter: Filter, tracks: bool) -> anyhow::Result<()> {
-    let m = manifest::load(card).context("no library.json on the card (run `openpod adopt` or `openpod sync`)")?;
+    let m = manifest::load(card).context("no library.json on the card (run `opentone adopt` or `opentone sync`)")?;
     let selected: Vec<_> = m.tracks.iter().filter(|e| filter.matches(e)).collect();
     if tracks {
         for e in &selected {
@@ -656,7 +656,7 @@ fn cmd_rm(card: &Path, filter: Filter, yes: bool, album_key: AlbumKey, machine: 
     let removed = library::remove(card, &mut m, &filter, machine)?;
     let s = library::reindex(card, &m, album_key)?;
     println!("Removed {} tracks. Index: {} tracks, {} albums.", removed.len(), s.tracks, s.albums);
-    println!("Future syncs skip them; `openpod sync --include-removed` brings them back.");
+    println!("Future syncs skip them; `opentone sync --include-removed` brings them back.");
     Ok(())
 }
 
@@ -726,12 +726,12 @@ fn cmd_index_folder(music: &Path, out: &Path, opts: index::Options) -> anyhow::R
 }
 
 /// Card folder the bench samples are copied to.
-const BENCH_SAMPLES_DIR: &str = "Openpod Bench/Samples";
+const BENCH_SAMPLES_DIR: &str = "opentone Bench/Samples";
 
 fn cmd_bench_dataset(card: &Path, samples: Option<&Path>, tracks: u32, seed: u64, covers: bool, force: bool) -> anyhow::Result<()> {
-    use openpod_core::index::synthetic;
+    use opentone_core::index::synthetic;
     check_card(card)?;
-    let out = card.join("openpod");
+    let out = card.join("opentone");
     if out.join(manifest::FILE).exists() && !force {
         bail!("{} holds a synced library: the bench would replace its index (use a spare card, or --force)", card.display());
     }
@@ -762,9 +762,9 @@ fn cmd_bench_dataset(card: &Path, samples: Option<&Path>, tracks: u32, seed: u64
         for (i, mut r) in index::crawl::read_records(card, &copied).into_iter().enumerate() {
             let stem = Path::new(&r.file_name).file_stem().map(|s| s.to_string_lossy().into_owned()).unwrap_or_default();
             r.title = Some(stem);
-            r.artist = Some("Openpod Bench".into());
-            r.album_artist = Some("Openpod Bench".into());
-            r.album = Some("Openpod Bench Samples".into());
+            r.artist = Some("opentone Bench".into());
+            r.album_artist = Some("opentone Bench".into());
+            r.album = Some("opentone Bench Samples".into());
             r.genre = Some("Bench".into());
             r.track_no = i as u32 + 1;
             records.push(r);
@@ -812,7 +812,7 @@ fn own_binary_name() -> String {
         other => other,
     };
     let ext = if os == "windows" { ".exe" } else { "" };
-    format!("openpod-{os}-{}{ext}", std::env::consts::ARCH)
+    format!("opentone-{os}-{}{ext}", std::env::consts::ARCH)
 }
 
 fn cmd_install_tools(card: &Path, from: Option<&Path>) -> anyhow::Result<()> {
@@ -824,13 +824,13 @@ fn cmd_install_tools(card: &Path, from: Option<&Path>) -> anyhow::Result<()> {
         Some(from) => {
             for e in std::fs::read_dir(from).with_context(|| format!("reading {}", from.display()))?.flatten() {
                 let name = e.file_name().to_string_lossy().into_owned();
-                if name.starts_with("openpod-") && e.path().is_file() {
+                if name.starts_with("opentone-") && e.path().is_file() {
                     std::fs::copy(e.path(), dir.join(&name))?;
                     copied.push(name);
                 }
             }
             if copied.is_empty() {
-                bail!("no openpod-* binaries in {}", from.display());
+                bail!("no opentone-* binaries in {}", from.display());
             }
         }
         None => {
@@ -842,9 +842,9 @@ fn cmd_install_tools(card: &Path, from: Option<&Path>) -> anyhow::Result<()> {
     copied.sort();
     std::fs::write(
         dir.join("README.txt"),
-        "openpod: sync music onto this card.\n\
+        "opentone: sync music onto this card.\n\
          Copy the binary for your computer somewhere, make it executable (chmod +x on Linux/macOS), then:\n\
-         \n  openpod sync ~/Music --card <where this card is mounted>\n\n\
+         \n  opentone sync ~/Music --card <where this card is mounted>\n\n\
          Releases: https://github.com/Leo-Nicolle/open-pod/releases\n",
     )?;
     println!("Copied to {}: {}", dir.display(), copied.join(", "));

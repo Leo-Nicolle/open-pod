@@ -212,8 +212,10 @@ void OpenPodUIEngine::handleProgressUpdated(const ProgressEvent *event)
     nowPlaying.setProgress(event->position);
     nowPlaying.setTrackLength(event->duration);
 
-    // Only redraw the progress bar + time text area, to avoid flicker
-    nowPlaying.updateNowPlaying(display);
+    // Only redraw the progress bar + time text area, to avoid flicker (not
+    // mid-slide: the final render draws it)
+    if (!state.getIsAnimating())
+      nowPlaying.updateNowPlaying(display);
   }
 }
 
@@ -318,7 +320,8 @@ void OpenPodUIEngine::handleVolumeChanged(const VolumeEvent *event)
 {
   nowPlaying.setVolumeOverlay(event->volume, true);
   volumeOverlayHideAt = millis() + VOLUME_OVERLAY_HIDE_DELAY;
-  if (state.getCurrentRoute().type == Route_t::RouteType::NOW_PLAYING)
+  if (state.getCurrentRoute().type == Route_t::RouteType::NOW_PLAYING &&
+      !state.getIsAnimating())
   {
     nowPlaying.renderVolumeOverlay(display);
   }

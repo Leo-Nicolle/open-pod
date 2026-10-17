@@ -63,13 +63,13 @@ let settings: Settings = {
   exclude: [],
   albumKey: 'artist-album',
   ffmpeg: '6.1',
-  configPath: '~/.config/openpod/config.toml',
+  configPath: '~/.config/opentone/config.toml',
 };
 
 let cardKind = q.get('card') ?? 'ready';
 let synced = false;
 const card = (): CardInfo => {
-  const base = { path: 'E:\\', name: 'OPENPOD', capacity: 119 * GB, free: synced ? 95 * GB : 111 * GB };
+  const base = { path: 'E:\\', name: 'opentone', capacity: 119 * GB, free: synced ? 95 * GB : 111 * GB };
   switch (cardKind) {
     case 'nocard':
       return { ...base, state: { kind: 'missing' } };
@@ -452,7 +452,7 @@ export const mockApi: Api = {
   },
   async installOnCard() {
     await wait(600);
-    return 'openpod-sync-windows-x86_64.exe';
+    return 'opentone-sync-windows-x86_64.exe';
   },
   async pickFolder() {
     return window.prompt('Folder path') || null;

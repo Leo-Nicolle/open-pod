@@ -25,8 +25,8 @@ bool MusicLookup::init() {
   }
 
   pageStore.begin(INDEX_CACHE_BASE_ADDRESS, INDEX_CACHE_SIZE);
-  if (pageStore.open(sd, "/openpod/index.pack", MUSIC_PACK) < 0) {
-    LOG_ERROR("No /openpod/index.pack: the card needs a re-sync");
+  if (pageStore.open(sd, "/opentone/index.pack", MUSIC_PACK) < 0) {
+    LOG_ERROR("No /opentone/index.pack: the card needs a re-sync");
     index_missing = true;
     return false;
   }
@@ -101,7 +101,7 @@ bool MusicLookup::openDense(uint8_t pack, uint32_t id, duration_index_t &h,
 
 bool MusicLookup::loadPodcasts() {
   // "OPPI" | u16 version | u16 0 | u32 episodes | u32 generation
-  FsFile meta = sd.open("/openpod/podcast_meta.bin", O_RDONLY);
+  FsFile meta = sd.open("/opentone/podcast_meta.bin", O_RDONLY);
   if (!meta.isOpen()) {
     return false;
   }
@@ -117,8 +117,8 @@ bool MusicLookup::loadPodcasts() {
   uint32_t episodes = w[2];
   podcast_generation = w[3];
 
-  if (pageStore.open(sd, "/openpod/podcasts.pack", PODCAST_PACK) < 0) {
-    LOG_ERROR("No /openpod/podcasts.pack: no Podcasts screen");
+  if (pageStore.open(sd, "/opentone/podcasts.pack", PODCAST_PACK) < 0) {
+    LOG_ERROR("No /opentone/podcasts.pack: no Podcasts screen");
     return false;
   }
   using namespace PackSection;

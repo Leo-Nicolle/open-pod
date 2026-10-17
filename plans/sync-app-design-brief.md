@@ -1,8 +1,8 @@
-# Design brief: OpenPod Sync (desktop app + web page)
+# Design brief: opentone Sync (desktop app + web page)
 
-## What OpenPod is
+## What opentone is
 
-OpenPod is an open-source, DIY music player in the spirit of the iPod
+opentone is an open-source, DIY music player in the spirit of the iPod
 Classic. It has an STM32 microcontroller, a capacitive click wheel, a small
 320×240 colour screen and Bluetooth, and it plays FLAC and MP3 from a
 microSD card. It has no smartphone, no cloud and no subscription: the music
@@ -11,7 +11,7 @@ manual, tools).
 
 ## What this app does
 
-OpenPod Sync fills the player's SD card from the music libraries on your
+opentone Sync fills the player's SD card from the music libraries on your
 computers. The user plugs the SD card into a computer, picks their music
 folder(s), sees what the card is missing, and copies it. A command-line tool
 already does all of this. This brief is for the graphical version, which
@@ -19,7 +19,7 @@ ships as:
 
 1. **A desktop app** (Tauri: Windows, macOS, Linux). The window is about
    1280×800 by default and must work down to 900×600.
-2. **A page on the OpenPod website** (same UI, running in the browser
+2. **A page on the opentone website** (same UI, running in the browser
    through WebAssembly; Chrome/Edge only). It sits under the site's "Tools"
    section, inside the site's normal layout.
 
@@ -57,7 +57,7 @@ and inside a documentation page.
 - **Main user:** the person who built the player, a technical music lover
   with a carefully organised library (about 1,600 tracks, 80 albums, 330
   artists, FLAC and MP3), syncing from a desktop and a laptop.
-- **Later:** other people who build an OpenPod. They are less technical and
+- **Later:** other people who build an opentone. They are less technical and
   have less carefully tagged libraries. The UI must explain itself without
   the docs.
 
@@ -77,7 +77,7 @@ is 119 GB, with 15 GB used.
 - **States:**
   - no card found (with "choose folder…");
   - card found but not readable or writable (with an explanation);
-  - card never used with OpenPod (empty);
+  - card never used with opentone (empty);
   - a card filled before this app existed (needs the one-time read).
 - **Music libraries:** one or more folders, each with "add" and "remove".
   Folders to exclude are optional and live behind an "advanced" disclosure.

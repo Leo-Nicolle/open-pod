@@ -25,11 +25,11 @@ const REPO = resolve(SOFTWARE, "..");
 const RESULTS = join(BENCH, "results");
 const DOCS_BENCH = join(REPO, "docs/public/bench");
 const PIO = join(REPO, "scripts/pio.sh");
-const OPENPOD = join(REPO, "syncer/target/release/openpod");
+const opentone = join(REPO, "syncer/target/release/opentone");
 
 function buildOpenpod() {
-  console.log("Building the openpod CLI (release)...");
-  execFileSync("cargo", ["build", "--release", "-p", "openpod-cli"], { cwd: join(REPO, "syncer"), stdio: "inherit" });
+  console.log("Building the opentone CLI (release)...");
+  execFileSync("cargo", ["build", "--release", "-p", "opentone-cli"], { cwd: join(REPO, "syncer"), stdio: "inherit" });
 }
 
 function gitRev(): string {
@@ -51,11 +51,11 @@ async function prepare(argv: string[]) {
   if (!card) throw new Error("usage: bench prepare <card mount> [--tracks N] [--seed S] [--covers] [--force]");
   buildOpenpod();
   console.log("Samples:");
-  const samples = buildSamples(join(BENCH, ".cache/samples"), OPENPOD);
+  const samples = buildSamples(join(BENCH, ".cache/samples"), opentone);
   const args = ["bench-dataset", card, "--samples", samples, "--tracks", values.tracks!, "--seed", values.seed!];
   if (values.covers) args.push("--covers");
   if (values.force) args.push("--force");
-  execFileSync(OPENPOD, args, { stdio: "inherit" });
+  execFileSync(opentone, args, { stdio: "inherit" });
   spawnSync("sync");
   console.log(`\nCard ready. Unmount it, put it in the Nucleo, then: npm run bench -- run`);
 }

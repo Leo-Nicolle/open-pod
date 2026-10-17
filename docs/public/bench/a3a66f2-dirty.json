@@ -167,7 +167,7 @@
           "hits": 0
         },
         {
-          "query": "openpod bench",
+          "query": "opentone bench",
           "totalUs": 826362,
           "maxCharUs": 436418,
           "hits": 2

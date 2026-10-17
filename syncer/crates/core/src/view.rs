@@ -616,7 +616,7 @@ pub fn removed_albums(m: &Manifest) -> Vec<RemovedView> {
         .collect()
 }
 
-/// `openpod/last-sync.json`: what the last sync did, for the report screen.
+/// `opentone/last-sync.json`: what the last sync did, for the report screen.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SyncReport {

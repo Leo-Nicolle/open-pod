@@ -3,7 +3,7 @@
 head:
   - - meta
     - http-equiv: refresh
-      content: 0; url=/open-pod/tools/clickwheel
+      content: 0; url=/tools/clickwheel
 sitemap: false
 ---
 

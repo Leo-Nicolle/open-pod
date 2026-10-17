@@ -223,7 +223,7 @@
 			)
 		)
 	)
-	(footprint "openpod:SW_SKQGAFE010"
+	(footprint "opentone:SW_SKQGAFE010"
 		(layer "F.Cu")
 		(uuid "0c7e8a9b-7c22-4964-a84d-72a633f04fac")
 		(at 89 79)
@@ -902,7 +902,7 @@
 			)
 		)
 	)
-	(footprint "openpod:SW_SKQGAFE010"
+	(footprint "opentone:SW_SKQGAFE010"
 		(layer "F.Cu")
 		(uuid "36c047c2-256c-4688-b950-0b55b64737a0")
 		(at 101 67)
@@ -1439,7 +1439,7 @@
 			)
 		)
 	)
-	(footprint "openpod:SW_SKQGAFE010"
+	(footprint "opentone:SW_SKQGAFE010"
 		(layer "F.Cu")
 		(uuid "5e28ec20-bca6-4076-854c-80f84d252332")
 		(at 77 67)
@@ -1976,7 +1976,7 @@
 			)
 		)
 	)
-	(footprint "openpod:SW_SKQGAFE010"
+	(footprint "opentone:SW_SKQGAFE010"
 		(layer "F.Cu")
 		(uuid "7cfe2c8f-7eb7-4f85-b060-bdee0f715ef6")
 		(at 89 55)
@@ -2378,7 +2378,7 @@
 			)
 		)
 	)
-	(footprint "openpod:SW_SKQGAFE010"
+	(footprint "opentone:SW_SKQGAFE010"
 		(layer "F.Cu")
 		(uuid "b1c990ba-ed1c-47ec-a6a2-93d6855cc502")
 		(at 89 67)

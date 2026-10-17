@@ -4,11 +4,11 @@ import { defineConfig } from "vitepress";
 const fileAndStyles: Record<string, string> = {};
 
 export default defineConfig({
-  title: "Openpod",
+  title: "opentone",
   description: "An open-source iPod-style music player",
-  base: "/open-pod/",
+  base: "/",
   head: [
-    ["link", { rel: "icon", href: "/open-pod/favicon.svg" }],
+    ["link", { rel: "icon", href: "/favicon.svg" }],
     ["link", { rel: "preconnect", href: "https://fonts.googleapis.com" }],
     ["link", { rel: "preconnect", href: "https://fonts.gstatic.com", crossorigin: "" }],
     [
@@ -21,15 +21,15 @@ export default defineConfig({
   ],
   themeConfig: {
     // https://vitepress.dev/reference/default-theme-config
-    logo: "/openpod_logo.svg",
-    siteTitle: "Openpod",
+    logo: "/opentone_logo.svg",
+    siteTitle: "opentone",
     nav: [
       { text: "Manual", link: "/manual/", activeMatch: "^/manual/" },
       {
         text: "Tools",
         activeMatch: "^/tools/",
         items: [
-          { text: "OpenPod Sync", link: "/tools/sync" },
+          { text: "opentone Sync", link: "/tools/sync" },
           { text: "Click wheel designer", link: "/tools/clickwheel" },
           { text: "Pinout", link: "/tools/pinout" },
           { text: "UI builder", link: "/tools/ui-builder" },
@@ -56,7 +56,7 @@ export default defineConfig({
           text: "Tools",
           items: [
             { text: "Overview", link: "/tools/" },
-            { text: "OpenPod Sync", link: "/tools/sync" },
+            { text: "opentone Sync", link: "/tools/sync" },
             { text: "Click wheel designer", link: "/tools/clickwheel" },
             { text: "UI builder", link: "/tools/ui-builder" },
             { text: "Benchmarks", link: "/tools/bench" },

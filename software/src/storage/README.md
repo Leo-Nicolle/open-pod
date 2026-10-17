@@ -72,7 +72,7 @@ void setup() {
     }
 
     // Initialize music index (loads from SD card)
-    if (!musicIndex.init("/openpod/music_index.bin")) {
+    if (!musicIndex.init("/opentone/music_index.bin")) {
         LOG_ERROR("Music index init failed!");
         return;
     }

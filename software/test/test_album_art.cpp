@@ -28,12 +28,12 @@ uint16_t rowPlusOne(int row) { return (uint16_t)(row + 1); }
 } // namespace
 
 TEST_CASE("AlbumArt - blitCoverRows copies the right bytes to the right place") {
-  openpod_test::FakeFs::get().reset();
+  opentone_test::FakeFs::get().reset();
   const uint32_t coverOffset = 900; // simulates a non-zero offset in thumbs.bin
   const int coverRows = 160;
   const uint32_t coverLength = coverRows * 160 * 2;
   auto bin = buildThumbsBin(coverOffset, coverRows, rowPlusOne);
-  openpod_test::FakeFs::get().addFile("/openpod/thumbs.bin", bin);
+  opentone_test::FakeFs::get().addFile("/opentone/thumbs.bin", bin);
 
   SdFat sd;
   AlbumArt art;
@@ -72,9 +72,9 @@ TEST_CASE("AlbumArt - blitCoverRows copies the right bytes to the right place") 
 }
 
 TEST_CASE("AlbumArt - blitCoverRows rejects a range exceeding the entry's declared length") {
-  openpod_test::FakeFs::get().reset();
+  opentone_test::FakeFs::get().reset();
   auto bin = buildThumbsBin(0, 5, rowPlusOne);
-  openpod_test::FakeFs::get().addFile("/openpod/thumbs.bin", bin);
+  opentone_test::FakeFs::get().addFile("/opentone/thumbs.bin", bin);
 
   SdFat sd;
   AlbumArt art;
@@ -89,7 +89,7 @@ TEST_CASE("AlbumArt - blitCoverRows rejects a range exceeding the entry's declar
 }
 
 TEST_CASE("AlbumArt - blitCoverRows fails cleanly when thumbs.bin is missing") {
-  openpod_test::FakeFs::get().reset(); // no thumbs.bin registered
+  opentone_test::FakeFs::get().reset(); // no thumbs.bin registered
 
   SdFat sd;
   AlbumArt art;
@@ -102,9 +102,9 @@ TEST_CASE("AlbumArt - blitCoverRows fails cleanly when thumbs.bin is missing") {
 }
 
 TEST_CASE("AlbumArt - blitCoverRows rejects a non-positive row count") {
-  openpod_test::FakeFs::get().reset();
+  opentone_test::FakeFs::get().reset();
   auto bin = buildThumbsBin(0, 2, rowPlusOne);
-  openpod_test::FakeFs::get().addFile("/openpod/thumbs.bin", bin);
+  opentone_test::FakeFs::get().addFile("/opentone/thumbs.bin", bin);
 
   SdFat sd;
   AlbumArt art;

@@ -2,11 +2,11 @@
 outline: deep
 ---
 
-![Openpod logo](/openpod_logo.svg){.op-page-logo}
+![opentone logo](/opentone_logo.svg){.op-page-logo}
 
-# About Openpod
+# About opentone
 
-Openpod is an open-source, iPod-style music player, built from scratch: the hardware,
+opentone is an open-source music player, built from scratch: the hardware,
 the firmware, the click wheel and the tools to load music on it.
 
 ### Why?

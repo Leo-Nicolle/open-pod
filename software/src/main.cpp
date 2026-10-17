@@ -62,7 +62,7 @@ void setup()
   while (!Serial)
     delay(10);
 
-  LOG_INFO("=== OpenPod with ClickWheel (Event-Driven) ===");
+  LOG_INFO("=== opentone with ClickWheel (Event-Driven) ===");
   printResetCause();
 
   // First, so the module boots (~1.5 s) and reconnects to the last device

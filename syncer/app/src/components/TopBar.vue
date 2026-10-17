@@ -10,7 +10,7 @@ defineProps<{ brand: boolean }>();
   <header>
     <div v-if="brand" class="brand">
       <img :src="logo" alt="" style="height: 22px; width: auto; flex: none" />
-      <span>OpenPod Sync</span>
+      <span>opentone Sync</span>
     </div>
     <nav>
       <button v-for="it in nav" :key="it.id" :class="{ on: store.screen === it.id }" @click="store.screen = it.id">

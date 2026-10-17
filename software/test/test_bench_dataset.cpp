@@ -1,8 +1,8 @@
-// Loads a test bench card's index (openpod bench-dataset, see
+// Loads a test bench card's index (opentone bench-dataset, see
 // docs/tools/bench.md) into the firmware's lookup and search code, to check
 // that the synthetic library fits PSRAM and is searchable before burning a
 // card. Skipped unless OPENPOD_BENCH_CARD names the card (or a folder with
-// its openpod/ directory):
+// its opentone/ directory):
 //   OPENPOD_BENCH_CARD=/media/sd pio test -e test_native -f "*" \
 //     -a '--test-case=*bench*'
 #include <doctest.h>
@@ -23,7 +23,7 @@
 namespace {
 
 int loadCardIndex(const std::string &card) {
-  std::string dir = card + "/openpod";
+  std::string dir = card + "/opentone";
   DIR *d = opendir(dir.c_str());
   if (!d)
     return 0;
@@ -37,7 +37,7 @@ int loadCardIndex(const std::string &card) {
     std::ifstream f(dir + "/" + name, std::ios::binary);
     std::vector<uint8_t> bytes((std::istreambuf_iterator<char>(f)),
                                std::istreambuf_iterator<char>());
-    openpod_test::FakeFs::get().addFile("/openpod/" + name, bytes);
+    opentone_test::FakeFs::get().addFile("/opentone/" + name, bytes);
     n++;
   }
   closedir(d);
@@ -65,7 +65,7 @@ TEST_CASE("Bench dataset - loads and searches") {
     MESSAGE("OPENPOD_BENCH_CARD not set, skipped");
     return;
   }
-  openpod_test::resetAll();
+  opentone_test::resetAll();
   REQUIRE(loadCardIndex(card) > 0);
 
   MusicLookup lookup;
@@ -94,7 +94,7 @@ TEST_CASE("Bench dataset - loads and searches") {
   SearchModel search;
   search.setIndex(&index);
   // The runner finds the samples this way (bench/scenarios.ts).
-  typeQuery(search, lookup, "openpod bench");
+  typeQuery(search, lookup, "opentone bench");
   CHECK(search.getHitCount() > 0);
   const PageStore::Stats &st = pageStore.stats();
   MESSAGE("page cache: " << st.hits << " hits, " << st.misses << " misses");

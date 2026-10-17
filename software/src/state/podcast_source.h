@@ -1,7 +1,7 @@
 #pragma once
 #include <stdint.h>
 
-// The podcast tables (openpod/podcast_*.bin, written by the syncer's
+// The podcast tables (opentone/podcast_*.bin, written by the syncer's
 // podcasts module) as the podcast screens read them. MusicLookup implements
 // it from PSRAM; tests use an in-memory one.
 //

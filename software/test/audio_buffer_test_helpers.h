@@ -17,7 +17,7 @@
 
 #include <vector>
 
-namespace openpod_test {
+namespace opentone_test {
 
 // fileId must fit in 4 bits (0-15). sizeBytes is rounded down to a multiple
 // of 4 so every word stays 4-byte aligned.
@@ -100,4 +100,4 @@ inline void checkSequentialRun(const uint8_t *data, size_t len,
   CHECK(err == kSequentialRunOk);
 }
 
-} // namespace openpod_test
+} // namespace opentone_test

@@ -176,10 +176,10 @@ static void printState()
 
 static void printDataset()
 {
-  FsFile f = musicLookup.getSD().open("/openpod/bench.json", O_RDONLY);
+  FsFile f = musicLookup.getSD().open("/opentone/bench.json", O_RDONLY);
   if (!f)
   {
-    Serial.printf("#err dataset no /openpod/bench.json\n");
+    Serial.printf("#err dataset no /opentone/bench.json\n");
     return;
   }
   char buf[256];

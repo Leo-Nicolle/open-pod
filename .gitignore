@@ -9,12 +9,14 @@
 .mcp-backups
 bt_devboard-backups
 myenv/
-openpod-backups/
+opentone-backups/
 node_modules/
 docs/.vitepress/cache/
 docs/.vitepress/dist/
-# OpenPod Sync web build (syncer/app: npm run build:web)
+# opentone Sync web build (syncer/app: npm run build:web)
 docs/public/sync-app/
+docs/.env
+docs/deploy.sh
 indexer/exports
 datasheets/*
 scripts/*.ttf

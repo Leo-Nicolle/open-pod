@@ -47,7 +47,7 @@ function renderMenu() {
   const ctx = menu.getContext('2d');
   if (!ctx) return;
   drawTrackList(ctx, props.palette, {
-    heading: 'OpenPod',
+    heading: 'opentone',
     tracks: ROOT_MENU.map((title) => ({ title, dur: '' })),
     first: 0,
     selected: 0,

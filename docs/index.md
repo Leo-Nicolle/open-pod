@@ -3,12 +3,12 @@
 layout: home
 
 hero:
-  name: "Openpod"
-  text: "An open-source iPod, built from scratch"
+  name: "opentone"
+  text: "An open-source mp3 player, built from scratch"
   tagline: "STM32 · FLAC · capacitive click wheel · Bluetooth. A music player with no smartphone, no cloud, no subscription. Work in progress, documented as it goes."
   image:
-    src: /openpod_logo.svg
-    alt: Openpod logo
+    src: /opentone_logo.svg
+    alt: opentone logo
   actions:
     - theme: brand
       text: Read the blog
@@ -137,7 +137,7 @@ hero:
 ## Explore
 
 <div class="op-cards">
-  <a class="op-card" href="./manual/"><strong>User manual</strong><span>How to use an Openpod. Coming once the hardware is final.</span></a>
+  <a class="op-card" href="./manual/"><strong>User manual</strong><span>How to use an opentone. Coming once the hardware is final.</span></a>
   <a class="op-card" href="./tools/"><strong>Tools</strong><span>Click wheel designer, MCU pinout viewer and the UI builder.</span></a>
   <a class="op-card" href="./blog/"><strong>Blog</strong><span>Build log: screen, click wheel, FLAC, covers, Bluetooth…</span></a>
   <a class="op-card" href="./about"><strong>About</strong><span>Why build an iPod in 2026?</span></a>

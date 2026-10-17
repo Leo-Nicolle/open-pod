@@ -567,8 +567,8 @@ TEST_SUITE("Bluetooth menu") {
 
   TEST_CASE("State: Settings from the root menu, menu pushes and backTo") {
 
-    openpod_test::resetAll();
-    openpod_test::registerStateTestCatalog();
+    opentone_test::resetAll();
+    opentone_test::registerStateTestCatalog();
     State state;
     MusicLookup lookup;
     REQUIRE(lookup.init());

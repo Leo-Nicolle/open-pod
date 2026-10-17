@@ -2,7 +2,7 @@
 //
 // Replaces the SdFat library with an in-memory file system so the storage
 // layer can read its *.bin files without real hardware. Tests populate the
-// file system via openpod_test::FakeFs::get().addFile(...).
+// file system via opentone_test::FakeFs::get().addFile(...).
 #pragma once
 
 #include <stdint.h>
@@ -27,7 +27,7 @@
 
 #define SD_SCK_MHZ(x) (x)
 
-namespace openpod_test {
+namespace opentone_test {
 
 struct FakeFs {
   std::map<std::string, std::shared_ptr<std::vector<uint8_t>>> files;
@@ -53,7 +53,7 @@ struct FakeFs {
   }
 };
 
-} // namespace openpod_test
+} // namespace opentone_test
 
 class SdSpiConfig {
 public:
@@ -73,7 +73,7 @@ public:
     open_ = false;
     data_.reset();
     pos_ = 0;
-    openpod_test::FakeFs &fs = openpod_test::FakeFs::get();
+    opentone_test::FakeFs &fs = opentone_test::FakeFs::get();
     std::string p(path);
     if (fs.packer && p.size() > 5 && p.compare(p.size() - 5, 5, ".pack") == 0) {
       fs.packer(p);
@@ -145,7 +145,7 @@ public:
 class SdFat {
 public:
   bool begin(const SdSpiConfig &) {
-    mounted = openpod_test::FakeFs::get().sdBeginResult;
+    mounted = opentone_test::FakeFs::get().sdBeginResult;
     return mounted;
   }
   uint8_t fatType() const { return mounted ? 32 : 0; }

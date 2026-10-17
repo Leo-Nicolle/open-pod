@@ -1,7 +1,7 @@
-// A Web Worker running openpod-web: reads library and card files
+// A Web Worker running opentone-web: reads library and card files
 // synchronously (FileReaderSync) for the per-file work. The page's pool
 // (web.ts) sends one request at a time.
-import init, { art, convert, hash, lpc_order, probe, probe_episode } from '../wasm/openpod_web.js';
+import init, { art, convert, hash, lpc_order, probe, probe_episode } from '../wasm/opentone_web.js';
 
 export type Request =
   | { id: number; op: 'probe'; file: File; name: string; rel: string; lpc: boolean }

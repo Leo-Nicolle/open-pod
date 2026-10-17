@@ -30,18 +30,18 @@ private:
   static const uint32_t ROW_BYTES = COVER_WIDTH * 2; // raw565: 2 bytes/pixel
 
 public:
-  // Opens /openpod/thumbs.bin once and keeps the handle open for the
+  // Opens /opentone/thumbs.bin once and keeps the handle open for the
   // component's lifetime, avoiding repeated SD open/close overhead on
   // every render. Call once at startup (see main.cpp), after the SD card
   // the passed-in SdFat is already begin()'d on (e.g. musicLookup.getSD()
   // - reuses the existing SD connection rather than opening a second one).
   bool init(SdFat &sd) {
-    ready = thumbsFile.open("/openpod/thumbs.bin", O_RDONLY);
+    ready = thumbsFile.open("/opentone/thumbs.bin", O_RDONLY);
     if (!ready) {
-      LOG_ERROR("AlbumArt could not open /openpod/thumbs.bin");
+      LOG_ERROR("AlbumArt could not open /opentone/thumbs.bin");
     }
     // Optional: cards without podcasts have none.
-    podcastReady = podcastFile.open("/openpod/podcast_thumbs.bin", O_RDONLY);
+    podcastReady = podcastFile.open("/opentone/podcast_thumbs.bin", O_RDONLY);
     return ready;
   }
 

@@ -11,7 +11,9 @@
 // box at 100,90 - exactly chunks 3-5 - with a SURFACE fill, a 2px ACCENT
 // border inset and r=6 corners, holding the first letters of the selected
 // title's fast-scroll key (state/fast_scroll.h; Sans 600 at 60/46/36px for
-// 1/2/3 letters).
+// 1/2/3 letters). A non-letter in the key (a space, "A D" for "A Day") is a
+// dot, so shifting down onto "D.N.A." shows "D·" at once, not just a
+// smaller "D".
 //
 // It is composed into a row's CHUNK_HEIGHT buffer before that row is pushed,
 // so the rows under it never flash while scrolling.
@@ -53,11 +55,11 @@ public:
 
     // Label: centred on the cap height (A-Z and #, so the font's baseline
     // is the glyph height). The font has no space: a space in the key ("A D"
-    // for "A Day") is a third of the cap height wide. Drawn a letter at a
-    // time; renderGlyph clips rows outside this chunk.
+    // for "A Day") is a dot, in a slot half the cap height wide. Drawn a
+    // letter at a time; renderGlyph clips rows outside this chunk.
     const FastFont &font = fontFor(strlen(label));
     fontRenderer.setBuffer(buf, stride, CHUNK_HEIGHT);
-    int gap = font.baseline / 3;
+    int gap = font.baseline / 2;
     int tw = 0;
     char one[2] = {0, 0};
     for (const char *c = label; *c; c++) {
@@ -69,6 +71,8 @@ public:
     for (const char *c = label; *c; c++) {
       one[0] = *c;
       if (*c == ' ') {
+        drawDot(buf, stride, tx + gap / 2, ty + font.baseline / 2,
+                font.baseline / 10);
         tx += gap;
         continue;
       }
@@ -79,6 +83,22 @@ public:
 
 private:
   enum { OUTSIDE, EDGE, FILL };
+
+  // A filled disc of radius r at buffer (cx, cy), clipped to the chunk.
+  static void drawDot(uint16_t *buf, int stride, int cx, int cy, int r) {
+    if (r < 2)
+      r = 2;
+    for (int dy = -r; dy <= r; dy++) {
+      int y = cy + dy;
+      if (y < 0 || y >= CHUNK_HEIGHT)
+        continue;
+      for (int dx = -r; dx <= r; dx++) {
+        int x = cx + dx;
+        if (x >= 0 && x < stride && dx * dx + dy * dy <= r * r)
+          buf[y * stride + x] = COLOR_TEXT;
+      }
+    }
+  }
 
   static const FastFont &fontFor(size_t letters) {
     if (letters >= 3)

@@ -3,7 +3,7 @@
 head:
   - - meta
     - http-equiv: refresh
-      content: 0; url=/open-pod/tools/pinout-table
+      content: 0; url=/tools/pinout-table
 sitemap: false
 ---
 

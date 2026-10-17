@@ -141,7 +141,7 @@ const trackNo = (t: CardAlbum['tracks'][number], a: CardAlbum) => {
 
   <div class="body">
     <div v-if="!lib" class="mu" style="padding: 40px 0; text-align: center">
-      {{ card?.state.kind === 'ready' ? 'Loading…' : 'No OpenPod card. Plug one in, or sync to set this one up.' }}
+      {{ card?.state.kind === 'ready' ? 'Loading…' : 'No opentone card. Plug one in, or sync to set this one up.' }}
     </div>
 
     <PodcastShow v-else-if="show" :show="show" />

@@ -5,7 +5,7 @@
 	(uuid "3ad76375-3cde-459a-bec9-286da095b4b2")
 	(paper "A4")
 	(lib_symbols
-		(symbol "openpod:FSC-BT1035"
+		(symbol "opentone:FSC-BT1035"
 			(exclude_from_sim no)
 			(in_bom yes)
 			(on_board yes)
@@ -1213,7 +1213,7 @@
 			(uuid "d2046285-84c5-4c44-a507-fe5e6cf832cd")
 		)
 		(instances
-			(project "openpod"
+			(project "opentone"
 				(path "/0122bb8c-dbef-4db1-a6c6-9be780a38d9f/cd416ea8-5a7a-445f-9d82-6d6499825b26"
 					(reference "#PWR025")
 					(unit 1)
@@ -1222,7 +1222,7 @@
 		)
 	)
 	(symbol
-		(lib_id "openpod:FSC-BT1035")
+		(lib_id "opentone:FSC-BT1035")
 		(at 182.245 73.66 0)
 		(unit 1)
 		(exclude_from_sim no)
@@ -1231,7 +1231,7 @@
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "57741d99-4106-4470-89fd-037f5d001d77")
-		(property "Reference" "Bluetooth"
+		(property "Reference" "Bluetooth1"
 			(at 185.7091 127.254 0)
 			(effects
 				(font
@@ -1248,7 +1248,7 @@
 				)
 			)
 		)
-		(property "Footprint" "openpod:fsc-bt1035"
+		(property "Footprint" "opentone:fsc-bt1035"
 			(at 200.025 69.85 0)
 			(effects
 				(font
@@ -1467,9 +1467,9 @@
 			(uuid "b534d1f5-0ef9-4e2f-8115-6696f2d018e4")
 		)
 		(instances
-			(project "openpod"
+			(project "opentone"
 				(path "/0122bb8c-dbef-4db1-a6c6-9be780a38d9f/cd416ea8-5a7a-445f-9d82-6d6499825b26"
-					(reference "Bluetooth")
+					(reference "Bluetooth1")
 					(unit 1)
 				)
 			)

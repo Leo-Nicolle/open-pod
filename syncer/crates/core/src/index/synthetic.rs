@@ -1,5 +1,5 @@
 //! Synthetic libraries for the firmware test bench (`software/bench/`,
-//! `openpod bench-dataset`): a large, seeded, reproducible set of
+//! `opentone bench-dataset`): a large, seeded, reproducible set of
 //! [`TrackRecord`]s whose files don't exist. The firmware only opens a track's
 //! file when it plays it, so the index alone exercises browsing and search.
 //!

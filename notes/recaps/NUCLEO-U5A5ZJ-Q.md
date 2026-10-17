@@ -254,10 +254,10 @@ Practical read for an always-listening/battery audio device:
 ## 4. System integration Q&A
 
 Context: this project's current schematics already use a **MCP73831-2-MC** Li-Ion/Li-Po
-charger (`hardware/openpod/power.kicad_sch`) with a ~900 mAh 3.7 V cell, an
-**FSC-BT1035** Bluetooth audio module (`hardware/openpod/bluetooth.kicad_sch`, Feasycom
+charger (`hardware/opentone/power.kicad_sch`) with a ~900 mAh 3.7 V cell, an
+**FSC-BT1035** Bluetooth audio module (`hardware/opentone/bluetooth.kicad_sch`, Feasycom
 module built around a CSR/Qualcomm BT SoC), and a **VS1053b** for MP3/FLAC decode + DAC +
-line-out (`software/src/sound/`, `hardware/openpod/audio.kicad_sch`). The STM32U5A5 is a
+line-out (`software/src/sound/`, `hardware/opentone/audio.kicad_sch`). The STM32U5A5 is a
 general-purpose MCU with no wireless radio and no battery-charging front end, so it
 changes none of that: it would replace the current MCU only, not these companion chips.
 

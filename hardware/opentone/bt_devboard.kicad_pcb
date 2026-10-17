@@ -754,7 +754,7 @@
 			)
 		)
 	)
-	(footprint "openpod:fsc-bt1035"
+	(footprint "opentone:fsc-bt1035"
 		(layer "F.Cu")
 		(uuid "43f26b81-f6d5-4d3c-8527-3d917a6c4423")
 		(at 105.315 59 180)

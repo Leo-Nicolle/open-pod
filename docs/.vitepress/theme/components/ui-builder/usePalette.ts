@@ -3,7 +3,7 @@
 import { computed, onMounted, reactive, ref } from 'vue';
 import { DEFAULT_PALETTE, PALETTE_META, normalizeHex, type Palette, type PaletteKey } from './palette';
 
-const STORAGE_KEY = 'openpod-ui-builder-palette';
+const STORAGE_KEY = 'opentone-ui-builder-palette';
 
 function readSaved(): Palette | null {
   // Storage can be unavailable (private mode, blocked site data).

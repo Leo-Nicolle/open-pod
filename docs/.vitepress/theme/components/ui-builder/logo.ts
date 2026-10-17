@@ -1,6 +1,6 @@
-// openpod startup logo: SVG -> indexed sprite -> themed palette -> logo.h.
+// opentone startup logo: SVG -> indexed sprite -> themed palette -> logo.h.
 //
-// The logo is drawn as flat polygons in docs/public/openpod_logo.svg, one CSS
+// The logo is drawn as flat polygons in docs/public/opentone_logo.svg, one CSS
 // class per colour. Each class becomes a palette index (0 = transparent), so the
 // rasterized pixels never depend on the theme: only the 16-entry palette does
 // (see .agents/LOGO_PIPELINE.md, "swap the palette, never the pixels").
@@ -13,7 +13,7 @@
 // Everything here is DOM-free, so the same code can generate the header from
 // Node.
 
-import svgSource from '../../../../public/openpod_logo.svg?raw';
+import svgSource from '../../../../public/opentone_logo.svg?raw';
 import type { Palette, PaletteKey } from './palette';
 import { hexToRgb, rgbToHex } from './palette';
 
@@ -123,7 +123,7 @@ function parsePath(d: string): [number, number][][] {
         break;
       }
       default:
-        throw new Error(`openpod_logo.svg: unsupported path command "${cmd}"`);
+        throw new Error(`opentone_logo.svg: unsupported path command "${cmd}"`);
     }
   }
   close();
@@ -148,7 +148,7 @@ export function parseLogoSvg(svg: string): LogoSource {
     const color = fill ?? (cls ? classColor.get(cls) : undefined);
     if (!d || !color) continue;
     const role = LOGO_ROLES.findIndex((r) => r.svg === color);
-    if (role < 0) throw new Error(`openpod_logo.svg: colour ${color} has no entry in LOGO_ROLES`);
+    if (role < 0) throw new Error(`opentone_logo.svg: colour ${color} has no entry in LOGO_ROLES`);
     shapes.push({ index: role + 1, polys: parsePath(d) });
   }
   return { w, h, shapes };
@@ -356,7 +356,7 @@ export const BOOT = {
   PERIOD: 3800,
 };
 
-export const WORDMARK = 'openpod';
+export const WORDMARK = 'opentone';
 /** Glyphs from this index on ("pod") use the accent colour */
 export const WORDMARK_ACCENT_FROM = 4;
 
@@ -468,8 +468,8 @@ export function buildLogoHeader(p: Palette, logo: LogoRaster, squash: LogoRaster
   const B = BOOT;
   const L: string[] = [];
   L.push('#pragma once');
-  L.push('// Auto-generated openpod title screen (see docs/ui-builder).');
-  L.push('// Logo source: docs/public/openpod_logo.svg. Images are 4 bits per pixel,');
+  L.push('// Auto-generated opentone title screen (see docs/ui-builder).');
+  L.push('// Logo source: docs/public/opentone_logo.svg. Images are 4 bits per pixel,');
   L.push('// high nibble = left pixel, rows padded to a whole byte. Logo pixels are');
   L.push('// palette indices (0 = transparent); wordmark pixels are coverage 0..15,');
   L.push('// looked up in a BG->colour ramp. Colours come from the theme at export.');

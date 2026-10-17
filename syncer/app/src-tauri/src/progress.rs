@@ -5,7 +5,7 @@ use std::path::Path;
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
 
-use openpod_core::{sync, view};
+use opentone_core::{sync, view};
 use serde::Serialize;
 use tauri::{AppHandle, Emitter};
 

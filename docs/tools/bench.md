@@ -29,7 +29,7 @@ The audio numbers come from the firmware's once-a-second monitor lines (`[prof �
 
 ### The samples
 
-Generated with ffmpeg (chords over pink noise, so FLAC doesn't compress them away), then converted the way [OpenPod Sync](./sync) converts music for the card:
+Generated with ffmpeg (chords over pink noise, so FLAC doesn't compress them away), then converted the way [opentone Sync](./sync) converts music for the card:
 
 | Sample | On the card |
 |---|---|
@@ -42,7 +42,7 @@ Generated with ffmpeg (chords over pink noise, so FLAC doesn't compress them awa
 
 ### The library
 
-`openpod bench-dataset` builds the index with the same code as a real sync. Its tracks are seeded fake names, so every run with the same seed gets the same library: about 13 tracks per album and 2 albums per artist, 40 genres, compilations, "feat." artists, "The …" names, accents, Cyrillic, Japanese and Greek, and titles too long for a row. The firmware only opens a track's file when it plays it, so browsing and search work without any audio. The samples are indexed as the album *Openpod Bench Samples*.
+`opentone bench-dataset` builds the index with the same code as a real sync. Its tracks are seeded fake names, so every run with the same seed gets the same library: about 13 tracks per album and 2 albums per artist, 40 genres, compilations, "feat." artists, "The …" names, accents, Cyrillic, Japanese and Greek, and titles too long for a row. The firmware only opens a track's file when it plays it, so browsing and search work without any audio. The samples are indexed as the album *opentone Bench Samples*.
 
 ## Running it
 

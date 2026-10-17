@@ -5,10 +5,10 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::AtomicBool;
 
-use openpod_core::index::AlbumKey;
-use openpod_core::library::{self, Filter};
-use openpod_core::manifest::{self, Manifest};
-use openpod_core::sync::{self, PlanOptions, Progress, WriteReason};
+use opentone_core::index::AlbumKey;
+use opentone_core::library::{self, Filter};
+use opentone_core::manifest::{self, Manifest};
+use opentone_core::sync::{self, PlanOptions, Progress, WriteReason};
 
 struct Quiet;
 impl Progress for Quiet {
@@ -20,7 +20,7 @@ impl Progress for Quiet {
 }
 
 fn tmp(name: &str) -> PathBuf {
-    let d = std::env::temp_dir().join(format!("openpod-test-{}-{name}", std::process::id()));
+    let d = std::env::temp_dir().join(format!("opentone-test-{}-{name}", std::process::id()));
     let _ = fs::remove_dir_all(&d);
     fs::create_dir_all(&d).unwrap();
     d

@@ -22,7 +22,7 @@ std::vector<std::string> trackNames() {
 }
 
 void registerAlphabetCatalog(bool letterTables) {
-  using namespace openpod_test;
+  using namespace opentone_test;
   resetAll();
   auto &fs = FakeFs::get();
   std::vector<std::string> names = trackNames();
@@ -42,25 +42,25 @@ void registerAlphabetCatalog(bool letterTables) {
   std::vector<std::pair<uint32_t, std::vector<uint32_t>>> toAll, toAlbum;
   toAll.push_back(std::make_pair(0u, all));
   toAlbum.push_back(std::make_pair(0u, std::vector<uint32_t>{0}));
-  fs.addFile("/openpod/artist_index.bin", buildStringIndex(one));
-  fs.addFile("/openpod/album_index.bin", buildStringIndex(one));
-  fs.addFile("/openpod/genre_index.bin", buildStringIndex(one));
-  fs.addFile("/openpod/track_index.bin", buildStringIndex(tracks));
-  fs.addFile("/openpod/path_index.bin", buildStringIndex(paths));
-  fs.addFile("/openpod/duration_index.bin", buildDurationIndex(durations));
-  fs.addFile("/openpod/track_to_album.bin", buildTrackToAlbumIndex(track_to_album));
-  fs.addFile("/openpod/artist_to_albums.bin", buildRelation(toAlbum));
-  fs.addFile("/openpod/artist_to_tracks.bin", buildRelation(toAll));
-  fs.addFile("/openpod/album_to_tracks.bin", buildRelation(toAll));
-  fs.addFile("/openpod/genre_to_albums.bin", buildRelation(toAlbum));
-  fs.addFile("/openpod/genre_to_tracks.bin", buildRelation(toAll));
+  fs.addFile("/opentone/artist_index.bin", buildStringIndex(one));
+  fs.addFile("/opentone/album_index.bin", buildStringIndex(one));
+  fs.addFile("/opentone/genre_index.bin", buildStringIndex(one));
+  fs.addFile("/opentone/track_index.bin", buildStringIndex(tracks));
+  fs.addFile("/opentone/path_index.bin", buildStringIndex(paths));
+  fs.addFile("/opentone/duration_index.bin", buildDurationIndex(durations));
+  fs.addFile("/opentone/track_to_album.bin", buildTrackToAlbumIndex(track_to_album));
+  fs.addFile("/opentone/artist_to_albums.bin", buildRelation(toAlbum));
+  fs.addFile("/opentone/artist_to_tracks.bin", buildRelation(toAll));
+  fs.addFile("/opentone/album_to_tracks.bin", buildRelation(toAll));
+  fs.addFile("/opentone/genre_to_albums.bin", buildRelation(toAlbum));
+  fs.addFile("/opentone/genre_to_tracks.bin", buildRelation(toAll));
   std::vector<CoverIndexEntry> covers;
   covers.push_back({0u, 0u, 0u, 1});
-  fs.addFile("/openpod/album_to_cover.bin", buildAlbumCoverIndex(covers));
+  fs.addFile("/opentone/album_to_cover.bin", buildAlbumCoverIndex(covers));
   if (letterTables) {
-    fs.addFile("/openpod/track_letters_1.bin", buildLetterTable(names, 1, fastScrollKey));
-    fs.addFile("/openpod/track_letters_2.bin", buildLetterTable(names, 2, fastScrollKey));
-    fs.addFile("/openpod/track_letters_3.bin", buildLetterTable(names, 3, fastScrollKey));
+    fs.addFile("/opentone/track_letters_1.bin", buildLetterTable(names, 1, fastScrollKey));
+    fs.addFile("/opentone/track_letters_2.bin", buildLetterTable(names, 2, fastScrollKey));
+    fs.addFile("/opentone/track_letters_3.bin", buildLetterTable(names, 3, fastScrollKey));
   }
 }
 

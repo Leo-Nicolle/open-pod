@@ -1,12 +1,12 @@
 // ==UserScript==
-// @name         OpenPod — Radio France podcast downloader
+// @name         opentone — Radio France podcast downloader
 // @namespace    https://github.com/Leo-Nicolle/open-pod
 // @version      0.3.0
-// @description  Adds a panel to Radio France podcast pages to download episodes into a folder (e.g. ~/Podcasts), ready for OpenPod Sync.
-// @author       OpenPod
-// @homepageURL  https://leo-nicolle.github.io/open-pod/tools/
-// @downloadURL  https://leo-nicolle.github.io/open-pod/userscripts/radiofrance-podcasts.user.js
-// @updateURL    https://leo-nicolle.github.io/open-pod/userscripts/radiofrance-podcasts.user.js
+// @description  Adds a panel to Radio France podcast pages to download episodes into a folder (e.g. ~/Podcasts), ready for opentone Sync.
+// @author       opentone
+// @homepageURL  https://opentone.eu/tools/
+// @downloadURL  https://opentone.eu/userscripts/radiofrance-podcasts.user.js
+// @updateURL    https://opentone.eu/userscripts/radiofrance-podcasts.user.js
 // @match        https://www.radiofrance.fr/*/podcasts/*
 // @match        https://radiofrance.fr/*/podcasts/*
 // @run-at       document-idle
@@ -31,14 +31,14 @@
 // GM_xmlhttpRequest, which bypasses CORS and follows the redirect.
 //
 // The files keep Radio France's own tags; normalisation (station/series tree)
-// happens offline, in the OpenPod tagger (see notes/podcasts.md).
+// happens offline, in the opentone tagger (see notes/podcasts.md).
 
 (function () {
   "use strict";
 
-  const PANEL_ID = "openpod-rf-panel";
-  const STYLE_ID = "openpod-rf-style";
-  const DIR_KEY = "openpod-rf-podcasts-dir";
+  const PANEL_ID = "opentone-rf-panel";
+  const STYLE_ID = "opentone-rf-style";
+  const DIR_KEY = "opentone-rf-podcasts-dir";
   const FALLBACK_STATION = "Radio France";
   const MAX_NAME = 140;
 
@@ -132,7 +132,7 @@
 
   function openDb() {
     return new Promise((resolve, reject) => {
-      const r = indexedDB.open("openpod-rf", 1);
+      const r = indexedDB.open("opentone-rf", 1);
       r.onupgradeneeded = () => r.result.createObjectStore("kv");
       r.onsuccess = () => resolve(r.result);
       r.onerror = () => reject(r.error);
@@ -158,7 +158,7 @@
   }
 
   async function pickDir() {
-    const h = await window.showDirectoryPicker({ mode: "readwrite", id: "openpod-podcasts" });
+    const h = await window.showDirectoryPicker({ mode: "readwrite", id: "opentone-podcasts" });
     await idbSet(DIR_KEY, h).catch(() => {});
     return h;
   }
@@ -431,7 +431,7 @@
   function buildUi() {
     const panel = el("div", { id: PANEL_ID, className: "oprf oprf-collapsed" });
     const header = el("div", { className: "oprf-head" });
-    const logo = el("button", { className: "oprf-logo", title: "OpenPod — click to show the episodes", html: LOGO_SVG });
+    const logo = el("button", { className: "oprf-logo", title: "opentone — click to show the episodes", html: LOGO_SVG });
     const title = el("div", { className: "oprf-title" });
     const collapse = el("button", { className: "oprf-btn oprf-icon oprf-collapse", title: "Collapse", textContent: "–" });
     header.append(logo, title, collapse);
@@ -665,7 +665,7 @@
           ep.status = "error";
           renderRowStatus(ep);
           fail++;
-          console.warn("[OpenPod] download failed:", ep.title, e);
+          console.warn("[opentone] download failed:", ep.title, e);
         }
       }
     } finally {
@@ -712,7 +712,7 @@
         render();
       }
     } catch (e) {
-      console.warn("[OpenPod] feed load failed:", e);
+      console.warn("[opentone] feed load failed:", e);
     } finally {
       state.building = false;
     }

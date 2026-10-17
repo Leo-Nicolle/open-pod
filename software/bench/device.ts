@@ -68,7 +68,7 @@ export type WheelEvent = {
   value?: number;
   /** Degrees for `finger`, -1 = lifted. */
   angle?: number;
-  /** For `fast`: the letters list scrolling now jumps by (0 = rows); `value` is the wheel's clicks/s. */
+  /** For `fast` (after every scroll): the letters list scrolling now jumps by (0 = rows); `value` is the wheel's clicks/s. */
   letters?: number;
 };
 
@@ -277,11 +277,11 @@ export class Device {
   }
 
   /**
-   * Fast-scroll speed tiers (clicks/s for 3, 2 and 1 letter jumps, speed
-   * window, pause that resets, hysteresis %): sets the given ones, answers
-   * them all (`#scrollcfg`).
+   * Fast-scroll gears (clicks/s to shift up to the 1st, 2nd and 3rd letter
+   * gear, speed window in clicks, still time that shifts down in ms): sets
+   * the given ones, answers them all (`#scrollcfg`).
    */
-  scrollConfig(set: Partial<Record<"t3" | "t2" | "t1" | "win" | "gap" | "drop", number>> = {}): Promise<Fields> {
+  scrollConfig(set: Partial<Record<"s1" | "s2" | "s3" | "win" | "dwell", number>> = {}): Promise<Fields> {
     const args = Object.entries(set).map(([k, v]) => `${k}=${Math.round(v!)}`).join(" ");
     return this.send("scrollcfg", args);
   }

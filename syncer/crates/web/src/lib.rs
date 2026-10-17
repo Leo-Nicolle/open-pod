@@ -1,4 +1,4 @@
-//! OpenPod Sync in the browser. JavaScript walks folders and writes to the
+//! opentone Sync in the browser. JavaScript walks folders and writes to the
 //! card (File System Access API); this crate does the rest:
 //!
 //! - per-file work in Web Workers ([`probe`], [`hash`], [`convert`],
@@ -14,14 +14,14 @@ use std::collections::HashMap;
 use std::io::{self, BufReader, Read, Seek, SeekFrom};
 use std::path::{Path, PathBuf};
 
-use openpod_core::index::{self, AlbumKey, crawl, model};
-use openpod_core::library::{self, PlanInfo};
-use openpod_core::manifest::{self, Manifest};
-use openpod_core::podcasts::{self, PodcastManifest, mirror};
-use openpod_core::policy::Policy;
-use openpod_core::sync::{self, Matched, Outcome, Plan, PlanOptions, SourceFile, Triage, Write};
-use openpod_core::tags::{self, Probed};
-use openpod_core::{convert, view};
+use opentone_core::index::{self, AlbumKey, crawl, model};
+use opentone_core::library::{self, PlanInfo};
+use opentone_core::manifest::{self, Manifest};
+use opentone_core::podcasts::{self, PodcastManifest, mirror};
+use opentone_core::policy::Policy;
+use opentone_core::sync::{self, Matched, Outcome, Plan, PlanOptions, SourceFile, Triage, Write};
+use opentone_core::tags::{self, Probed};
+use opentone_core::{convert, view};
 use serde::{Deserialize, Serialize};
 use wasm_bindgen::prelude::*;
 use web_sys::{Blob, File, FileReaderSync};
@@ -162,7 +162,7 @@ pub fn probe_cost(name: &str, size: f64, lpc: bool) -> f64 {
 }
 
 /// The card's podcasts by show (JSON `CardPodcasts`). `manifest`: the
-/// card's `openpod/podcasts.json`; `state`: its `podcast_state.bin`.
+/// card's `opentone/podcasts.json`; `state`: its `podcast_state.bin`.
 #[wasm_bindgen]
 pub fn card_podcasts(manifest: Option<String>, state: Option<Vec<u8>>, machine: &str) -> Result<String, JsError> {
     let m: PodcastManifest = match manifest {
@@ -190,7 +190,7 @@ pub fn podcast_set_keep(manifest: Option<String>, show: &str, keep: Option<u32>)
 pub fn podcast_set_played(manifest: String, mut state: Vec<u8>, path: &str, played: bool) -> Result<Vec<u8>, JsError> {
     let m: PodcastManifest = from_json(&manifest)?;
     let e = m.episodes.iter().find(|e| e.path == path).ok_or_else(|| JsError::new(&format!("{path}: not a podcast on the card")))?;
-    if !openpod_core::podcasts::state::set_played(&mut state, e.key(), played) {
+    if !opentone_core::podcasts::state::set_played(&mut state, e.key(), played) {
         return Err(JsError::new("the player's listening state has no record of this episode"));
     }
     Ok(state)
@@ -260,7 +260,7 @@ pub struct Session {
 
 #[wasm_bindgen]
 impl Session {
-    /// `manifest`: the card's `openpod/library.json`, or nothing for a card
+    /// `manifest`: the card's `opentone/library.json`, or nothing for a card
     /// without one.
     #[wasm_bindgen(constructor)]
     pub fn new(manifest: Option<String>) -> Result<Session, JsError> {
@@ -286,7 +286,7 @@ impl Session {
         })
     }
 
-    /// `openpod/library.json`.
+    /// `opentone/library.json`.
     pub fn manifest(&self) -> Result<String, JsError> {
         to_json(&self.m)
     }
@@ -452,7 +452,7 @@ impl Session {
         self.arts.insert(path, bytes);
     }
 
-    /// Builds the `openpod/*` index files; returns their names (JSON
+    /// Builds the `opentone/*` index files; returns their names (JSON
     /// array), read them with [`Session::index_file`].
     pub fn build_index(&mut self, album_key: &str) -> Result<String, JsError> {
         let records = library::index_records(&self.m);
@@ -473,7 +473,7 @@ impl Session {
 
     /// Ends a sync: remembers it and its write speed (`write_secs`: time
     /// spent writing), and returns `{report, text}` (JSON; `report` is
-    /// `openpod/last-sync.json`, `text` `openpod/sync-report.txt`).
+    /// `opentone/last-sync.json`, `text` `opentone/sync-report.txt`).
     pub fn finish_sync(&mut self, seconds: f64, write_secs: f64, interrupted: bool) -> Result<String, JsError> {
         let machine = self.opts.as_ref().map_or_else(|| "browser".to_owned(), |o| o.machine.clone());
         self.out.write_secs = write_secs;
@@ -545,8 +545,8 @@ struct PodcastCopyOut<'a> {
     estimated_size: u64,
 }
 
-/// The podcast mirror of a sync (see `openpod_core::podcasts`): plans
-/// against the card's `openpod/podcasts.json`, then JavaScript deletes,
+/// The podcast mirror of a sync (see `opentone_core::podcasts`): plans
+/// against the card's `opentone/podcasts.json`, then JavaScript deletes,
 /// renames and copies, and the session rebuilds the podcast tables and
 /// remaps the listening state. Virtual paths are `pod/<rel>`.
 #[wasm_bindgen]
@@ -564,7 +564,7 @@ pub struct PodcastSession {
 
 #[wasm_bindgen]
 impl PodcastSession {
-    /// `manifest`: the card's `openpod/podcasts.json`, if any.
+    /// `manifest`: the card's `opentone/podcasts.json`, if any.
     #[wasm_bindgen(constructor)]
     pub fn new(manifest: Option<String>) -> Result<PodcastSession, JsError> {
         Ok(PodcastSession {
@@ -583,7 +583,7 @@ impl PodcastSession {
         })
     }
 
-    /// `openpod/podcasts.json`.
+    /// `opentone/podcasts.json`.
     pub fn manifest(&self) -> Result<String, JsError> {
         to_json(&self.m)
     }
@@ -707,7 +707,7 @@ impl PodcastSession {
     }
 
     /// Builds the podcast tables and remaps the listening state
-    /// (`old_state`: the card's `openpod/podcast_state.bin`). Returns the
+    /// (`old_state`: the card's `opentone/podcast_state.bin`). Returns the
     /// file names in write order (JSON array): write them in that order,
     /// read them with [`PodcastSession::index_file`], then save
     /// [`PodcastSession::manifest`] (its generation changed).

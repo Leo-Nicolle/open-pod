@@ -7,10 +7,10 @@
 #include "mocks/SdFat.h"
 #include "mocks/fake_psram.h"
 
-using openpod_test::buildFakeAudioFile;
-using openpod_test::checkSequentialRun;
-using openpod_test::FakeFs;
-using openpod_test::fakePsram;
+using opentone_test::buildFakeAudioFile;
+using opentone_test::checkSequentialRun;
+using opentone_test::FakeFs;
+using opentone_test::fakePsram;
 
 // The card the buffers read from (the library's SdFat on the device).
 static SdFat testSd;

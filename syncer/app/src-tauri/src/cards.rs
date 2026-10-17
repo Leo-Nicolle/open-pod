@@ -3,9 +3,9 @@
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-use openpod_core::manifest;
+use opentone_core::manifest;
 
-/// A mounted volume that could be an OpenPod card.
+/// A mounted volume that could be an opentone card.
 #[derive(Debug, Clone)]
 pub struct Volume {
     pub mount: PathBuf,
@@ -50,15 +50,15 @@ fn linux_label(device: &str) -> Option<String> {
 }
 
 /// Removable FAT/exFAT volumes, and any volume that already holds an
-/// OpenPod library.
+/// opentone library.
 pub fn detect() -> Vec<Volume> {
     let disks = sysinfo::Disks::new_with_refreshed_list();
     let mut out: Vec<Volume> = Vec::new();
     for d in disks.list() {
         let mount = d.mount_point().to_path_buf();
         let fs = d.file_system().to_string_lossy();
-        let openpod = manifest::exists(&mount);
-        if !(openpod || (d.is_removable() && is_fat(&fs))) {
+        let opentone = manifest::exists(&mount);
+        if !(opentone || (d.is_removable() && is_fat(&fs))) {
             continue;
         }
         if out.iter().any(|v| v.mount == mount) {

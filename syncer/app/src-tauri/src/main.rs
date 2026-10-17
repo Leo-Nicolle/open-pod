@@ -2,5 +2,5 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 fn main() {
-    openpod_sync_lib::run()
+    opentone_sync_lib::run()
 }

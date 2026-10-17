@@ -1,4 +1,4 @@
-# Feasycom Bluetooth Module Comparison — for OpenPod (BT audio transmitter)
+# Feasycom Bluetooth Module Comparison — for opentone (BT audio transmitter)
 
 Context: the original design specified the **FSC-BT1035** (Qualcomm QCC3056), which is no longer
 available on AliExpress. This compares the six Feasycom datasheets currently in `datasheets/`
@@ -152,7 +152,7 @@ general peripheral bus, not for audio) and as a debug-only interface elsewhere.
 | BT1035 | VBAT 3.0–4.2 V (Li-ion range), VCHG 4.75–6.5 V for USB charging | VDD_IO 1.7–3.3 V | No on-chip charger described in this doc |
 | BT1026x | VBAT_IN 2.8–4.3 V, VCHG 4.75–6.5 V (5V USB) | VDD_IO 1.7–3.3 V | **Has on-chip Li-ion charger** (trickle/pre/fast/standby, configurable up to 200 mA internal, or up to 1.8 A with external PNP pass transistor) |
 
-If the OpenPod design charges its battery through the Bluetooth module itself, **BT1026x is
+If the opentone design charges its battery through the Bluetooth module itself, **BT1026x is
 additionally attractive** because it has an integrated Li-ion charge controller (with external
 PNP transistor support for higher currents) that the BT1035 datasheet doesn't document.
 
@@ -222,7 +222,7 @@ A2DP Source bit works standalone, not just as a sink), this removes the earlier 
 caveat: **a BT1026x module, configured with `AT+PROFILE` to enable A2DP Source, is a functionally
 verified replacement path for the BT1035's transmitter role**, not just a footprint-alike guess.
 
-### Practical AT sequence for OpenPod (BT1026x as source)
+### Practical AT sequence for opentone (BT1026x as source)
 
 Based on the same command set:
 
@@ -234,7 +234,7 @@ Based on the same command set:
 4. `AT+A2DPAUDIO=1` — start streaming once your I²S/PCM (or USB/analog) audio source is feeding the
    module; `AT+A2DPAUDIO=0` to pause/release.
 5. `AT+PLAYPAUSE` / `AT+FORWARD` / `AT+BACKWARD` / volume, etc. are available if you want the
-   headphones' buttons (AVRCP) to control playback back on the OpenPod side — BT1026x's AVRCP
+   headphones' buttons (AVRCP) to control playback back on the opentone side — BT1026x's AVRCP
    Target/Controller bits both exist; BT1035 only implements AVRCP Target (receives transport
    commands from the sink, cannot send them), which is the correct role for a source device anyway.
 

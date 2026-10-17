@@ -1,6 +1,6 @@
 // One sample file per audio quality the player meets, from a small mono mp3
 // to 24-bit FLAC. Generated with ffmpeg (chords over pink noise, so FLAC
-// can't compress them to nothing), then put through `openpod convert`, the
+// can't compress them to nothing), then put through `opentone convert`, the
 // same conversion sync applies, so what lands on the card is what a real
 // library would carry. Cached in bench/.cache/samples/.
 import { execFileSync } from "node:child_process";
@@ -26,7 +26,7 @@ const signal = (seconds: number) => [
  * Builds the card-ready samples into `<cacheDir>/card` (skipping the ones
  * already there) and returns that folder.
  */
-export function buildSamples(cacheDir: string, openpodBin: string): string {
+export function buildSamples(cacheDir: string, opentoneBin: string): string {
   const srcDir = join(cacheDir, "source");
   const cardDir = join(cacheDir, "card");
   mkdirSync(srcDir, { recursive: true });
@@ -44,7 +44,7 @@ export function buildSamples(cacheDir: string, openpodBin: string): string {
         stdio: "inherit",
       });
     }
-    execFileSync(openpodBin, ["convert", src, dst], { stdio: "ignore" });
+    execFileSync(opentoneBin, ["convert", src, dst], { stdio: "ignore" });
   }
   return cardDir;
 }

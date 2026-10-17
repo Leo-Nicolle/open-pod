@@ -10,7 +10,7 @@ const emit = defineEmits<{ rename: [] }>();
   <aside>
     <div class="brand">
       <img :src="logo" alt="" style="height: 28px; width: auto; flex: none" />
-      <div class="name">OpenPod <span>Sync</span></div>
+      <div class="name">opentone <span>Sync</span></div>
     </div>
     <div class="card">
       <div class="row">

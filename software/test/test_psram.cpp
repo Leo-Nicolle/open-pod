@@ -5,7 +5,7 @@
 #include "../src/storage/PSRAM_controller.hpp"
 #include "mocks/fake_psram.h"
 
-using openpod_test::fakePsram;
+using opentone_test::fakePsram;
 
 namespace {
 

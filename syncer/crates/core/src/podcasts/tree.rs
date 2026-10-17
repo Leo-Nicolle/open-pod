@@ -1,4 +1,4 @@
-//! The podcast browser's tables (`openpod/podcasts.pack`): a folder tree of
+//! The podcast browser's tables (`opentone/podcasts.pack`): a folder tree of
 //! any depth (publisher / show / [series] / episode) mirrored from the
 //! podcasts folder.
 //!

@@ -166,7 +166,7 @@ const skipped = computed(() => [...(r.value?.skipped ?? []), ...(r.value?.failed
           <div style="flex: 1; min-width: 240px">
             <div style="font-weight: 600">Put the app on the card</div>
             <div class="mu" style="font-size: 13px; line-height: 1.5; margin-top: 3px">
-              Copies OpenPod Sync onto the card, so the card carries its own sync tool to any computer.
+              Copies opentone Sync onto the card, so the card carries its own sync tool to any computer.
             </div>
           </div>
           <button class="btn sm" @click="installOnCard">Put the app on the card</button>

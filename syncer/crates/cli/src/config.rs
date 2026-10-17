@@ -1,13 +1,13 @@
 //! Where the CLI's settings come from: command-line flags win, then the
 //! OPENPOD_SD / OPENPOD_LIBRARY / OPENPOD_EXCLUDE / OPENPOD_PODCASTS
 //! environment variables (as in the former sync/.env), then
-//! `~/.config/openpod/config.toml` (see
-//! `openpod_core::config`).
+//! `~/.config/opentone/config.toml` (see
+//! `opentone_core::config`).
 
 use std::path::PathBuf;
 
 use anyhow::bail;
-use openpod_core::config::{self as core_config, expand};
+use opentone_core::config::{self as core_config, expand};
 
 pub struct Config(pub core_config::Config);
 
@@ -27,7 +27,7 @@ impl Config {
     pub fn card(&self, flag: Option<PathBuf>) -> anyhow::Result<PathBuf> {
         match flag.or_else(|| env("OPENPOD_SD").map(PathBuf::from)).or_else(|| self.0.card.clone()) {
             Some(c) => Ok(expand(&c)),
-            None => bail!("where is the card? Pass --card /mnt/openpod, set OPENPOD_SD, or set `card` in {}", file()),
+            None => bail!("where is the card? Pass --card /mnt/opentone, set OPENPOD_SD, or set `card` in {}", file()),
         }
     }
 

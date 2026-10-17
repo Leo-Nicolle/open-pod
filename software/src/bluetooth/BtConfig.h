@@ -4,7 +4,7 @@
 #include <SdFat.h>
 
 // The per-device settings the module can't keep (alias, preferred codec),
-// in /openpod/bt.cfg on the SD card: one "MAC<TAB>codec<TAB>alias" line per
+// in /opentone/bt.cfg on the SD card: one "MAC<TAB>codec<TAB>alias" line per
 // device (BtModel::serializeConfig()). Plain text, so it can be fixed by
 // hand on a PC. Without an SD card nothing is saved and renaming is off.
 class BtConfig {
@@ -52,7 +52,7 @@ public:
   void saveIfDirty(BtModel &bt) {
     if (!sd || !bt.configDirty())
       return;
-    sd->mkdir("/openpod");
+    sd->mkdir("/opentone");
     FsFile file = sd->open(PATH, O_WRONLY | O_CREAT | O_TRUNC);
     if (!file) {
       LOG_WARN("Bluetooth settings: can't write %s", PATH);
@@ -69,6 +69,6 @@ public:
   }
 
 private:
-  static constexpr const char *PATH = "/openpod/bt.cfg";
+  static constexpr const char *PATH = "/opentone/bt.cfg";
   SdFat *sd = nullptr;
 };

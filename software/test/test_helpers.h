@@ -9,7 +9,7 @@
 #include "../src/storage/PageStore.h"
 #include "../src/storage/PSRAM_controller.hpp"
 
-namespace openpod_test {
+namespace opentone_test {
 
 // The tables of index.pack / podcasts.pack, by the per-table file name the
 // tests register them under (the syncer wrote these files before the packs).
@@ -47,7 +47,7 @@ inline void packFrom(const std::string &pack, const PackedTable (&tables)[N]) {
   auto &files = FakeFs::get().files;
   std::vector<std::pair<uint32_t, std::vector<uint8_t>>> sections;
   for (size_t i = 0; i < N; i++) {
-    auto it = files.find(std::string("/openpod/") + tables[i].file);
+    auto it = files.find(std::string("/opentone/") + tables[i].file);
     if (it != files.end()) {
       sections.push_back(std::make_pair(tables[i].section, *it->second));
     }
@@ -59,9 +59,9 @@ inline void packFrom(const std::string &pack, const PackedTable (&tables)[N]) {
 }
 
 inline void packTables(const std::string &path) {
-  if (path == "/openpod/index.pack") {
+  if (path == "/opentone/index.pack") {
     packFrom(path, MUSIC_TABLES);
-  } else if (path == "/openpod/podcasts.pack") {
+  } else if (path == "/opentone/podcasts.pack") {
     packFrom(path, PODCAST_TABLES);
   }
 }
@@ -72,7 +72,7 @@ inline PackRef openSearchTrie() {
   static SdFat sd;
   PackRef trie = {0, 0};
   pageStore.begin(INDEX_CACHE_BASE_ADDRESS, INDEX_CACHE_SIZE);
-  if (pageStore.open(sd, "/openpod/index.pack", 0) >= 0)
+  if (pageStore.open(sd, "/opentone/index.pack", 0) >= 0)
     pageStore.find(0, 17, trie);
   return trie;
 }
@@ -89,73 +89,73 @@ inline void registerSampleCatalog() {
   std::vector<std::pair<uint32_t, std::string>> artists;
   artists.push_back(std::make_pair(0u, std::string("Artist One")));
   artists.push_back(std::make_pair(1u, std::string("Artist Two")));
-  fs.addFile("/openpod/artist_index.bin", buildStringIndex(artists));
+  fs.addFile("/opentone/artist_index.bin", buildStringIndex(artists));
 
   std::vector<std::pair<uint32_t, std::string>> albums;
   albums.push_back(std::make_pair(0u, std::string("Album A")));
   albums.push_back(std::make_pair(1u, std::string("Album B")));
-  fs.addFile("/openpod/album_index.bin", buildStringIndex(albums));
+  fs.addFile("/opentone/album_index.bin", buildStringIndex(albums));
 
   std::vector<std::pair<uint32_t, std::string>> genres;
   genres.push_back(std::make_pair(0u, std::string("Rock")));
-  fs.addFile("/openpod/genre_index.bin", buildStringIndex(genres));
+  fs.addFile("/opentone/genre_index.bin", buildStringIndex(genres));
 
   std::vector<std::pair<uint32_t, std::string>> tracks;
   tracks.push_back(std::make_pair(0u, std::string("Track One")));
   tracks.push_back(std::make_pair(1u, std::string("Track Two")));
-  fs.addFile("/openpod/track_index.bin", buildStringIndex(tracks));
+  fs.addFile("/opentone/track_index.bin", buildStringIndex(tracks));
 
   std::vector<std::pair<uint32_t, std::string>> paths;
   paths.push_back(
       std::make_pair(0u, std::string("/music/artist_one/track_one.flac")));
   paths.push_back(
       std::make_pair(1u, std::string("/music/artist_two/track_two.flac")));
-  fs.addFile("/openpod/path_index.bin", buildStringIndex(paths));
+  fs.addFile("/opentone/path_index.bin", buildStringIndex(paths));
 
   std::vector<std::pair<uint32_t, uint16_t>> durations;
   durations.push_back(std::make_pair(0u, (uint16_t)200));
   durations.push_back(std::make_pair(1u, (uint16_t)180));
-  fs.addFile("/openpod/duration_index.bin", buildDurationIndex(durations));
+  fs.addFile("/opentone/duration_index.bin", buildDurationIndex(durations));
 
   std::vector<std::pair<uint32_t, std::vector<uint32_t>>> artist_to_albums;
   artist_to_albums.push_back(std::make_pair(0u, std::vector<uint32_t>{0}));
   artist_to_albums.push_back(std::make_pair(1u, std::vector<uint32_t>{1}));
-  fs.addFile("/openpod/artist_to_albums.bin", buildRelation(artist_to_albums));
+  fs.addFile("/opentone/artist_to_albums.bin", buildRelation(artist_to_albums));
 
   std::vector<std::pair<uint32_t, std::vector<uint32_t>>> artist_to_tracks;
   artist_to_tracks.push_back(std::make_pair(0u, std::vector<uint32_t>{0}));
   artist_to_tracks.push_back(std::make_pair(1u, std::vector<uint32_t>{1}));
-  fs.addFile("/openpod/artist_to_tracks.bin", buildRelation(artist_to_tracks));
+  fs.addFile("/opentone/artist_to_tracks.bin", buildRelation(artist_to_tracks));
 
   std::vector<std::pair<uint32_t, std::vector<uint32_t>>> album_to_tracks;
   album_to_tracks.push_back(std::make_pair(0u, std::vector<uint32_t>{0}));
   album_to_tracks.push_back(std::make_pair(1u, std::vector<uint32_t>{1}));
-  fs.addFile("/openpod/album_to_tracks.bin", buildRelation(album_to_tracks));
+  fs.addFile("/opentone/album_to_tracks.bin", buildRelation(album_to_tracks));
 
   std::vector<std::pair<uint32_t, std::vector<uint32_t>>> genre_to_albums;
   genre_to_albums.push_back(
       std::make_pair(0u, std::vector<uint32_t>{0, 1}));
-  fs.addFile("/openpod/genre_to_albums.bin", buildRelation(genre_to_albums));
+  fs.addFile("/opentone/genre_to_albums.bin", buildRelation(genre_to_albums));
 
   std::vector<std::pair<uint32_t, std::vector<uint32_t>>> genre_to_tracks;
   genre_to_tracks.push_back(std::make_pair(0u, std::vector<uint32_t>{0, 1}));
-  fs.addFile("/openpod/genre_to_tracks.bin", buildRelation(genre_to_tracks));
+  fs.addFile("/opentone/genre_to_tracks.bin", buildRelation(genre_to_tracks));
 
   std::vector<std::pair<uint32_t, uint32_t>> track_to_album;
   track_to_album.push_back(std::make_pair(0u, 0u));
   track_to_album.push_back(std::make_pair(1u, 1u));
-  fs.addFile("/openpod/track_to_album.bin", buildTrackToAlbumIndex(track_to_album));
+  fs.addFile("/opentone/track_to_album.bin", buildTrackToAlbumIndex(track_to_album));
 
   // Same dense uint32-per-track layout as track_to_album.
   std::vector<std::pair<uint32_t, uint32_t>> track_to_artist;
   track_to_artist.push_back(std::make_pair(0u, 0u));
   track_to_artist.push_back(std::make_pair(1u, 1u));
-  fs.addFile("/openpod/track_to_artist.bin", buildTrackToAlbumIndex(track_to_artist));
+  fs.addFile("/opentone/track_to_artist.bin", buildTrackToAlbumIndex(track_to_artist));
 
   std::vector<CoverIndexEntry> album_to_cover;
   album_to_cover.push_back({0u, 0u, 100u, 1});
   album_to_cover.push_back({1u, 100u, 200u, 0});
-  fs.addFile("/openpod/album_to_cover.bin", buildAlbumCoverIndex(album_to_cover));
+  fs.addFile("/opentone/album_to_cover.bin", buildAlbumCoverIndex(album_to_cover));
 }
 
 // Additive, self-contained catalog used only by the State tests (never by
@@ -170,61 +170,61 @@ inline void registerStateTestCatalog() {
 
   std::vector<std::pair<uint32_t, std::string>> artists;
   artists.push_back(std::make_pair(0u, std::string("Solo Artist")));
-  fs.addFile("/openpod/artist_index.bin", buildStringIndex(artists));
+  fs.addFile("/opentone/artist_index.bin", buildStringIndex(artists));
 
   std::vector<std::pair<uint32_t, std::string>> albums;
   albums.push_back(std::make_pair(0u, std::string("Double Album")));
-  fs.addFile("/openpod/album_index.bin", buildStringIndex(albums));
+  fs.addFile("/opentone/album_index.bin", buildStringIndex(albums));
 
   std::vector<std::pair<uint32_t, std::string>> genres;
   genres.push_back(std::make_pair(0u, std::string("Indie")));
-  fs.addFile("/openpod/genre_index.bin", buildStringIndex(genres));
+  fs.addFile("/opentone/genre_index.bin", buildStringIndex(genres));
 
   std::vector<std::pair<uint32_t, std::string>> tracks;
   tracks.push_back(std::make_pair(0u, std::string("First Song")));
   tracks.push_back(std::make_pair(1u, std::string("Second Song")));
-  fs.addFile("/openpod/track_index.bin", buildStringIndex(tracks));
+  fs.addFile("/opentone/track_index.bin", buildStringIndex(tracks));
 
   std::vector<std::pair<uint32_t, std::string>> paths;
   paths.push_back(
       std::make_pair(0u, std::string("/music/solo/first.flac")));
   paths.push_back(
       std::make_pair(1u, std::string("/music/solo/second.flac")));
-  fs.addFile("/openpod/path_index.bin", buildStringIndex(paths));
+  fs.addFile("/opentone/path_index.bin", buildStringIndex(paths));
 
   std::vector<std::pair<uint32_t, uint16_t>> durations;
   durations.push_back(std::make_pair(0u, (uint16_t)150));
   durations.push_back(std::make_pair(1u, (uint16_t)170));
-  fs.addFile("/openpod/duration_index.bin", buildDurationIndex(durations));
+  fs.addFile("/opentone/duration_index.bin", buildDurationIndex(durations));
 
   std::vector<std::pair<uint32_t, std::vector<uint32_t>>> artist_to_albums;
   artist_to_albums.push_back(std::make_pair(0u, std::vector<uint32_t>{0}));
-  fs.addFile("/openpod/artist_to_albums.bin", buildRelation(artist_to_albums));
+  fs.addFile("/opentone/artist_to_albums.bin", buildRelation(artist_to_albums));
 
   std::vector<std::pair<uint32_t, std::vector<uint32_t>>> artist_to_tracks;
   artist_to_tracks.push_back(std::make_pair(0u, std::vector<uint32_t>{0, 1}));
-  fs.addFile("/openpod/artist_to_tracks.bin", buildRelation(artist_to_tracks));
+  fs.addFile("/opentone/artist_to_tracks.bin", buildRelation(artist_to_tracks));
 
   std::vector<std::pair<uint32_t, std::vector<uint32_t>>> album_to_tracks;
   album_to_tracks.push_back(std::make_pair(0u, std::vector<uint32_t>{0, 1}));
-  fs.addFile("/openpod/album_to_tracks.bin", buildRelation(album_to_tracks));
+  fs.addFile("/opentone/album_to_tracks.bin", buildRelation(album_to_tracks));
 
   std::vector<std::pair<uint32_t, std::vector<uint32_t>>> genre_to_albums;
   genre_to_albums.push_back(std::make_pair(0u, std::vector<uint32_t>{0}));
-  fs.addFile("/openpod/genre_to_albums.bin", buildRelation(genre_to_albums));
+  fs.addFile("/opentone/genre_to_albums.bin", buildRelation(genre_to_albums));
 
   std::vector<std::pair<uint32_t, std::vector<uint32_t>>> genre_to_tracks;
   genre_to_tracks.push_back(std::make_pair(0u, std::vector<uint32_t>{0, 1}));
-  fs.addFile("/openpod/genre_to_tracks.bin", buildRelation(genre_to_tracks));
+  fs.addFile("/opentone/genre_to_tracks.bin", buildRelation(genre_to_tracks));
 
   std::vector<std::pair<uint32_t, uint32_t>> track_to_album;
   track_to_album.push_back(std::make_pair(0u, 0u));
   track_to_album.push_back(std::make_pair(1u, 0u));
-  fs.addFile("/openpod/track_to_album.bin", buildTrackToAlbumIndex(track_to_album));
+  fs.addFile("/opentone/track_to_album.bin", buildTrackToAlbumIndex(track_to_album));
 
   std::vector<CoverIndexEntry> album_to_cover;
   album_to_cover.push_back({0u, 0u, 50u, 1});
-  fs.addFile("/openpod/album_to_cover.bin", buildAlbumCoverIndex(album_to_cover));
+  fs.addFile("/opentone/album_to_cover.bin", buildAlbumCoverIndex(album_to_cover));
 }
 
 // Lists longer than the State's window (LOOKUP_WINDOW) and than the old
@@ -243,17 +243,17 @@ inline void registerLargeCatalog() {
     artists.push_back(std::make_pair(id, std::string(name)));
     artist_to_albums.push_back(std::make_pair(id, std::vector<uint32_t>{id == 0 ? 1u : 0u}));
   }
-  fs.addFile("/openpod/artist_index.bin", buildStringIndex(artists));
-  fs.addFile("/openpod/artist_to_albums.bin", buildRelation(artist_to_albums));
+  fs.addFile("/opentone/artist_index.bin", buildStringIndex(artists));
+  fs.addFile("/opentone/artist_to_albums.bin", buildRelation(artist_to_albums));
 
   std::vector<std::pair<uint32_t, std::string>> albums;
   albums.push_back(std::make_pair(0u, std::string("Short Album")));
   albums.push_back(std::make_pair(1u, std::string("Long Album")));
-  fs.addFile("/openpod/album_index.bin", buildStringIndex(albums));
+  fs.addFile("/opentone/album_index.bin", buildStringIndex(albums));
 
   std::vector<std::pair<uint32_t, std::string>> genres;
   genres.push_back(std::make_pair(0u, std::string("Jazz")));
-  fs.addFile("/openpod/genre_index.bin", buildStringIndex(genres));
+  fs.addFile("/opentone/genre_index.bin", buildStringIndex(genres));
 
   std::vector<std::pair<uint32_t, std::string>> tracks;
   std::vector<std::pair<uint32_t, std::string>> paths;
@@ -276,31 +276,31 @@ inline void registerLargeCatalog() {
     paths.push_back(std::make_pair(t.first, "/music/" + t.second + ".flac"));
     durations.push_back(std::make_pair(t.first, (uint16_t)180));
   }
-  fs.addFile("/openpod/track_index.bin", buildStringIndex(tracks));
-  fs.addFile("/openpod/path_index.bin", buildStringIndex(paths));
-  fs.addFile("/openpod/duration_index.bin", buildDurationIndex(durations));
-  fs.addFile("/openpod/track_to_album.bin", buildTrackToAlbumIndex(track_to_album));
+  fs.addFile("/opentone/track_index.bin", buildStringIndex(tracks));
+  fs.addFile("/opentone/path_index.bin", buildStringIndex(paths));
+  fs.addFile("/opentone/duration_index.bin", buildDurationIndex(durations));
+  fs.addFile("/opentone/track_to_album.bin", buildTrackToAlbumIndex(track_to_album));
 
   std::vector<std::pair<uint32_t, std::vector<uint32_t>>> album_to_tracks;
   album_to_tracks.push_back(std::make_pair(0u, short_album));
   album_to_tracks.push_back(std::make_pair(1u, long_album));
-  fs.addFile("/openpod/album_to_tracks.bin", buildRelation(album_to_tracks));
+  fs.addFile("/opentone/album_to_tracks.bin", buildRelation(album_to_tracks));
 
   std::vector<std::pair<uint32_t, std::vector<uint32_t>>> artist_to_tracks;
   artist_to_tracks.push_back(std::make_pair(0u, long_album));
-  fs.addFile("/openpod/artist_to_tracks.bin", buildRelation(artist_to_tracks));
+  fs.addFile("/opentone/artist_to_tracks.bin", buildRelation(artist_to_tracks));
 
   std::vector<std::pair<uint32_t, std::vector<uint32_t>>> genre_to_albums;
   genre_to_albums.push_back(std::make_pair(0u, std::vector<uint32_t>{0, 1}));
-  fs.addFile("/openpod/genre_to_albums.bin", buildRelation(genre_to_albums));
+  fs.addFile("/opentone/genre_to_albums.bin", buildRelation(genre_to_albums));
   std::vector<std::pair<uint32_t, std::vector<uint32_t>>> genre_to_tracks;
   genre_to_tracks.push_back(std::make_pair(0u, long_album));
-  fs.addFile("/openpod/genre_to_tracks.bin", buildRelation(genre_to_tracks));
+  fs.addFile("/opentone/genre_to_tracks.bin", buildRelation(genre_to_tracks));
 
   std::vector<CoverIndexEntry> album_to_cover;
   album_to_cover.push_back({0u, 0u, 50u, 1});
   album_to_cover.push_back({1u, 50u, 50u, 1});
-  fs.addFile("/openpod/album_to_cover.bin", buildAlbumCoverIndex(album_to_cover));
+  fs.addFile("/opentone/album_to_cover.bin", buildAlbumCoverIndex(album_to_cover));
 }
 
 // Two genres, each scoped to its own distinct artist/album/track, so a test
@@ -313,67 +313,67 @@ inline void registerMultiGenreTestCatalog() {
   std::vector<std::pair<uint32_t, std::string>> artists;
   artists.push_back(std::make_pair(0u, std::string("Django Reinhardt")));
   artists.push_back(std::make_pair(1u, std::string("MC Solaar")));
-  fs.addFile("/openpod/artist_index.bin", buildStringIndex(artists));
+  fs.addFile("/opentone/artist_index.bin", buildStringIndex(artists));
 
   std::vector<std::pair<uint32_t, std::string>> albums;
   albums.push_back(std::make_pair(0u, std::string("Djangology")));
   albums.push_back(std::make_pair(1u, std::string("Qui Seme Le Vent")));
-  fs.addFile("/openpod/album_index.bin", buildStringIndex(albums));
+  fs.addFile("/opentone/album_index.bin", buildStringIndex(albums));
 
   std::vector<std::pair<uint32_t, std::string>> genres;
   genres.push_back(std::make_pair(0u, std::string("Gipsy Jazz")));
   genres.push_back(std::make_pair(1u, std::string("Hip Hop")));
-  fs.addFile("/openpod/genre_index.bin", buildStringIndex(genres));
+  fs.addFile("/opentone/genre_index.bin", buildStringIndex(genres));
 
   std::vector<std::pair<uint32_t, std::string>> tracks;
   tracks.push_back(std::make_pair(0u, std::string("Minor Swing")));
   tracks.push_back(std::make_pair(1u, std::string("Caroline")));
-  fs.addFile("/openpod/track_index.bin", buildStringIndex(tracks));
+  fs.addFile("/opentone/track_index.bin", buildStringIndex(tracks));
 
   std::vector<std::pair<uint32_t, std::string>> paths;
   paths.push_back(std::make_pair(0u, std::string("/music/django/minor_swing.flac")));
   paths.push_back(std::make_pair(1u, std::string("/music/mcsolaar/caroline.flac")));
-  fs.addFile("/openpod/path_index.bin", buildStringIndex(paths));
+  fs.addFile("/opentone/path_index.bin", buildStringIndex(paths));
 
   std::vector<std::pair<uint32_t, uint16_t>> durations;
   durations.push_back(std::make_pair(0u, (uint16_t)180));
   durations.push_back(std::make_pair(1u, (uint16_t)220));
-  fs.addFile("/openpod/duration_index.bin", buildDurationIndex(durations));
+  fs.addFile("/opentone/duration_index.bin", buildDurationIndex(durations));
 
   std::vector<std::pair<uint32_t, std::vector<uint32_t>>> artist_to_albums;
   artist_to_albums.push_back(std::make_pair(0u, std::vector<uint32_t>{0}));
   artist_to_albums.push_back(std::make_pair(1u, std::vector<uint32_t>{1}));
-  fs.addFile("/openpod/artist_to_albums.bin", buildRelation(artist_to_albums));
+  fs.addFile("/opentone/artist_to_albums.bin", buildRelation(artist_to_albums));
 
   std::vector<std::pair<uint32_t, std::vector<uint32_t>>> artist_to_tracks;
   artist_to_tracks.push_back(std::make_pair(0u, std::vector<uint32_t>{0}));
   artist_to_tracks.push_back(std::make_pair(1u, std::vector<uint32_t>{1}));
-  fs.addFile("/openpod/artist_to_tracks.bin", buildRelation(artist_to_tracks));
+  fs.addFile("/opentone/artist_to_tracks.bin", buildRelation(artist_to_tracks));
 
   std::vector<std::pair<uint32_t, std::vector<uint32_t>>> album_to_tracks;
   album_to_tracks.push_back(std::make_pair(0u, std::vector<uint32_t>{0}));
   album_to_tracks.push_back(std::make_pair(1u, std::vector<uint32_t>{1}));
-  fs.addFile("/openpod/album_to_tracks.bin", buildRelation(album_to_tracks));
+  fs.addFile("/opentone/album_to_tracks.bin", buildRelation(album_to_tracks));
 
   std::vector<std::pair<uint32_t, std::vector<uint32_t>>> genre_to_albums;
   genre_to_albums.push_back(std::make_pair(0u, std::vector<uint32_t>{0}));
   genre_to_albums.push_back(std::make_pair(1u, std::vector<uint32_t>{1}));
-  fs.addFile("/openpod/genre_to_albums.bin", buildRelation(genre_to_albums));
+  fs.addFile("/opentone/genre_to_albums.bin", buildRelation(genre_to_albums));
 
   std::vector<std::pair<uint32_t, std::vector<uint32_t>>> genre_to_tracks;
   genre_to_tracks.push_back(std::make_pair(0u, std::vector<uint32_t>{0}));
   genre_to_tracks.push_back(std::make_pair(1u, std::vector<uint32_t>{1}));
-  fs.addFile("/openpod/genre_to_tracks.bin", buildRelation(genre_to_tracks));
+  fs.addFile("/opentone/genre_to_tracks.bin", buildRelation(genre_to_tracks));
 
   std::vector<std::pair<uint32_t, uint32_t>> track_to_album;
   track_to_album.push_back(std::make_pair(0u, 0u));
   track_to_album.push_back(std::make_pair(1u, 1u));
-  fs.addFile("/openpod/track_to_album.bin", buildTrackToAlbumIndex(track_to_album));
+  fs.addFile("/opentone/track_to_album.bin", buildTrackToAlbumIndex(track_to_album));
 
   std::vector<CoverIndexEntry> album_to_cover;
   album_to_cover.push_back({0u, 0u, 50u, 1});
   album_to_cover.push_back({1u, 50u, 60u, 1});
-  fs.addFile("/openpod/album_to_cover.bin", buildAlbumCoverIndex(album_to_cover));
+  fs.addFile("/opentone/album_to_cover.bin", buildAlbumCoverIndex(album_to_cover));
 }
 
-} // namespace openpod_test
+} // namespace opentone_test

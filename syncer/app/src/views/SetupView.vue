@@ -109,7 +109,7 @@ const podLine = computed(() => {
           <div class="note green">
             <div style="font-weight: 600">A new card</div>
             <p>
-              This card hasn't been used with OpenPod yet. The first sync sets it up and copies your music. Nothing
+              This card hasn't been used with opentone yet. The first sync sets it up and copies your music. Nothing
               else on the card is touched.
             </p>
           </div>

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// Tools → OpenPod Sync: the app (syncer/app, built into public/sync-app by
+// Tools → opentone Sync: the app (syncer/app, built into public/sync-app by
 // its `npm run build:web`) fills the whole page under the nav bar, with
 // its own sidebar, following the site's dark/light toggle.
 import { computed } from "vue";
@@ -11,7 +11,7 @@ const src = computed(() => withBase(`/sync-app/index.html?theme=${isDark.value ?
 
 <template>
   <ClientOnly>
-    <iframe class="SyncLayout" :src="src" title="OpenPod Sync" />
+    <iframe class="SyncLayout" :src="src" title="opentone Sync" />
   </ClientOnly>
 </template>
 
