@@ -3314,7 +3314,7 @@
 			)
 		)
 		(embedded_fonts no)
-		(model "/home/leo/Documents/dev/perso/open-pod/hardware/3dmodels/SKQGAF.STEP"
+		(model "/home/leo/Documents/dev/opentone/hardware/3dmodels/SKQGAF.STEP"
 			(offset
 				(xyz 0 0 0)
 			)
@@ -4166,7 +4166,7 @@
 			)
 		)
 		(embedded_fonts no)
-		(model "/home/leo/Documents/dev/perso/open-pod/hardware/3dmodels/SKQGAF.STEP"
+		(model "/home/leo/Documents/dev/opentone/hardware/3dmodels/SKQGAF.STEP"
 			(offset
 				(xyz 0 0 0)
 			)
@@ -4799,7 +4799,7 @@
 			)
 		)
 		(embedded_fonts no)
-		(model "/home/leo/Documents/dev/perso/open-pod/hardware/3dmodels/NHD-2.4-240320CF-Cxxx#-F.STEP"
+		(model "/home/leo/Documents/dev/opentone/hardware/3dmodels/NHD-2.4-240320CF-Cxxx#-F.STEP"
 			(offset
 				(xyz 43.5 8 -162)
 			)
@@ -7053,7 +7053,7 @@
 			)
 		)
 		(embedded_fonts no)
-		(model "/home/leo/Documents/dev/perso/open-pod/hardware/3dmodels/SKQGAF.STEP"
+		(model "/home/leo/Documents/dev/opentone/hardware/3dmodels/SKQGAF.STEP"
 			(offset
 				(xyz 0 0 0)
 			)
@@ -8003,7 +8003,7 @@
 			)
 		)
 		(embedded_fonts no)
-		(model "/home/leo/Documents/dev/perso/open-pod/hardware/3dmodels/SKQGAF.STEP"
+		(model "/home/leo/Documents/dev/opentone/hardware/3dmodels/SKQGAF.STEP"
 			(offset
 				(xyz 0 0 0)
 			)
@@ -9790,7 +9790,7 @@
 			)
 		)
 		(embedded_fonts no)
-		(model "/home/leo/Documents/dev/perso/open-pod/hardware/3dmodels/SKQGAF.STEP"
+		(model "/home/leo/Documents/dev/opentone/hardware/3dmodels/SKQGAF.STEP"
 			(offset
 				(xyz 0 0 0)
 			)
@@ -14015,7 +14015,7 @@
 				(xyz 0 0 0)
 			)
 		)
-		(model "/home/leo/Documents/dev/perso/open-pod/hardware/3dmodels/hirose-connector-40.stp"
+		(model "/home/leo/Documents/dev/opentone/hardware/3dmodels/hirose-connector-40.stp"
 			(offset
 				(xyz 12.45 -10 -28)
 			)

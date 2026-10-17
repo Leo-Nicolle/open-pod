@@ -845,7 +845,7 @@ fn cmd_install_tools(card: &Path, from: Option<&Path>) -> anyhow::Result<()> {
         "opentone: sync music onto this card.\n\
          Copy the binary for your computer somewhere, make it executable (chmod +x on Linux/macOS), then:\n\
          \n  opentone sync ~/Music --card <where this card is mounted>\n\n\
-         Releases: https://github.com/Leo-Nicolle/open-pod/releases\n",
+         Releases: https://github.com/Leo-Nicolle/opentone/releases\n",
     )?;
     println!("Copied to {}: {}", dir.display(), copied.join(", "));
     Ok(())

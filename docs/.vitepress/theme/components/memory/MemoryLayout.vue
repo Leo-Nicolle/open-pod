@@ -275,7 +275,7 @@ const GROUP_OF: Record<string, GroupKey> = {
   "Index page cache": "library",
 };
 
-const repo = "https://github.com/Leo-Nicolle/open-pod/blob/master/";
+const repo = "https://github.com/Leo-Nicolle/opentone/blob/master/";
 
 function build(raw: Raw[], prefix: string, group?: GroupKey): Item[] {
   return raw.map((r, i) => {

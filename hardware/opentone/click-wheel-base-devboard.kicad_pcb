@@ -613,7 +613,7 @@
 			)
 		)
 		(embedded_fonts no)
-		(model "/home/leo/Documents/dev/perso/open-pod/hardware/3dmodels/SKQGAF.STEP"
+		(model "/home/leo/Documents/dev/opentone/hardware/3dmodels/SKQGAF.STEP"
 			(offset
 				(xyz 0 0 0)
 			)
@@ -1292,7 +1292,7 @@
 			)
 		)
 		(embedded_fonts no)
-		(model "/home/leo/Documents/dev/perso/open-pod/hardware/3dmodels/SKQGAF.STEP"
+		(model "/home/leo/Documents/dev/opentone/hardware/3dmodels/SKQGAF.STEP"
 			(offset
 				(xyz 0 0 0)
 			)
@@ -1829,7 +1829,7 @@
 			)
 		)
 		(embedded_fonts no)
-		(model "/home/leo/Documents/dev/perso/open-pod/hardware/3dmodels/SKQGAF.STEP"
+		(model "/home/leo/Documents/dev/opentone/hardware/3dmodels/SKQGAF.STEP"
 			(offset
 				(xyz 0 0 0)
 			)
@@ -2366,7 +2366,7 @@
 			)
 		)
 		(embedded_fonts no)
-		(model "/home/leo/Documents/dev/perso/open-pod/hardware/3dmodels/SKQGAF.STEP"
+		(model "/home/leo/Documents/dev/opentone/hardware/3dmodels/SKQGAF.STEP"
 			(offset
 				(xyz 0 0 0)
 			)
@@ -2768,7 +2768,7 @@
 			)
 		)
 		(embedded_fonts no)
-		(model "/home/leo/Documents/dev/perso/open-pod/hardware/3dmodels/SKQGAF.STEP"
+		(model "/home/leo/Documents/dev/opentone/hardware/3dmodels/SKQGAF.STEP"
 			(offset
 				(xyz 0 0 0)
 			)

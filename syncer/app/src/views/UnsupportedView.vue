@@ -1,5 +1,5 @@
 <script setup lang="ts">
-const RELEASES = 'https://github.com/Leo-Nicolle/open-pod/releases';
+const RELEASES = 'https://github.com/Leo-Nicolle/opentone/releases';
 const ua = navigator.userAgent;
 const os = /Mac/.test(ua) ? 'macOS' : /Win/.test(ua) ? 'Windows' : 'Linux';
 const others = ['macOS', 'Windows', 'Linux'].filter((o) => o !== os);

@@ -1,6 +1,6 @@
 # VS1053b: Equalizer options
 
-Can the open-pod have an equalizer, given that the VS1053b already runs the VLSI FLAC plugin?
+Can the opentone have an equalizer, given that the VS1053b already runs the VLSI FLAC plugin?
 
 **TL;DR:** We can't fit a real multi-band EQ plugin next to the FLAC plugin. The chip's built-in bass/treble control costs no memory, though, and is the practical way to offer an EQ.
 

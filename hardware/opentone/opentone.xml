@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <export version="E">
   <design>
-    <source>/home/leo/Documents/dev/perso/open-pod/hardware/opentone/opentone.kicad_sch</source>
+    <source>/home/leo/Documents/dev/opentone/hardware/opentone/opentone.kicad_sch</source>
     <date>Thu May 15 12:42:54 2025</date>
     <tool>Eeschema 7.0.11+dfsg-1build4</tool>
     <sheet number="1" name="/" tstamps="/">
@@ -1661,10 +1661,10 @@
       <uri>/usr/share/kicad/symbols//Regulator_Switching.kicad_sym</uri>
     </library>
     <library logical="jack">
-      <uri>/home/leo/Documents/dev/perso/open-pod/hardware/opentone/jack/SJ-43515TS-SMT-TR.lib</uri>
+      <uri>/home/leo/Documents/dev/opentone/hardware/opentone/jack/SJ-43515TS-SMT-TR.lib</uri>
     </library>
     <library logical="opentone">
-      <uri>/home/leo/Documents/dev/perso/open-pod/hardware/opentone/opentone.kicad_sym</uri>
+      <uri>/home/leo/Documents/dev/opentone/hardware/opentone/opentone.kicad_sym</uri>
     </library>
   </libraries>
   <nets>

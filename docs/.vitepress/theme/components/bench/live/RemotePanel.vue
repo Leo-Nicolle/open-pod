@@ -246,7 +246,7 @@ const thumb = computed(() => (dragAngle.value === null ? null : ringPoint(dragAn
 // Over the remote panel, mouse-wheel / trackpad scrolling drags the virtual
 // finger round the ring, so it goes through the wheel's own scroll path
 // (acceleration, fast scroll, liftoff) like a real thumb. Scrolling down
-// turns clockwise: down the list, as on an iPod.
+// turns clockwise: down the list.
 
 /** Ring degrees per scrolled pixel: a mouse notch (~100 px) is one 15° click. */
 const WHEEL_DEG_PER_PX = 0.15;

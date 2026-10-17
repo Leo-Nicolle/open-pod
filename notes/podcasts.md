@@ -90,7 +90,7 @@ prunes: the old show's feed stopped building in 2016.
 
 Primary path (current episodes):
 `docs/public/userscripts/radiofrance-podcasts.user.js`, served at
-`https://leo-nicolle.github.io/open-pod/userscripts/radiofrance-podcasts.user.js`.
+`https://leo-nicolle.github.io/opentone/userscripts/radiofrance-podcasts.user.js`.
 
 Verified against the live site:
 

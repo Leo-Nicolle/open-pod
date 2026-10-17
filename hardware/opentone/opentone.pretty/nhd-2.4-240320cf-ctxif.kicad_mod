@@ -19,7 +19,7 @@
     (stroke (width 0.1) (type default)) (fill none) (layer "User.1") (tstamp 9547549f-dc68-48fe-a6be-ccfb61b0dd53))
   (fp_rect (start 2.8 2.82) (end 39.52 51.78)
     (stroke (width 0.1) (type default)) (fill none) (layer "User.2") (tstamp 36f56586-ba1a-4b39-aa39-143a44a73fa2))
-  (model "/home/leo/Documents/dev/perso/open-pod/hardware/3dmodels/NHD-2.4-240320CF-Cxxx#-F.STEP"
+  (model "/home/leo/Documents/dev/opentone/hardware/3dmodels/NHD-2.4-240320CF-Cxxx#-F.STEP"
     (offset (xyz 43.5 8 -162))
     (scale (xyz 1 1 1))
     (rotate (xyz 0 0 0))

@@ -5,7 +5,7 @@ const fileAndStyles: Record<string, string> = {};
 
 export default defineConfig({
   title: "opentone",
-  description: "An open-source iPod-style music player",
+  description: "An open-source music player",
   base: "/",
   head: [
     ["link", { rel: "icon", href: "/favicon.svg" }],
@@ -103,7 +103,7 @@ export default defineConfig({
     },
 
     socialLinks: [
-      { icon: "github", link: "https://github.com/Leo-Nicolle/open-pod" },
+      { icon: "github", link: "https://github.com/Leo-Nicolle/opentone" },
     ],
   },
   vite: {

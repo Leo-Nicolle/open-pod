@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         opentone — Radio France podcast downloader
-// @namespace    https://github.com/Leo-Nicolle/open-pod
+// @namespace    https://github.com/Leo-Nicolle/opentone
 // @version      0.3.0
 // @description  Adds a panel to Radio France podcast pages to download episodes into a folder (e.g. ~/Podcasts), ready for opentone Sync.
 // @author       opentone
